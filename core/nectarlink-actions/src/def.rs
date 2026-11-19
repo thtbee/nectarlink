@@ -20,10 +20,15 @@ pub enum Toolset {
     Files,
     Media,
     Pc,
+    Phone,
+    Photos,
+    Storage,
+    Mirror,
+    Deck,
 }
 
 impl Toolset {
-    pub const ALL: [Toolset; 8] = [
+    pub const ALL: [Toolset; 13] = [
         Toolset::Core,
         Toolset::Notifications,
         Toolset::Messages,
@@ -32,6 +37,11 @@ impl Toolset {
         Toolset::Files,
         Toolset::Media,
         Toolset::Pc,
+        Toolset::Phone,
+        Toolset::Photos,
+        Toolset::Storage,
+        Toolset::Mirror,
+        Toolset::Deck,
     ];
 
     pub fn as_str(self) -> &'static str {
@@ -44,6 +54,11 @@ impl Toolset {
             Toolset::Files => "files",
             Toolset::Media => "media",
             Toolset::Pc => "pc",
+            Toolset::Phone => "phone",
+            Toolset::Photos => "photos",
+            Toolset::Storage => "storage",
+            Toolset::Mirror => "mirror",
+            Toolset::Deck => "deck",
         }
     }
 
@@ -68,10 +83,19 @@ pub enum Scope {
     Files,
     Media,
     PcActions,
+    Photos,
+    /// The phone's own files (Phone storage).
+    Storage,
+    /// The phone's quick settings: Do Not Disturb, ringer, volume and the like.
+    PhoneSettings,
+    /// Phone app windows and the phone's screen on the PC.
+    Mirroring,
+    /// This PC's Deck tiles.
+    Deck,
 }
 
 impl Scope {
-    pub const ALL: [Scope; 10] = [
+    pub const ALL: [Scope; 15] = [
         Scope::Devices,
         Scope::Notifications,
         Scope::NotificationsSensitive,
@@ -82,6 +106,11 @@ impl Scope {
         Scope::Files,
         Scope::Media,
         Scope::PcActions,
+        Scope::Photos,
+        Scope::Storage,
+        Scope::PhoneSettings,
+        Scope::Mirroring,
+        Scope::Deck,
     ];
 
     pub fn as_str(self) -> &'static str {
@@ -96,6 +125,11 @@ impl Scope {
             Scope::Files => "files",
             Scope::Media => "media",
             Scope::PcActions => "pc_actions",
+            Scope::Photos => "photos",
+            Scope::Storage => "storage",
+            Scope::PhoneSettings => "phone_settings",
+            Scope::Mirroring => "mirroring",
+            Scope::Deck => "deck",
         }
     }
 
@@ -115,6 +149,11 @@ impl Scope {
             Scope::Files => Some("files"),
             Scope::Media => Some("media"),
             Scope::PcActions => Some("pc_actions"),
+            Scope::Photos => Some("photos"),
+            Scope::Storage => Some("storage"),
+            Scope::PhoneSettings => Some("toggles"),
+            Scope::Mirroring => Some("mirroring"),
+            Scope::Deck => None,
         }
     }
 }
@@ -209,6 +248,9 @@ pub enum Target {
     None,
     /// A paired device, named by the `device` argument.
     Device,
+    /// A paired device when `device` is given; otherwise this PC, or every
+    /// device for a read.
+    OptionalDevice,
 }
 
 pub type HandlerFuture = Pin<Box<dyn Future<Output = Result<Value, ActionError>> + Send>>;

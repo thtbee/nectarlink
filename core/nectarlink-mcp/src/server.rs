@@ -9,13 +9,15 @@ use rmcp::{
     ErrorData, ServerHandler, ServiceExt,
     model::{
         CallToolRequestParams, CallToolResponse, CallToolResult, ContentBlock, Implementation,
-        ListToolsResult, PaginatedRequestParams, ServerCapabilities, ServerConfig, Tool, ToolAnnotations,
+        ListResourceTemplatesResult, ListResourcesResult, ListToolsResult, PaginatedRequestParams,
+        ReadResourceRequestParams, ReadResourceResponse, ReadResourceResult, Resource, ResourceContents,
+        ResourceTemplate, ServerCapabilities, ServerConfig, Tool, ToolAnnotations,
     },
     service::{RequestContext, RoleServer},
 };
 use serde_json::{Map, Value, json};
 
-use crate::{AppClient, INSTRUCTIONS, client::ClientError};
+use crate::{AppClient, INSTRUCTIONS, client::ClientError, resources};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
@@ -59,6 +61,15 @@ impl Server {
             .collect()
     }
 
+    /// The ids of the actions this agent may use.
+    async fn allowed_actions(&self) -> Vec<String> {
+        self.actions()
+            .await
+            .iter()
+            .filter_map(|a| a.get("id").and_then(Value::as_str).map(str::to_owned))
+            .collect()
+    }
+
     async fn run(&self, action: &str, args: Value) -> CallToolResult {
         let reply = match self.client.as_ref() {
             Ok(c) => c.call(action, args).await.unwrap_or_else(|e| e),
@@ -68,12 +79,30 @@ impl Server {
     }
 }
 
+/// Takes the pictures out of an answer (`_images: [{ mime, data }]`, base64).
+fn take_images(result: &mut Value) -> Vec<ContentBlock> {
+    let Some(Value::Array(images)) = result.as_object_mut().and_then(|m| m.remove("_images")) else {
+        return Vec::new();
+    };
+    images
+        .into_iter()
+        .filter_map(|i| {
+            let data = i.get("data")?.as_str()?.to_owned();
+            let mime = i.get("mime")?.as_str()?.to_owned();
+            Some(ContentBlock::image(data, mime))
+        })
+        .collect()
+}
+
 /// The app's answer as a tool result: the JSON as structured content and as
-/// text, marked as an error when it is one.
+/// text, pictures as images, marked as an error when it is one.
 fn to_result(reply: Value) -> CallToolResult {
     if reply.get("ok").and_then(Value::as_bool) == Some(true) {
-        let result = reply.get("result").cloned().unwrap_or(Value::Null);
-        let mut r = CallToolResult::success(vec![ContentBlock::text(pretty(&result))]);
+        let mut result = reply.get("result").cloned().unwrap_or(Value::Null);
+        let images = take_images(&mut result);
+        let mut content = vec![ContentBlock::text(pretty(&result))];
+        content.extend(images);
+        let mut r = CallToolResult::success(content);
         if result.is_object() {
             r.structured_content = Some(result);
         }
@@ -175,7 +204,7 @@ fn dispatch_tools() -> Vec<Tool> {
 
 impl ServerHandler for Server {
     fn get_info(&self) -> ServerConfig {
-        ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
+        ServerConfig::new(ServerCapabilities::builder().enable_tools().enable_resources().build())
             .with_server_info(Implementation::new("nectarlink", env!("CARGO_PKG_VERSION")))
             .with_instructions(INSTRUCTIONS)
     }
@@ -190,6 +219,62 @@ impl ServerHandler for Server {
             Mode::Tools => self.actions().await.iter().filter_map(tool_for).collect(),
         };
         Ok(ListToolsResult::with_all_items(tools))
+    }
+
+    async fn list_resources(
+        &self,
+        _request: Option<PaginatedRequestParams>,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<ListResourcesResult, ErrorData> {
+        let allowed = self.allowed_actions().await;
+        let list = resources::FIXED
+            .iter()
+            .filter(|f| allowed.iter().any(|a| a == f.action))
+            .map(|f| Resource::new(f.uri, f.name).with_title(f.title).with_mime_type("application/json"))
+            .collect();
+        Ok(ListResourcesResult::with_all_items(list))
+    }
+
+    async fn list_resource_templates(
+        &self,
+        _request: Option<PaginatedRequestParams>,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<ListResourceTemplatesResult, ErrorData> {
+        let allowed = self.allowed_actions().await;
+        let list = resources::PER_DEVICE
+            .iter()
+            .filter(|p| allowed.iter().any(|a| a == p.action))
+            .map(|p| {
+                ResourceTemplate::new(p.template, p.name)
+                    .with_title(p.title)
+                    .with_description("{device} is a device id or name from nectarlink://devices.")
+                    .with_mime_type("application/json")
+            })
+            .collect();
+        Ok(ListResourceTemplatesResult::with_all_items(list))
+    }
+
+    async fn read_resource(
+        &self,
+        request: ReadResourceRequestParams,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<ReadResourceResponse, ErrorData> {
+        let Some((action, args)) = resources::resolve(&request.uri) else {
+            return Err(ErrorData::resource_not_found("No such NectarLink resource.", None));
+        };
+        let reply = match self.client.as_ref() {
+            Ok(c) => c.call(action, args).await.unwrap_or_else(|e| e),
+            Err(e) => e.to_json(),
+        };
+        if reply.get("ok").and_then(Value::as_bool) != Some(true) {
+            let error = reply.get("error").cloned().unwrap_or(reply);
+            let message =
+                error.get("message").and_then(Value::as_str).unwrap_or("It didn't work.").to_owned();
+            return Err(ErrorData::invalid_params(message, Some(json!({ "error": error }))));
+        }
+        let result = reply.get("result").cloned().unwrap_or(Value::Null);
+        let text = ResourceContents::text(pretty(&result), request.uri).with_mime_type("application/json");
+        Ok(ReadResourceResult::new(vec![text]).into())
     }
 
     async fn call_tool(
@@ -265,6 +350,18 @@ mod tests {
         let ann = t.annotations.unwrap();
         assert_eq!(ann.destructive_hint, Some(true));
         assert_eq!(ann.read_only_hint, Some(false));
+    }
+
+    #[test]
+    fn pictures_become_image_content_and_leave_the_json() {
+        let r = to_result(
+            json!({ "ok": true, "result": { "ids": ["a"], "_images": [{ "mime": "image/jpeg", "data": "AAAA" }] } }),
+        );
+        assert_eq!(r.content.len(), 2);
+        assert!(matches!(&r.content[1], ContentBlock::Image(_)));
+        let structured = r.structured_content.unwrap();
+        assert!(structured.get("_images").is_none());
+        assert_eq!(structured["ids"][0], "a");
     }
 
     #[test]

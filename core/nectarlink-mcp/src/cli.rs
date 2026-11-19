@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-//! `mcp`, `do` and `actions`: an AI agent's
+//! `mcp`, `do`, `actions` and `events`: an AI agent's
 //! way into the running NectarLink app. These never start a node of their
 //! own; the app checks every call (docs/agents/README.md).
 
@@ -87,6 +87,55 @@ pub async fn list(agent: &str, pretty: bool) -> Result<i32> {
     };
     print(&reply, pretty);
     Ok(exit_code(&reply))
+}
+
+/// `nectarlink events`: prints events as JSON lines, following them until
+/// stopped (or once with `once`). Waits again after a dropped connection.
+pub async fn events(agent: &str, kinds: &[String], since: Option<u64>, once: bool) -> Result<i32> {
+    let client = match connect(agent, "cli") {
+        Ok(c) => c,
+        Err(e) => {
+            print(&e, false);
+            return Ok(exit_code(&e));
+        }
+    };
+    let mut cursor = since;
+    loop {
+        let mut args = json!({ "wait_s": if once { 0 } else { 45 }, "limit": 100 });
+        if let Some(c) = cursor {
+            args["since"] = json!(c);
+        }
+        if !kinds.is_empty() {
+            args["kinds"] = json!(kinds);
+        }
+        let reply = match client.call("events.wait", args).await {
+            Ok(r) => r,
+            Err(e) => {
+                if once {
+                    print(&e, false);
+                    return Ok(exit_code(&e));
+                }
+                // The app may be restarting.
+                tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+                continue;
+            }
+        };
+        if reply.get("ok").and_then(Value::as_bool) != Some(true) {
+            print(&reply, false);
+            return Ok(exit_code(&reply));
+        }
+        let result = &reply["result"];
+        if result.get("missed_some").and_then(Value::as_bool) == Some(true) {
+            eprintln!("Some older events were dropped before they could be read.");
+        }
+        for e in result.get("events").and_then(Value::as_array).into_iter().flatten() {
+            print(e, false);
+        }
+        cursor = result.get("next_since").and_then(Value::as_u64).or(cursor);
+        if once {
+            return Ok(0);
+        }
+    }
 }
 
 fn print(v: &Value, pretty: bool) {

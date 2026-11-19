@@ -6,6 +6,11 @@
 static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Agents", "%1 is asking"), // desktop/app/src/agents.rs
     QT_TRANSLATE_NOOP("Agents", "%1. Open NectarLink to allow or deny it."), // desktop/app/src/agents.rs
+    QT_TRANSLATE_NOOP("Agents", "Claude Code isn't installed on this PC."), // desktop/app/src/agents.rs
+    QT_TRANSLATE_NOOP("Agents", "Its settings file has comments or something NectarLink can't safely change. Paste the lines below into it instead."), // desktop/app/src/agents.rs
+    QT_TRANSLATE_NOOP("Agents", "The app doesn't seem to be installed on this PC."), // desktop/app/src/agents.rs
+    QT_TRANSLATE_NOOP("Agents", "This app has to be set up by hand."), // desktop/app/src/agents.rs
+    QT_TRANSLATE_NOOP("Agents", "Your user folders couldn't be found."), // desktop/app/src/agents.rs
     QT_TRANSLATE_NOOP("App", "Already on clipboard."), // desktop/app/src/bridge/app.rs
     QT_TRANSLATE_NOOP("App", "Command palette"), // desktop/app/src/bridge/app.rs
     QT_TRANSLATE_NOOP("App", "Copied to clipboard."), // desktop/app/src/bridge/app.rs

@@ -12,6 +12,39 @@ Sheet {
     }
     property bool armed: false
 
+    // What the agent asks for, in the user's language. Only actions that can
+    // ask the user are here; anything else shows the title it came with.
+    function titleFor(action, fallback) {
+        switch (action) {
+        case "notification.dismiss": return qsTr("Dismiss a notification")
+        case "notification.action": return qsTr("Press a notification button")
+        case "notification.reply": return qsTr("Reply to a notification")
+        case "sms.send": return qsTr("Send a text message")
+        case "chat.reply": return qsTr("Reply in a chat")
+        case "call.dial": return qsTr("Place a call")
+        case "call.control": return qsTr("Control the current call")
+        case "clipboard.history_delete": return qsTr("Delete a clipboard entry")
+        case "files.send": return qsTr("Send files to a device")
+        case "link.open": return qsTr("Open a link on a device")
+        case "pc.lock": return qsTr("Lock this PC")
+        case "pc.power": return qsTr("Lock, sleep or shut down a PC")
+        case "pc.wake": return qsTr("Wake a PC")
+        case "phone.settings_set": return qsTr("Change a phone quick setting")
+        case "photos.save": return qsTr("Copy photos to this PC")
+        case "photos.delete": return qsTr("Delete photos")
+        case "storage.save": return qsTr("Copy a phone file to this PC")
+        case "storage.upload": return qsTr("Put a file on the phone")
+        case "storage.mkdir": return qsTr("Make a folder on the phone")
+        case "storage.rename": return qsTr("Rename or move a phone file")
+        case "storage.delete": return qsTr("Delete a phone file")
+        case "mirror.open": return qsTr("Open a phone app on this PC")
+        case "app.uninstall": return qsTr("Uninstall a phone app")
+        case "deck.run": return qsTr("Press a Deck tile")
+        case "transfer.accept": return qsTr("Accept incoming files")
+        default: return fallback
+        }
+    }
+
     opened: request !== null
     dismissable: false
     cardWidth: 480
@@ -36,7 +69,7 @@ Sheet {
             width: parent.width
             role: "headline"
             wrapMode: Text.WordWrap
-            text: sheet.request ? qsTr("%1 wants to: %2").arg(sheet.request.client).arg(sheet.request.title) : ""
+            text: sheet.request ? qsTr("%1 wants to: %2").arg(sheet.request.client).arg(sheet.titleFor(sheet.request.action, sheet.request.title)) : ""
         }
         Txt {
             width: parent.width

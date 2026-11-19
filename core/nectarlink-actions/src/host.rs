@@ -3,9 +3,9 @@
 //! the things only it knows (this PC's clipboard, its lock, the live lists
 //! it keeps). The desktop app implements this; tests use a fake.
 
-use std::{future::Future, pin::Pin};
+use std::{future::Future, path::PathBuf, pin::Pin};
 
-use nectarlink_core::DeviceId;
+use nectarlink_core::{DeviceId, PowerAction};
 use nectarlink_protocol::messages::{MediaPlayer, Notification};
 use serde::Serialize;
 
@@ -65,4 +65,44 @@ pub trait ActionHost: Send + Sync + std::fmt::Debug {
 
     /// The current call on each device, as JSON, if there is one.
     fn calls(&self) -> Vec<(DeviceId, serde_json::Value)>;
+
+    /// Where files the agent asks for (photos, phone files) are saved on this PC.
+    fn save_dir(&self) -> Option<PathBuf> {
+        None
+    }
+
+    /// Locks, sleeps, hibernates or shuts down this PC.
+    fn pc_power(&self, _action: PowerAction) -> Result<(), String> {
+        Err(UNSUPPORTED.into())
+    }
+
+    /// Opens the phone's screen (`app` None) or one of its apps, by package
+    /// and label, in a window on this PC.
+    fn mirror_open(&self, _device: DeviceId, _app: Option<(String, String)>) -> Result<(), String> {
+        Err(UNSUPPORTED.into())
+    }
+
+    /// The phone screens and app windows open on this PC, as JSON.
+    fn mirror_windows(&self) -> Vec<serde_json::Value> {
+        Vec::new()
+    }
+
+    /// Closes the phone's screen (`app` None) or an app window. False when
+    /// none was open.
+    fn mirror_close(&self, _device: DeviceId, _app: Option<&str>) -> Result<bool, String> {
+        Err(UNSUPPORTED.into())
+    }
+
+    /// This PC's Deck tiles, as JSON.
+    fn deck_tiles(&self) -> Vec<serde_json::Value> {
+        Vec::new()
+    }
+
+    /// Runs one of this PC's Deck tiles, as pressing it on the phone would.
+    fn deck_run(&self, _tile: &str) -> Result<(), String> {
+        Err(UNSUPPORTED.into())
+    }
 }
+
+/// What a host answers for something it can't do on this system.
+pub const UNSUPPORTED: &str = "This PC can't do that.";

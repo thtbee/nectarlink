@@ -7,7 +7,7 @@
 //! then the handler, and an activity row whatever happened.
 
 use std::{
-    collections::HashMap,
+    collections::{BTreeSet, HashMap},
     sync::{Arc, Mutex, RwLock},
     time::{Duration, Instant},
 };
@@ -18,8 +18,9 @@ use sha2::{Digest, Sha256};
 use tokio::sync::watch;
 
 use crate::{
-    def::{Access, ActionDef, ConfirmRule, Scope, Target},
+    def::{Access, ActionDef, ConfirmRule, Grant, Scope, Target},
     error::{ActionError, Code},
+    events::EventLog,
     host::{ActionHost, ConfirmRequest, Decision},
     ratelimit::RateLimiter,
     registry,
@@ -54,9 +55,49 @@ pub struct Ctx {
     pub device: Option<DeviceId>,
     /// The client may see one-time codes and sensitive notifications.
     pub show_codes: bool,
+    /// What the client may do, for actions that cover several areas.
+    pub grants: BTreeSet<Grant>,
+    /// The devices the client may use, `None` for all.
+    pub devices: Option<BTreeSet<String>>,
+    pub events: Arc<EventLog>,
 }
 
 impl Ctx {
+    /// For tests and other hosts: a context with no node, every device and
+    /// the given grants.
+    pub fn for_test(host: Arc<dyn ActionHost>, device: Option<DeviceId>, grants: BTreeSet<Grant>) -> Ctx {
+        Ctx {
+            node: None,
+            host,
+            device,
+            show_codes: false,
+            grants,
+            devices: None,
+            events: Arc::new(EventLog::new()),
+        }
+    }
+
+    /// Whether the client holds `grant` (write includes read).
+    pub fn holds(&self, grant: Grant) -> bool {
+        self.grants
+            .iter()
+            .any(|g| g.scope == grant.scope && (g.access == grant.access || g.access == Access::Write))
+    }
+
+    /// Whether something from `device` may be shown to this client for
+    /// `scope`: the client may use the device, and the device's own
+    /// permission for it is on. For actions that list across devices.
+    pub fn may_see(&self, device: DeviceId, scope: Scope) -> bool {
+        if self.devices.as_ref().is_some_and(|set| !set.contains(&device.to_string())) {
+            return false;
+        }
+        let (Some(node), Some(toggle)) = (self.node.as_ref(), scope.device_toggle()) else { return true };
+        match node.device_toggles(device) {
+            Ok(toggles) => !toggles.iter().any(|(name, on)| *name == toggle && !*on),
+            Err(_) => false,
+        }
+    }
+
     pub fn node(&self) -> Result<&Arc<Node>, ActionError> {
         self.node.as_ref().ok_or_else(|| ActionError::new(Code::AppNotReady, "NectarLink is still starting."))
     }
@@ -93,6 +134,7 @@ pub struct Gateway {
     pending: Mutex<HashMap<String, Pending>>,
     denials: Mutex<HashMap<String, Vec<Instant>>>,
     actions: &'static [ActionDef],
+    events: Arc<EventLog>,
 }
 
 impl Gateway {
@@ -115,6 +157,7 @@ impl Gateway {
             pending: Mutex::new(HashMap::new()),
             denials: Mutex::new(HashMap::new()),
             actions,
+            events: Arc::new(EventLog::new()),
         }
     }
 
@@ -136,6 +179,11 @@ impl Gateway {
 
     pub fn store(&self) -> &Arc<Store> {
         &self.store
+    }
+
+    /// Where the app feeds core events for `events.wait`.
+    pub fn events(&self) -> &Arc<EventLog> {
+        &self.events
     }
 
     /// The actions a client may see: its scopes, not hidden by read-only.
@@ -238,9 +286,11 @@ impl Gateway {
         }
         let node = self.node.read().unwrap_or_else(|e| e.into_inner()).clone();
         let mut device_name = None;
+        let named = args.get("device").and_then(Value::as_str).is_some_and(|d| !d.trim().is_empty());
         let device = match def.target {
             Target::None => None,
-            Target::Device => {
+            Target::OptionalDevice if !named => None,
+            Target::Device | Target::OptionalDevice => {
                 let node = node
                     .as_ref()
                     .ok_or_else(|| ActionError::new(Code::AppNotReady, "NectarLink is still starting."))?;
@@ -265,7 +315,10 @@ impl Gateway {
             node,
             host: self.host.clone(),
             device,
-            show_codes: client.holds(crate::def::Grant::new(Scope::NotificationsSensitive, Access::Read)),
+            show_codes: client.holds(Grant::new(Scope::NotificationsSensitive, Access::Read)),
+            grants: client.grants.clone(),
+            devices: client.devices.clone(),
+            events: self.events.clone(),
         };
         let out = tokio::time::timeout(RUN_TIMEOUT, (def.run)(ctx, args))
             .await
