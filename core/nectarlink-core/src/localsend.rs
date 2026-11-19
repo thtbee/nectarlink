@@ -81,6 +81,22 @@ const MAX_JSON_BODY_BYTES: usize = 4 * 1024 * 1024;
 const SESSION_IDLE: Duration = Duration::from_secs(30 * 60);
 /// Connections served at once; more wait in the OS backlog.
 const MAX_CONNECTIONS: usize = 64;
+/// Connections one address may have open at once, so one host can't take every slot.
+const MAX_CONNECTIONS_PER_SOURCE: usize = 16;
+/// The whole request head, and a JSON body, must arrive within this, however
+/// slowly the bytes trickle in.
+const REQUEST_DEADLINE: Duration = Duration::from_secs(60);
+/// Transfers waiting for the user's answer, from one address and in all.
+const MAX_PENDING_APPROVALS_PER_SOURCE: usize = 2;
+const MAX_PENDING_APPROVALS: usize = 16;
+/// Peers listed at most, and at most from one address; the ones seen least
+/// recently make room.
+const MAX_PEERS: usize = 256;
+const MAX_PEERS_PER_SOURCE: usize = 8;
+/// Longest alias, model and device type kept for a peer, in characters.
+const MAX_PEER_TEXT: usize = 128;
+/// Register callbacks to announcing peers in flight at once; announces beyond that get none.
+const MAX_REGISTER_CALLBACKS: usize = 8;
 
 /// A LocalSend device discovered on the local network.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -251,6 +267,51 @@ struct UploadSession {
     peer_ip: std::net::IpAddr,
 }
 
+/// A listed peer, and when it was last heard from.
+#[derive(Debug, Clone)]
+struct KnownPeer {
+    peer: LocalSendPeer,
+    seen: Instant,
+}
+
+/// How many of something each address has open at once (connections, prompts).
+#[derive(Debug, Default)]
+struct SourceLimit {
+    counts: Mutex<HashMap<IpAddr, usize>>,
+}
+
+impl SourceLimit {
+    /// One more for `ip`, unless it already has `per_source` or all have `total`.
+    fn try_take(self: &Arc<Self>, ip: IpAddr, per_source: usize, total: usize) -> Option<SourceSlot> {
+        let mut counts = self.counts.lock().unwrap_or_else(|e| e.into_inner());
+        let all: usize = counts.values().sum();
+        let mine = counts.get(&ip).copied().unwrap_or(0);
+        if mine >= per_source || all >= total {
+            return None;
+        }
+        counts.insert(ip, mine + 1);
+        Some(SourceSlot { limit: self.clone(), ip })
+    }
+}
+
+/// One taken from a [`SourceLimit`], given back when dropped.
+struct SourceSlot {
+    limit: Arc<SourceLimit>,
+    ip: IpAddr,
+}
+
+impl Drop for SourceSlot {
+    fn drop(&mut self) {
+        let mut counts = self.limit.counts.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(count) = counts.get_mut(&self.ip) {
+            *count = count.saturating_sub(1);
+            if *count == 0 {
+                counts.remove(&self.ip);
+            }
+        }
+    }
+}
+
 struct RunningState {
     cancel: CancellationToken,
     announce_tx: tokio::sync::mpsc::UnboundedSender<()>,
@@ -267,9 +328,12 @@ pub(crate) struct LocalSendState {
     identity: LocalSendIdentity,
     server_tls: Arc<ServerConfig>,
     client_tls: Arc<ClientConfig>,
-    peers: Mutex<HashMap<DeviceId, LocalSendPeer>>,
+    peers: Mutex<HashMap<DeviceId, KnownPeer>>,
     running: Mutex<Option<RunningState>>,
     pending_approvals: Mutex<HashMap<String, oneshot::Sender<bool>>>,
+    /// Who has transfers waiting for the user's answer.
+    approval_sources: Arc<SourceLimit>,
+    register_callbacks: Arc<tokio::sync::Semaphore>,
     sessions: Mutex<HashMap<String, Arc<Mutex<UploadSession>>>>,
 }
 
@@ -330,6 +394,8 @@ impl LocalSendState {
             peers: Mutex::new(HashMap::new()),
             running: Mutex::new(None),
             pending_approvals: Mutex::new(HashMap::new()),
+            approval_sources: Arc::default(),
+            register_callbacks: Arc::new(tokio::sync::Semaphore::new(MAX_REGISTER_CALLBACKS)),
             sessions: Mutex::new(HashMap::new()),
         })
     }
@@ -372,7 +438,7 @@ impl LocalSendState {
 
     pub fn peers(&self) -> Vec<LocalSendPeer> {
         let mut list: Vec<LocalSendPeer> =
-            self.peers.lock().unwrap_or_else(|e| e.into_inner()).values().cloned().collect();
+            self.peers.lock().unwrap_or_else(|e| e.into_inner()).values().map(|k| k.peer.clone()).collect();
         list.sort_by(|a, b| {
             a.alias.cmp(&b.alias).then_with(|| a.ip.cmp(&b.ip)).then_with(|| a.port.cmp(&b.port))
         });
@@ -380,7 +446,7 @@ impl LocalSendState {
     }
 
     pub fn peer(&self, id: &DeviceId) -> Option<LocalSendPeer> {
-        self.peers.lock().unwrap_or_else(|e| e.into_inner()).get(id).cloned()
+        self.peers.lock().unwrap_or_else(|e| e.into_inner()).get(id).map(|k| k.peer.clone())
     }
 
     pub fn has_peer(&self, id: &DeviceId) -> bool {
@@ -388,19 +454,33 @@ impl LocalSendState {
     }
 
     pub fn peer_name(&self, id: &DeviceId) -> Option<String> {
-        self.peers.lock().unwrap_or_else(|e| e.into_inner()).get(id).map(|p| p.alias.clone())
+        self.peers.lock().unwrap_or_else(|e| e.into_inner()).get(id).map(|k| k.peer.alias.clone())
     }
 
     pub fn upsert_peer(&self, shared: &Shared, peer: LocalSendPeer) -> bool {
-        if peer.fingerprint == self.identity.fingerprint {
+        if peer.fingerprint == self.identity.fingerprint || peer.fingerprint.chars().count() > MAX_PEER_TEXT {
             return false;
         }
+        let peer = peer.bounded();
         let changed = {
             let mut map = self.peers.lock().unwrap_or_else(|e| e.into_inner());
-            if downgrades(map.get(&peer.id), &peer) {
+            if downgrades(map.get(&peer.id).map(|k| &k.peer), &peer) {
                 return false;
             }
-            map.insert(peer.id, peer.clone()).as_ref() != Some(&peer)
+            let now = Instant::now();
+            match map.get_mut(&peer.id) {
+                Some(known) => {
+                    known.seen = now;
+                    let changed = known.peer != peer;
+                    known.peer = peer;
+                    changed
+                }
+                None => {
+                    make_room_for_peer(&mut map, &peer.ip);
+                    map.insert(peer.id, KnownPeer { peer, seen: now });
+                    true
+                }
+            }
         };
         if changed {
             shared.emit(NodeEvent::LocalSendChanged);
@@ -483,6 +563,7 @@ impl LocalSendState {
             tokio::spawn(async move {
                 let Ok(listener) = TcpListener::from_std(std_listener) else { return };
                 let slots = Arc::new(tokio::sync::Semaphore::new(MAX_CONNECTIONS));
+                let sources = Arc::new(SourceLimit::default());
                 loop {
                     let slot = tokio::select! {
                         _ = tcp_cancel.cancelled() => return,
@@ -496,10 +577,17 @@ impl LocalSendState {
                         res = listener.accept() => res,
                     };
                     let Ok((stream, remote_addr)) = accepted else { continue };
+                    // Closed at once: this address already has its share of the slots.
+                    let Some(source) =
+                        sources.try_take(remote_addr.ip(), MAX_CONNECTIONS_PER_SOURCE, MAX_CONNECTIONS)
+                    else {
+                        continue;
+                    };
                     let Some(shared) = weak.upgrade() else { return };
                     let conn_cancel = tcp_cancel.child_token();
                     tokio::spawn(async move {
                         handle_incoming_connection(shared, stream, remote_addr, conn_cancel).await;
+                        drop(source);
                         drop(slot);
                     });
                 }
@@ -605,6 +693,41 @@ impl LocalSendState {
         };
         for session in idle {
             end_session(shared, &session, TransferState::Cancelled);
+        }
+    }
+}
+
+/// Drops the peers seen least recently while `ip` has its most, or the list is full.
+fn make_room_for_peer(map: &mut HashMap<DeviceId, KnownPeer>, ip: &str) {
+    let oldest = |map: &HashMap<DeviceId, KnownPeer>, same_ip: bool| {
+        map.iter().filter(|(_, k)| !same_ip || k.peer.ip == ip).min_by_key(|(_, k)| k.seen).map(|(id, _)| *id)
+    };
+    while map.values().filter(|k| k.peer.ip == ip).count() >= MAX_PEERS_PER_SOURCE {
+        let Some(id) = oldest(map, true) else { break };
+        map.remove(&id);
+    }
+    while map.len() >= MAX_PEERS {
+        let Some(id) = oldest(map, false) else { break };
+        map.remove(&id);
+    }
+}
+
+/// `text` cut to at most [`MAX_PEER_TEXT`] characters.
+fn bounded_text(mut text: String) -> String {
+    if let Some((at, _)) = text.char_indices().nth(MAX_PEER_TEXT) {
+        text.truncate(at);
+    }
+    text
+}
+
+impl LocalSendPeer {
+    /// This peer with its free text cut to a sane length.
+    fn bounded(self) -> Self {
+        Self {
+            alias: bounded_text(self.alias),
+            device_model: self.device_model.map(bounded_text),
+            device_type: bounded_text(self.device_type),
+            ..self
         }
     }
 }
@@ -724,10 +847,15 @@ async fn handle_udp_packet(shared: &Arc<Shared>, data: &[u8], src: SocketAddr) {
     shared.localsend.upsert_peer(shared, peer);
 
     let is_announce = dto.announce.or(dto.announcement).unwrap_or(false);
-    if is_announce && shared.localsend.receiving() {
+    // A flood of announces mustn't open a connection for each one.
+    if is_announce
+        && shared.localsend.receiving()
+        && let Ok(slot) = shared.localsend.register_callbacks.clone().try_acquire_owned()
+    {
         let shared = shared.clone();
         tokio::spawn(async move {
             let _ = send_register_callback(&shared, &ip, port, &protocol, &fingerprint).await;
+            drop(slot);
         });
     }
 }
@@ -930,7 +1058,9 @@ async fn handle_incoming_connection(
         ServerStream::Plain(tcp)
     };
 
-    let Ok(head) = read_http_head(&mut stream).await else { return };
+    let Ok(Ok(head)) = tokio::time::timeout(REQUEST_DEADLINE, read_http_head(&mut stream)).await else {
+        return;
+    };
     let (path, query) = match head.target.split_once('?') {
         Some((p, q)) => (p, q),
         None => (head.target.as_str(), ""),
@@ -943,7 +1073,7 @@ async fn handle_incoming_connection(
             let _ = write_http_response(&mut stream, 200, "OK", Some("application/json"), &body).await;
         }
         ("POST", "/api/localsend/v2/register" | "/api/localsend/v1/register") => {
-            let Ok(body) = read_http_body(&mut stream, &head).await else { return };
+            let Ok(body) = read_request_body(&mut stream, &head).await else { return };
             if let Ok(dto) = serde_json::from_slice::<MulticastDto>(&body)
                 && dto.fingerprint != shared.localsend.identity.fingerprint
                 && !dto.alias.trim().is_empty()
@@ -993,7 +1123,7 @@ async fn handle_prepare_upload(
     remote_addr: SocketAddr,
     conn_cancel: &CancellationToken,
 ) {
-    let Ok(body) = read_http_body(stream, head).await else { return };
+    let Ok(body) = read_request_body(stream, head).await else { return };
     let Ok(req) = serde_json::from_slice::<PrepareUploadRequestDto>(&body) else {
         let _ = write_http_response(stream, 400, "Bad Request", None, &[]).await;
         return;
@@ -1009,6 +1139,16 @@ async fn handle_prepare_upload(
         return;
     }
     shared.localsend.sweep_idle_sessions(shared);
+    // Prompts from one address, and in all, are limited: they'd otherwise
+    // stack up and each hold a connection for a minute.
+    let Some(_waiting) = shared.localsend.approval_sources.try_take(
+        remote_addr.ip(),
+        MAX_PENDING_APPROVALS_PER_SOURCE,
+        MAX_PENDING_APPROVALS,
+    ) else {
+        let _ = write_http_response(stream, 429, "Too Many Requests", None, &[]).await;
+        return;
+    };
 
     let ip = remote_addr.ip().to_string();
     let port = req.info.port.unwrap_or(LOCALSEND_DEFAULT_PORT);
@@ -1934,6 +2074,16 @@ async fn read_http_body<S: AsyncRead + Unpin>(stream: &mut S, head: &HttpHead) -
     Ok(out)
 }
 
+/// A request's JSON body, which must arrive within [`REQUEST_DEADLINE`].
+async fn read_request_body<S: AsyncRead + Unpin>(
+    stream: &mut S,
+    head: &HttpHead,
+) -> std::io::Result<Vec<u8>> {
+    tokio::time::timeout(REQUEST_DEADLINE, read_http_body(stream, head))
+        .await
+        .map_err(|_| std::io::Error::new(ErrorKind::TimedOut, "HTTP request took too long"))?
+}
+
 async fn read_chunked_vec<S: AsyncRead + Unpin>(
     stream: &mut S,
     prefetched: &[u8],
@@ -2715,6 +2865,79 @@ mod tests {
         assert!(!downgrades(Some(&peer("http")), &peer("https")));
         assert!(!downgrades(Some(&peer("https")), &peer("https")));
         assert!(!downgrades(None, &peer("http")), "a new HTTP-only peer is fine");
+    }
+
+    fn listed_peer(n: u8, ip: &str, seen: Instant) -> (DeviceId, KnownPeer) {
+        let id = DeviceId([n; 32]);
+        let peer = LocalSendPeer {
+            id,
+            alias: format!("Peer {n}"),
+            device_model: None,
+            device_type: "desktop".into(),
+            fingerprint: format!("fp{n}"),
+            ip: ip.into(),
+            port: 53317,
+            protocol: "https".into(),
+        };
+        (id, KnownPeer { peer, seen })
+    }
+
+    #[test]
+    fn one_address_cant_list_more_than_its_share_of_peers() {
+        let start = Instant::now();
+        let mut map = HashMap::new();
+        let (id, known) = listed_peer(200, "192.168.1.9", start);
+        map.insert(id, known);
+        for n in 0..50u8 {
+            make_room_for_peer(&mut map, "192.168.1.66");
+            let (id, known) = listed_peer(n, "192.168.1.66", start + Duration::from_millis(n.into()));
+            map.insert(id, known);
+        }
+        let flooding = map.values().filter(|k| k.peer.ip == "192.168.1.66").count();
+        assert_eq!(flooding, MAX_PEERS_PER_SOURCE);
+        assert!(map.contains_key(&DeviceId([200; 32])), "another host's peer stays");
+        assert!(map.contains_key(&DeviceId([49; 32])), "the newest stays");
+        assert!(!map.contains_key(&DeviceId([0; 32])), "the oldest made room");
+    }
+
+    #[test]
+    fn the_peer_list_has_a_ceiling() {
+        let start = Instant::now();
+        let mut map = HashMap::new();
+        for n in 0..=255u8 {
+            for m in 0..2u8 {
+                let ip = format!("10.0.{m}.{n}");
+                make_room_for_peer(&mut map, &ip);
+                let mut id = [n; 32];
+                id[0] = m;
+                let (_, known) =
+                    listed_peer(n, &ip, start + Duration::from_millis(u64::from(n) * 2 + u64::from(m)));
+                map.insert(DeviceId(id), known);
+            }
+        }
+        assert_eq!(map.len(), MAX_PEERS);
+    }
+
+    #[test]
+    fn peer_text_is_cut_on_a_character_boundary() {
+        let long = "é".repeat(MAX_PEER_TEXT + 10);
+        let cut = bounded_text(long);
+        assert_eq!(cut.chars().count(), MAX_PEER_TEXT);
+        assert_eq!(bounded_text("Laptop".into()), "Laptop");
+    }
+
+    #[test]
+    fn source_limit_counts_per_address_and_in_all() {
+        let limit = Arc::new(SourceLimit::default());
+        let a: IpAddr = Ipv4Addr::new(192, 168, 1, 2).into();
+        let b: IpAddr = Ipv4Addr::new(192, 168, 1, 3).into();
+        let first = limit.try_take(a, 2, 3).unwrap();
+        let _second = limit.try_take(a, 2, 3).unwrap();
+        assert!(limit.try_take(a, 2, 3).is_none(), "a has its two");
+        let _third = limit.try_take(b, 2, 3).unwrap();
+        assert!(limit.try_take(b, 2, 3).is_none(), "three in all");
+        drop(first);
+        assert!(limit.try_take(a, 2, 3).is_some(), "a slot given back can be taken again");
     }
 
     #[test]
