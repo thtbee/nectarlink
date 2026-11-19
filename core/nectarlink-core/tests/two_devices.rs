@@ -3801,6 +3801,7 @@ async fn declined_unlock_prompts_count_toward_the_lockout() {
     // Then it stops asking for a while, even if the owner would agree now.
     *phone.platform.unlock_answer.lock().unwrap() = FakeKeystore::Works;
     let asked = phone.platform.unlock_asks.lock().unwrap().len();
+    assert!(pc.node.unlock_locked_out(), "the lock screen can say it's locked out");
     assert!(matches!(pc.node.unlock_password(phone_id, sid).await, Err(Error::Denied)), "locked out");
     assert_eq!(phone.platform.unlock_asks.lock().unwrap().len(), asked, "the phone isn't asked again");
 }

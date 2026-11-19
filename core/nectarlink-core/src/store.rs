@@ -2919,9 +2919,11 @@ fn cleanup_peers(
                 continue;
             }
             let stale_str = row.id.to_string();
+            // Unlocking with the phone is never carried over: the new identity is turned
+            // on for it again by hand (ADR 0009).
             let _ = conn.execute(
                 "INSERT OR IGNORE INTO peer_toggles (peer, toggle, enabled)
-                 SELECT ?1, toggle, enabled FROM peer_toggles WHERE peer = ?2",
+                 SELECT ?1, toggle, enabled FROM peer_toggles WHERE peer = ?2 AND toggle <> 'unlock'",
                 params![winner_id.as_bytes().as_slice(), row.id.as_bytes().as_slice()],
             );
             let _ = conn.execute(
@@ -3733,6 +3735,7 @@ mod tests {
         store.upsert_peer(&old, &phone, 100).unwrap();
         store.set_toggle(&old, "clipboard", false).unwrap();
         store.set_toggle(&old, "remote_input", true).unwrap();
+        store.set_toggle(&old, "unlock", true).unwrap();
         store.upsert_peer(&new, &phone, 200).unwrap();
         let ids: Vec<DeviceId> = store.list_peers().unwrap().into_iter().map(|p| p.id).collect();
         assert_eq!(ids, vec![new], "the new pairing wins");
@@ -3746,6 +3749,7 @@ mod tests {
             Some(true),
             "enabled toggle is preserved across re-pairing"
         );
+        assert_eq!(store.toggle(&new, "unlock").unwrap(), None, "unlocking is turned on again by hand");
 
         // An online peer in skip_ids is not deleted when another peer claims the same install_id.
         let online_new = DeviceId([0x05; 32]);

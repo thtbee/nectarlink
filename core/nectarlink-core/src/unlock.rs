@@ -310,14 +310,13 @@ fn allowed(shared: &Shared, session: &Session) -> bool {
 }
 
 /// Whether `session` runs over the USB cable or a direct path to an address on this
-/// network: a private or link-local one, a tailnet one, or one the peer announced over
-/// mDNS here (`Shared::is_lan_peer_ip`). Never a relay or an internet address, even
-/// with away mode on, and not while no path is selected.
+/// network (`Shared::is_unlock_local_ip`). Never a relay, a tailnet or an internet
+/// address, even with away mode on, and not while no path is selected.
 fn on_local_network(shared: &Shared, session: &Session) -> bool {
     if session.path() == ConnectionPath::Usb {
         return true;
     }
-    session.selected_direct_addr().is_some_and(|addr| shared.is_lan_peer_ip(&session.peer, addr.ip()))
+    session.selected_direct_addr().is_some_and(|addr| shared.is_unlock_local_ip(&session.peer, addr.ip()))
 }
 
 fn binding(pc: DeviceId, phone: DeviceId, user: &str) -> Binding {
@@ -326,7 +325,11 @@ fn binding(pc: DeviceId, phone: DeviceId, user: &str) -> Binding {
 
 /// The PC's own name, as the phone shows it.
 fn pc_name(shared: &Shared) -> String {
-    let name = shared.local.read().unwrap_or_else(|e| e.into_inner()).device.name.clone();
+    shown_name(&shared.local.read().unwrap_or_else(|e| e.into_inner()).device.name)
+}
+
+/// `name` without control characters, short enough for a prompt.
+fn shown_name(name: &str) -> String {
     name.chars().filter(|c| !c.is_control()).take(unlock::MAX_NAME / 4).collect()
 }
 
@@ -339,7 +342,11 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
                 if !allowed(shared, session) {
                     Envelope::error(ErrorCode::Denied, "unlocking is off")
                 } else {
-                    let ask = Ask { pc_name: enroll.pc_name, user_name: enroll.user_name, user: enroll.user };
+                    let ask = Ask {
+                        pc_name: shown_name(&shared.peer_name(&session.peer)),
+                        user_name: enroll.user_name,
+                        user: enroll.user,
+                    };
                     let key = Secret::new(enroll.key);
                     let (platform, pc) = (shared.platform.clone(), session.peer);
                     let wrapped = tokio::time::timeout(
@@ -363,24 +370,47 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
         // Phone side: release the key for one unlock.
         types::UNLOCK_REQUEST => match env.body::<UnlockRequest>() {
             Ok(request) if request.is_valid() => {
+                let now = Instant::now();
+                let prompts_locked = lock(&shared.unlock_prompts)
+                    .get(&session.peer)
+                    .is_some_and(|p| p.locked_out(now).is_some());
                 if !allowed(shared, session) {
                     Envelope::error(ErrorCode::Denied, "unlocking is off")
+                } else if prompts_locked {
+                    // Too many prompts from this PC went unconfirmed: don't ask again for now.
+                    Envelope::error(ErrorCode::Denied, "too many tries")
                 } else {
-                    let ask =
-                        Ask { pc_name: request.pc_name, user_name: request.user_name, user: request.user };
+                    // The phone names the PC as it knows it, not as the PC says.
+                    let ask = Ask {
+                        pc_name: shown_name(&shared.peer_name(&session.peer)),
+                        user_name: request.user_name,
+                        user: request.user,
+                    };
                     let (platform, pc, wrapped) = (shared.platform.clone(), session.peer, request.wrapped);
                     let key = tokio::time::timeout(
                         REQUEST_TTL,
                         tokio::task::spawn_blocking(move || platform.unlock_unwrap(&pc, &ask, &wrapped)),
                     )
                     .await;
+                    let mut prompts = lock(&shared.unlock_prompts);
+                    let counted = prompts.entry(session.peer).or_default();
                     match key {
+                        // Turned off, or off the network, while the owner was asked: the key
+                        // stays here.
+                        Ok(Ok(Ok(_))) if !allowed(shared, session) => {
+                            Envelope::error(ErrorCode::Denied, "unlocking is off")
+                        }
                         Ok(Ok(Ok(key))) if key.len() == unlock::KEY_LEN => {
+                            counted.succeeded();
                             let key = Secret::new(key);
                             Envelope::new(
                                 types::UNLOCK_RELEASE,
                                 &UnlockRelease { request: request.request, key: key.expose().to_vec() },
                             )?
+                        }
+                        Ok(Ok(Err(KeyRefusal::Declined))) | Err(_) => {
+                            counted.failed(Instant::now());
+                            KeyRefusal::Declined.reply()
                         }
                         Ok(Ok(Err(refusal))) => refusal.reply(),
                         _ => KeyRefusal::Declined.reply(),

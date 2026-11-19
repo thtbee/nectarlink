@@ -223,6 +223,9 @@ pub(crate) struct Shared {
     pub(crate) remote: Mutex<crate::remote::RemoteState>,
     /// This PC's unlock requests to phones and its record of failures (ADR 0009).
     pub(crate) unlock_requests: Mutex<crate::unlock::Requests>,
+    /// Phone side: each PC's declined or unanswered unlock prompts, so a PC can't
+    /// keep asking this phone's owner.
+    pub(crate) unlock_prompts: Mutex<HashMap<DeviceId, crate::unlock::Requests>>,
     /// Per-peer prompt state and open folders for the storage service.
     pub(crate) storage: Mutex<crate::storage::StorageState>,
     /// Encrypted-at-rest history of the last 50 clips exchanged with peers.
@@ -741,6 +744,29 @@ impl Shared {
             || lock(&self.lan_seen)
                 .get(peer)
                 .is_some_and(|(_, announced)| crate::session::is_lan_peer_ip(ip, announced))
+    }
+
+    /// Whether `ip` is the peer's address on this network, strictly enough to unlock a
+    /// PC with: a private, link-local or loopback address (never a tailnet or CGNAT
+    /// one), or one the peer announced over mDNS here that's also on one of this
+    /// device's own subnets. An address announced here once but reached later from
+    /// elsewhere (a phone's mobile data address) doesn't count.
+    pub(crate) fn is_unlock_local_ip(&self, peer: &DeviceId, ip: std::net::IpAddr) -> bool {
+        let ip = ip.to_canonical();
+        if crate::session::is_private_lan_ip(ip) {
+            return true;
+        }
+        if crate::session::is_tailnet_ip(ip) {
+            return false;
+        }
+        let announced = lock(&self.lan_seen)
+            .get(peer)
+            .is_some_and(|(_, addrs)| addrs.iter().any(|a| a.ip().to_canonical() == ip));
+        announced
+            && self.endpoint.addr().ip_addrs().any(|own| {
+                let own = own.ip().to_canonical();
+                !own.is_loopback() && crate::session::is_same_subnet(own, ip)
+            })
     }
 
     pub(crate) fn is_connection_allowed(&self, conn: &Connection) -> bool {
@@ -1993,6 +2019,7 @@ impl Node {
             call_audio_stops: Mutex::new(HashMap::new()),
             remote: Mutex::new(Default::default()),
             unlock_requests: Mutex::new(crate::unlock::Requests::new()),
+            unlock_prompts: Mutex::new(HashMap::new()),
             storage: Mutex::new(Default::default()),
             clipboard_history,
             last_clip_suggestion: Mutex::new(None),
@@ -3839,6 +3866,12 @@ impl Node {
     pub async fn unlock_password(&self, phone: DeviceId, user: &str) -> Result<crate::unlock::Secret> {
         let session = self.connected(&phone)?;
         crate::unlock::password(&self.shared, &session, user).await
+    }
+
+    /// PC side: whether unlocking with a phone is locked out after repeated failures,
+    /// so the lock screen can say so rather than "not confirmed".
+    pub fn unlock_locked_out(&self) -> bool {
+        lock(&self.shared.unlock_requests).locked_out(std::time::Instant::now()).is_some()
     }
 
     /// Whether paired device `peer` offers `capability` (as last heard).
