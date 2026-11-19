@@ -354,6 +354,8 @@ change things that need a step from you, and its notes say so.
   sender hasn't started: it could stay "receiving". A cancel at the last
   moment is no longer reported as received, a file that fails to save to another drive
   leaves no broken copy, and a write error at the very end now fails the file.
+- **Cancelling pairing always stops it,** even at the last moment, and a pairing code
+  pairs one device.
 - **Transfers, rings and pairing catch up when the app falls behind.** In a very busy
   moment the app can miss some of what happens; a transfer could then stay "receiving", a
   ring stay on screen or pairing wait forever. The app now gets what it missed.
