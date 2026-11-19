@@ -74,6 +74,8 @@ object Elevated {
 
     /** How long the helper may take to set up a call's sound. */
     private const val CALL_AUDIO_ANSWER_MS = 3_000
+    /** How long the helper has to prove it's the one we started ([HelperProof]). */
+    private const val PROOF_MS = 3_000
     private const val PREFS = "elevated"
     private const val PAIRED = "paired"
     /** Set up through root (the user chose Use root) rather than Wireless debugging. */
@@ -706,12 +708,10 @@ object Elevated {
     }
 
     private fun connectSocketLocked(port: Int, token: String) {
+        val local = HelperProof.open(port, token, "H", PROOF_MS)
         helper = port to token
-        val local = java.net.Socket(java.net.InetAddress.getLoopbackAddress(), port).apply { tcpNoDelay = true }
         socket = local
         val writer = OutputStreamWriter(local.outputStream, Charsets.UTF_8)
-        writer.write("$token\nH\n")
-        writer.flush()
         input = writer
         _state.value = State.Running
         if (screenOffRequested) send(writer, "P 0")
@@ -1024,14 +1024,7 @@ object Elevated {
      */
     fun openAudioStream(): java.net.Socket? {
         val (port, token) = helper ?: return null
-        return runCatching {
-            java.net.Socket(java.net.InetAddress.getLoopbackAddress(), port).apply {
-                tcpNoDelay = true
-                val out = OutputStreamWriter(getOutputStream(), Charsets.UTF_8)
-                out.write("$token\nA\n")
-                out.flush()
-            }
-        }.onFailure { Log.w(TAG, "can't open Elevated audio stream", it) }.getOrNull()
+        return runCatching { HelperProof.open(port, token, "A", PROOF_MS) }.onFailure { Log.w(TAG, "can't open Elevated audio stream", it) }.getOrNull()
     }
 
     /**
@@ -1065,12 +1058,7 @@ object Elevated {
     private fun askCallAudio(command: String): java.net.Socket? {
         val (port, token) = helper ?: return null
         val socket = runCatching {
-            java.net.Socket(java.net.InetAddress.getLoopbackAddress(), port).apply {
-                tcpNoDelay = true
-                soTimeout = CALL_AUDIO_ANSWER_MS
-                getOutputStream().write("$token\n$command\n".toByteArray())
-                getOutputStream().flush()
-            }
+            HelperProof.open(port, token, command, PROOF_MS).apply { soTimeout = CALL_AUDIO_ANSWER_MS }
         }.onFailure { Log.w(TAG, "can't reach the Elevated helper for call sound", it) }.getOrNull() ?: return null
         // The answer line, read byte by byte so no sound after it is swallowed.
         val answer = runCatching {
@@ -1155,12 +1143,7 @@ object Elevated {
         if (!PACKAGE.matches(pkg)) return null
         val (port, token) = helper ?: return null
         return runCatching {
-            java.net.Socket(java.net.InetAddress.getLoopbackAddress(), port).apply {
-                tcpNoDelay = true
-                val out = OutputStreamWriter(getOutputStream(), Charsets.UTF_8)
-                out.write("$token\nV $width $height $dpi $bitrate $fps $pkg $codec\n")
-                out.flush()
-            }
+            HelperProof.open(port, token, "V $width $height $dpi $bitrate $fps $pkg $codec", PROOF_MS)
         }.onFailure { Log.w(TAG, "can't open an app window", it) }.getOrNull()
     }
 
@@ -1178,12 +1161,7 @@ object Elevated {
     ): java.net.Socket? {
         val (port, token) = helper ?: return null
         return runCatching {
-            java.net.Socket(java.net.InetAddress.getLoopbackAddress(), port).apply {
-                tcpNoDelay = true
-                val out = OutputStreamWriter(getOutputStream(), Charsets.UTF_8)
-                out.write("$token\nV $width $height $dpi $bitrate $fps - $codec\n")
-                out.flush()
-            }
+            HelperProof.open(port, token, "V $width $height $dpi $bitrate $fps - $codec", PROOF_MS)
         }.onFailure { Log.w(TAG, "can't open Elevated screen mirror", it) }.getOrNull()
     }
 

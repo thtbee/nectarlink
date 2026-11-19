@@ -345,6 +345,7 @@ change things that need a step from you, and its notes say so.
 - **NectarLink's data on Linux and macOS is readable by you only.** The data folder and
   database took the system default, which on many Linux systems lets other accounts on
   the same computer read them.
+- **Elevated makes sure it's talking to its own helper** before it sends it anything.
 - **LocalSend receiving holds up better on a busy or unfriendly network.** One device
   can no longer crowd out the others or fill the list of LocalSend devices.
 - **Pairing from the PC's list of nearby phones works.** Picking a phone there said it
