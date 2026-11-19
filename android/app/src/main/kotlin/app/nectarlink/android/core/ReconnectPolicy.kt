@@ -105,6 +105,10 @@ internal class ReconnectPolicy(context: Context) {
      */
     @Synchronized
     fun note(anyOnline: Boolean, trying: Boolean, now: Long): Boolean {
+        if (anyOnline) {
+            // A PC is back, even one that reached the phone: when it goes, look again.
+            gaveUp = false
+        }
         if (anyOnline || !trying) {
             failingSince = null
             return false
@@ -115,6 +119,15 @@ internal class ReconnectPolicy(context: Context) {
             return true
         }
         return false
+    }
+
+    /** How long until it gives up, or null when it isn't counting. */
+    @Synchronized
+    fun remainingMs(now: Long): Long? {
+        val since = failingSince ?: return null
+        val minutes = giveUpMinutes
+        if (minutes == 0 || gaveUp) return null
+        return (since + minutes * 60_000L - now).coerceAtLeast(0L)
     }
 
     /** The network changed or NectarLink was opened: try again. */
