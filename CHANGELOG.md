@@ -354,6 +354,9 @@ change things that need a step from you, and its notes say so.
   sender hasn't started: it could stay "receiving". A cancel at the last
   moment is no longer reported as received, a file that fails to save to another drive
   leaves no broken copy, and a write error at the very end now fails the file.
+- **The PC stays on the phone you picked when its list reorders.** When a phone paired
+  earlier came back online and moved up the list, a page open for another phone could
+  act on the one that took its place, such as taking a photo with the wrong phone.
 - **Renaming a phone on the PC shows the new name everywhere at once.** Some labels kept
   the old one until something else changed.
 - **Saving a file to the phone from the PC twice at once can't mix the two.** The second

@@ -517,6 +517,8 @@ pub struct AppControllerRust {
     guide_doc_body: QString,
     highlight_target: QString,
     last_online_count: usize,
+    /// The selected phone and the row it had when last seen there.
+    selected: Option<(DeviceId, i32)>,
     last_tray_tooltip: String,
     tray: Option<tray::Tray>,
 }
@@ -787,6 +789,13 @@ impl cxx_qt::Initialize for qobject::AppController {
     fn initialize(mut self: Pin<&mut Self>) {
         self.as_mut().set_version(QString::from(env!("CARGO_PKG_VERSION")));
         self.as_mut().set_current_page(QString::from("home"));
+        // Queued: Rust also changes the selection, from inside refresh.
+        self.as_mut()
+            .connect_current_device_changed(
+                |c| c.remember_selected(),
+                cxx_qt::ConnectionType::QueuedConnection,
+            )
+            .release();
         self.as_mut().set_can_update(crate::updater::can_update());
         self.as_mut().set_can_install_unattended(crate::updater::can_install_unattended());
         // Nothing downloading yet (0 would show an empty bar).
@@ -1311,7 +1320,16 @@ impl qobject::AppController {
             || (devices > 0 && (current_idx < 0 || (current_idx as usize) >= devices));
         if should_reset_current {
             self.as_mut().set_current_device(0);
+        } else if let Some((id, at)) = self.rust().selected
+            && at == current_idx
+            && let Some(now) = hub.read(|s| s.devices.iter().position(|d| d.id == id))
+            && now as i32 != current_idx
+        {
+            // The list reordered (a phone paired earlier came back and sorts
+            // first): the selection follows its phone, not its row.
+            self.as_mut().set_current_device(now as i32);
         }
+        self.as_mut().remember_selected();
         let (status_text, error) = match &status {
             CoreStatus::Starting => ("starting", String::new()),
             CoreStatus::Ready { device_id, name } => {
@@ -2858,6 +2876,15 @@ fn load_guide_doc_content(raw_key: &str) -> (String, String) {
 
 /// The phone selected in the app. A taskbar task shows no name, so it acts
 /// on this one and never on another that happens to be online.
+impl qobject::AppController {
+    /// Notes which phone the selected row is, so a reorder can't swap it for another.
+    fn remember_selected(mut self: Pin<&mut Self>) {
+        let idx = *self.current_device();
+        let id = selected_device(idx).filter(|_| idx >= 0);
+        self.as_mut().rust_mut().selected = id.map(|id| (id, idx));
+    }
+}
+
 fn selected_device(current_device_idx: i32) -> Option<DeviceId> {
     let idx = current_device_idx.max(0) as usize;
     core_host::host().hub.read(|s| s.devices.get(idx).map(|d| d.id))
