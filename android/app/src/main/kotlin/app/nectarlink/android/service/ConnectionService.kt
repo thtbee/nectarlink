@@ -100,7 +100,16 @@ class ConnectionService : LifecycleService() {
             var decider = PauseDecider()
             var foreground: BankingPause.Foreground? = null
             while (true) {
+                if (BankingPause.apps(context).isEmpty()) {
+                    // Nothing chosen: wait for a choice rather than look every 15 s.
+                    foreground = null
+                    decider = PauseDecider()
+                    BankingPause.awaitAppsChange(context)
+                    continue
+                }
                 if (!BankingPause.isReady(context)) {
+                    // Chosen, but a permission is missing: Android doesn't say when it's
+                    // granted, so look again now and then.
                     foreground = null
                     decider = PauseDecider()
                     delay(BANKING_IDLE_MS)

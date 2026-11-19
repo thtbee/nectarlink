@@ -858,6 +858,10 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             }
         }
         val removedName = if (event is Event.DeviceRemoved) _state.value.nameOf(event.id) else null
+        // What the link was before this event: a new round-trip time alone isn't a reconnect.
+        val previousLink = (event as? Event.LinkChanged)?.let { changed ->
+            _state.value.devices.firstOrNull { it.id == changed.id }?.link
+        }
         if (event.affectsCoreState()) {
             _state.update { it.reduce(event) }
         }
@@ -934,8 +938,12 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                         lastPcMirrorKeyframe = null
                     }
                 }
-                // After the state has the new link: learn the network, or count the wait (#397).
+                // Only a link that came up, or moved to another path, starts the work of a
+                // new connection: the round-trip time changes every few heartbeats on
+                // Wi-Fi, and redoing all this each time cost battery for nothing.
                 val link = event.link
+                if (sameConnection(previousLink, link)) return
+                // After the state has the new link: learn the network, or count the wait (#397).
                 onDialing {
                     learnNetwork(link)
                     reviewDialing()
@@ -1139,6 +1147,10 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             }
         }
     }
+
+    /** Whether [now] is the same connection as [before], with only its round-trip time changed. */
+    private fun sameConnection(before: Link?, now: Link): Boolean =
+        before is Link.Online && now is Link.Online && before.relayed == now.relayed && before.usb == now.usb
 
     private fun retryWaitingRecordings(pcId: String) {
         val activeIds = _state.value.transfers.filterNot { it.isFinished() }.map { it.id }.toSet()
