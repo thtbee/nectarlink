@@ -2231,10 +2231,13 @@ pub(crate) fn free_space(path: &Path) -> Option<u64> {
     }
 }
 
-/// Moves `from` to `to`, copying when they're on different volumes.
-fn move_file(from: &Path, to: &Path) -> std::io::Result<()> {
+/// Moves `from` to `to`, copying when they're on different volumes. A copy
+/// is on disk before the original goes, and leaves nothing if it fails.
+pub(crate) fn move_file(from: &Path, to: &Path) -> std::io::Result<()> {
     if std::fs::rename(from, to).is_err() {
-        if let Err(e) = std::fs::copy(from, to) {
+        let copied = std::fs::copy(from, to)
+            .and_then(|_| std::fs::OpenOptions::new().write(true).open(to)?.sync_all());
+        if let Err(e) = copied {
             let _ = std::fs::remove_file(to);
             return Err(e);
         }

@@ -350,6 +350,10 @@ change things that need a step from you, and its notes say so.
   into a PC works as before.
 - **LocalSend receiving holds up better on a busy or unfriendly network.** One device
   can no longer crowd out the others or fill the list of LocalSend devices.
+- **Cancelling a LocalSend receive ends it at once,** also when you accepted it and the
+  sender hasn't started: it could stay "receiving". A cancel at the last
+  moment is no longer reported as received, a file that fails to save to another drive
+  leaves no broken copy, and a write error at the very end now fails the file.
 - **Pairing from the PC's list of nearby phones works.** Picking a phone there said it
   couldn't reach the phone, because the phone only took pairing it started itself. While
   its pairing screen is open, the phone now accepts it from either side.

@@ -5992,6 +5992,91 @@ async fn localsend_refuses_duplicate_ids_and_records_a_cancelled_partial_deliver
     receiver.node.shutdown().await;
 }
 
+async fn start_receiving_localsend() -> (TestDevice, u16) {
+    let port = free_tcp_port();
+    let receiver =
+        start_localsend_in(tempfile::tempdir().unwrap(), "PC Receiver", DeviceKind::Desktop, port).await;
+    receiver.node.set_localsend_enabled(true).unwrap();
+    for _ in 0..40 {
+        if receiver.node.localsend_receiving() {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    assert!(receiver.node.localsend_receiving());
+    (receiver, port)
+}
+
+/// Cancelling a receive that was accepted but hasn't started uploading ends
+/// it at once: no upload runs to notice the cancel (SEC-09).
+#[tokio::test]
+async fn localsend_cancelling_an_accepted_idle_receive_ends_it() {
+    let (mut receiver, port) = start_receiving_localsend().await;
+    let offer = localsend_offer(&[("f1", "f1", "first.txt", 5)]);
+    let prepare = tokio::spawn(async move {
+        localsend_request(port, "POST", "/api/localsend/v2/prepare-upload", &offer).await
+    });
+    let req: Transfer = wait_for(&mut receiver, "offer", |e| match e {
+        NodeEvent::Transfer(t) if t.state == TransferState::Requested => Some(t.clone()),
+        _ => None,
+    })
+    .await;
+    receiver.node.accept_transfer(&req.id);
+    let (status, body) = with_timeout("prepare-upload", prepare).await.unwrap();
+    assert_eq!(status, 200);
+    let answer: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    let session = answer["sessionId"].as_str().unwrap().to_owned();
+    let token = answer["files"]["f1"].as_str().unwrap().to_owned();
+    wait_for(&mut receiver, "running", |e| match e {
+        NodeEvent::Transfer(t) if t.id == req.id && t.state == TransferState::Running => Some(()),
+        _ => None,
+    })
+    .await;
+
+    receiver.node.cancel_transfer(&req.id);
+    wait_for(&mut receiver, "cancelled", |e| match e {
+        NodeEvent::Transfer(t) if t.id == req.id && t.state == TransferState::Cancelled => Some(()),
+        _ => None,
+    })
+    .await;
+    let (status, _) = localsend_request(
+        port,
+        "POST",
+        &format!("/api/localsend/v2/upload?sessionId={session}&fileId=f1&token={token}"),
+        b"hello",
+    )
+    .await;
+    assert_eq!(status, 404, "the session is gone");
+    assert!(!receiver.dir.path().join("received").join("first.txt").exists());
+    receiver.node.shutdown().await;
+}
+
+/// One address can't stack up prompts: past two waiting for an answer, it's
+/// told to try later (SEC-06).
+#[tokio::test]
+async fn localsend_limits_waiting_prompts_per_sender() {
+    let (mut receiver, port) = start_receiving_localsend().await;
+    let mut waiting = Vec::new();
+    for n in 0..2 {
+        let offer = localsend_offer(&[("f", "f", &format!("{n}.txt"), 5)]);
+        waiting.push(tokio::spawn(async move {
+            localsend_request(port, "POST", "/api/localsend/v2/prepare-upload", &offer).await
+        }));
+        wait_for(&mut receiver, "offer", |e| match e {
+            NodeEvent::Transfer(t) if t.state == TransferState::Requested => Some(()),
+            _ => None,
+        })
+        .await;
+    }
+    let offer = localsend_offer(&[("f", "f", "third.txt", 5)]);
+    let (status, _) = localsend_request(port, "POST", "/api/localsend/v2/prepare-upload", &offer).await;
+    assert_eq!(status, 429);
+    receiver.node.shutdown().await;
+    for prompt in waiting {
+        prompt.abort();
+    }
+}
+
 #[tokio::test]
 async fn localsend_declining_transfer_returns_denied_to_sender() {
     let sender_port = free_tcp_port();

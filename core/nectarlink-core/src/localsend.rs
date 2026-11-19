@@ -79,6 +79,8 @@ const MAX_HEADER_BYTES: usize = 64 * 1024;
 const MAX_JSON_BODY_BYTES: usize = 4 * 1024 * 1024;
 /// An accepted upload session with no upload for this long is dropped.
 const SESSION_IDLE: Duration = Duration::from_secs(30 * 60);
+/// How often an accepted session checks whether it has gone idle.
+const SESSION_IDLE_CHECK: Duration = Duration::from_secs(60);
 /// Connections served at once; more wait in the OS backlog.
 const MAX_CONNECTIONS: usize = 64;
 /// Connections one address may have open at once, so one host can't take every slot.
@@ -754,6 +756,35 @@ fn end_session(shared: &Shared, session: &Arc<Mutex<UploadSession>>, state: Tran
     shared.emit(NodeEvent::Transfer(transfer));
 }
 
+/// Watches an accepted session until it ends: cancelled (from the app, or
+/// with LocalSend turned off) or idle for [`SESSION_IDLE`], it's ended here,
+/// even when no upload is running to notice. Whoever takes a session out of
+/// the session map is the one that ends it, so it ends once.
+fn watch_session(shared: &Arc<Shared>, session_id: String, session: Arc<Mutex<UploadSession>>) {
+    let weak = Arc::downgrade(shared);
+    let cancel = session.lock().unwrap_or_else(|e| e.into_inner()).cancel.clone();
+    tokio::spawn(async move {
+        loop {
+            tokio::select! {
+                _ = cancel.cancelled() => break,
+                _ = tokio::time::sleep(SESSION_IDLE_CHECK) => {
+                    let guard = session.lock().unwrap_or_else(|e| e.into_inner());
+                    if guard.last_activity.elapsed() >= SESSION_IDLE && !guard.files.iter().any(|f| f.uploading) {
+                        break;
+                    }
+                }
+            }
+        }
+        let Some(shared) = weak.upgrade() else { return };
+        let removed = shared.localsend.sessions.lock().unwrap_or_else(|e| e.into_inner()).remove(&session_id);
+        if let Some(session) = removed {
+            let _ =
+                tokio::task::spawn_blocking(move || end_session(&shared, &session, TransferState::Cancelled))
+                    .await;
+        }
+    });
+}
+
 /// A timeline entry for the files a session saved before it ended early.
 fn record_partial_delivery(shared: &Shared, session: &UploadSession) {
     let saved_files = session.files.iter().filter(|f| f.uploaded).count();
@@ -1292,7 +1323,13 @@ async fn handle_prepare_upload(
         last_activity: Instant::now(),
         peer_ip: remote_addr.ip(),
     }));
-    shared.localsend.sessions.lock().unwrap_or_else(|e| e.into_inner()).insert(session_id.clone(), session);
+    shared
+        .localsend
+        .sessions
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .insert(session_id.clone(), session.clone());
+    watch_session(shared, session_id.clone(), session);
 
     let resp = PrepareUploadResponseDto { session_id, files: tokens };
     let resp_body = serde_json::to_vec(&resp).unwrap_or_default();
@@ -1376,7 +1413,14 @@ async fn handle_upload(shared: &Arc<Shared>, stream: &mut ServerStream, head: &H
     })
     .await;
 
-    let _ = out.flush().await;
+    // A write that fails late shows up here, before the sender hears it arrived.
+    let stream_res = match stream_res {
+        Ok(()) => match out.flush().await {
+            Ok(()) => Ok(()),
+            Err(e) => Err(upload_failed(&format!("can't write: {}", e.kind()))),
+        },
+        Err(state) => Err(state),
+    };
     drop(out);
 
     let stream_res = match (stream_res, expected_sha256) {
@@ -1393,9 +1437,12 @@ async fn handle_upload(shared: &Arc<Shared>, stream: &mut ServerStream, head: &H
     };
 
     if let Err(err_state) = stream_res {
-        shared.localsend.sessions.lock().unwrap_or_else(|e| e.into_inner()).remove(&session_id);
-        let (shared_ref, session) = (shared.clone(), session_arc.clone());
-        let _ = tokio::task::spawn_blocking(move || end_session(&shared_ref, &session, err_state)).await;
+        // Cancelled or ended meanwhile: whoever took it out of the map ends it.
+        let removed = shared.localsend.sessions.lock().unwrap_or_else(|e| e.into_inner()).remove(&session_id);
+        if let Some(session) = removed {
+            let shared_ref = shared.clone();
+            let _ = tokio::task::spawn_blocking(move || end_session(&shared_ref, &session, err_state)).await;
+        }
         let _ = write_http_response(stream, 500, "Upload Interrupted", None, &[]).await;
         return;
     }
@@ -1413,10 +1460,16 @@ async fn handle_upload(shared: &Arc<Shared>, stream: &mut ServerStream, head: &H
         return;
     }
 
-    // Check if all files in this session are complete.
+    // Check if all files in this session are complete. Taking it out of the
+    // session map claims its end: a cancel that got there first stays a cancel.
     let finished = {
+        let mut sessions = shared.localsend.sessions.lock().unwrap_or_else(|e| e.into_inner());
+        let all_uploaded =
+            session_arc.lock().unwrap_or_else(|e| e.into_inner()).files.iter().all(|f| f.uploaded);
+        let claimed = all_uploaded && sessions.remove(&session_id).is_some();
+        drop(sessions);
         let mut guard = session_arc.lock().unwrap_or_else(|e| e.into_inner());
-        if guard.files.iter().all(|f| f.uploaded) {
+        if claimed {
             let saved = guard.saved_items.clone();
             guard.transfer.done = guard.transfer.total;
             guard.transfer.state = TransferState::Done { saved: saved.clone() };
@@ -1434,8 +1487,9 @@ async fn handle_upload(shared: &Arc<Shared>, stream: &mut ServerStream, head: &H
     };
 
     if let Some((done_transfer, peer_name, staging_dir, saved, file_count, has_folder)) = finished {
-        shared.localsend.sessions.lock().unwrap_or_else(|e| e.into_inner()).remove(&session_id);
         shared.unregister_transfer(&transfer_id);
+        // Lets the session's watcher go; the session is no longer in the map.
+        cancel.cancel();
         let _ = tokio::fs::remove_dir_all(&staging_dir).await;
         let detail = if has_folder {
             match file_count {
@@ -1481,6 +1535,11 @@ async fn finalize_uploaded_file(
         let _one_at_a_time = FINALIZE.lock().unwrap_or_else(|e| e.into_inner());
         fs::create_dir_all(&downloads_dir)?;
         let mut guard = session_arc.lock().unwrap_or_else(|e| e.into_inner());
+        // Cancelled meanwhile: nothing more is saved. Checked under the same
+        // lock that ending the session takes, so it's one or the other.
+        if guard.cancel.is_cancelled() {
+            return Err(std::io::Error::new(ErrorKind::Interrupted, "the transfer was cancelled"));
+        }
         let folder = guard.files[spec_idx].folder.clone();
         let safe_name = guard.files[spec_idx].safe_name.clone();
         let part_path = guard.files[spec_idx].part_path.clone();
@@ -1507,10 +1566,8 @@ async fn finalize_uploaded_file(
         };
 
         let dest = unique_path(&target_dir, &storable_name(&safe_name));
-        if fs::rename(&part_path, &dest).is_err() {
-            fs::copy(&part_path, &dest)?;
-            let _ = fs::remove_file(&part_path);
-        }
+        // A copy that fails partway (another volume) leaves nothing behind.
+        crate::transfer::move_file(&part_path, &dest)?;
         crate::transfer::mark_from_elsewhere(&dest);
         if folder.is_none() {
             guard.saved_items.push(dest);
