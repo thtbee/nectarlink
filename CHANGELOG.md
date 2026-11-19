@@ -8,6 +8,36 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **What's new, in the app.** After an update, NectarLink on the PC shows what changed,
+  leading with what's new since you last looked (Nightly to Nightly too), with earlier
+  versions folded below. **Settings › Connection & About › What's new** opens it any time.
+  Thanks to [@zzz1465720680](https://github.com/zzz1465720680)
+  ([#461](https://github.com/thtbee/nectarlink/issues/461)).
+- **Dark picture for apps with no dark mode.** The moon button on a mirroring or app
+  window swaps light and dark in the picture, so a white map turns dark gray with its
+  colors kept. It's remembered for each app.
+- **Pin a phone app to the taskbar.** Pinning an app window's taskbar button now pins
+  that app: the icon opens it in a window, starting NectarLink first if needed. Thanks to
+  [@ososuosos](https://github.com/ososuosos)
+  ([#465](https://github.com/thtbee/nectarlink/discussions/465)).
+- **Choose the frame rate for mirroring.** Settings › Camera & Audio › Frame rate: 30, 60,
+  90 or 120 for the phone's screen and app windows. Thanks to
+  [@w-rakeeb](https://github.com/w-rakeeb) ([#442](https://github.com/thtbee/nectarlink/issues/442)).
+- **Keep pop-ups paused after a restart.** Settings › Notifications › Keep pop-ups paused
+  after a restart makes **Pause pop-ups** last until you resume them. Thanks to
+  [@w-rakeeb](https://github.com/w-rakeeb) ([#442](https://github.com/thtbee/nectarlink/issues/442)).
+- **Each day of Photos starts a row of its own, and the scrollbar shows the date.** Hold
+  or hover the scrollbar on the PC's Photos page to see the day you're at, and drag it
+  there. Thanks to [@Dipen425](https://github.com/Dipen425)
+  ([#388](https://github.com/thtbee/nectarlink/issues/388)) and
+  [@w-rakeeb](https://github.com/w-rakeeb) ([#442](https://github.com/thtbee/nectarlink/issues/442)).
+- **Look for PCs only where they are, and stop after a while.** In the phone's Settings,
+  under Connect over mobile data: **Only on networks where a PC was found** keeps the
+  phone from looking for your PCs on other Wi-Fi, and **Stop looking after** 15 minutes, 1
+  hour or 4 hours with no PC reachable stops it until the network changes or you open
+  NectarLink. A PC can still reach the phone either way. Thanks to
+  [@ThePharaohArt](https://github.com/ThePharaohArt)
+  ([#397](https://github.com/thtbee/nectarlink/issues/397)).
 - **AI agents can use NectarLink.** Claude Code, Claude Desktop, Codex, Cursor, Gemini CLI,
   VS Code and other AI assistants on the PC can read notifications and texts, send files and
   messages, control media, look at and copy photos, work with the phone's files, change its
@@ -297,6 +327,10 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **Photos on the PC no longer slows the whole app down with thousands of photos.** Each
+  thumbnail that arrived made the PC rebuild the entire gallery, so with a large library
+  everything lagged while the grid filled in. Thanks to
+  [@w-rakeeb](https://github.com/w-rakeeb) ([#442](https://github.com/thtbee/nectarlink/issues/442)).
 - **The share sheet says "Send with NectarLink".** It said "Send to PC", but it sends to
   whichever paired device is connected, another phone included. Each device still shows
   by name next to it. Thanks to [@FlootingDream](https://github.com/FlootingDream)
