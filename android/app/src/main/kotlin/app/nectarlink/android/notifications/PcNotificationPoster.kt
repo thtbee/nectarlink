@@ -121,6 +121,8 @@ class PcNotificationPoster(context: Context) {
         for (removedKey in previous - newKeys) {
             manager?.cancel(notificationId(deviceId, removedKey))
         }
+        // What the PC shows now replaces what was known; the rest is gone.
+        activeKeysByDevice[deviceId]?.retainAll(newKeys)
         for (item in items) {
             post(deviceId, item, fromPeer, deviceName)
         }

@@ -275,6 +275,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     private val startGuard = StartGuard()
     @Volatile private var activeStartSeq = 0
     private val wakeTimers = java.util.concurrent.ConcurrentHashMap<String, Job>()
+    /** Per PC gone offline: takes down its running tasks if it stays away. */
+    private val taskTimers = java.util.concurrent.ConcurrentHashMap<String, Job>()
 
     @Volatile private var lastBattery: app.nectarlink.core.Battery? = null
     @Volatile private var lastSignal: SignalSnapshot = SignalSnapshot()
@@ -925,6 +927,13 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                     scope.launch(Dispatchers.Default) {
                         pcMedia.update(event.id, "", emptyList())
                     }
+                    // A PC away this long won't say how its running tasks ended.
+                    taskTimers.remove(event.id)?.cancel()
+                    taskTimers[event.id] = scope.launch {
+                        delay(TASKS_AWAY_MS)
+                        taskTimers.remove(event.id)
+                        app.nectarlink.android.notifications.TaskNotifications.cancelRunning(context, event.id)
+                    }
                     pcSpeakerPlayer.stopForPc(event.id)
                     if (_pcMirrorConfig.value?.pcId == event.id) {
                         _pcMirrorConfig.value = null
@@ -934,6 +943,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                     }
                 } else if (event.link is Link.Online) {
                     wakeTimers.remove(event.id)?.cancel()
+                    taskTimers.remove(event.id)?.cancel()
                     retryWaitingRecordings(event.id)
                     // Plugged into a PC with USB debugging allowed: it can start Elevated.
                     if (!Elevated.running) scope.launch(Dispatchers.IO) { Elevated.startOverUsb() }
@@ -948,6 +958,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 ?.updater?.onHint(event.channel, event.version)
             is Event.DeviceRemoved -> {
                 wakeTimers.remove(event.id)?.cancel()
+                taskTimers.remove(event.id)?.cancel()
+                app.nectarlink.android.notifications.TaskNotifications.cancelRunning(context, event.id)
                 // Paired again later, it asks again until chosen again.
                 PcAutoStart.set(context, event.id, false)
                 scope.launch(Dispatchers.Default) {
@@ -2885,6 +2897,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         /** See `ClipboardPeers`: the core refuses that device's clipboard when off. */
         const val CLIPBOARD_RECEIVE_TOGGLE = "clipboard_receive"
         const val TAG = "Nectarlink"
+        /** How long a PC may be away before its running tasks come off this phone. */
+        const val TASKS_AWAY_MS = 30 * 60_000L
         /** Offered while notification access is granted (docs/protocol/capabilities.md). */
         val NOTIFICATION_CAPABILITIES = listOf("notify.mirror", "notify.reply", "notify.live")
         /** Sharing this phone's players, which also needs notification access. */

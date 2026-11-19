@@ -380,6 +380,8 @@ change things that need a step from you, and its notes say so.
 - **A voice recording keeps going after the phone's sound system restarts,** instead of
   recording silence to the end, and the phone's microphone on a PC ends rather than
   hang when the microphone stops answering.
+- **A PC task's "running" notification goes away when you unpair that PC,** or when it
+  has been away for half an hour.
 - **Pairing from the PC's list of nearby phones works.** Picking a phone there said it
   couldn't reach the phone, because the phone only took pairing it started itself. While
   its pairing screen is open, the phone now accepts it from either side.
