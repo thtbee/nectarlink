@@ -580,9 +580,13 @@ impl LocalSendState {
                     };
                     let Ok((stream, remote_addr)) = accepted else { continue };
                     // Closed at once: this address already has its share of the slots.
-                    let Some(source) =
-                        sources.try_take(remote_addr.ip(), MAX_CONNECTIONS_PER_SOURCE, MAX_CONNECTIONS)
-                    else {
+                    // This computer itself (other LocalSend apps, our own probes) isn't limited.
+                    let per_source = if remote_addr.ip().is_loopback() {
+                        MAX_CONNECTIONS
+                    } else {
+                        MAX_CONNECTIONS_PER_SOURCE
+                    };
+                    let Some(source) = sources.try_take(remote_addr.ip(), per_source, MAX_CONNECTIONS) else {
                         continue;
                     };
                     let Some(shared) = weak.upgrade() else { return };
@@ -704,7 +708,9 @@ fn make_room_for_peer(map: &mut HashMap<DeviceId, KnownPeer>, ip: &str) {
     let oldest = |map: &HashMap<DeviceId, KnownPeer>, same_ip: bool| {
         map.iter().filter(|(_, k)| !same_ip || k.peer.ip == ip).min_by_key(|(_, k)| k.seen).map(|(id, _)| *id)
     };
-    while map.values().filter(|k| k.peer.ip == ip).count() >= MAX_PEERS_PER_SOURCE {
+    // This computer itself may run any number of LocalSend apps and profiles.
+    let loopback = ip.parse::<IpAddr>().is_ok_and(|ip| ip.is_loopback());
+    while !loopback && map.values().filter(|k| k.peer.ip == ip).count() >= MAX_PEERS_PER_SOURCE {
         let Some(id) = oldest(map, true) else { break };
         map.remove(&id);
     }
