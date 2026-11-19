@@ -2576,6 +2576,7 @@ name = "nectarlink-mcp"
 version = "0.1.5"
 dependencies = [
  "anyhow",
+ "clap",
  "dirs",
  "rmcp",
  "serde_json",

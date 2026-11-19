@@ -6,6 +6,7 @@
 //! This holds no power of its own. Every call goes to the app, which checks
 //! the agent's token, permissions and the user's confirmation.
 
+pub mod cli;
 pub mod client;
 pub mod server;
 

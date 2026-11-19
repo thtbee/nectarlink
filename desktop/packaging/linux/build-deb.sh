@@ -39,7 +39,7 @@ fi
 BIN_PATH="${BIN_PATH:-${REPO_ROOT}/target/release/nectarlink-desktop}"
 if [[ ! -f "${BIN_PATH}" ]]; then
     echo "Building nectarlink-desktop (release)..."
-    (cd "${REPO_ROOT}" && cargo build --release -p nectarlink-desktop)
+    (cd "${REPO_ROOT}" && cargo build --release -p nectarlink-desktop -p nectarlink-mcp)
 fi
 
 STAGE_DIR="$(mktemp -d -t nectarlink-deb-XXXXXX)"
@@ -60,6 +60,9 @@ mkdir -p \
     "${PKG_ROOT}/usr/share/icons/hicolor/scalable/apps"
 
 install -m 0755 "${BIN_PATH}" "${PKG_ROOT}/usr/lib/nectarlink/nectarlink-desktop"
+# What AI agents run (Settings > AI agents), next to the app so its setup lines find it.
+AGENT_PATH="${AGENT_PATH:-$(dirname "${BIN_PATH}")/nectarlink-agent}"
+[[ ! -f "${AGENT_PATH}" ]] || install -m 0755 "${AGENT_PATH}" "${PKG_ROOT}/usr/lib/nectarlink/nectarlink-agent"
 for adapter in "$(dirname "${BIN_PATH}")"/libnectarlink-video-ffmpeg*.so; do
     [[ ! -f "${adapter}" ]] || install -m 0755 "${adapter}" "${PKG_ROOT}/usr/lib/nectarlink/"
 done

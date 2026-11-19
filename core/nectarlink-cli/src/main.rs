@@ -4,8 +4,6 @@
 //! It runs its own node with its own identity (separate from the desktop
 //! app), so it can pair with phones, PCs or another CLI instance.
 
-mod agent;
-
 use std::{io::Write, net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
 
 use anyhow::{Context, Result, bail};
@@ -2637,12 +2635,12 @@ fn main() -> Result<()> {
                 // Agent commands talk to the running app and never start a node.
                 match &cli.command {
                     Command::Mcp { agent, dispatch, toolsets } => {
-                        return agent::mcp(agent, *dispatch, toolsets).await;
+                        return nectarlink_mcp::cli::mcp(agent, *dispatch, toolsets).await;
                     }
                     Command::Do { action, agent, args, device, pretty } => {
-                        return agent::run(agent, action, args.as_deref(), device.as_deref(), *pretty).await;
+                        return nectarlink_mcp::cli::run(agent, action, args.as_deref(), device.as_deref(), *pretty).await;
                     }
-                    Command::Actions { agent, pretty } => return agent::list(agent, *pretty).await,
+                    Command::Actions { agent, pretty } => return nectarlink_mcp::cli::list(agent, *pretty).await,
                     _ => {}
                 }
 

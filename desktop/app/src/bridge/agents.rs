@@ -203,9 +203,9 @@ impl qobject::Agents {
     }
 }
 
-/// The `nectarlink` command next to the app.
+/// The `nectarlink-agent` command next to the app.
 fn cli_path() -> String {
-    let name = if cfg!(windows) { "nectarlink.exe" } else { "nectarlink" };
+    let name = if cfg!(windows) { "nectarlink-agent.exe" } else { "nectarlink-agent" };
     std::env::current_exe()
         .ok()
         .and_then(|p| p.parent().map(|d| d.join(name)))
@@ -247,12 +247,12 @@ mod tests {
     #[test]
     fn snippets_name_the_agent_and_never_hold_a_token() {
         for client in ["claude-code", "codex", "gemini", "vscode", "zed", "cursor", "cli"] {
-            let s = snippet_for(client, r"C:\Program Files\NectarLink\nectarlink.exe", "claude-code");
+            let s = snippet_for(client, r"C:\Program Files\NectarLink\nectarlink-agent.exe", "claude-code");
             assert!(s.contains("claude-code"), "{client}: {s}");
             assert!(!s.to_lowercase().contains("token"), "{client}: {s}");
         }
         let json: serde_json::Value =
-            serde_json::from_str(&snippet_for("cursor", "/usr/bin/nectarlink", "cursor")).unwrap();
+            serde_json::from_str(&snippet_for("cursor", "/usr/bin/nectarlink-agent", "cursor")).unwrap();
         assert_eq!(json["mcpServers"]["nectarlink"]["args"][2], "cursor");
     }
 }

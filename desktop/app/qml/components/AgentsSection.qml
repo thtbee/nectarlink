@@ -160,7 +160,7 @@ Column {
                 text: section.shownKind === "claude-code" || section.shownKind === "gemini"
                       ? qsTr("Run this in a terminal:")
                       : section.shownKind === "codex" ? qsTr("Add this to ~/.codex/config.toml:")
-                      : section.shownKind === "cli" ? qsTr("Run commands like this one. `nectarlink actions` lists the rest.")
+                      : section.shownKind === "cli" ? qsTr("Run commands like this one. `nectarlink-agent actions` lists the rest.")
                       : qsTr("Add this to the app's MCP settings:")
             }
             Rectangle {

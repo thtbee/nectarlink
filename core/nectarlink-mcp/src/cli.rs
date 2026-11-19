@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-//! `nectarlink mcp`, `nectarlink do` and `nectarlink actions`: an AI agent's
+//! `mcp`, `do` and `actions`: an AI agent's
 //! way into the running NectarLink app. These never start a node of their
 //! own; the app checks every call (docs/agents/README.md).
 
 use anyhow::Result;
-use nectarlink_mcp::{AppClient, Mode, client::app_dir};
+use crate::{AppClient, Mode, client::app_dir};
 use serde_json::{Value, json};
 
 /// Exit codes for `nectarlink do`, so scripts can tell what happened.
@@ -34,10 +34,10 @@ pub async fn mcp(agent: &str, dispatch: bool, toolsets: &[String]) -> Result<i32
     let dir = app_dir();
     let client = match dir {
         Some(d) => AppClient::connect(&d, agent, "mcp-stdio"),
-        None => Err(nectarlink_mcp::ClientError::AppNotRunning),
+        None => Err(crate::ClientError::AppNotRunning),
     };
     let mode = if dispatch { Mode::Dispatch } else { Mode::Tools };
-    nectarlink_mcp::serve_stdio(client, mode, toolsets.to_vec()).await?;
+    crate::serve_stdio(client, mode, toolsets.to_vec()).await?;
     Ok(0)
 }
 

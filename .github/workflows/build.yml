@@ -169,7 +169,7 @@ jobs:
           APPIMAGE_EXTRACT_AND_RUN: "1"
           FFMPEG_SOURCE_CACHE: ${{ runner.temp }}/ffmpeg-sources
         run: |
-          cargo build --release --locked -p nectarlink-desktop
+          cargo build --release --locked -p nectarlink-desktop -p nectarlink-mcp
           bash ./desktop/packaging/linux/build-ffmpeg-backends.sh
           ./desktop/packaging/linux/build-deb.sh
           ./desktop/packaging/linux/build-rpm.sh

@@ -54,7 +54,7 @@ fi
 
 if [[ ! -f "${BIN_PATH}" ]]; then
     echo "Building nectarlink-desktop (release, ${RUST_TARGET})..."
-    (cd "${REPO_ROOT}" && cargo build --release --target "${RUST_TARGET}" -p nectarlink-desktop)
+    (cd "${REPO_ROOT}" && cargo build --release --target "${RUST_TARGET}" -p nectarlink-desktop -p nectarlink-mcp)
     BIN_PATH="${REPO_ROOT}/target/${RUST_TARGET}/release/nectarlink-desktop"
 fi
 
@@ -68,6 +68,8 @@ RESOURCES_DIR="${CONTENTS_DIR}/Resources"
 
 mkdir -p "${MACOS_DIR}" "${RESOURCES_DIR}"
 install -m 0755 "${BIN_PATH}" "${MACOS_DIR}/nectarlink-desktop"
+AGENT_PATH="${AGENT_PATH:-$(dirname "${BIN_PATH}")/nectarlink-agent}"
+[[ ! -f "${AGENT_PATH}" ]] || install -m 0755 "${AGENT_PATH}" "${MACOS_DIR}/nectarlink-agent"
 
 # Translations go in Resources: Contents/MacOS is for code only, which
 # is what codesign expects there. Compiled here from the catalogues with

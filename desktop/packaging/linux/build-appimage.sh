@@ -34,7 +34,7 @@ fi
 BIN_PATH="${BIN_PATH:-${REPO_ROOT}/target/release/nectarlink-desktop}"
 if [[ ! -f "${BIN_PATH}" ]]; then
     echo "Building nectarlink-desktop (release)..."
-    (cd "${REPO_ROOT}" && cargo build --release -p nectarlink-desktop)
+    (cd "${REPO_ROOT}" && cargo build --release -p nectarlink-desktop -p nectarlink-mcp)
 fi
 
 STAGE_DIR="$(mktemp -d -t nectarlink-appimage-XXXXXX)"
@@ -54,6 +54,8 @@ mkdir -p \
     "${APPDIR}/usr/share/icons/hicolor/scalable/apps"
 
 install -m 0755 "${BIN_PATH}" "${APPDIR}/usr/bin/nectarlink-desktop"
+AGENT_PATH="${AGENT_PATH:-$(dirname "${BIN_PATH}")/nectarlink-agent}"
+[[ ! -f "${AGENT_PATH}" ]] || install -m 0755 "${AGENT_PATH}" "${APPDIR}/usr/bin/nectarlink-agent"
 for adapter in "$(dirname "${BIN_PATH}")"/libnectarlink-video-ffmpeg*.so; do
     [[ ! -f "${adapter}" ]] || install -m 0755 "${adapter}" "${APPDIR}/usr/bin/"
 done
