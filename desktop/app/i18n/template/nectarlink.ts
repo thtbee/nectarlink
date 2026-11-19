@@ -5438,6 +5438,14 @@ What it needs
     </message>
 </context>
 <context>
+    <name>IconButton</name>
+    <message>
+        <location filename="../../qml/components/IconButton.qml" line="31"/>
+        <source>New changes</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>IslandWindow</name>
     <message>
         <location filename="../../qml/IslandWindow.qml" line="18"/>
@@ -5733,177 +5741,182 @@ What it needs
 <context>
     <name>MainWindow</name>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="590"/>
-        <location filename="../../qml/MainWindow.qml" line="730"/>
+        <location filename="../../qml/MainWindow.qml" line="595"/>
+        <location filename="../../qml/MainWindow.qml" line="735"/>
         <source>Home</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="601"/>
-        <location filename="../../qml/MainWindow.qml" line="732"/>
+        <location filename="../../qml/MainWindow.qml" line="606"/>
+        <location filename="../../qml/MainWindow.qml" line="737"/>
         <source>Messages</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="612"/>
-        <location filename="../../qml/MainWindow.qml" line="733"/>
+        <location filename="../../qml/MainWindow.qml" line="617"/>
+        <location filename="../../qml/MainWindow.qml" line="738"/>
         <source>Calls</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="623"/>
-        <location filename="../../qml/MainWindow.qml" line="734"/>
+        <location filename="../../qml/MainWindow.qml" line="628"/>
+        <location filename="../../qml/MainWindow.qml" line="739"/>
         <source>Photos</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="634"/>
-        <location filename="../../qml/MainWindow.qml" line="735"/>
+        <location filename="../../qml/MainWindow.qml" line="639"/>
+        <location filename="../../qml/MainWindow.qml" line="740"/>
         <source>Apps</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="645"/>
-        <location filename="../../qml/MainWindow.qml" line="736"/>
+        <location filename="../../qml/MainWindow.qml" line="650"/>
+        <location filename="../../qml/MainWindow.qml" line="741"/>
         <source>Deck</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="656"/>
+        <location filename="../../qml/MainWindow.qml" line="661"/>
         <source>Guide</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="667"/>
-        <location filename="../../qml/MainWindow.qml" line="738"/>
+        <location filename="../../qml/MainWindow.qml" line="672"/>
+        <location filename="../../qml/MainWindow.qml" line="743"/>
         <source>Settings</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="682"/>
+        <location filename="../../qml/MainWindow.qml" line="687"/>
         <source>Pair a new device</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="721"/>
+        <location filename="../../qml/MainWindow.qml" line="726"/>
         <source>Back to Home</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="731"/>
-        <location filename="../../qml/MainWindow.qml" line="850"/>
+        <location filename="../../qml/MainWindow.qml" line="736"/>
+        <location filename="../../qml/MainWindow.qml" line="855"/>
         <source>Timeline</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="737"/>
+        <location filename="../../qml/MainWindow.qml" line="742"/>
         <source>Features guide</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="749"/>
+        <location filename="../../qml/MainWindow.qml" line="754"/>
         <source>Sharing screen with %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="750"/>
+        <location filename="../../qml/MainWindow.qml" line="755"/>
         <source>Sharing screen</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="819"/>
+        <location filename="../../qml/MainWindow.qml" line="824"/>
         <source>Stop</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="820"/>
+        <location filename="../../qml/MainWindow.qml" line="825"/>
         <source>Stop sharing this PC&apos;s screen</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="837"/>
+        <location filename="../../qml/MainWindow.qml" line="842"/>
         <source>Commands</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="839"/>
+        <location filename="../../qml/MainWindow.qml" line="844"/>
         <source>Command palette (%1)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="840"/>
+        <location filename="../../qml/MainWindow.qml" line="845"/>
         <source>Command palette (Ctrl+K)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="852"/>
+        <location filename="../../qml/MainWindow.qml" line="857"/>
         <source>Files, clips, links, photos, recordings and sessions</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="864"/>
+        <location filename="../../qml/MainWindow.qml" line="869"/>
         <source>Refresh</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="1067"/>
+        <location filename="../../qml/MainWindow.qml" line="890"/>
+        <source>What&apos;s new</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/MainWindow.qml" line="1085"/>
         <source>%1 is ringing this PC</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="1073"/>
+        <location filename="../../qml/MainWindow.qml" line="1091"/>
         <source>Stop ringing</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="1099"/>
+        <location filename="../../qml/MainWindow.qml" line="1117"/>
         <source>Allow %1 to control this PC?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="1106"/>
+        <location filename="../../qml/MainWindow.qml" line="1124"/>
         <source>%1 wants to use this PC&apos;s mouse and keyboard. You can change this in Settings.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="1116"/>
-        <location filename="../../qml/MainWindow.qml" line="1164"/>
+        <location filename="../../qml/MainWindow.qml" line="1134"/>
+        <location filename="../../qml/MainWindow.qml" line="1182"/>
         <source>Not now</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="1120"/>
-        <location filename="../../qml/MainWindow.qml" line="1169"/>
+        <location filename="../../qml/MainWindow.qml" line="1138"/>
+        <location filename="../../qml/MainWindow.qml" line="1187"/>
         <source>Allow</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="1147"/>
+        <location filename="../../qml/MainWindow.qml" line="1165"/>
         <source>Allow %1 to view this PC&apos;s screen?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="1154"/>
+        <location filename="../../qml/MainWindow.qml" line="1172"/>
         <source>%1 wants to view this PC&apos;s screen. Control needs Remote mouse, keyboard &amp; Deck in Settings.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="1173"/>
+        <location filename="../../qml/MainWindow.qml" line="1191"/>
         <source>Allow for this device</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="1202"/>
+        <location filename="../../qml/MainWindow.qml" line="1220"/>
         <source>Photo ready on clipboard</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="1219"/>
+        <location filename="../../qml/MainWindow.qml" line="1237"/>
         <source>Keep on clipboard</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MainWindow.qml" line="1223"/>
+        <location filename="../../qml/MainWindow.qml" line="1241"/>
         <source>Paste into active window</source>
         <translation type="unfinished"></translation>
     </message>
@@ -6403,73 +6416,73 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MirrorWindow.qml" line="712"/>
+        <location filename="../../qml/MirrorWindow.qml" line="716"/>
         <source>Copy screenshot (Ctrl+Shift+C)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MirrorWindow.qml" line="719"/>
+        <location filename="../../qml/MirrorWindow.qml" line="723"/>
         <source>Save screenshot (Ctrl+S)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MirrorWindow.qml" line="726"/>
+        <location filename="../../qml/MirrorWindow.qml" line="730"/>
         <source>Stop recording (Ctrl+R)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MirrorWindow.qml" line="726"/>
+        <location filename="../../qml/MirrorWindow.qml" line="730"/>
         <source>Record video (Ctrl+R)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MirrorWindow.qml" line="760"/>
+        <location filename="../../qml/MirrorWindow.qml" line="764"/>
         <source>Phone stays awake while mirroring (turn off)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MirrorWindow.qml" line="761"/>
+        <location filename="../../qml/MirrorWindow.qml" line="765"/>
         <source>Keep phone awake while mirroring</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MirrorWindow.qml" line="770"/>
+        <location filename="../../qml/MirrorWindow.qml" line="774"/>
         <source>Turn phone screen back on</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MirrorWindow.qml" line="771"/>
+        <location filename="../../qml/MirrorWindow.qml" line="775"/>
         <source>Turn phone screen off while mirroring</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MirrorWindow.qml" line="796"/>
-        <location filename="../../qml/MirrorWindow.qml" line="872"/>
+        <location filename="../../qml/MirrorWindow.qml" line="800"/>
+        <location filename="../../qml/MirrorWindow.qml" line="876"/>
         <source>Play the phone&apos;s sound here</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MirrorWindow.qml" line="780"/>
+        <location filename="../../qml/MirrorWindow.qml" line="784"/>
         <source>Lock phone</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MirrorWindow.qml" line="831"/>
+        <location filename="../../qml/MirrorWindow.qml" line="835"/>
         <source>Back (right-click)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MirrorWindow.qml" line="838"/>
+        <location filename="../../qml/MirrorWindow.qml" line="842"/>
         <source>Home (middle-click)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MirrorWindow.qml" line="845"/>
+        <location filename="../../qml/MirrorWindow.qml" line="849"/>
         <source>Recent apps</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MirrorWindow.qml" line="796"/>
+        <location filename="../../qml/MirrorWindow.qml" line="800"/>
         <source>Play the sound on the phone</source>
         <translation type="unfinished"></translation>
     </message>
@@ -6484,107 +6497,107 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MirrorWindow.qml" line="743"/>
+        <location filename="../../qml/MirrorWindow.qml" line="747"/>
         <source>Show the picture as it is</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MirrorWindow.qml" line="743"/>
+        <location filename="../../qml/MirrorWindow.qml" line="747"/>
         <source>Dark picture: swap light and dark</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MirrorWindow.qml" line="751"/>
+        <location filename="../../qml/MirrorWindow.qml" line="755"/>
         <source>Flex mode</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MirrorWindow.qml" line="787"/>
+        <location filename="../../qml/MirrorWindow.qml" line="791"/>
         <source>Don&apos;t keep on top</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MirrorWindow.qml" line="787"/>
+        <location filename="../../qml/MirrorWindow.qml" line="791"/>
         <source>Keep on top</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MirrorWindow.qml" line="831"/>
+        <location filename="../../qml/MirrorWindow.qml" line="835"/>
         <source>Back (Esc)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MirrorWindow.qml" line="881"/>
+        <location filename="../../qml/MirrorWindow.qml" line="885"/>
         <source>Release to send files to %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MirrorWindow.qml" line="881"/>
+        <location filename="../../qml/MirrorWindow.qml" line="885"/>
         <source>phone</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MirrorWindow.qml" line="949"/>
+        <location filename="../../qml/MirrorWindow.qml" line="953"/>
         <source>To control the phone, turn on Control from your PC in NectarLink&apos;s settings on the phone.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MirrorWindow.qml" line="958"/>
+        <location filename="../../qml/MirrorWindow.qml" line="962"/>
         <source>Notify phone</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MirrorWindow.qml" line="969"/>
+        <location filename="../../qml/MirrorWindow.qml" line="973"/>
         <source>Hide</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MirrorWindow.qml" line="1007"/>
+        <location filename="../../qml/MirrorWindow.qml" line="1011"/>
         <source>Opening %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MirrorWindow.qml" line="1007"/>
+        <location filename="../../qml/MirrorWindow.qml" line="1011"/>
         <source>Allow it on your phone</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MirrorWindow.qml" line="1008"/>
+        <location filename="../../qml/MirrorWindow.qml" line="1012"/>
         <source>%1 closed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MirrorWindow.qml" line="1008"/>
+        <location filename="../../qml/MirrorWindow.qml" line="1012"/>
         <source>Mirroring stopped</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MirrorWindow.qml" line="1009"/>
+        <location filename="../../qml/MirrorWindow.qml" line="1013"/>
         <source>Starting…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MirrorWindow.qml" line="1018"/>
+        <location filename="../../qml/MirrorWindow.qml" line="1022"/>
         <source>Tap the notification on %1, then choose to share the entire screen.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MirrorWindow.qml" line="1020"/>
+        <location filename="../../qml/MirrorWindow.qml" line="1024"/>
         <source>The app closed on %1.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MirrorWindow.qml" line="1021"/>
+        <location filename="../../qml/MirrorWindow.qml" line="1025"/>
         <source>The phone stopped sharing its screen.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MirrorWindow.qml" line="1028"/>
+        <location filename="../../qml/MirrorWindow.qml" line="1032"/>
         <source>Open again</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/MirrorWindow.qml" line="1028"/>
+        <location filename="../../qml/MirrorWindow.qml" line="1032"/>
         <source>Try again</source>
         <translation type="unfinished"></translation>
     </message>
@@ -7596,292 +7609,292 @@ What it needs
 <context>
     <name>PhotosPage</name>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="46"/>
-        <location filename="../../qml/pages/PhotosPage.qml" line="381"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="67"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="407"/>
         <source>All photos</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="50"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="71"/>
         <source>Album</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="75"/>
-        <location filename="../../qml/pages/PhotosPage.qml" line="90"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="96"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="111"/>
         <source>Today</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="76"/>
-        <location filename="../../qml/pages/PhotosPage.qml" line="91"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="97"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="112"/>
         <source>Yesterday</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="114"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="135"/>
         <source>%1 B</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="115"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="136"/>
         <source>%1 KB</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="115"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="136"/>
         <source>%1 MB</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="115"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="136"/>
         <source>%1 GB</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="115"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="136"/>
         <source>%1 TB</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="281"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="307"/>
         <source>Choose default folder for saved photos</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="288"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="314"/>
         <source>Save to folder</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="318"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="344"/>
         <source>Photos</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="319"/>
-        <location filename="../../qml/pages/PhotosPage.qml" line="688"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="345"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="714"/>
         <source>%1 isn&apos;t connected</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="328"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="354"/>
         <source>Pair your phone to browse photos and albums.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="329"/>
-        <location filename="../../qml/pages/PhotosPage.qml" line="702"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="355"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="728"/>
         <source>Connect %1 to view photos.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="350"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="376"/>
         <source>Albums</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="357"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="383"/>
         <source>Refresh</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="455"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="481"/>
         <source>%1+ items</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="456"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="482"/>
         <source>1 item</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="456"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="482"/>
         <source>%1 items</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="482"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="508"/>
         <source>Cancel</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="492"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="518"/>
         <source>Photo</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="492"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="518"/>
         <source>Take photo</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="502"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="528"/>
         <source>Scan</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="502"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="528"/>
         <source>Scan document</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="527"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="553"/>
         <source>Select</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="543"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="569"/>
         <source>Cancel selection</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="551"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="577"/>
         <source>%1 selected</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="552"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="578"/>
         <source>Select items</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="552"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="578"/>
         <source>Click items to select</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="560"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="586"/>
         <source>Select all</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="560"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="586"/>
         <source>Select first 500</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="578"/>
-        <location filename="../../qml/pages/PhotosPage.qml" line="948"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="604"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="974"/>
         <source>Copy</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="589"/>
-        <location filename="../../qml/pages/PhotosPage.qml" line="959"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="615"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="985"/>
         <source>Share</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="600"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="626"/>
         <source>Open</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="611"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="637"/>
         <source>Delete</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="631"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="657"/>
         <source>Save (%1)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="632"/>
-        <location filename="../../qml/pages/PhotosPage.qml" line="981"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="658"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="1007"/>
         <source>Save</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="643"/>
-        <location filename="../../qml/pages/PhotosPage.qml" line="989"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="669"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="1015"/>
         <source>Save to folder…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="611"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="637"/>
         <source>Move to the phone&apos;s trash?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="686"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="712"/>
         <source>Photos are off for %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="687"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="713"/>
         <source>Allow photos on %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="689"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="715"/>
         <source>Couldn&apos;t load photos</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="698"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="724"/>
         <source>Enable Photos in Settings.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="700"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="726"/>
         <source>Grant photos permission on %1.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="703"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="729"/>
         <source>Unable to load photos.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="715"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="741"/>
         <source>Try again</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="738"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="764"/>
         <source>No photos or videos</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="895"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="921"/>
         <source>Back to gallery</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="969"/>
-        <location filename="../../qml/pages/PhotosPage.qml" line="1067"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="995"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="1093"/>
         <source>Play video</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="969"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="995"/>
         <source>Open in Photos</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="1048"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="1074"/>
         <source>Loading full resolution…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="1107"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="1133"/>
         <source>Previous photo</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="1120"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="1146"/>
         <source>Next photo</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="1207"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="1233"/>
         <source>%1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/PhotosPage.qml" line="1394"/>
+        <location filename="../../qml/pages/PhotosPage.qml" line="1420"/>
         <source>Select photo</source>
         <translation type="unfinished"></translation>
     </message>
@@ -10002,11 +10015,6 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/SettingsPage.qml" line="3722"/>
-        <source>What changed in this version, and in the ones before it.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <location filename="../../qml/pages/SettingsPage.qml" line="3768"/>
         <location filename="../../qml/pages/SettingsPage.qml" line="3771"/>
         <source>Install updates automatically</source>
@@ -10200,6 +10208,11 @@ What it needs
     <message>
         <location filename="../../qml/pages/SettingsPage.qml" line="3160"/>
         <source>Also sends what password managers mark private. It leaves the phone&apos;s clipboard after a minute where Android allows it, and is never kept in history.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3722"/>
+        <source>What changed since your last update.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -11984,55 +11997,51 @@ What it needs
     </message>
 </context>
 <context>
-    <name>WhatsNewSheet</name>
+    <name>WhatsNewPanel</name>
     <message>
-        <location filename="../../qml/components/WhatsNewSheet.qml" line="85"/>
+        <location filename="../../qml/components/WhatsNewPanel.qml" line="23"/>
+        <source>New</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/components/WhatsNewPanel.qml" line="24"/>
+        <source>Changed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/components/WhatsNewPanel.qml" line="25"/>
+        <source>Fixed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/components/WhatsNewPanel.qml" line="35"/>
+        <source>In this version</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/components/WhatsNewPanel.qml" line="40"/>
+        <source>and %1 more</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/components/WhatsNewPanel.qml" line="98"/>
+        <location filename="../../qml/components/WhatsNewPanel.qml" line="118"/>
         <source>What&apos;s new</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/components/WhatsNewSheet.qml" line="88"/>
-        <source>NectarLink %1</source>
+        <location filename="../../qml/components/WhatsNewPanel.qml" line="137"/>
+        <source>Close</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/components/WhatsNewSheet.qml" line="102"/>
-        <source>1 change since you last looked.</source>
+        <location filename="../../qml/components/WhatsNewPanel.qml" line="206"/>
+        <source>Nothing to list for this build.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/components/WhatsNewSheet.qml" line="103"/>
-        <source>%1 changes since you last looked.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../qml/components/WhatsNewSheet.qml" line="113"/>
-        <source>New to you</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../qml/components/WhatsNewSheet.qml" line="114"/>
-        <source>Everything in this version</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../qml/components/WhatsNewSheet.qml" line="125"/>
-        <source>The release notes aren&apos;t in this build. They&apos;re on GitHub.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../qml/components/WhatsNewSheet.qml" line="223"/>
-        <source>Earlier versions</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../qml/components/WhatsNewSheet.qml" line="342"/>
-        <source>All release notes</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../qml/components/WhatsNewSheet.qml" line="350"/>
-        <source>Got it</source>
+        <location filename="../../qml/components/WhatsNewPanel.qml" line="227"/>
+        <source>Release notes on GitHub</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

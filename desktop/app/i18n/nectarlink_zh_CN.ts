@@ -5727,6 +5727,14 @@ What it needs
     </message>
 </context>
 <context>
+    <name>IconButton</name>
+    <message>
+        <location filename="../qml/components/IconButton.qml" line="31"/>
+        <source>New changes</source>
+        <translation>新的变化</translation>
+    </message>
+</context>
+<context>
     <name>IslandWindow</name>
     <message>
         <location filename="../qml/IslandWindow.qml" line="18"/>
@@ -6038,177 +6046,182 @@ What it needs
 <context>
     <name>MainWindow</name>
     <message>
-        <location filename="../qml/MainWindow.qml" line="590"/>
-        <location filename="../qml/MainWindow.qml" line="730"/>
+        <location filename="../qml/MainWindow.qml" line="595"/>
+        <location filename="../qml/MainWindow.qml" line="735"/>
         <source>Home</source>
         <translation>首页</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="601"/>
-        <location filename="../qml/MainWindow.qml" line="732"/>
+        <location filename="../qml/MainWindow.qml" line="606"/>
+        <location filename="../qml/MainWindow.qml" line="737"/>
         <source>Messages</source>
         <translation>消息</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="612"/>
-        <location filename="../qml/MainWindow.qml" line="733"/>
+        <location filename="../qml/MainWindow.qml" line="617"/>
+        <location filename="../qml/MainWindow.qml" line="738"/>
         <source>Calls</source>
         <translation>通话</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="623"/>
-        <location filename="../qml/MainWindow.qml" line="734"/>
+        <location filename="../qml/MainWindow.qml" line="628"/>
+        <location filename="../qml/MainWindow.qml" line="739"/>
         <source>Photos</source>
         <translation>照片</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="634"/>
-        <location filename="../qml/MainWindow.qml" line="735"/>
+        <location filename="../qml/MainWindow.qml" line="639"/>
+        <location filename="../qml/MainWindow.qml" line="740"/>
         <source>Apps</source>
         <translation>应用</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="645"/>
-        <location filename="../qml/MainWindow.qml" line="736"/>
+        <location filename="../qml/MainWindow.qml" line="650"/>
+        <location filename="../qml/MainWindow.qml" line="741"/>
         <source>Deck</source>
         <translation>面板</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="656"/>
+        <location filename="../qml/MainWindow.qml" line="661"/>
         <source>Guide</source>
         <translation>指南</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="667"/>
-        <location filename="../qml/MainWindow.qml" line="738"/>
+        <location filename="../qml/MainWindow.qml" line="672"/>
+        <location filename="../qml/MainWindow.qml" line="743"/>
         <source>Settings</source>
         <translation>设置</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="682"/>
+        <location filename="../qml/MainWindow.qml" line="687"/>
         <source>Pair a new device</source>
         <translation>配对新的设备</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="721"/>
+        <location filename="../qml/MainWindow.qml" line="726"/>
         <source>Back to Home</source>
         <translation>返回首页</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="731"/>
-        <location filename="../qml/MainWindow.qml" line="850"/>
+        <location filename="../qml/MainWindow.qml" line="736"/>
+        <location filename="../qml/MainWindow.qml" line="855"/>
         <source>Timeline</source>
         <translation>时间线</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="737"/>
+        <location filename="../qml/MainWindow.qml" line="742"/>
         <source>Features guide</source>
         <translation>功能指南</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="749"/>
+        <location filename="../qml/MainWindow.qml" line="754"/>
         <source>Sharing screen with %1</source>
         <translation>正在与 %1 共享屏幕</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="750"/>
+        <location filename="../qml/MainWindow.qml" line="755"/>
         <source>Sharing screen</source>
         <translation>正在共享屏幕</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="819"/>
+        <location filename="../qml/MainWindow.qml" line="824"/>
         <source>Stop</source>
         <translation>停止</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="820"/>
+        <location filename="../qml/MainWindow.qml" line="825"/>
         <source>Stop sharing this PC&apos;s screen</source>
         <translation>停止共享本机屏幕</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="837"/>
+        <location filename="../qml/MainWindow.qml" line="842"/>
         <source>Commands</source>
         <translation>命令</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="839"/>
+        <location filename="../qml/MainWindow.qml" line="844"/>
         <source>Command palette (%1)</source>
         <translation>命令面板（%1）</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="840"/>
+        <location filename="../qml/MainWindow.qml" line="845"/>
         <source>Command palette (Ctrl+K)</source>
         <translation>命令面板（Ctrl+K）</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="852"/>
+        <location filename="../qml/MainWindow.qml" line="857"/>
         <source>Files, clips, links, photos, recordings and sessions</source>
         <translation>文件、剪贴内容、链接、照片、录制和会话</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="864"/>
+        <location filename="../qml/MainWindow.qml" line="869"/>
         <source>Refresh</source>
         <translation>刷新</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1067"/>
+        <location filename="../qml/MainWindow.qml" line="890"/>
+        <source>What&apos;s new</source>
+        <translation>新功能</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow.qml" line="1085"/>
         <source>%1 is ringing this PC</source>
         <translation>%1 正在让本机响铃</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1073"/>
+        <location filename="../qml/MainWindow.qml" line="1091"/>
         <source>Stop ringing</source>
         <translation>停止响铃</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1099"/>
+        <location filename="../qml/MainWindow.qml" line="1117"/>
         <source>Allow %1 to control this PC?</source>
         <translation>允许 %1 控制本机吗？</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1106"/>
+        <location filename="../qml/MainWindow.qml" line="1124"/>
         <source>%1 wants to use this PC&apos;s mouse and keyboard. You can change this in Settings.</source>
         <translation>%1 想要使用本机的鼠标和键盘。你可以在设置中更改。</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1116"/>
-        <location filename="../qml/MainWindow.qml" line="1164"/>
+        <location filename="../qml/MainWindow.qml" line="1134"/>
+        <location filename="../qml/MainWindow.qml" line="1182"/>
         <source>Not now</source>
         <translation>暂不</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1120"/>
-        <location filename="../qml/MainWindow.qml" line="1169"/>
+        <location filename="../qml/MainWindow.qml" line="1138"/>
+        <location filename="../qml/MainWindow.qml" line="1187"/>
         <source>Allow</source>
         <translation>允许</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1147"/>
+        <location filename="../qml/MainWindow.qml" line="1165"/>
         <source>Allow %1 to view this PC&apos;s screen?</source>
         <translation>允许 %1 查看本机屏幕吗？</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1154"/>
+        <location filename="../qml/MainWindow.qml" line="1172"/>
         <source>%1 wants to view this PC&apos;s screen. Control needs Remote mouse, keyboard &amp; Deck in Settings.</source>
         <translation>%1 想要查看本机屏幕。如需控制，请在设置中开启远程鼠标、键盘和面板。</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1173"/>
+        <location filename="../qml/MainWindow.qml" line="1191"/>
         <source>Allow for this device</source>
         <translation>允许此设备</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1202"/>
+        <location filename="../qml/MainWindow.qml" line="1220"/>
         <source>Photo ready on clipboard</source>
         <translation>照片已复制到剪贴板</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1219"/>
+        <location filename="../qml/MainWindow.qml" line="1237"/>
         <source>Keep on clipboard</source>
         <translation>保留在剪贴板</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1223"/>
+        <location filename="../qml/MainWindow.qml" line="1241"/>
         <source>Paste into active window</source>
         <translation>粘贴到当前窗口</translation>
     </message>
@@ -6718,78 +6731,78 @@ What it needs
         <translation>手机屏幕已关闭</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="712"/>
+        <location filename="../qml/MirrorWindow.qml" line="716"/>
         <source>Copy screenshot (Ctrl+Shift+C)</source>
         <translation>复制截图 (Ctrl+Shift+C)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="719"/>
+        <location filename="../qml/MirrorWindow.qml" line="723"/>
         <source>Save screenshot (Ctrl+S)</source>
         <translation>保存截图 (Ctrl+S)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="726"/>
+        <location filename="../qml/MirrorWindow.qml" line="730"/>
         <source>Stop recording (Ctrl+R)</source>
         <translation>停止录制 (Ctrl+R)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="726"/>
+        <location filename="../qml/MirrorWindow.qml" line="730"/>
         <source>Record video (Ctrl+R)</source>
         <translation>录制视频 (Ctrl+R)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="743"/>
+        <location filename="../qml/MirrorWindow.qml" line="747"/>
         <source>Show the picture as it is</source>
         <translation>按原样显示画面</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="743"/>
+        <location filename="../qml/MirrorWindow.qml" line="747"/>
         <source>Dark picture: swap light and dark</source>
         <translation>深色画面：明暗互换</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="751"/>
+        <location filename="../qml/MirrorWindow.qml" line="755"/>
         <source>Flex mode</source>
         <translation>灵活模式</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="760"/>
+        <location filename="../qml/MirrorWindow.qml" line="764"/>
         <source>Phone stays awake while mirroring (turn off)</source>
         <translation>投屏时手机保持唤醒（点击关闭）</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="761"/>
+        <location filename="../qml/MirrorWindow.qml" line="765"/>
         <source>Keep phone awake while mirroring</source>
         <translation>投屏时保持手机唤醒</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="770"/>
+        <location filename="../qml/MirrorWindow.qml" line="774"/>
         <source>Turn phone screen back on</source>
         <translation>重新点亮手机屏幕</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="771"/>
+        <location filename="../qml/MirrorWindow.qml" line="775"/>
         <source>Turn phone screen off while mirroring</source>
         <translation>投屏时关闭手机屏幕</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="831"/>
+        <location filename="../qml/MirrorWindow.qml" line="835"/>
         <source>Back (right-click)</source>
         <translation>返回（右键）</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="838"/>
+        <location filename="../qml/MirrorWindow.qml" line="842"/>
         <source>Home (middle-click)</source>
         <translation>主屏幕（中键）</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="845"/>
+        <location filename="../qml/MirrorWindow.qml" line="849"/>
         <source>Recent apps</source>
         <translation>最近任务</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="796"/>
-        <location filename="../qml/MirrorWindow.qml" line="872"/>
+        <location filename="../qml/MirrorWindow.qml" line="800"/>
+        <location filename="../qml/MirrorWindow.qml" line="876"/>
         <source>Play the phone&apos;s sound here</source>
         <translation>在本机播放手机声音</translation>
     </message>
@@ -6798,102 +6811,102 @@ What it needs
         <translation type="vanished">在本机静音手机声音</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="780"/>
+        <location filename="../qml/MirrorWindow.qml" line="784"/>
         <source>Lock phone</source>
         <translation>锁定手机</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="787"/>
+        <location filename="../qml/MirrorWindow.qml" line="791"/>
         <source>Don&apos;t keep on top</source>
         <translation>取消置顶</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="787"/>
+        <location filename="../qml/MirrorWindow.qml" line="791"/>
         <source>Keep on top</source>
         <translation>置顶</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="796"/>
+        <location filename="../qml/MirrorWindow.qml" line="800"/>
         <source>Play the sound on the phone</source>
         <translation>在手机上播放声音</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="831"/>
+        <location filename="../qml/MirrorWindow.qml" line="835"/>
         <source>Back (Esc)</source>
         <translation>返回 (Esc)</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="881"/>
+        <location filename="../qml/MirrorWindow.qml" line="885"/>
         <source>Release to send files to %1</source>
         <translation>松开即可发送文件到 %1</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="881"/>
+        <location filename="../qml/MirrorWindow.qml" line="885"/>
         <source>phone</source>
         <translation>手机</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="949"/>
+        <location filename="../qml/MirrorWindow.qml" line="953"/>
         <source>To control the phone, turn on Control from your PC in NectarLink&apos;s settings on the phone.</source>
         <translation>要控制手机，请在手机上的 NectarLink 设置中开启“从电脑控制”。</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="958"/>
+        <location filename="../qml/MirrorWindow.qml" line="962"/>
         <source>Notify phone</source>
         <translation>通知手机</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="969"/>
+        <location filename="../qml/MirrorWindow.qml" line="973"/>
         <source>Hide</source>
         <translation>隐藏</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="1007"/>
+        <location filename="../qml/MirrorWindow.qml" line="1011"/>
         <source>Opening %1</source>
         <translation>正在打开 %1</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="1007"/>
+        <location filename="../qml/MirrorWindow.qml" line="1011"/>
         <source>Allow it on your phone</source>
         <translation>请在手机上允许</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="1008"/>
+        <location filename="../qml/MirrorWindow.qml" line="1012"/>
         <source>%1 closed</source>
         <translation>%1 已关闭</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="1008"/>
+        <location filename="../qml/MirrorWindow.qml" line="1012"/>
         <source>Mirroring stopped</source>
         <translation>投屏已停止</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="1009"/>
+        <location filename="../qml/MirrorWindow.qml" line="1013"/>
         <source>Starting…</source>
         <translation>正在启动…</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="1018"/>
+        <location filename="../qml/MirrorWindow.qml" line="1022"/>
         <source>Tap the notification on %1, then choose to share the entire screen.</source>
         <translation>点击 %1 上的通知，然后选择共享整个屏幕。</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="1020"/>
+        <location filename="../qml/MirrorWindow.qml" line="1024"/>
         <source>The app closed on %1.</source>
         <translation>%1 上的应用已关闭。</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="1021"/>
+        <location filename="../qml/MirrorWindow.qml" line="1025"/>
         <source>The phone stopped sharing its screen.</source>
         <translation>手机已停止共享屏幕。</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="1028"/>
+        <location filename="../qml/MirrorWindow.qml" line="1032"/>
         <source>Open again</source>
         <translation>重新打开</translation>
     </message>
     <message>
-        <location filename="../qml/MirrorWindow.qml" line="1028"/>
+        <location filename="../qml/MirrorWindow.qml" line="1032"/>
         <source>Try again</source>
         <translation>重试</translation>
     </message>
@@ -7909,292 +7922,292 @@ What it needs
 <context>
     <name>PhotosPage</name>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="46"/>
-        <location filename="../qml/pages/PhotosPage.qml" line="381"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="67"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="407"/>
         <source>All photos</source>
         <translation>所有照片</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="50"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="71"/>
         <source>Album</source>
         <translation>相册</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="75"/>
-        <location filename="../qml/pages/PhotosPage.qml" line="90"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="96"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="111"/>
         <source>Today</source>
         <translation>今天</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="76"/>
-        <location filename="../qml/pages/PhotosPage.qml" line="91"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="97"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="112"/>
         <source>Yesterday</source>
         <translation>昨天</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="114"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="135"/>
         <source>%1 B</source>
         <translation>%1 B</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="115"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="136"/>
         <source>%1 KB</source>
         <translation>%1 KB</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="115"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="136"/>
         <source>%1 MB</source>
         <translation>%1 MB</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="115"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="136"/>
         <source>%1 GB</source>
         <translation>%1 GB</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="115"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="136"/>
         <source>%1 TB</source>
         <translation>%1 TB</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="281"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="307"/>
         <source>Choose default folder for saved photos</source>
         <translation>选择保存照片的默认文件夹</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="288"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="314"/>
         <source>Save to folder</source>
         <translation>保存到文件夹</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="318"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="344"/>
         <source>Photos</source>
         <translation>照片</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="319"/>
-        <location filename="../qml/pages/PhotosPage.qml" line="688"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="345"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="714"/>
         <source>%1 isn&apos;t connected</source>
         <translation>%1 未连接</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="328"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="354"/>
         <source>Pair your phone to browse photos and albums.</source>
         <translation>配对手机即可浏览照片和相册。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="329"/>
-        <location filename="../qml/pages/PhotosPage.qml" line="702"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="355"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="728"/>
         <source>Connect %1 to view photos.</source>
         <translation>连接 %1 即可查看照片。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="350"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="376"/>
         <source>Albums</source>
         <translation>相册</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="357"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="383"/>
         <source>Refresh</source>
         <translation>刷新</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="455"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="481"/>
         <source>%1+ items</source>
         <translation>%1+ 个项目</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="456"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="482"/>
         <source>1 item</source>
         <translation>1 个项目</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="456"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="482"/>
         <source>%1 items</source>
         <translation>%1 个项目</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="482"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="508"/>
         <source>Cancel</source>
         <translation>取消</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="492"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="518"/>
         <source>Photo</source>
         <translation>照片</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="492"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="518"/>
         <source>Take photo</source>
         <translation>拍照</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="502"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="528"/>
         <source>Scan</source>
         <translation>扫描</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="502"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="528"/>
         <source>Scan document</source>
         <translation>扫描文档</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="527"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="553"/>
         <source>Select</source>
         <translation>选择</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="543"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="569"/>
         <source>Cancel selection</source>
         <translation>取消选择</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="551"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="577"/>
         <source>%1 selected</source>
         <translation>已选择 %1 个</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="552"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="578"/>
         <source>Select items</source>
         <translation>选择项目</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="552"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="578"/>
         <source>Click items to select</source>
         <translation>点击项目以选择</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="560"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="586"/>
         <source>Select all</source>
         <translation>全选</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="560"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="586"/>
         <source>Select first 500</source>
         <translation>选择前 500 项</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="578"/>
-        <location filename="../qml/pages/PhotosPage.qml" line="948"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="604"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="974"/>
         <source>Copy</source>
         <translation>复制</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="589"/>
-        <location filename="../qml/pages/PhotosPage.qml" line="959"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="615"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="985"/>
         <source>Share</source>
         <translation>分享</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="600"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="626"/>
         <source>Open</source>
         <translation>打开</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="611"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="637"/>
         <source>Delete</source>
         <translation>删除</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="631"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="657"/>
         <source>Save (%1)</source>
         <translation>保存（%1）</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="632"/>
-        <location filename="../qml/pages/PhotosPage.qml" line="981"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="658"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="1007"/>
         <source>Save</source>
         <translation>保存</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="643"/>
-        <location filename="../qml/pages/PhotosPage.qml" line="989"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="669"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="1015"/>
         <source>Save to folder…</source>
         <translation>保存到文件夹…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="611"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="637"/>
         <source>Move to the phone&apos;s trash?</source>
         <translation>移到手机回收站？</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="686"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="712"/>
         <source>Photos are off for %1</source>
         <translation>%1 的照片功能已关闭</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="687"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="713"/>
         <source>Allow photos on %1</source>
         <translation>允许在 %1 上使用照片</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="689"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="715"/>
         <source>Couldn&apos;t load photos</source>
         <translation>无法加载照片</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="698"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="724"/>
         <source>Enable Photos in Settings.</source>
         <translation>请在设置中启用照片。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="700"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="726"/>
         <source>Grant photos permission on %1.</source>
         <translation>请在 %1 上授予照片权限。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="703"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="729"/>
         <source>Unable to load photos.</source>
         <translation>无法加载照片。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="715"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="741"/>
         <source>Try again</source>
         <translation>重试</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="738"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="764"/>
         <source>No photos or videos</source>
         <translation>没有照片或视频</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="895"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="921"/>
         <source>Back to gallery</source>
         <translation>返回图库</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="969"/>
-        <location filename="../qml/pages/PhotosPage.qml" line="1067"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="995"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="1093"/>
         <source>Play video</source>
         <translation>播放视频</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="969"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="995"/>
         <source>Open in Photos</source>
         <translation>在照片中打开</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="1048"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="1074"/>
         <source>Loading full resolution…</source>
         <translation>正在加载完整分辨率…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="1107"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="1133"/>
         <source>Previous photo</source>
         <translation>上一张照片</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="1120"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="1146"/>
         <source>Next photo</source>
         <translation>下一张照片</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="1207"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="1233"/>
         <source>%1</source>
         <translation>%1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="1394"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="1420"/>
         <source>Select photo</source>
         <translation>选择照片</translation>
     </message>
@@ -10522,9 +10535,8 @@ What it needs
         <translation>新功能</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3722"/>
         <source>What changed in this version, and in the ones before it.</source>
-        <translation>此版本及之前版本中的变化。</translation>
+        <translation type="vanished">此版本及之前版本中的变化。</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3737"/>
@@ -10583,6 +10595,11 @@ What it needs
         <location filename="../qml/pages/SettingsPage.qml" line="4326"/>
         <source>Cancel</source>
         <translation>取消</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3722"/>
+        <source>What changed since your last update.</source>
+        <translation>自你上次更新以来的变化。</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="4312"/>
@@ -12337,56 +12354,95 @@ What it needs
     </message>
 </context>
 <context>
-    <name>WhatsNewSheet</name>
+    <name>WhatsNewPanel</name>
     <message>
-        <location filename="../qml/components/WhatsNewSheet.qml" line="85"/>
+        <location filename="../qml/components/WhatsNewPanel.qml" line="23"/>
+        <source>New</source>
+        <translation>新增</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/WhatsNewPanel.qml" line="24"/>
+        <source>Changed</source>
+        <translation>变更</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/WhatsNewPanel.qml" line="25"/>
+        <source>Fixed</source>
+        <translation>修复</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/WhatsNewPanel.qml" line="35"/>
+        <source>In this version</source>
+        <translation>此版本中</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/WhatsNewPanel.qml" line="40"/>
+        <source>and %1 more</source>
+        <translation>还有 %1 项</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/WhatsNewPanel.qml" line="98"/>
+        <location filename="../qml/components/WhatsNewPanel.qml" line="118"/>
         <source>What&apos;s new</source>
         <translation>新功能</translation>
     </message>
     <message>
-        <location filename="../qml/components/WhatsNewSheet.qml" line="88"/>
+        <location filename="../qml/components/WhatsNewPanel.qml" line="137"/>
+        <source>Close</source>
+        <translation>关闭</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/WhatsNewPanel.qml" line="206"/>
+        <source>Nothing to list for this build.</source>
+        <translation>此版本没有可列出的内容。</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/WhatsNewPanel.qml" line="227"/>
+        <source>Release notes on GitHub</source>
+        <translation>GitHub 上的更新说明</translation>
+    </message>
+</context>
+<context>
+    <name>WhatsNewSheet</name>
+    <message>
+        <source>What&apos;s new</source>
+        <translation type="vanished">新功能</translation>
+    </message>
+    <message>
         <source>NectarLink %1</source>
-        <translation>NectarLink %1</translation>
+        <translation type="vanished">NectarLink %1</translation>
     </message>
     <message>
-        <location filename="../qml/components/WhatsNewSheet.qml" line="102"/>
         <source>1 change since you last looked.</source>
-        <translation>自你上次查看以来有 1 处变化。</translation>
+        <translation type="vanished">自你上次查看以来有 1 处变化。</translation>
     </message>
     <message>
-        <location filename="../qml/components/WhatsNewSheet.qml" line="103"/>
         <source>%1 changes since you last looked.</source>
-        <translation>自你上次查看以来有 %1 处变化。</translation>
+        <translation type="vanished">自你上次查看以来有 %1 处变化。</translation>
     </message>
     <message>
-        <location filename="../qml/components/WhatsNewSheet.qml" line="113"/>
         <source>New to you</source>
-        <translation>你还没看过的</translation>
+        <translation type="vanished">你还没看过的</translation>
     </message>
     <message>
-        <location filename="../qml/components/WhatsNewSheet.qml" line="114"/>
         <source>Everything in this version</source>
-        <translation>此版本的全部内容</translation>
+        <translation type="vanished">此版本的全部内容</translation>
     </message>
     <message>
-        <location filename="../qml/components/WhatsNewSheet.qml" line="125"/>
         <source>The release notes aren&apos;t in this build. They&apos;re on GitHub.</source>
-        <translation>此版本中未包含更新说明，可在 GitHub 上查看。</translation>
+        <translation type="vanished">此版本中未包含更新说明，可在 GitHub 上查看。</translation>
     </message>
     <message>
-        <location filename="../qml/components/WhatsNewSheet.qml" line="223"/>
         <source>Earlier versions</source>
-        <translation>更早的版本</translation>
+        <translation type="vanished">更早的版本</translation>
     </message>
     <message>
-        <location filename="../qml/components/WhatsNewSheet.qml" line="342"/>
         <source>All release notes</source>
-        <translation>全部更新说明</translation>
+        <translation type="vanished">全部更新说明</translation>
     </message>
     <message>
-        <location filename="../qml/components/WhatsNewSheet.qml" line="350"/>
         <source>Got it</source>
-        <translation>知道了</translation>
+        <translation type="vanished">知道了</translation>
     </message>
 </context>
 <context>
