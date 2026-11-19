@@ -98,6 +98,10 @@ static TEST_ACTIONS: &[ActionDef] = &[
     def("t.first", Access::Write, ConfirmRule::FirstUse, RateClass::Write, false),
     def("t.always", Access::Write, ConfirmRule::Always, RateClass::Write, false),
     def("t.sensitive", Access::Write, ConfirmRule::Never, RateClass::Sensitive, false),
+    ActionDef {
+        target: Target::OptionalDevice,
+        ..def("t.maybe_device", Access::Read, ConfirmRule::Never, RateClass::Read, false)
+    },
 ];
 
 struct Setup {
@@ -235,4 +239,14 @@ async fn outside_text_is_flagged_and_everything_is_logged_without_content() {
     assert_eq!(log[1].decision, "ok");
     assert_eq!(log[1].summary, "body=17 chars");
     assert!(!log.iter().any(|a| a.summary.contains("private")));
+}
+
+#[tokio::test]
+async fn an_optional_device_is_only_looked_up_when_named() {
+    let s = setup(FakeHost::default(), &[(Scope::Messages, Access::Read)]);
+    // No device named: it runs for this PC, without needing a node.
+    assert!(s.gw.invoke(&s.caller, "t.maybe_device", json!({})).await.is_ok());
+    assert!(s.gw.invoke(&s.caller, "t.maybe_device", json!({ "device": " " })).await.is_ok());
+    // A device named must be found first, and the app isn't ready here.
+    assert_eq!(code(&s, "t.maybe_device", json!({ "device": "Pixel" })).await, Code::AppNotReady);
 }

@@ -410,7 +410,7 @@ handler!(sms_messages, ThreadArgs, |ctx, a| {
         "body": clean_message(&m.body, FIELD_MAX, ctx.show_codes),
         "date": m.date,
         "outgoing": m.outgoing,
-        "attachments": m.parts.len(),
+        "attachments": m.parts.iter().map(|p| json!({ "id": p.id, "mime": p.mime, "size": p.size })).collect::<Vec<_>>(),
     })).collect::<Vec<_>>(), "_untrusted": ["messages[].body"] }))
 });
 
@@ -620,6 +620,8 @@ handler!(media_players, DeviceOnly, |ctx, _a| {
         .media_players()
         .into_iter()
         .filter(|(d, _)| device.is_none() || *d == device)
+        // Across devices, only those this agent may use, with media allowed.
+        .filter(|(d, _)| d.is_none_or(|d| ctx.may_see(d, crate::def::Scope::Media)))
         .map(|(d, p)| {
             json!({
                 "device": d.map(|d| d.to_string()),

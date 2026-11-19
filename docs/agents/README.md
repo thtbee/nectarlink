@@ -15,6 +15,12 @@ whichever way it came:
 | CLI | shell agents and scripts | `nectarlink-agent do <action> --agent <name> --args '{...}'` |
 | HTTP | other apps | `127.0.0.1:53321`, `/v2/...`, bearer token |
 
+**Settings › AI agents** can add NectarLink to Claude Desktop, Cursor, Windsurf,
+Antigravity, Gemini CLI, VS Code, Zed and Codex by editing their settings file
+(the `nectarlink` entry only, keeping the rest as it was, with the old file
+kept as `.nectarlink-backup`), and to Claude Code with `claude mcp add`. Files
+with comments are left alone. The code is `nectarlink_actions::setup`.
+
 `nectarlink-agent` is installed next to the app. The agent's name is the one
 added in **Settings › AI agents**; its token is in
 `<NectarLink data>/agents/<name>.token` (or `NECTARLINK_AGENT_TOKEN`), and the
@@ -54,6 +60,28 @@ Every channel answers `{ "ok": true, "result": ... }` or
 carries `details.confirmation_id`; call the same action with the same
 arguments plus `confirmation_id` to wait again.
 
+## Following events
+
+`events.wait` (MCP `events_wait`, `GET /v2/events`, `nectarlink-agent events`)
+returns what happened after `since`, waiting up to `wait_s` (at most 50) for
+the first event. Pass `next_since` back to keep following; leave `since` out to
+start from now. Kinds: `device.connected`, `device.disconnected`,
+`notification.posted`, `notification.removed`, `sms.changed`, `call.changed`,
+`transfer.started`, `transfer.finished`, `transfer.failed`,
+`clipboard.received`, `photo.added`, `storage.changed`,
+`phone_settings.changed`. An agent only sees events its permissions and devices
+allow. The app keeps the last 500; `missed_some` says older ones were dropped.
+
+## Pictures and resources
+
+Photo previews, pictures on the phone and picture attachments come back as
+`_images: [{ "mime", "data" }]` (base64). Over MCP they are image content.
+
+MCP clients also get read-only resources, each one a read action:
+`nectarlink://devices`, `nectarlink://transfers`, `nectarlink://timeline`, and
+`nectarlink://device/{device}/notifications`, `.../sms`, `.../calls`,
+`.../photos` and `.../settings`.
+
 ## Text from outside
 
 Results that carry text written by other people or apps (messages,
@@ -69,6 +97,7 @@ hidden unless the agent has `notifications.sensitive:read`.
 | `GET /v2/actions` | the actions this agent may use, with input schemas |
 | `GET /v2/actions/{id}` | one action |
 | `POST /v2/actions/{id}` | run it; the body is the arguments |
+| `GET /v2/events?since=&wait=&kinds=` | wait for events (see above) |
 
 Requests with an `Origin` header (web pages) and a `Host` other than
 `127.0.0.1:<port>` or `localhost:<port>` are refused.

@@ -31,6 +31,8 @@ pub mod qobject {
         #[qproperty(QString, confirmation)]
         /// The port agents connect to, or 0 while agent access is off.
         #[qproperty(i32, port)]
+        /// How the last "Add to" went, as JSON `{ kind, ok, message }`, or "".
+        #[qproperty(QString, setup_status, cxx_name = "setupStatus")]
         type Agents = super::AgentsRust;
     }
 
@@ -71,6 +73,21 @@ pub mod qobject {
         /// The configuration to paste into `client` (claude-code, cursor, vscode, codex, gemini, zed, other).
         #[qinvokable]
         fn snippet(self: &Agents, label: &QString, client: &QString) -> QString;
+        /// Whether NectarLink can add itself to the app `client` here.
+        #[qinvokable]
+        #[cxx_name = "canSetUp"]
+        fn can_set_up(self: &Agents, client: &QString) -> bool;
+        /// Adds agent `label` to the app `client`; `setupStatus` says how it went.
+        #[qinvokable]
+        #[cxx_name = "setUp"]
+        fn set_up(self: &Agents, label: &QString, client: &QString);
+        #[qinvokable]
+        #[cxx_name = "clearSetupStatus"]
+        fn clear_setup_status(self: &Agents);
+        /// Sets what an agent may do in one area: "off", "read" or "write".
+        #[qinvokable]
+        #[cxx_name = "setAccess"]
+        fn set_access(self: &Agents, id: &QString, scope: &QString, level: &QString);
     }
 }
 
@@ -80,6 +97,7 @@ pub struct AgentsRust {
     activity: QString,
     confirmation: QString,
     port: i32,
+    setup_status: QString,
 }
 
 impl cxx_qt::Initialize for qobject::Agents {
@@ -128,7 +146,7 @@ impl qobject::Agents {
         let confirmation = crate::agents::current_confirmation()
             .map(|r| {
                 json!({
-                    "id": r.id, "client": r.client, "title": r.title, "device": r.device,
+                    "id": r.id, "client": r.client, "action": r.action, "title": r.title, "device": r.device,
                     "details": r.details.iter().map(|(k, v)| json!({ "label": k, "value": v })).collect::<Vec<_>>(),
                     "canRemember": r.can_remember,
                 })
@@ -139,6 +157,16 @@ impl qobject::Agents {
         self.as_mut().set_activity(QString::from(&serde_json::Value::Array(activity).to_string()));
         self.as_mut().set_confirmation(QString::from(&confirmation));
         self.as_mut().set_port(i32::from(crate::agents::port().unwrap_or(0)));
+        let status = crate::agents::setup_status()
+            .map(|(kind, r)| {
+                let (ok, message) = match r {
+                    Ok(path) => (true, path),
+                    Err(e) => (false, e),
+                };
+                json!({ "kind": kind, "ok": ok, "message": message }).to_string()
+            })
+            .unwrap_or_default();
+        self.as_mut().set_setup_status(QString::from(&status));
     }
 
     pub fn add_agent(&self, label: &QString, name: &QString, kind: &QString, preset: &QString) -> QString {
@@ -203,6 +231,37 @@ impl qobject::Agents {
     }
 }
 
+impl qobject::Agents {
+    pub fn can_set_up(&self, client: &QString) -> bool {
+        crate::agents::can_set_up(&String::from(client))
+    }
+
+    pub fn set_up(&self, label: &QString, client: &QString) {
+        crate::agents::set_up(&String::from(client), &String::from(label), &cli_path());
+    }
+
+    pub fn clear_setup_status(&self) {
+        crate::agents::clear_setup_status();
+    }
+
+    pub fn set_access(&self, id: &QString, scope: &QString, level: &QString) {
+        let Some(scope) = nectarlink_actions::Scope::parse(&String::from(scope)) else { return };
+        let level = String::from(level);
+        crate::agents::update_client(&String::from(id), |c| {
+            c.grants.retain(|g| g.scope != scope);
+            match level.as_str() {
+                "read" => {
+                    c.grants.insert(Grant::new(scope, nectarlink_actions::Access::Read));
+                }
+                "write" => {
+                    c.grants.insert(Grant::new(scope, nectarlink_actions::Access::Write));
+                }
+                _ => {}
+            }
+        });
+    }
+}
+
 /// The `nectarlink-agent` command next to the app.
 fn cli_path() -> String {
     let name = if cfg!(windows) { "nectarlink-agent.exe" } else { "nectarlink-agent" };
@@ -254,5 +313,29 @@ mod tests {
         let json: serde_json::Value =
             serde_json::from_str(&snippet_for("cursor", "/usr/bin/nectarlink-agent", "cursor")).unwrap();
         assert_eq!(json["mcpServers"]["nectarlink"]["args"][2], "cursor");
+    }
+
+    #[test]
+    fn every_action_that_asks_has_a_translated_title() {
+        let sheet = include_str!("../../qml/components/AgentConfirmSheet.qml");
+        for a in nectarlink_actions::registry::all() {
+            if a.confirm == nectarlink_actions::ConfirmRule::Never {
+                continue;
+            }
+            let case = format!("case \"{}\": return qsTr(\"{}\")", a.id, a.title);
+            assert!(sheet.contains(&case), "AgentConfirmSheet.qml needs: {case}");
+        }
+    }
+
+    #[test]
+    fn every_app_with_a_settings_file_can_be_picked() {
+        let section = include_str!("../../qml/components/AgentsSection.qml");
+        for app in nectarlink_actions::setup::APPS {
+            assert!(
+                section.contains(&format!("value: \"{}\"", app.kind)),
+                "{} missing from Settings",
+                app.kind
+            );
+        }
     }
 }

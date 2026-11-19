@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! `nectarlink-agent`: what AI agents run to use NectarLink, shipped with the
 //! app. `mcp` serves MCP over stdio, `do` runs one action, `actions` lists
-//! them. Everything goes through the running app (Settings > AI agents).
+//! them, `events` follows what happens. Everything goes through the running app (Settings > AI agents).
 
 use clap::{Parser, Subcommand};
 
@@ -46,6 +46,20 @@ enum Command {
         #[arg(long)]
         pretty: bool,
     },
+    /// Print events as they happen, one JSON object per line, until stopped.
+    Events {
+        #[arg(long, env = "NECTARLINK_AGENT")]
+        agent: String,
+        /// Only these kinds (comma separated), e.g. notification.posted,sms.changed.
+        #[arg(long, value_delimiter = ',')]
+        kinds: Vec<String>,
+        /// Start after this event number instead of now.
+        #[arg(long)]
+        since: Option<u64>,
+        /// Print what's there and stop instead of following.
+        #[arg(long)]
+        once: bool,
+    },
     /// List the actions this agent may use.
     Actions {
         #[arg(long, env = "NECTARLINK_AGENT")]
@@ -67,6 +81,9 @@ fn main() -> anyhow::Result<()> {
                 nectarlink_mcp::cli::run(agent, action, args.as_deref(), device.as_deref(), *pretty).await
             }
             Command::Actions { agent, pretty } => nectarlink_mcp::cli::list(agent, *pretty).await,
+            Command::Events { agent, kinds, since, once } => {
+                nectarlink_mcp::cli::events(agent, kinds, *since, *once).await
+            }
         }
     })?;
     std::process::exit(code);

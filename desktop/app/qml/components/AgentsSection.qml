@@ -12,19 +12,57 @@ Column {
     readonly property var activity: { try { return JSON.parse(Agents.activity) } catch (e) { return [] } }
     readonly property var clientKinds: [
         { value: "claude-code", label: "Claude Code" },
+        { value: "claude-desktop", label: "Claude Desktop" },
         { value: "codex", label: "Codex" },
         { value: "cursor", label: "Cursor" },
         { value: "vscode", label: "VS Code" },
+        { value: "windsurf", label: "Windsurf" },
         { value: "gemini", label: "Gemini CLI" },
         { value: "antigravity", label: "Antigravity" },
         { value: "zed", label: "Zed" },
         { value: "cli", label: qsTr("Script or CLI") }
+    ]
+    // What an agent may be allowed, area by area. `write: false` areas can only be read.
+    readonly property var scopes: [
+        { id: "devices", label: qsTr("Devices"), write: true },
+        { id: "notifications", label: qsTr("Notifications"), write: true },
+        { id: "notifications.sensitive", label: qsTr("One-time codes and private notifications"), write: false },
+        { id: "messages", label: qsTr("Messages"), write: true },
+        { id: "calls", label: qsTr("Calls"), write: true },
+        { id: "contacts", label: qsTr("Contacts"), write: false },
+        { id: "clipboard", label: qsTr("Clipboard"), write: true },
+        { id: "files", label: qsTr("Files and Timeline"), write: true },
+        { id: "media", label: qsTr("Media"), write: true },
+        { id: "photos", label: qsTr("Photos"), write: true },
+        { id: "storage", label: qsTr("Phone storage"), write: true },
+        { id: "phone_settings", label: qsTr("Phone quick settings"), write: true },
+        { id: "mirroring", label: qsTr("Phone app windows"), write: true },
+        { id: "deck", label: qsTr("Deck"), write: true },
+        { id: "pc_actions", label: qsTr("Lock, sleep, shut down and wake PCs"), write: true }
     ]
     property string newKind: "claude-code"
     property string newPreset: "read_only"
     property string addError: ""
     property string shownLabel: ""
     property string shownKind: ""
+    // The agent whose permissions are open.
+    property string editing: ""
+    readonly property bool canSetUp: shownKind.length > 0 && Agents.canSetUp(shownKind)
+    readonly property var setupStatus: { try { return Agents.setupStatus.length > 0 ? JSON.parse(Agents.setupStatus) : null } catch (e) { return null } }
+    property bool settingUp: false
+    onSetupStatusChanged: if (setupStatus !== null) settingUp = false
+
+    function accessOf(grants, scope) {
+        if (grants.indexOf(scope + ":write") >= 0) return "write"
+        if (grants.indexOf(scope + ":read") >= 0) return "read"
+        return "off"
+    }
+    function showConnect(label, kind) {
+        Agents.clearSetupStatus()
+        settingUp = false
+        shownLabel = label
+        shownKind = kind
+    }
 
     function kindName(kind) {
         for (let i = 0; i < clientKinds.length; i++)
@@ -94,11 +132,19 @@ Column {
             width: parent.width
             spacing: 12
             Txt { text: qsTr("Add an agent"); role: "title" }
-            Segmented {
+            Flow {
                 width: parent.width
-                options: section.clientKinds
-                value: section.newKind
-                onPicked: (value) => section.newKind = value
+                spacing: 6
+                Repeater {
+                    model: section.clientKinds
+                    Chip {
+                        required property var modelData
+                        interactive: true
+                        text: modelData.label
+                        selected: section.newKind === modelData.value
+                        onClicked: section.newKind = modelData.value
+                    }
+                }
             }
             Segmented {
                 options: [
@@ -114,8 +160,8 @@ Column {
                 muted: true
                 wrapMode: Text.WordWrap
                 text: section.newPreset === "everyday"
-                      ? qsTr("Reads everything except the clipboard and one-time codes, and can send messages, files and notifications, and control media. Sending a text, replying, calling or deleting always asks you first.")
-                      : qsTr("Reads devices, notifications, messages, calls, contacts, files and media. Can't change anything. The clipboard and one-time codes stay private.")
+                      ? qsTr("Reads everything except the clipboard and one-time codes. Can send messages, files and notifications, control media, copy photos, open phone apps on this PC and change the phone's quick settings. Sending a text, replying, calling or deleting always asks you first.")
+                      : qsTr("Reads devices, notifications, messages, calls, contacts, photos, files and media. Can't change anything. The clipboard and one-time codes stay private.")
             }
             Row {
                 spacing: 10
@@ -124,10 +170,8 @@ Column {
                     onClicked: {
                         const label = section.freeLabel(section.newKind)
                         section.addError = Agents.addAgent(label, section.kindName(section.newKind), section.newKind === "cli" ? "cli" : "mcp-stdio", section.newPreset)
-                        if (section.addError.length === 0) {
-                            section.shownLabel = label
-                            section.shownKind = section.newKind
-                        }
+                        if (section.addError.length === 0)
+                            section.showConnect(label, section.newKind)
                     }
                 }
                 Txt {
@@ -152,12 +196,40 @@ Column {
                 wrapMode: Text.WordWrap
                 text: qsTr("Connect %1").arg(section.kindName(section.shownKind))
             }
+            Row {
+                visible: section.canSetUp
+                spacing: 10
+                Button {
+                    text: qsTr("Add to %1").arg(section.kindName(section.shownKind))
+                    enabled: !section.settingUp
+                    onClicked: {
+                        section.settingUp = true
+                        Agents.setUp(section.shownLabel, section.shownKind)
+                    }
+                }
+                Spinner {
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: section.settingUp
+                }
+            }
+            Txt {
+                readonly property var status: section.setupStatus !== null && section.setupStatus.kind === section.shownKind ? section.setupStatus : null
+                width: parent.width
+                wrapMode: Text.WordWrap
+                textFormat: Text.PlainText
+                visible: status !== null
+                color: status !== null && !status.ok ? Theme.error : Theme.surfaceContent
+                text: status === null ? ""
+                      : status.ok ? qsTr("Done. Restart %1 so it picks up NectarLink.").arg(section.kindName(section.shownKind))
+                      : status.message
+            }
             Txt {
                 width: parent.width
                 role: "bodySmall"
                 muted: true
                 wrapMode: Text.WordWrap
-                text: section.shownKind === "claude-code" || section.shownKind === "gemini"
+                text: section.canSetUp ? qsTr("Or add it yourself:")
+                      : section.shownKind === "claude-code" || section.shownKind === "gemini"
                       ? qsTr("Run this in a terminal:")
                       : section.shownKind === "codex" ? qsTr("Add this to ~/.codex/config.toml:")
                       : section.shownKind === "cli" ? qsTr("Run commands like this one. `nectarlink-agent actions` lists the rest.")
@@ -190,7 +262,10 @@ Column {
                     variant: "text"
                     size: "sm"
                     text: qsTr("Done")
-                    onClicked: section.shownLabel = ""
+                    onClicked: {
+                        section.shownLabel = ""
+                        Agents.clearSetupStatus()
+                    }
                 }
             }
         }
@@ -224,10 +299,13 @@ Column {
                                 variant: "text"
                                 size: "sm"
                                 text: qsTr("Connect")
-                                onClicked: {
-                                    section.shownLabel = modelData.label
-                                    section.shownKind = modelData.label.replace(/-[0-9]+$/, "")
-                                }
+                                onClicked: section.showConnect(modelData.label, modelData.label.replace(/-[0-9]+$/, ""))
+                            }
+                            Button {
+                                variant: "text"
+                                size: "sm"
+                                text: qsTr("Permissions")
+                                onClicked: section.editing = section.editing === modelData.id ? "" : modelData.id
                             }
                             Button {
                                 variant: "text"
@@ -240,6 +318,49 @@ Column {
                                 size: "sm"
                                 text: qsTr("Remove")
                                 onClicked: Agents.remove(modelData.id)
+                            }
+                        }
+                    }
+                    Column {
+                        id: permissions
+                        readonly property var grants: modelData.grants
+                        readonly property string clientId: modelData.id
+                        width: parent.width
+                        visible: section.editing === modelData.id
+                        spacing: 6
+                        bottomPadding: 12
+                        Txt {
+                            width: parent.width
+                            role: "bodySmall"
+                            muted: true
+                            wrapMode: Text.WordWrap
+                            text: qsTr("Each area can only narrow what a device's own permissions allow. Sensitive actions still ask you every time.")
+                        }
+                        Repeater {
+                            model: section.scopes
+                            Item {
+                                required property var modelData
+                                width: permissions.width
+                                height: Math.max(scopeName.implicitHeight, scopeLevel.implicitHeight)
+                                Txt {
+                                    id: scopeName
+                                    anchors.left: parent.left
+                                    anchors.right: scopeLevel.left
+                                    anchors.rightMargin: 12
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    wrapMode: Text.WordWrap
+                                    text: modelData.label
+                                }
+                                Segmented {
+                                    id: scopeLevel
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    options: modelData.write
+                                        ? [{ value: "off", label: qsTr("Off") }, { value: "read", label: qsTr("Read") }, { value: "write", label: qsTr("Read and act") }]
+                                        : [{ value: "off", label: qsTr("Off") }, { value: "read", label: qsTr("Read") }]
+                                    value: section.accessOf(permissions.grants, modelData.id)
+                                    onPicked: (value) => Agents.setAccess(permissions.clientId, modelData.id, value)
+                                }
                             }
                         }
                     }
