@@ -171,6 +171,10 @@ pub(crate) struct Shared {
     /// The running mDNS's task and whether it asks often (`install_mdns`);
     /// `None` without LAN discovery.
     lan_discovery: Mutex<Option<(CancellationToken, bool)>>,
+    /// LAN discovery should be running (it may have failed to start, #466).
+    lan_wanted: std::sync::atomic::AtomicBool,
+    /// A task is trying to start LAN discovery again.
+    lan_retrying: std::sync::atomic::AtomicBool,
     /// Per incoming transfer: whose turn it is on its part files, and how to
     /// tell the one running to stop.
     #[allow(clippy::type_complexity)]
@@ -1958,6 +1962,8 @@ impl Node {
             paired_localsend: Mutex::new(HashMap::new()),
             update_hints: Mutex::new(HashMap::new()),
             lan_discovery: Mutex::new(None),
+            lan_wanted: std::sync::atomic::AtomicBool::new(false),
+            lan_retrying: std::sync::atomic::AtomicBool::new(false),
             incoming_turns: Mutex::new(HashMap::new()),
             dial_failures: Mutex::new(HashMap::new()),
             matrices: Mutex::new(HashMap::new()),
@@ -2010,7 +2016,13 @@ impl Node {
         });
 
         if config.lan_discovery {
-            start_lan_discovery(&shared, &config.device.name)?;
+            shared.lan_wanted.store(true, std::sync::atomic::Ordering::Relaxed);
+            // Right after sign-in the network may not be up yet, and mDNS can't
+            // open its sockets: start without it and keep trying (#466).
+            if let Err(e) = start_lan_discovery(&shared, &config.device.name) {
+                tracing::warn!(error = %e, "LAN discovery isn't available yet; trying again");
+                retry_lan_discovery(&shared);
+            }
         }
         if shared.localsend.enabled() {
             shared.localsend.start(&shared);
@@ -2271,6 +2283,16 @@ impl Node {
     /// away instead of after their backoff. Harmless when nothing changed.
     pub async fn network_changed(&self) {
         self.shared.endpoint.network_change().await;
+        // A network that just came up may be what mDNS was waiting for (#466).
+        if self.shared.lan_wanted.load(std::sync::atomic::Ordering::Relaxed)
+            && lock(&self.shared.lan_discovery).is_none()
+        {
+            let name = self.shared.local.read().unwrap_or_else(|e| e.into_inner()).device.name.clone();
+            match start_lan_discovery(&self.shared, &name) {
+                Ok(()) => tracing::info!("LAN discovery started after a network change"),
+                Err(e) => tracing::debug!(error = %e, "LAN discovery still isn't available"),
+            }
+        }
         for session in self.shared.live_sessions() {
             let shared = self.shared.clone();
             tokio::spawn(async move {
@@ -4812,6 +4834,42 @@ fn record_mdns_sighting(shared: &Shared, info: &iroh::address_lookup::EndpointIn
 }
 
 /// Announces this device on the LAN and watches for others.
+/// Tries to start LAN discovery again, waiting longer each time, until it
+/// runs or the node stops (#466). One task at a time.
+fn retry_lan_discovery(shared: &Arc<Shared>) {
+    use std::sync::atomic::Ordering::AcqRel;
+    if shared.lan_retrying.swap(true, AcqRel) {
+        return;
+    }
+    let weak = Arc::downgrade(shared);
+    let cancel = shared.cancel.clone();
+    shared.runtime.spawn(async move {
+        let mut wait = Duration::from_secs(2);
+        loop {
+            tokio::select! {
+                _ = cancel.cancelled() => break,
+                _ = tokio::time::sleep(wait) => {}
+            }
+            let Some(shared) = weak.upgrade() else { break };
+            if lock(&shared.lan_discovery).is_some() {
+                break; // A network change started it meanwhile.
+            }
+            let name = shared.local.read().unwrap_or_else(|e| e.into_inner()).device.name.clone();
+            match start_lan_discovery(&shared, &name) {
+                Ok(()) => {
+                    tracing::info!("LAN discovery started");
+                    break;
+                }
+                Err(e) => tracing::debug!(error = %e, "LAN discovery still isn't available"),
+            }
+            wait = (wait * 2).min(Duration::from_secs(60));
+        }
+        if let Some(shared) = weak.upgrade() {
+            shared.lan_retrying.store(false, std::sync::atomic::Ordering::Release);
+        }
+    });
+}
+
 fn start_lan_discovery(shared: &Arc<Shared>, name: &str) -> Result<()> {
     install_mdns(shared, false)?;
     // Announce our name so nearby pairing can show it; truncate safely.
@@ -4839,7 +4897,7 @@ fn install_mdns(shared: &Arc<Shared>, fast: bool) -> Result<()> {
     // mDNS on mobile data would only wake the radio.
     #[cfg(not(target_os = "android"))]
     let builder = builder.multicast_interfaces(is_mdns_interface);
-    let mdns = builder.build(shared.endpoint.id()).map_err(crate::error::net)?;
+    let mdns = builder.build(shared.endpoint.id()).map_err(|e| crate::error::net_chain(&e))?;
     let lookups = shared.endpoint.address_lookup().map_err(crate::error::net)?;
     let cancel = shared.cancel.child_token();
     let previous = lock(&shared.lan_discovery).replace((cancel.clone(), fast));

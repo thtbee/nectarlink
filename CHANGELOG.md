@@ -297,6 +297,11 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **NectarLink starts even when the network isn't up yet at sign-in.** Starting with
+  Windows while the network was still coming up could stop it with "Service 'mdns'
+  error" until it was started again. It now starts without finding phones on the network
+  and turns that on as soon as it can. Thanks to [@AdamB2023](https://github.com/AdamB2023)
+  ([#466](https://github.com/thtbee/nectarlink/issues/466)).
 - **The share sheet says "Send with NectarLink".** It said "Send to PC", but it sends to
   whichever paired device is connected, another phone included. Each device still shows
   by name next to it. Thanks to [@FlootingDream](https://github.com/FlootingDream)
