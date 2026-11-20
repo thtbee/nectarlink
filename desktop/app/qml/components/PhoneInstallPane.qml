@@ -221,8 +221,9 @@ Column {
                         wrapMode: Text.WordWrap
                         textFormat: Text.StyledText
                         linkColor: Theme.primary
-                        text: qsTr("Downloading them means you accept Google's <a href=\"https://developer.android.com/studio/terms\">Android SDK terms</a>.")
-                        onLinkActivated: (link) => Qt.openUrlExternally(link)
+                        // The address isn't in the translation, so none can change it.
+                        text: qsTr("Downloading them means you accept Google's <a href=\"%1\">Android SDK terms</a>.").arg("terms")
+                        onLinkActivated: Links.open("androidSdkTerms")
                         HoverHandler { cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor }
                     }
                 }
@@ -292,7 +293,7 @@ Column {
                         attention: true
                         text: qsTr("Windows sees the phone but has no driver for its USB debugging. Install your phone maker's USB driver, then plug the phone in again.")
                         actionText: qsTr("Find the driver")
-                        onAction: Qt.openUrlExternally("https://developer.android.com/studio/run/oem-usb")
+                        onAction: Links.open("oemUsb")
                     }
                     Txt {
                         width: parent.width

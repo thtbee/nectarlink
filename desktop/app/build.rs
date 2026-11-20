@@ -54,6 +54,7 @@ const QML: &[&str] = &[
     "qml/components/Sheet.qml",
     "qml/components/Spinner.qml",
     "qml/components/StarPrompt.qml",
+    "qml/components/DiscordPrompt.qml",
     "qml/components/StatusDot.qml",
     "qml/components/Toast.qml",
     "qml/components/Toggle.qml",
@@ -81,7 +82,7 @@ const QML: &[&str] = &[
 ];
 
 /// QML singletons.
-const QML_SINGLETONS: &[&str] = &["qml/Tokens.qml", "qml/Theme.qml", "qml/Icons.qml"];
+const QML_SINGLETONS: &[&str] = &["qml/Tokens.qml", "qml/Theme.qml", "qml/Icons.qml", "qml/Links.qml"];
 
 /// Bundled fonts (in `assets/fonts`), compiled in under `:/fonts/`.
 const FONTS: &[&str] =

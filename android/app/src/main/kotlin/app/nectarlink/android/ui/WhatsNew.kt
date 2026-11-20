@@ -33,7 +33,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -66,13 +65,12 @@ import org.json.JSONObject
 internal object WhatsNew {
     private const val PREFS = "whats_new"
     private const val VERSION_CODE = "version_code"
-    private const val RELEASES = "https://github.com/thtbee/nectarlink/releases"
 
     private val _pending = MutableStateFlow(false)
     val pending: StateFlow<Boolean> = _pending.asStateFlow()
 
     data class Group(val title: String, val items: List<String>, val more: Int)
-    data class Summary(val version: String, val highlights: Boolean, val groups: List<Group>, val url: String)
+    data class Summary(val version: String, val highlights: Boolean, val groups: List<Group>)
 
     private fun dir(context: Context): String =
         context.noBackupFilesDir.resolve("whats-new").apply { mkdirs() }.absolutePath
@@ -129,7 +127,6 @@ internal object WhatsNew {
                     more = g.optInt("more"),
                 )
             },
-            url = root.optString("url").ifEmpty { RELEASES },
         )
     }
 }
@@ -174,7 +171,7 @@ internal fun WhatsNewButton() {
 @Composable
 private fun WhatsNewSheet(summary: WhatsNew.Summary?, onDismiss: () -> Unit) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val uriHandler = LocalUriHandler.current
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -248,7 +245,7 @@ private fun WhatsNewSheet(summary: WhatsNew.Summary?, onDismiss: () -> Unit) {
             item(key = "link") {
                 TextButton(
                     onClick = {
-                        runCatching { uriHandler.openUri(summary?.url ?: "https://github.com/thtbee/nectarlink/releases") }
+                        Link.open(context, Link.RELEASES)
                         scope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
                     },
                     modifier = Modifier.padding(top = 8.dp),

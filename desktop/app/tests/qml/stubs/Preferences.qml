@@ -11,6 +11,9 @@ QtObject {
     property bool starPromptDone: false
     property bool starPromptUpdated: false
     property int starPromptMinutes: 0
+    property bool communityPromptDone: false
+    property bool communityPromptDue: false
+    property int communityPromptCount: 0
     property bool quietWhenLocked: false
     property int uiScale: 100
     property bool combMotion: false

@@ -744,6 +744,18 @@ pub struct Settings {
     /// Minutes the window has been in use, up to when a new install is asked.
     #[serde(default, alias = "star_prompt_minutes")]
     pub star_prompt_minutes: u32,
+    /// The ask to join the Discord server ended: joined, or dismissed three times.
+    #[serde(default)]
+    pub community_prompt_done: bool,
+    /// An update armed the ask, for when the window is next in use.
+    #[serde(default)]
+    pub community_prompt_due: bool,
+    /// How many times it was shown.
+    #[serde(default)]
+    pub community_prompt_count: u32,
+    /// When it was last armed (Unix seconds), so it comes at most once a month.
+    #[serde(default)]
+    pub community_prompt_at: u64,
     /// OBS Studio's WebSocket port, for `obs:` Deck commands.
     pub obs_port: u16,
     /// OBS's WebSocket password, encrypted with Windows DPAPI (base64). Never stored in clear.
@@ -768,7 +780,28 @@ pub struct Settings {
     pub window_maximized: bool,
 }
 
+/// The ask to join Discord comes at most once in this long.
+pub const COMMUNITY_PROMPT_EVERY_SECS: u64 = 30 * 24 * 60 * 60;
+/// And stops for good after it was shown this many times.
+pub const COMMUNITY_PROMPT_TIMES: u32 = 3;
+
 impl Settings {
+    /// After an update, the ask to join Discord is armed: unless it ended,
+    /// was shown three times, or came less than a month ago. Never on a new
+    /// install. Whether anything changed.
+    pub fn ask_to_join_after_update(&mut self, now_secs: u64) -> bool {
+        if self.community_prompt_done
+            || self.community_prompt_due
+            || self.community_prompt_count >= COMMUNITY_PROMPT_TIMES
+            || now_secs.saturating_sub(self.community_prompt_at) < COMMUNITY_PROMPT_EVERY_SECS
+        {
+            return false;
+        }
+        self.community_prompt_due = true;
+        self.community_prompt_at = now_secs;
+        true
+    }
+
     /// Someone who updated is asked for a star right away, unless they already
     /// answered: an answer stays through every update. Whether anything changed.
     pub fn ask_for_star_after_update(&mut self) -> bool {
@@ -863,6 +896,10 @@ impl Default for Settings {
             star_prompt_done: false,
             star_prompt_updated: false,
             star_prompt_minutes: 0,
+            community_prompt_done: false,
+            community_prompt_due: false,
+            community_prompt_count: 0,
+            community_prompt_at: 0,
             obs_port: crate::obs::DEFAULT_PORT,
             obs_password: None,
             window_screen: None,
@@ -1049,6 +1086,21 @@ mod tests {
         assert!(new.star_prompt_updated);
         assert!(!new.ask_for_star_after_update(), "nothing more to save the next time");
 
+        // The ask to join Discord: after an update, once a month, three times at most.
+        let month = COMMUNITY_PROMPT_EVERY_SECS;
+        let mut s = Settings::default();
+        assert!(s.ask_to_join_after_update(month));
+        assert!(!s.ask_to_join_after_update(month + 1), "already due");
+        s.community_prompt_due = false;
+        s.community_prompt_count = 1;
+        assert!(!s.ask_to_join_after_update(month + 10), "not again within a month");
+        assert!(s.ask_to_join_after_update(2 * month));
+        s.community_prompt_due = false;
+        s.community_prompt_count = COMMUNITY_PROMPT_TIMES;
+        assert!(!s.ask_to_join_after_update(10 * month), "three times at most");
+        let joined = Settings { community_prompt_done: true, ..Settings::default() };
+        assert!(!{ joined }.ask_to_join_after_update(10 * month));
+
         let mut answered = Settings { star_prompt_done: true, ..Settings::default() };
         assert!(!answered.ask_for_star_after_update());
         assert!(!answered.star_prompt_updated);
@@ -1166,6 +1218,10 @@ mod tests {
             star_prompt_done: true,
             star_prompt_updated: true,
             star_prompt_minutes: 3,
+            community_prompt_done: false,
+            community_prompt_due: true,
+            community_prompt_count: 2,
+            community_prompt_at: 1_700_000_000,
             obs_port: crate::obs::DEFAULT_PORT,
             obs_password: None,
             window_screen: Some("DP-1".into()),

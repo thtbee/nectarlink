@@ -1527,6 +1527,18 @@
     <!-- Which of the PC's screens to view (#442) -->
     <string name="pc_mirror_screen">画面 %1$d</string>
     <string name="pc_mirror_screen_desc">%2$d 台中 %1$d 台目の画面を表示中。タップで次の画面へ。</string>
+    <!-- Community: Discord, X, GitHub and support -->
+    <string name="community_title">コミュニティ</string>
+    <string name="community_discord_title">Discord</string>
+    <string name="community_discord_body">私たちのサーバーです。質問やアイデアの共有、新しいビルドのお試しをみんなで。</string>
+    <string name="community_x_title">X</string>
+    <string name="community_x_body">NectarLink の作者 Bee からのお知らせ。</string>
+    <string name="community_github_title">GitHub</string>
+    <string name="community_github_body">ソースコード、Issue、リリース。</string>
+    <string name="community_invite_title">Discord で話しましょう</string>
+    <string name="community_invite_text">質問、アイデア、先行ビルド。NectarLink を作る人、使う人と一緒に。</string>
+    <string name="community_invite_join">Discord に参加</string>
+    <string name="community_invite_later">今はしない</string>
 </resources>
 
 

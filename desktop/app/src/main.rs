@@ -9,6 +9,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod agents;
+#[cfg(test)]
+mod app_links;
 mod app_shortcuts;
 mod automations;
 mod battery;
@@ -706,7 +708,11 @@ fn main() -> ExitCode {
     nectarlink_core::whats_new::note_start(&data_dir, updated_from.is_some());
     if updated_from.is_some() {
         let mut saved = settings::Settings::load(&data_dir);
-        if saved.ask_for_star_after_update()
+        let now =
+            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs());
+        let star = saved.ask_for_star_after_update();
+        let join = saved.ask_to_join_after_update(now);
+        if (star || join)
             && let Err(e) = saved.save(&data_dir)
         {
             tracing::warn!(error = %e, "can't save settings");

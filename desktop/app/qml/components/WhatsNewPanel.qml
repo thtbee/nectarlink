@@ -226,7 +226,7 @@ Item {
                 iconPath: Icons.openExternal
                 text: qsTr("Release notes on GitHub")
                 onClicked: {
-                    Qt.openUrlExternally(panel.notes.url || "https://github.com/thtbee/nectarlink/releases")
+                    Links.open("releases")
                     panel.close()
                 }
             }

@@ -1014,8 +1014,17 @@ NativeWindow {
 
     StarPrompt {
         eligible: AppController.status === "ready" && !window.showWalkthrough && window.active
-        onStarred: Qt.openUrlExternally("https://github.com/thtbee/nectarlink")
-        onSupported: Qt.openUrlExternally("https://buymeacoffee.com/thtbee_")
+        onStarred: Links.open("repo")
+        onSupported: Links.open("donate")
+    }
+
+    // Now and then after an update, an ask to come chat on Discord: never
+    // while the star prompt or What's new is open, one ask at a time.
+    DiscordPrompt {
+        eligible: AppController.status === "ready" && !window.showWalkthrough && window.active
+            && Preferences.starPromptDone
+            && !(whatsNewLoader.item && whatsNewLoader.item.opened)
+        onJoined: Links.open("discord")
     }
 
     // ---- First run ----

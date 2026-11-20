@@ -394,6 +394,16 @@ fn latest_for(channel: Channel, current: &str) -> Result<Option<Update>, String>
     Ok(newer_release(release, current))
 }
 
+/// Where an update's notes are: the project's page on GitHub, and nowhere
+/// else, whatever the feed or the API says.
+fn notes_url(given: &str) -> String {
+    const PROJECT: &str = "https://github.com/thtbee/nectarlink/";
+    let safe = given.starts_with(PROJECT)
+        && given.len() <= 512
+        && given.chars().all(|c| c.is_ascii_graphic() && !matches!(c, '"' | '<' | '>' | '\\'));
+    if safe { given.to_owned() } else { format!("{PROJECT}releases") }
+}
+
 /// The feed's build as an update for this install, if it's newer and has
 /// a file for this kind of install.
 fn feed_update(found: &feed::Feed, current: &str) -> Option<Update> {
@@ -406,7 +416,7 @@ fn feed_update(found: &feed::Feed, current: &str) -> Option<Update> {
     Some(Update {
         version: found.version.clone(),
         name: found.name.clone(),
-        notes_url: found.notes.clone(),
+        notes_url: notes_url(&found.notes),
         installer_url: file.url.clone(),
         installer_name: file.name.clone(),
         sums_url: None,
@@ -565,7 +575,7 @@ fn newer_release_for(release: Release, current: &str, suffix: &str) -> Option<Up
     Some(Update {
         version,
         name: None,
-        notes_url: release.html_url,
+        notes_url: notes_url(&release.html_url),
         installer_url: installer.browser_download_url.clone(),
         installer_name: installer.name.clone(),
         sums_url: Some(sums.browser_download_url.clone()),
@@ -1403,6 +1413,22 @@ impl Clone for Release {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn notes_only_open_on_the_projects_page() {
+        let ok = "https://github.com/thtbee/nectarlink/releases/tag/v0.1.6";
+        assert_eq!(notes_url(ok), ok);
+        for bad in [
+            "https://evil.example/thtbee/nectarlink",
+            "https://github.com/thtbee/nectarlink.evil.example/x",
+            "http://github.com/thtbee/nectarlink/releases",
+            "https://github.com/thtbee/nectarlink/releases\" onclick",
+            "file:///C:/Windows/System32/calc.exe",
+        ] {
+            assert_eq!(notes_url(bad), "https://github.com/thtbee/nectarlink/releases", "{bad}");
+        }
+    }
+
     use super::*;
 
     #[cfg(target_os = "linux")]

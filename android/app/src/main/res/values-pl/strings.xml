@@ -1554,6 +1554,18 @@
     <!-- Which of the PC's screens to view (#442) -->
     <string name="pc_mirror_screen">Ekran %1$d</string>
     <string name="pc_mirror_screen_desc">Ekran %1$d z %2$d. Dotknij, aby przejść do następnego.</string>
+    <!-- Community: Discord, X, GitHub and support -->
+    <string name="community_title">Społeczność</string>
+    <string name="community_discord_title">Discord</string>
+    <string name="community_discord_body">Nasz serwer. Zadawaj pytania, dziel się pomysłami i testuj nowe wersje z innymi.</string>
+    <string name="community_x_title">X</string>
+    <string name="community_x_body">Wieści od Bee, twórcy NectarLink.</string>
+    <string name="community_github_title">GitHub</string>
+    <string name="community_github_body">Kod źródłowy, zgłoszenia i wydania.</string>
+    <string name="community_invite_title">Wpadnij na Discorda</string>
+    <string name="community_invite_text">Pytania, pomysły i wczesne wersje, razem z twórcami i użytkownikami NectarLink.</string>
+    <string name="community_invite_join">Dołącz do Discorda</string>
+    <string name="community_invite_later">Nie teraz</string>
 </resources>
 
 

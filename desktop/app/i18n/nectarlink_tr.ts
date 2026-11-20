@@ -172,214 +172,288 @@
         <translation>%1. İzin vermek ya da reddetmek için NectarLink&apos;i aç.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="9"/>
         <source>Claude Code isn&apos;t installed on this PC.</source>
-        <translation>Claude Code bu bilgisayarda yüklü değil.</translation>
+        <translation type="vanished">Claude Code bu bilgisayarda yüklü değil.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="10"/>
         <source>Its settings file has comments or something NectarLink can&apos;t safely change. Paste the lines below into it instead.</source>
-        <translation>Ayar dosyasında yorumlar ya da NectarLink&apos;in güvenle değiştiremeyeceği bir şey var. Bunun yerine aşağıdaki satırları dosyaya yapıştır.</translation>
+        <translation type="vanished">Ayar dosyasında yorumlar ya da NectarLink&apos;in güvenle değiştiremeyeceği bir şey var. Bunun yerine aşağıdaki satırları dosyaya yapıştır.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="11"/>
         <source>The app doesn&apos;t seem to be installed on this PC.</source>
-        <translation>Uygulama bu bilgisayarda yüklü görünmüyor.</translation>
+        <translation type="vanished">Uygulama bu bilgisayarda yüklü görünmüyor.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="12"/>
         <source>This app has to be set up by hand.</source>
-        <translation>Bu uygulamanın elle kurulması gerekiyor.</translation>
+        <translation type="vanished">Bu uygulamanın elle kurulması gerekiyor.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="13"/>
         <source>Your user folders couldn&apos;t be found.</source>
-        <translation>Kullanıcı klasörlerin bulunamadı.</translation>
+        <translation type="vanished">Kullanıcı klasörlerin bulunamadı.</translation>
     </message>
 </context>
 <context>
     <name>AgentsSection</name>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="23"/>
         <source>Script or CLI</source>
-        <translation>Betik ya da CLI</translation>
+        <translation type="vanished">Betik ya da CLI</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="27"/>
+        <location filename="../qml/components/AgentsSection.qml" line="15"/>
         <source>Devices</source>
         <translation>Cihazlar</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="28"/>
+        <location filename="../qml/components/AgentsSection.qml" line="16"/>
         <source>Notifications</source>
         <translation>Bildirimler</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="29"/>
+        <location filename="../qml/components/AgentsSection.qml" line="17"/>
         <source>One-time codes and private notifications</source>
         <translation>Tek kullanımlık kodlar ve özel bildirimler</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="30"/>
+        <location filename="../qml/components/AgentsSection.qml" line="18"/>
         <source>Messages</source>
         <translation>Mesajlar</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="31"/>
+        <location filename="../qml/components/AgentsSection.qml" line="19"/>
         <source>Calls</source>
         <translation>Aramalar</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="32"/>
+        <location filename="../qml/components/AgentsSection.qml" line="20"/>
         <source>Contacts</source>
         <translation>Kişiler</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="33"/>
+        <location filename="../qml/components/AgentsSection.qml" line="21"/>
         <source>Clipboard</source>
         <translation>Pano</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="34"/>
+        <location filename="../qml/components/AgentsSection.qml" line="22"/>
         <source>Files and Timeline</source>
         <translation>Dosyalar ve Zaman Çizelgesi</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="35"/>
+        <location filename="../qml/components/AgentsSection.qml" line="23"/>
         <source>Media</source>
         <translation>Medya</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="36"/>
+        <location filename="../qml/components/AgentsSection.qml" line="24"/>
         <source>Photos</source>
         <translation>Fotoğraflar</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="37"/>
+        <location filename="../qml/components/AgentsSection.qml" line="25"/>
         <source>Phone storage</source>
         <translation>Telefon depolama alanı</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="38"/>
+        <location filename="../qml/components/AgentsSection.qml" line="26"/>
         <source>Phone quick settings</source>
         <translation>Telefonun hızlı ayarları</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="39"/>
+        <location filename="../qml/components/AgentsSection.qml" line="27"/>
         <source>Phone app windows</source>
         <translation>Telefon uygulaması pencereleri</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="40"/>
+        <location filename="../qml/components/AgentsSection.qml" line="28"/>
         <source>Deck</source>
         <translation>Deck</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="41"/>
+        <location filename="../qml/components/AgentsSection.qml" line="29"/>
         <source>Lock, sleep, shut down and wake PCs</source>
         <translation>Bilgisayarları kilitleme, uyutma, kapatma ve uyandırma</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="79"/>
-        <location filename="../qml/components/AgentsSection.qml" line="152"/>
+        <location filename="../qml/components/AgentsSection.qml" line="66"/>
+        <location filename="../qml/components/AgentsSection.qml" line="159"/>
         <source>Everyday</source>
         <translation>Günlük</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="79"/>
-        <location filename="../qml/components/AgentsSection.qml" line="151"/>
+        <location filename="../qml/components/AgentsSection.qml" line="66"/>
+        <location filename="../qml/components/AgentsSection.qml" line="158"/>
         <source>Read only</source>
         <translation>Salt okunur</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="79"/>
+        <location filename="../qml/components/AgentsSection.qml" line="66"/>
         <source>Custom</source>
         <translation>Özel</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="83"/>
+        <location filename="../qml/components/AgentsSection.qml" line="70"/>
         <source>done</source>
         <translation>tamam</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="84"/>
+        <location filename="../qml/components/AgentsSection.qml" line="71"/>
         <source>denied by you</source>
         <translation>sen reddettin</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="85"/>
+        <location filename="../qml/components/AgentsSection.qml" line="72"/>
         <source>not approved in time</source>
         <translation>zamanında onaylanmadı</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="86"/>
+        <location filename="../qml/components/AgentsSection.qml" line="73"/>
         <source>waiting for you</source>
         <translation>seni bekliyor</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="87"/>
+        <location filename="../qml/components/AgentsSection.qml" line="74"/>
         <source>not permitted</source>
         <translation>izin yok</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="88"/>
+        <location filename="../qml/components/AgentsSection.qml" line="75"/>
         <source>blocked, read-only</source>
         <translation>engellendi, salt okunur</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="89"/>
+        <location filename="../qml/components/AgentsSection.qml" line="76"/>
         <source>off for that device</source>
         <translation>o cihaz için kapalı</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="90"/>
+        <location filename="../qml/components/AgentsSection.qml" line="77"/>
         <source>too many requests</source>
         <translation>çok fazla istek</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="91"/>
+        <location filename="../qml/components/AgentsSection.qml" line="78"/>
         <source>failed</source>
         <translation>başarısız</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="102"/>
-        <location filename="../qml/components/AgentsSection.qml" line="107"/>
+        <location filename="../qml/components/AgentsSection.qml" line="89"/>
+        <location filename="../qml/components/AgentsSection.qml" line="94"/>
         <source>Let AI agents use NectarLink</source>
         <translation>Yapay zekâ ajanları NectarLink&apos;i kullanabilsin</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="104"/>
+        <location filename="../qml/components/AgentsSection.qml" line="91"/>
         <source>On. Agents only get the permissions you give each one, and sensitive actions always ask you first.</source>
         <translation>Açık. Ajanlar sadece her birine verdiğin izinlere sahip, hassas işlemler her zaman önce sana sorar.</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="105"/>
-        <source>Claude Code, Codex, Cursor and other AI assistants on this PC can read and act through NectarLink, with your approval.</source>
-        <translation>Bu bilgisayardaki Claude Code, Codex, Cursor ve diğer yapay zekâ asistanları, senin onayınla NectarLink üzerinden okuyup işlem yapabilir.</translation>
+        <location filename="../qml/components/AgentsSection.qml" line="92"/>
+        <source>AI assistants on this PC can read and act through NectarLink, with your approval.</source>
+        <translation>Bu bilgisayardaki yapay zekâ asistanları, onayınla NectarLink üzerinden okuyup işlem yapabilir.</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="117"/>
-        <location filename="../qml/components/AgentsSection.qml" line="120"/>
+        <location filename="../qml/components/AgentsSection.qml" line="177"/>
+        <source>Create</source>
+        <translation>Oluştur</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/AgentsSection.qml" line="216"/>
+        <source>Paste this into your agent. It sets itself up and checks that it works.</source>
+        <translation>Bunu ajanına yapıştır. Kendini kurar ve çalıştığını kontrol eder.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/AgentsSection.qml" line="245"/>
+        <source>Copy prompt</source>
+        <translation>İstemi kopyala</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/AgentsSection.qml" line="260"/>
+        <source>Connected</source>
+        <translation>Bağlandı</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/AgentsSection.qml" line="260"/>
+        <source>Waiting for the agent…</source>
+        <translation>Ajan bekleniyor…</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/AgentsSection.qml" line="268"/>
+        <source>Set up by hand</source>
+        <translation>Elle kur</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/AgentsSection.qml" line="277"/>
+        <source>MCP</source>
+        <translation>MCP</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/AgentsSection.qml" line="278"/>
+        <source>Command line</source>
+        <translation>Komut satırı</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/AgentsSection.qml" line="279"/>
+        <source>HTTP</source>
+        <translation>HTTP</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/AgentsSection.qml" line="290"/>
+        <source>Run commands like these. The first lists everything the agent may do.</source>
+        <translation>Bunlar gibi komutlar çalıştır. İlki ajanın yapabileceği her şeyi listeler.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/AgentsSection.qml" line="292"/>
+        <source>For your own scripts. Read the token from that file each time; never paste it anywhere.</source>
+        <translation>Kendi betiklerin için. Belirteci her seferinde o dosyadan oku; hiçbir yere yapıştırma.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/AgentsSection.qml" line="293"/>
+        <source>Add this to the agent&apos;s MCP settings.</source>
+        <translation>Bunu ajanın MCP ayarlarına ekle.</translation>
+    </message>
+    <message>
+        <source>Claude Code, Codex, Cursor and other AI assistants on this PC can read and act through NectarLink, with your approval.</source>
+        <translation type="vanished">Bu bilgisayardaki Claude Code, Codex, Cursor ve diğer yapay zekâ asistanları, senin onayınla NectarLink üzerinden okuyup işlem yapabilir.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/AgentsSection.qml" line="104"/>
+        <location filename="../qml/components/AgentsSection.qml" line="107"/>
         <source>Read-only for every agent</source>
         <translation>Tüm ajanlar için salt okunur</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="118"/>
+        <location filename="../qml/components/AgentsSection.qml" line="105"/>
         <source>Agents can look, but can&apos;t send, change or delete anything.</source>
         <translation>Ajanlar bakabilir ama hiçbir şey gönderemez, değiştiremez ya da silemez.</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="134"/>
+        <location filename="../qml/components/AgentsSection.qml" line="121"/>
         <source>Add an agent</source>
         <translation>Ajan ekle</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="163"/>
+        <location filename="../qml/components/AgentsSection.qml" line="127"/>
+        <source>Works with any assistant that runs on this PC. Name it, choose what it may do, then paste one prompt into it.</source>
+        <translation>Bu bilgisayarda çalışan her asistanla olur. Bir ad ver, neler yapabileceğini seç, sonra tek bir istem yapıştır.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/AgentsSection.qml" line="139"/>
+        <location filename="../qml/components/AgentsSection.qml" line="179"/>
+        <source>My agent</source>
+        <translation>Ajanım</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/AgentsSection.qml" line="152"/>
+        <source>Agent name</source>
+        <translation>Ajan adı</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/AgentsSection.qml" line="170"/>
         <source>Reads everything except the clipboard and one-time codes. Can send messages, files and notifications, control media, copy photos, open phone apps on this PC and change the phone&apos;s quick settings. Sending a text, replying, calling or deleting always asks you first.</source>
         <translation>Pano ve tek kullanımlık kodlar dışında her şeyi okur. Mesaj, dosya ve bildirim gönderebilir, medyayı yönetebilir, fotoğraf kopyalayabilir, telefon uygulamalarını bu bilgisayarda açabilir ve telefonun hızlı ayarlarını değiştirebilir. SMS göndermek, yanıt vermek, arama yapmak veya silmek için her zaman önce sana sorar.</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="164"/>
+        <location filename="../qml/components/AgentsSection.qml" line="171"/>
         <source>Reads devices, notifications, messages, calls, contacts, photos, files and media. Can&apos;t change anything. The clipboard and one-time codes stay private.</source>
         <translation>Cihazları, bildirimleri, mesajları, aramaları, kişileri, fotoğrafları, dosyaları ve medyayı okur. Hiçbir şeyi değiştiremez. Pano ve tek kullanımlık kodlar gizli kalır.</translation>
     </message>
@@ -392,144 +466,136 @@
         <translation type="vanished">Cihazları, bildirimleri, mesajları, aramaları, kişileri, dosyaları ve medyayı okur. Hiçbir şeyi değiştiremez. Pano ve tek kullanımlık kodlar gizli kalır.</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="169"/>
         <source>Add %1</source>
-        <translation>%1 ekle</translation>
+        <translation type="vanished">%1 ekle</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="197"/>
+        <location filename="../qml/components/AgentsSection.qml" line="209"/>
         <source>Connect %1</source>
         <translation>%1 bağla</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="203"/>
         <source>Add to %1</source>
-        <translation>%1 uygulamasına ekle</translation>
+        <translation type="vanished">%1 uygulamasına ekle</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="223"/>
         <source>Done. Restart %1 so it picks up NectarLink.</source>
-        <translation>Tamam. NectarLink&apos;i yüklemesi için %1 uygulamasını yeniden başlat.</translation>
+        <translation type="vanished">Tamam. NectarLink&apos;i yüklemesi için %1 uygulamasını yeniden başlat.</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="231"/>
         <source>Or add it yourself:</source>
-        <translation>Ya da kendin ekle:</translation>
+        <translation type="vanished">Ya da kendin ekle:</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="233"/>
         <source>Run this in a terminal:</source>
-        <translation>Bunu bir terminalde çalıştır:</translation>
+        <translation type="vanished">Bunu bir terminalde çalıştır:</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="234"/>
         <source>Add this to ~/.codex/config.toml:</source>
-        <translation>Bunu ~/.codex/config.toml dosyasına ekle:</translation>
+        <translation type="vanished">Bunu ~/.codex/config.toml dosyasına ekle:</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="235"/>
         <source>Run commands like this one. `nectarlink-agent actions` lists the rest.</source>
-        <translation>Bunun gibi komutlar çalıştır. Gerisini `nectarlink-agent actions` gösterir.</translation>
+        <translation type="vanished">Bunun gibi komutlar çalıştır. Gerisini `nectarlink-agent actions` gösterir.</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="236"/>
         <source>Add this to the app&apos;s MCP settings:</source>
-        <translation>Bunu uygulamanın MCP ayarlarına ekle:</translation>
+        <translation type="vanished">Bunu uygulamanın MCP ayarlarına ekle:</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="258"/>
+        <location filename="../qml/components/AgentsSection.qml" line="314"/>
         <source>Copy</source>
         <translation>Kopyala</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="264"/>
+        <location filename="../qml/components/AgentsSection.qml" line="321"/>
         <source>Done</source>
         <translation>Tamam</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="279"/>
+        <location filename="../qml/components/AgentsSection.qml" line="332"/>
         <source>Agents</source>
         <translation>Ajanlar</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="290"/>
+        <location filename="../qml/components/AgentsSection.qml" line="343"/>
         <source>paused</source>
         <translation>duraklatıldı</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="292"/>
+        <location filename="../qml/components/AgentsSection.qml" line="345"/>
         <source>read-only</source>
         <translation>salt okunur</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="294"/>
+        <location filename="../qml/components/AgentsSection.qml" line="347"/>
         <source>last used %1</source>
         <translation>son kullanım %1</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="295"/>
+        <location filename="../qml/components/AgentsSection.qml" line="348"/>
         <source>not connected yet</source>
         <translation>henüz bağlanmadı</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="301"/>
+        <location filename="../qml/components/AgentsSection.qml" line="354"/>
         <source>Connect</source>
         <translation>Bağla</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="307"/>
+        <location filename="../qml/components/AgentsSection.qml" line="360"/>
         <source>Permissions</source>
         <translation>İzinler</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="313"/>
+        <location filename="../qml/components/AgentsSection.qml" line="366"/>
         <source>Resume</source>
         <translation>Devam ettir</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="313"/>
+        <location filename="../qml/components/AgentsSection.qml" line="366"/>
         <source>Pause</source>
         <translation>Duraklat</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="319"/>
+        <location filename="../qml/components/AgentsSection.qml" line="372"/>
         <source>Remove</source>
         <translation>Kaldır</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="337"/>
+        <location filename="../qml/components/AgentsSection.qml" line="390"/>
         <source>Each area can only narrow what a device&apos;s own permissions allow. Sensitive actions still ask you every time.</source>
         <translation>Her alan, bir cihazın kendi izinlerinin verdiğini yalnızca daraltabilir. Hassas işlemler yine her seferinde sana sorar.</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="359"/>
-        <location filename="../qml/components/AgentsSection.qml" line="360"/>
+        <location filename="../qml/components/AgentsSection.qml" line="412"/>
+        <location filename="../qml/components/AgentsSection.qml" line="413"/>
         <source>Off</source>
         <translation>Kapalı</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="359"/>
-        <location filename="../qml/components/AgentsSection.qml" line="360"/>
+        <location filename="../qml/components/AgentsSection.qml" line="412"/>
+        <location filename="../qml/components/AgentsSection.qml" line="413"/>
         <source>Read</source>
         <translation>Okuma</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="359"/>
+        <location filename="../qml/components/AgentsSection.qml" line="412"/>
         <source>Read and act</source>
         <translation>Okuma ve işlem</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="380"/>
+        <location filename="../qml/components/AgentsSection.qml" line="433"/>
         <source>Activity</source>
         <translation>Etkinlik</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="386"/>
+        <location filename="../qml/components/AgentsSection.qml" line="439"/>
         <source>Clear</source>
         <translation>Temizle</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="393"/>
+        <location filename="../qml/components/AgentsSection.qml" line="446"/>
         <source>Nothing yet.</source>
         <translation>Henüz bir şey yok.</translation>
     </message>
@@ -537,177 +603,177 @@
 <context>
     <name>App</name>
     <message>
-        <location filename="rust_strings.h" line="14"/>
+        <location filename="rust_strings.h" line="9"/>
         <source>Already on clipboard.</source>
         <translation>Zaten panoda.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="15"/>
+        <location filename="rust_strings.h" line="10"/>
         <source>Command palette</source>
         <translation>Komut paleti</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="16"/>
+        <location filename="rust_strings.h" line="11"/>
         <source>Copied to clipboard.</source>
         <translation>Panoya kopyalandı.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="17"/>
+        <location filename="rust_strings.h" line="12"/>
         <source>Could not copy to the clipboard.</source>
         <translation>Panoya kopyalanamadı.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="18"/>
+        <location filename="rust_strings.h" line="13"/>
         <source>Couldn&apos;t check for updates. Try again.</source>
         <translation>Güncellemeler denetlenemedi. Tekrar deneyin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="19"/>
+        <location filename="rust_strings.h" line="14"/>
         <source>Downloading the update · %1 of %2</source>
         <translation>Güncelleme indiriliyor · %1 / %2</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="20"/>
+        <location filename="rust_strings.h" line="15"/>
         <source>Downloading the update…</source>
         <translation>Güncelleme indiriliyor…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="21"/>
+        <location filename="rust_strings.h" line="16"/>
         <source>Find my phone</source>
         <translation>Telefonumu bul</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="22"/>
+        <location filename="rust_strings.h" line="17"/>
         <source>My phone&apos;s colors</source>
         <translation>Telefonumun renkleri</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="23"/>
+        <location filename="rust_strings.h" line="18"/>
         <source>My phone&apos;s colors (%1)</source>
         <translation>Telefonumun renkleri (%1)</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="24"/>
+        <location filename="rust_strings.h" line="19"/>
         <source>NectarLink · %1</source>
         <translation>NectarLink · %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="25"/>
+        <location filename="rust_strings.h" line="20"/>
         <source>NectarLink · %1 devices connected</source>
         <translation>NectarLink · %1 cihaz bağlı</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="26"/>
+        <location filename="rust_strings.h" line="21"/>
         <source>NectarLink · 1 device connected</source>
         <translation>NectarLink · 1 cihaz bağlı</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="27"/>
+        <location filename="rust_strings.h" line="22"/>
         <source>NectarLink · no devices paired</source>
         <translation>NectarLink · eşleştirilmiş cihaz yok</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="28"/>
+        <location filename="rust_strings.h" line="23"/>
         <source>NectarLink · not connected</source>
         <translation>NectarLink · bağlı değil</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="29"/>
+        <location filename="rust_strings.h" line="24"/>
         <source>No phone is paired yet.</source>
         <translation>Henüz eşleştirilmiş telefon yok.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="30"/>
+        <location filename="rust_strings.h" line="25"/>
         <source>Open NectarLink</source>
         <translation>NectarLink&apos;i aç</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="31"/>
+        <location filename="rust_strings.h" line="26"/>
         <source>Open copied link on phone</source>
         <translation>Kopyalanan bağlantıyı telefonda aç</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="32"/>
+        <location filename="rust_strings.h" line="27"/>
         <source>Pause phone notifications</source>
         <translation>Telefon bildirimlerini duraklat</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="33"/>
+        <location filename="rust_strings.h" line="28"/>
         <source>Quit NectarLink</source>
         <translation>NectarLink&apos;ten çık</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="34"/>
+        <location filename="rust_strings.h" line="29"/>
         <source>Resume phone notifications</source>
         <translation>Telefon bildirimlerini sürdür</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="35"/>
+        <location filename="rust_strings.h" line="30"/>
         <source>Scan document with phone</source>
         <translation>Telefonla belge tara</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="36"/>
+        <location filename="rust_strings.h" line="31"/>
         <source>Send cancelled</source>
         <translation>Gönderim iptal edildi</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="37"/>
+        <location filename="rust_strings.h" line="32"/>
         <source>Sending to %1…</source>
         <translation>%1 cihazına gönderiliyor…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="38"/>
+        <location filename="rust_strings.h" line="33"/>
         <source>Sent text to %1.</source>
         <translation>Metin %1 cihazına gönderildi.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="39"/>
+        <location filename="rust_strings.h" line="34"/>
         <source>Some history couldn&apos;t be cleared. Try again.</source>
         <translation>Geçmişin bir kısmı temizlenemedi. Tekrar deneyin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="40"/>
+        <location filename="rust_strings.h" line="35"/>
         <source>Some messages couldn&apos;t be cleared. Try again.</source>
         <translation>Bazı mesajlar temizlenemedi. Tekrar deneyin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="41"/>
+        <location filename="rust_strings.h" line="36"/>
         <source>Take photo with phone</source>
         <translation>Telefonla fotoğraf çek</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="42"/>
+        <location filename="rust_strings.h" line="37"/>
         <source>That file is no longer in its saved location.</source>
         <translation>Bu dosya artık kaydedildiği konumda değil.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="43"/>
+        <location filename="rust_strings.h" line="38"/>
         <source>The photo couldn&apos;t be copied to the clipboard.</source>
         <translation>Fotoğraf panoya kopyalanamadı.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="44"/>
+        <location filename="rust_strings.h" line="39"/>
         <source>The received file history couldn&apos;t be cleared. Try again.</source>
         <translation>Alınan dosya geçmişi temizlenemedi. Tekrar deneyin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="45"/>
+        <location filename="rust_strings.h" line="40"/>
         <source>The update couldn&apos;t be installed. Try again.</source>
         <translation>Güncelleme yüklenemedi. Tekrar deneyin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="46"/>
+        <location filename="rust_strings.h" line="41"/>
         <source>Toggle Shelf</source>
         <translation>Rafı aç/kapat</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="47"/>
+        <location filename="rust_strings.h" line="42"/>
         <source>Wi-Fi %1/4</source>
         <translation>Wi-Fi %1/4</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="48"/>
+        <location filename="rust_strings.h" line="43"/>
         <source>Your phone</source>
         <translation>Telefonunuz</translation>
     </message>
@@ -715,27 +781,27 @@
 <context>
     <name>Apps</name>
     <message>
-        <location filename="rust_strings.h" line="49"/>
+        <location filename="rust_strings.h" line="44"/>
         <source>Added %1 to your app menu.</source>
         <translation>%1 uygulama menüsüne eklendi.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="50"/>
+        <location filename="rust_strings.h" line="45"/>
         <source>Added %1 to your desktop.</source>
         <translation>%1 masaüstüne eklendi.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="51"/>
+        <location filename="rust_strings.h" line="46"/>
         <source>Couldn&apos;t add a shortcut for %1.</source>
         <translation>%1 için kısayol eklenemedi.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="52"/>
+        <location filename="rust_strings.h" line="47"/>
         <source>Couldn&apos;t uninstall %1.</source>
         <translation>%1 kaldırılamadı.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="53"/>
+        <location filename="rust_strings.h" line="48"/>
         <source>Uninstalled %1.</source>
         <translation>%1 kaldırıldı.</translation>
     </message>
@@ -910,7 +976,7 @@
 <context>
     <name>Automations</name>
     <message>
-        <location filename="rust_strings.h" line="54"/>
+        <location filename="rust_strings.h" line="49"/>
         <source>Triggered by %1</source>
         <translation>Tetikleyen: %1</translation>
     </message>
@@ -918,32 +984,32 @@
 <context>
     <name>Battery</name>
     <message>
-        <location filename="rust_strings.h" line="56"/>
+        <location filename="rust_strings.h" line="51"/>
         <source>%1 is fully charged</source>
         <translation>%1 tamamen şarj oldu</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="59"/>
+        <location filename="rust_strings.h" line="54"/>
         <source>You can unplug it.</source>
         <translation>Şarj cihazını çıkarabilirsiniz.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="60"/>
+        <location filename="rust_strings.h" line="55"/>
         <source>Your phone</source>
         <translation>Telefonunuz</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="55"/>
+        <location filename="rust_strings.h" line="50"/>
         <source>%1 has reached %2% charge</source>
         <translation>%1 %%%2 şarja ulaştı</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="58"/>
+        <location filename="rust_strings.h" line="53"/>
         <source>%1&apos;s battery is low</source>
         <translation>%1 cihazının pili zayıf</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="57"/>
+        <location filename="rust_strings.h" line="52"/>
         <source>%1% left. Charge it soon.</source>
         <translation>%%%1 kaldı. Yakında şarj edin.</translation>
     </message>
@@ -1049,42 +1115,42 @@
 <context>
     <name>Calls</name>
     <message>
-        <location filename="rust_strings.h" line="61"/>
+        <location filename="rust_strings.h" line="56"/>
         <source>%1 call on %2</source>
         <translation>%2 üzerinde %1 araması</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="62"/>
+        <location filename="rust_strings.h" line="57"/>
         <source>Calling %1</source>
         <translation>Aranıyor: %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="63"/>
+        <location filename="rust_strings.h" line="58"/>
         <source>Missed call from %1</source>
         <translation>Cevapsız arama: %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="64"/>
+        <location filename="rust_strings.h" line="59"/>
         <source>No microphone on this PC to talk with.</source>
         <translation>Bu bilgisayarda konuşmak için mikrofon yok.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="65"/>
+        <location filename="rust_strings.h" line="60"/>
         <source>On a call with %1</source>
         <translation>%1 ile görüşmede</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="66"/>
+        <location filename="rust_strings.h" line="61"/>
         <source>That call is over.</source>
         <translation>Bu arama sona erdi.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="67"/>
+        <location filename="rust_strings.h" line="62"/>
         <source>This phone doesn&apos;t let NectarLink reach its calls&apos; sound.</source>
         <translation>Bu telefon, NectarLink&apos;in arama sesine erişmesine izin vermiyor.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="68"/>
+        <location filename="rust_strings.h" line="63"/>
         <source>Unknown caller</source>
         <translation>Bilinmeyen arayan</translation>
     </message>
@@ -1404,67 +1470,67 @@
 <context>
     <name>Clipboard</name>
     <message>
-        <location filename="rust_strings.h" line="69"/>
+        <location filename="rust_strings.h" line="64"/>
         <source>Copied from %1</source>
         <translation>%1 cihazından kopyalandı</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="70"/>
+        <location filename="rust_strings.h" line="65"/>
         <source>Copied from %1.</source>
         <translation>%1 cihazından kopyalandı.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="71"/>
+        <location filename="rust_strings.h" line="66"/>
         <source>Copied to clipboard</source>
         <translation>Panoya kopyalandı</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="72"/>
+        <location filename="rust_strings.h" line="67"/>
         <source>Sending copied files to %1…</source>
         <translation>Kopyalanan dosyalar %1 cihazına gönderiliyor…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="73"/>
+        <location filename="rust_strings.h" line="68"/>
         <source>Sent to %1.</source>
         <translation>%1 cihazına gönderildi.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="74"/>
+        <location filename="rust_strings.h" line="69"/>
         <source>That clip is no longer in clipboard history.</source>
         <translation>Bu öğe artık pano geçmişinde değil.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="75"/>
+        <location filename="rust_strings.h" line="70"/>
         <source>That image can&apos;t be read.</source>
         <translation>Bu görüntü okunamıyor.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="76"/>
+        <location filename="rust_strings.h" line="71"/>
         <source>That image is too large to send.</source>
         <translation>Bu görüntü göndermek için çok büyük.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="77"/>
+        <location filename="rust_strings.h" line="72"/>
         <source>That&apos;s too much text to send at once.</source>
         <translation>Tek seferde göndermek için çok fazla metin var.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="78"/>
+        <location filename="rust_strings.h" line="73"/>
         <source>The clipboard is turned off for %1.</source>
         <translation>%1 için pano kapalı.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="79"/>
+        <location filename="rust_strings.h" line="74"/>
         <source>There&apos;s no text, image, or file on the clipboard.</source>
         <translation>Panoda metin, görüntü veya dosya yok.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="80"/>
+        <location filename="rust_strings.h" line="75"/>
         <source>Update NectarLink on %1 to send it images.</source>
         <translation>Görüntü gönderebilmek için %1 cihazındaki NectarLink&apos;i güncelleyin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="81"/>
+        <location filename="rust_strings.h" line="76"/>
         <source>What you copied is marked private by its app, so it wasn&apos;t sent.</source>
         <translation>Kopyaladığınız içerik, uygulaması tarafından gizli olarak işaretlendiği için gönderilmedi.</translation>
     </message>
@@ -1517,477 +1583,477 @@
         <translation>%1 · %2 ms</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="82"/>
+        <location filename="rust_strings.h" line="77"/>
         <source>Browse all 28 features, live capability status, and where to find them</source>
         <translation>28 özelliğin tümüne, canlı yetenek durumuna ve nerede bulunduklarına göz atın</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="83"/>
+        <location filename="rust_strings.h" line="78"/>
         <source>Browse phone storage in File Explorer</source>
         <translation>Telefon depolama alanına Dosya Gezgini&apos;nde göz atın</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="84"/>
+        <location filename="rust_strings.h" line="79"/>
         <source>Call %1</source>
         <translation>Ara: %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="85"/>
+        <location filename="rust_strings.h" line="80"/>
         <source>Calling %1 on %2…</source>
         <translation>%1, %2 üzerinden aranıyor…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="86"/>
+        <location filename="rust_strings.h" line="81"/>
         <source>Capture a photo on your phone and paste it into the active window</source>
         <translation>Telefonunuzla fotoğraf çekip etkin pencereye yapıştırın</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="87"/>
+        <location filename="rust_strings.h" line="82"/>
         <source>Check Wake-on-LAN status in Settings</source>
         <translation>Ayarlar&apos;da Wake-on-LAN durumunu denetleyin</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="88"/>
+        <location filename="rust_strings.h" line="83"/>
         <source>Connection Doctor</source>
         <translation>Bağlantı Doktoru</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="89"/>
+        <location filename="rust_strings.h" line="84"/>
         <source>Continue copied video on phone</source>
         <translation>Kopyalanan videoya telefonda devam et</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="90"/>
+        <location filename="rust_strings.h" line="85"/>
         <source>Copied image</source>
         <translation>Kopyalanan görüntü</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="91"/>
+        <location filename="rust_strings.h" line="86"/>
         <source>Copied number</source>
         <translation>Kopyalanan numara</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="92"/>
+        <location filename="rust_strings.h" line="87"/>
         <source>Copy: %1</source>
         <translation>Kopyala: %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="93"/>
+        <location filename="rust_strings.h" line="88"/>
         <source>Diagnose and fix firewall, discovery, or network issues</source>
         <translation>Güvenlik duvarı, keşif veya ağ sorunlarını tanılayın ve düzeltin</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="94"/>
+        <location filename="rust_strings.h" line="89"/>
         <source>Features guide</source>
         <translation>Özellik rehberi</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="95"/>
+        <location filename="rust_strings.h" line="90"/>
         <source>Find %1</source>
         <translation>%1 cihazını bul</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="96"/>
+        <location filename="rust_strings.h" line="91"/>
         <source>Find my phone</source>
         <translation>Telefonumu bul</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="97"/>
+        <location filename="rust_strings.h" line="92"/>
         <source>From %1</source>
         <translation>Kaynak: %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="98"/>
+        <location filename="rust_strings.h" line="93"/>
         <source>Hand off document to phone</source>
         <translation>Belgeyi telefona aktar</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="99"/>
+        <location filename="rust_strings.h" line="94"/>
         <source>Handoff · Doc</source>
         <translation>Handoff · Belge</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="100"/>
+        <location filename="rust_strings.h" line="95"/>
         <source>Handoff · Map</source>
         <translation>Handoff · Harita</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="101"/>
+        <location filename="rust_strings.h" line="96"/>
         <source>Handoff · Video</source>
         <translation>Handoff · Video</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="102"/>
+        <location filename="rust_strings.h" line="97"/>
         <source>Hide Shelf</source>
         <translation>Rafı gizle</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="103"/>
+        <location filename="rust_strings.h" line="98"/>
         <source>Make %1 ring at full volume</source>
         <translation>%1 cihazını tam seste çaldır</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="104"/>
+        <location filename="rust_strings.h" line="99"/>
         <source>Make phone ring at full volume</source>
         <translation>Telefonu tam seste çaldır</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="105"/>
+        <location filename="rust_strings.h" line="100"/>
         <source>Mirror %1</source>
         <translation>%1 ekranını yansıt</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="106"/>
+        <location filename="rust_strings.h" line="101"/>
         <source>Mirror Apps</source>
         <translation>Uygulamaları yansıt</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="107"/>
+        <location filename="rust_strings.h" line="102"/>
         <source>Mirror phone screen</source>
         <translation>Telefon ekranını yansıt</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="108"/>
+        <location filename="rust_strings.h" line="103"/>
         <source>Mute %1&apos;s ringer</source>
         <translation>%1 zil sesini kapat</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="109"/>
+        <location filename="rust_strings.h" line="104"/>
         <source>No physical network adapter found for Wake-on-LAN.</source>
         <translation>Wake-on-LAN için fiziksel ağ bağdaştırıcısı bulunamadı.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="110"/>
+        <location filename="rust_strings.h" line="105"/>
         <source>Open %1</source>
         <translation>Aç: %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="111"/>
+        <location filename="rust_strings.h" line="106"/>
         <source>Open %1 in a window from %2</source>
         <translation>%1 uygulamasını %2 cihazından bir pencerede aç</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="112"/>
+        <location filename="rust_strings.h" line="107"/>
         <source>Open %1&apos;s Cloud Files folder in Explorer</source>
         <translation>%1 Cloud Files klasörünü Gezgin&apos;de aç</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="113"/>
+        <location filename="rust_strings.h" line="108"/>
         <source>Open Shelf</source>
         <translation>Rafı aç</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="114"/>
+        <location filename="rust_strings.h" line="109"/>
         <source>Open conversation on %1</source>
         <translation>Konuşmayı %1 cihazında aç</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="115"/>
+        <location filename="rust_strings.h" line="110"/>
         <source>Open copied link on phone</source>
         <translation>Kopyalanan bağlantıyı telefonda aç</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="116"/>
+        <location filename="rust_strings.h" line="111"/>
         <source>Open copied location in Maps on phone</source>
         <translation>Kopyalanan konumu telefondaki Haritalar&apos;da aç</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="117"/>
+        <location filename="rust_strings.h" line="112"/>
         <source>Open last photo</source>
         <translation>Son fotoğrafı aç</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="118"/>
+        <location filename="rust_strings.h" line="113"/>
         <source>Open last photo from %1</source>
         <translation>%1 cihazındaki son fotoğrafı aç</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="119"/>
+        <location filename="rust_strings.h" line="114"/>
         <source>Open newest photo or screenshot</source>
         <translation>En yeni fotoğrafı veya ekran görüntüsünü aç</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="120"/>
+        <location filename="rust_strings.h" line="115"/>
         <source>Open the newest photo or screenshot from %1</source>
         <translation>%1 cihazındaki en yeni fotoğrafı veya ekran görüntüsünü aç</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="121"/>
+        <location filename="rust_strings.h" line="116"/>
         <source>Open voice recordings folder for %1</source>
         <translation>%1 için ses kayıtları klasörünü aç</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="122"/>
+        <location filename="rust_strings.h" line="117"/>
         <source>Opened Recordings folder. Start a voice note in NectarLink on %1 to send it here.</source>
         <translation>Kayıtlar klasörü açıldı. Buraya göndermek için %1 cihazındaki NectarLink&apos;te bir sesli not başlatın.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="123"/>
+        <location filename="rust_strings.h" line="118"/>
         <source>Pair a new phone</source>
         <translation>Yeni telefon eşleştir</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="124"/>
+        <location filename="rust_strings.h" line="119"/>
         <source>Pause phone notifications</source>
         <translation>Telefon bildirimlerini duraklat</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="125"/>
+        <location filename="rust_strings.h" line="120"/>
         <source>Place a phone call or open in dialer</source>
         <translation>Telefon araması yapın veya çeviricide açın</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="126"/>
+        <location filename="rust_strings.h" line="121"/>
         <source>Place call on %1</source>
         <translation>%1 üzerinden ara</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="127"/>
+        <location filename="rust_strings.h" line="122"/>
         <source>Quick Toggles</source>
         <translation>Hızlı Ayarlar</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="128"/>
+        <location filename="rust_strings.h" line="123"/>
         <source>Re-open the step-by-step setup walkthrough</source>
         <translation>Adım adım kurulum rehberini yeniden aç</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="129"/>
+        <location filename="rust_strings.h" line="124"/>
         <source>Ready on %1</source>
         <translation>%1 cihazında hazır</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="130"/>
+        <location filename="rust_strings.h" line="125"/>
         <source>Recent Activity</source>
         <translation>Son Etkinlikler</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="131"/>
+        <location filename="rust_strings.h" line="126"/>
         <source>Reconnect paired phones and refresh notifications and media</source>
         <translation>Eşleştirilmiş telefonlara yeniden bağlanın, bildirimleri ve medyayı yenileyin</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="132"/>
+        <location filename="rust_strings.h" line="127"/>
         <source>Record voice</source>
         <translation>Ses kaydet</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="133"/>
+        <location filename="rust_strings.h" line="128"/>
         <source>Resume phone notifications</source>
         <translation>Telefon bildirimlerini sürdür</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="134"/>
+        <location filename="rust_strings.h" line="129"/>
         <source>Ringer: Silent</source>
         <translation>Zil: Sessiz</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="135"/>
+        <location filename="rust_strings.h" line="130"/>
         <source>Ringer: Sound</source>
         <translation>Zil: Sesli</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="136"/>
+        <location filename="rust_strings.h" line="131"/>
         <source>Ringer: Vibrate</source>
         <translation>Zil: Titreşim</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="137"/>
+        <location filename="rust_strings.h" line="132"/>
         <source>Ringing %1…</source>
         <translation>%1 çaldırılıyor…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="138"/>
+        <location filename="rust_strings.h" line="133"/>
         <source>Scan a document on your phone and paste it into the active window</source>
         <translation>Telefonunuzla bir belge tarayıp etkin pencereye yapıştırın</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="139"/>
+        <location filename="rust_strings.h" line="134"/>
         <source>Scan document with phone</source>
         <translation>Telefonla belge tara</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="140"/>
+        <location filename="rust_strings.h" line="135"/>
         <source>Send a document to %1 and open it automatically upon arrival</source>
         <translation>%1 cihazına bir belge gönderin, ulaştığında otomatik olarak açılsın</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="141"/>
+        <location filename="rust_strings.h" line="136"/>
         <source>Send clipboard</source>
         <translation>Panoyu gönder</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="142"/>
+        <location filename="rust_strings.h" line="137"/>
         <source>Send clipboard to %1</source>
         <translation>Panoyu %1 cihazına gönder</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="143"/>
+        <location filename="rust_strings.h" line="138"/>
         <source>Send copied text or image</source>
         <translation>Kopyalanan metni veya görüntüyü gönder</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="144"/>
+        <location filename="rust_strings.h" line="139"/>
         <source>Send copied text or image to %1</source>
         <translation>Kopyalanan metni veya görüntüyü %1 cihazına gönder</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="145"/>
+        <location filename="rust_strings.h" line="140"/>
         <source>Send live keystrokes and text to %1 without screen mirroring</source>
         <translation>Ekran yansıtma olmadan %1 cihazına canlı tuş vuruşları ve metin gönderin</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="146"/>
+        <location filename="rust_strings.h" line="141"/>
         <source>Set %1&apos;s ringer mode to normal sound</source>
         <translation>%1 zil modunu sesli yap</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="147"/>
+        <location filename="rust_strings.h" line="142"/>
         <source>Set %1&apos;s ringer mode to vibrate</source>
         <translation>%1 zil modunu titreşim yap</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="148"/>
+        <location filename="rust_strings.h" line="143"/>
         <source>Setup walkthrough</source>
         <translation>Kurulum rehberi</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="149"/>
+        <location filename="rust_strings.h" line="144"/>
         <source>Show QR code and pairing code to link another phone</source>
         <translation>Başka bir telefon bağlamak için QR kodunu ve eşleştirme kodunu göster</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="150"/>
+        <location filename="rust_strings.h" line="145"/>
         <source>Slide-out edge panel with latest photo, screenshot, clipboard, and recent files</source>
         <translation>Son fotoğraf, ekran görüntüsü, pano ve son dosyaları içeren kenardan açılan panel</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="151"/>
+        <location filename="rust_strings.h" line="146"/>
         <source>Start a new message conversation</source>
         <translation>Yeni bir mesaj konuşması başlat</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="152"/>
+        <location filename="rust_strings.h" line="147"/>
         <source>Starting phone webcam…</source>
         <translation>Telefon web kamerası başlatılıyor…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="153"/>
+        <location filename="rust_strings.h" line="148"/>
         <source>Stop phone webcam</source>
         <translation>Telefon web kamerasını durdur</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="154"/>
+        <location filename="rust_strings.h" line="149"/>
         <source>Stop pop-ups for a while. They still collect on Home.</source>
         <translation>Açılır bildirimleri bir süre durdurun. Ana sayfada toplanmaya devam ederler.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="155"/>
+        <location filename="rust_strings.h" line="150"/>
         <source>Stop typing on phone</source>
         <translation>Telefona yazmayı durdur</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="156"/>
+        <location filename="rust_strings.h" line="151"/>
         <source>Stopped phone webcam.</source>
         <translation>Telefon web kamerası durduruldu.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="157"/>
+        <location filename="rust_strings.h" line="152"/>
         <source>Stream %1&apos;s camera into the NectarLink virtual webcam</source>
         <translation>%1 kamerasını NectarLink sanal web kamerasına aktar</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="158"/>
+        <location filename="rust_strings.h" line="153"/>
         <source>Stream %1&apos;s screen in a desktop window</source>
         <translation>%1 ekranını bir masaüstü penceresinde göster</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="159"/>
+        <location filename="rust_strings.h" line="154"/>
         <source>Switch Bluetooth on %1</source>
         <translation>%1 cihazında Bluetooth&apos;u aç/kapat</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="160"/>
+        <location filename="rust_strings.h" line="155"/>
         <source>Switch Do Not Disturb on %1</source>
         <translation>%1 cihazında Rahatsız Etmeyin&apos;i aç/kapat</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="161"/>
+        <location filename="rust_strings.h" line="156"/>
         <source>Switch Wi-Fi on %1</source>
         <translation>%1 cihazında Wi-Fi&apos;ı aç/kapat</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="162"/>
+        <location filename="rust_strings.h" line="157"/>
         <source>Switch to %1</source>
         <translation>%1 cihazına geç</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="163"/>
+        <location filename="rust_strings.h" line="158"/>
         <source>Switch torch / flashlight on %1</source>
         <translation>%1 cihazında el fenerini aç/kapat</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="164"/>
+        <location filename="rust_strings.h" line="159"/>
         <source>Sync now</source>
         <translation>Şimdi eşitle</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="165"/>
+        <location filename="rust_strings.h" line="160"/>
         <source>Syncing devices…</source>
         <translation>Cihazlar eşitleniyor…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="166"/>
+        <location filename="rust_strings.h" line="161"/>
         <source>Take photo with phone</source>
         <translation>Telefonla fotoğraf çek</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="167"/>
+        <location filename="rust_strings.h" line="162"/>
         <source>Text %1</source>
         <translation>Mesaj gönder: %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="168"/>
+        <location filename="rust_strings.h" line="163"/>
         <source>That file is no longer in its saved location.</source>
         <translation>Bu dosya artık kaydedildiği konumda değil.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="169"/>
+        <location filename="rust_strings.h" line="164"/>
         <source>Toggle Bluetooth</source>
         <translation>Bluetooth&apos;u aç/kapat</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="170"/>
+        <location filename="rust_strings.h" line="165"/>
         <source>Toggle Do Not Disturb</source>
         <translation>Rahatsız Etmeyin&apos;i aç/kapat</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="171"/>
+        <location filename="rust_strings.h" line="166"/>
         <source>Toggle Flashlight</source>
         <translation>El fenerini aç/kapat</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="172"/>
+        <location filename="rust_strings.h" line="167"/>
         <source>Toggle Wi-Fi</source>
         <translation>Wi-Fi&apos;ı aç/kapat</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="173"/>
+        <location filename="rust_strings.h" line="168"/>
         <source>Type on phone with PC keyboard</source>
         <translation>Bilgisayar klavyesiyle telefona yaz</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="174"/>
+        <location filename="rust_strings.h" line="169"/>
         <source>Use phone as webcam</source>
         <translation>Telefonu web kamerası olarak kullan</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="175"/>
+        <location filename="rust_strings.h" line="170"/>
         <source>Wake-on-LAN is ready on %1 (phones can wake this PC).</source>
         <translation>Wake-on-LAN %1 üzerinde hazır (telefonlar bu bilgisayarı uyandırabilir).</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="176"/>
+        <location filename="rust_strings.h" line="171"/>
         <source>Wake-on-LAN on %1 is %2. Check Settings.</source>
         <translation>%1 üzerinde Wake-on-LAN durumu: %2. Ayarlar&apos;ı kontrol edin.</translation>
     </message>
@@ -1995,67 +2061,67 @@
 <context>
     <name>ContinuityCamera</name>
     <message>
-        <location filename="rust_strings.h" line="177"/>
+        <location filename="rust_strings.h" line="172"/>
         <source>Allow Photos access for %1 in Settings first.</source>
         <translation>Önce Ayarlar&apos;da %1 için Fotoğraflar erişimine izin verin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="178"/>
+        <location filename="rust_strings.h" line="173"/>
         <source>Camera capture cancelled on %1.</source>
         <translation>%1 cihazında kamera ile çekim iptal edildi.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="179"/>
+        <location filename="rust_strings.h" line="174"/>
         <source>Camera is busy on %1.</source>
         <translation>%1 cihazında kamera meşgul.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="180"/>
+        <location filename="rust_strings.h" line="175"/>
         <source>Camera permission was denied on %1.</source>
         <translation>%1 cihazında kamera izni reddedildi.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="181"/>
+        <location filename="rust_strings.h" line="176"/>
         <source>Couldn’t copy image to clipboard: %1</source>
         <translation>Görüntü panoya kopyalanamadı: %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="182"/>
+        <location filename="rust_strings.h" line="177"/>
         <source>Couldn’t open camera on %1: %2</source>
         <translation>%1 cihazında kamera açılamadı: %2</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="183"/>
+        <location filename="rust_strings.h" line="178"/>
         <source>Image is on your clipboard. Press Ctrl+V in your target app.</source>
         <translation>Görüntü panonuzda. Hedef uygulamada Ctrl+V tuşlarına basın.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="184"/>
+        <location filename="rust_strings.h" line="179"/>
         <source>Opening camera on %1…</source>
         <translation>%1 cihazında kamera açılıyor…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="185"/>
+        <location filename="rust_strings.h" line="180"/>
         <source>Opening document scanner on %1…</source>
         <translation>%1 cihazında belge tarayıcı açılıyor…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="186"/>
+        <location filename="rust_strings.h" line="181"/>
         <source>Pair your phone first to take a photo or scan a document.</source>
         <translation>Fotoğraf çekmek veya belge taramak için önce telefonunuzu eşleştirin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="187"/>
+        <location filename="rust_strings.h" line="182"/>
         <source>Pasted into %1</source>
         <translation>Yapıştırıldı: %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="188"/>
+        <location filename="rust_strings.h" line="183"/>
         <source>Scan a document on %1…</source>
         <translation>%1 cihazında bir belge tarayın…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="189"/>
+        <location filename="rust_strings.h" line="184"/>
         <source>Take a photo on %1…</source>
         <translation>%1 cihazında bir fotoğraf çekin…</translation>
     </message>
@@ -2063,7 +2129,7 @@
 <context>
     <name>CoreHost</name>
     <message>
-        <location filename="rust_strings.h" line="190"/>
+        <location filename="rust_strings.h" line="185"/>
         <source>Dropped %1 queued item(s) for %2 (device unpaired).</source>
         <translation>%2 için sıradaki %1 öğe kaldırıldı (cihazın eşleştirmesi kaldırıldı).</translation>
     </message>
@@ -2071,82 +2137,82 @@
 <context>
     <name>Deck</name>
     <message>
-        <location filename="rust_strings.h" line="191"/>
+        <location filename="rust_strings.h" line="186"/>
         <source>Alt + Tab</source>
         <translation>Alt + Tab</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="192"/>
+        <location filename="rust_strings.h" line="187"/>
         <source>Application path must end with .exe or .lnk.</source>
         <translation>Uygulama yolu .exe veya .lnk ile bitmelidir.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="193"/>
+        <location filename="rust_strings.h" line="188"/>
         <source>Choose a key for the shortcut.</source>
         <translation>Kısayol için bir tuş seçin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="194"/>
+        <location filename="rust_strings.h" line="189"/>
         <source>Choose an application (.exe or .lnk) on this PC.</source>
         <translation>Bu bilgisayarda bir uygulama (.exe veya .lnk) seçin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="195"/>
+        <location filename="rust_strings.h" line="190"/>
         <source>Enter a command to run on this PC.</source>
         <translation>Bu bilgisayarda çalıştırılacak bir komut girin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="196"/>
+        <location filename="rust_strings.h" line="191"/>
         <source>Enter an application path (/usr/bin/..., .desktop, or .AppImage).</source>
         <translation>Bir uygulama yolu girin (/usr/bin/..., .desktop veya .AppImage).</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="197"/>
+        <location filename="rust_strings.h" line="192"/>
         <source>Enter an http:// or https:// web address.</source>
         <translation>http:// veya https:// ile başlayan bir web adresi girin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="198"/>
+        <location filename="rust_strings.h" line="193"/>
         <source>Enter the text snippet to type.</source>
         <translation>Yazılacak metin parçasını girin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="199"/>
+        <location filename="rust_strings.h" line="194"/>
         <source>Invalid action configuration.</source>
         <translation>Geçersiz eylem yapılandırması.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="200"/>
+        <location filename="rust_strings.h" line="195"/>
         <source>Invalid tile properties.</source>
         <translation>Geçersiz kutucuk özellikleri.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="201"/>
+        <location filename="rust_strings.h" line="196"/>
         <source>Media key</source>
         <translation>Medya tuşu</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="202"/>
+        <location filename="rust_strings.h" line="197"/>
         <source>Page not found.</source>
         <translation>Sayfa bulunamadı.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="203"/>
+        <location filename="rust_strings.h" line="198"/>
         <source>This page already has the maximum number of tiles (24).</source>
         <translation>Bu sayfada zaten en fazla sayıda kutucuk (24) var.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="204"/>
+        <location filename="rust_strings.h" line="199"/>
         <source>Tile not found.</source>
         <translation>Kutucuk bulunamadı.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="205"/>
+        <location filename="rust_strings.h" line="200"/>
         <source>Use a single key (a-z, 0-9, f1-f12, enter, tab, space, escape, arrows, etc.).</source>
         <translation>Tek bir tuş kullanın (a-z, 0-9, f1-f12, enter, tab, space, escape, ok tuşları vb.).</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="206"/>
+        <location filename="rust_strings.h" line="201"/>
         <source>Web address must start with http:// or https://.</source>
         <translation>Web adresi http:// veya https:// ile başlamalıdır.</translation>
     </message>
@@ -2551,375 +2617,393 @@
     </message>
 </context>
 <context>
+    <name>DiscordPrompt</name>
+    <message>
+        <location filename="../qml/components/DiscordPrompt.qml" line="113"/>
+        <source>Come chat on Discord?</source>
+        <translation>Discord’a gelsene?</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/DiscordPrompt.qml" line="121"/>
+        <source>Join Discord</source>
+        <translation>Discord’a katıl</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/DiscordPrompt.qml" line="130"/>
+        <source>Dismiss</source>
+        <translation>Kapat</translation>
+    </message>
+</context>
+<context>
     <name>Doctor</name>
     <message>
-        <location filename="rust_strings.h" line="207"/>
+        <location filename="rust_strings.h" line="202"/>
         <source>%1 Open NectarLink on the phone and keep both on the same network. If the phone asks to run in the background, allow it.</source>
         <translation>%1 Telefonda NectarLink&apos;i açın ve ikisini de aynı ağda tutun. Telefon arka planda çalışmak için izin isterse izin verin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="208"/>
+        <location filename="rust_strings.h" line="203"/>
         <source>%1 announces itself at %2, which isn&apos;t in a private range such as 192.168.x.x. NectarLink connects on such a network once both apps are up to date. Until then, turn on Connect over mobile data on both, or connect with a USB cable.</source>
         <translation>%1 kendini %2 adresinde duyuruyor ve bu adres 192.168.x.x gibi özel bir aralıkta değil. İki uygulama da güncel olduğunda NectarLink böyle bir ağda bağlanır. O zamana kadar ikisinde de Mobil veri üzerinden bağlan seçeneğini açın veya USB kablosuyla bağlayın.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="209"/>
+        <location filename="rust_strings.h" line="204"/>
         <source>%1 days ago</source>
         <translation>%1 gün önce</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="210"/>
+        <location filename="rust_strings.h" line="205"/>
         <source>%1 hours ago</source>
         <translation>%1 saat önce</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="211"/>
+        <location filename="rust_strings.h" line="206"/>
         <source>%1 is connected</source>
         <translation>%1 bağlı</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="212"/>
+        <location filename="rust_strings.h" line="207"/>
         <source>%1 is on this Wi-Fi at an address outside the usual home ranges</source>
         <translation>%1 bu Wi-Fi ağında, alışılmış ev ağı aralıklarının dışında bir adreste</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="213"/>
+        <location filename="rust_strings.h" line="208"/>
         <source>%1 is on this Wi-Fi, but the router blocks direct connections (AP isolation)</source>
         <translation>%1 bu Wi-Fi ağında, ancak yönlendirici doğrudan bağlantıları engelliyor (AP yalıtımı)</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="214"/>
+        <location filename="rust_strings.h" line="209"/>
         <source>%1 is set as a public network</source>
         <translation>%1 genel ağ olarak ayarlı</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="215"/>
+        <location filename="rust_strings.h" line="210"/>
         <source>%1 isn&apos;t connected</source>
         <translation>%1 bağlı değil</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="216"/>
+        <location filename="rust_strings.h" line="211"/>
         <source>%1 minutes ago</source>
         <translation>%1 dakika önce</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="217"/>
+        <location filename="rust_strings.h" line="212"/>
         <source>%1 · %2 ms</source>
         <translation>%1 · %2 ms</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="218"/>
+        <location filename="rust_strings.h" line="213"/>
         <source>A USB cable needs adb</source>
         <translation>USB kablosu için adb gerekir</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="219"/>
+        <location filename="rust_strings.h" line="214"/>
         <source>A VPN is on</source>
         <translation>VPN açık</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="220"/>
+        <location filename="rust_strings.h" line="215"/>
         <source>A firewall rule blocks incoming NectarLink connections. Allow it, and your phone can connect.</source>
         <translation>Bir güvenlik duvarı kuralı gelen NectarLink bağlantılarını engelliyor. İzin verirseniz telefonunuz bağlanabilir.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="221"/>
+        <location filename="rust_strings.h" line="216"/>
         <source>Calls and alerts can&apos;t play sound yet</source>
         <translation>Aramalar ve uyarılar henüz ses çalamıyor</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="222"/>
+        <location filename="rust_strings.h" line="217"/>
         <source>Connect it to the same Wi-Fi or wired network as your phone.</source>
         <translation>Telefonunuzla aynı Wi-Fi&apos;a veya kablolu ağa bağlayın.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="223"/>
+        <location filename="rust_strings.h" line="218"/>
         <source>Connected to %1</source>
         <translation>Bağlı: %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="224"/>
+        <location filename="rust_strings.h" line="219"/>
         <source>Connected to a network</source>
         <translation>Bir ağa bağlı</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="225"/>
+        <location filename="rust_strings.h" line="220"/>
         <source>Connecting to %1…</source>
         <translation>Bağlanılıyor: %1…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="226"/>
+        <location filename="rust_strings.h" line="221"/>
         <source>GNOME shows app icons there only with the AppIndicator extension. Install it (gnome-shell-extension-appindicator) and turn it on in Extensions.</source>
         <translation>GNOME, uygulama simgelerini orada yalnızca AppIndicator uzantısıyla gösterir. Uzantıyı kurun (gnome-shell-extension-appindicator) ve Uzantılar&apos;dan etkinleştirin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="227"/>
+        <location filename="rust_strings.h" line="222"/>
         <source>Install fuse3 to browse your phone&apos;s files in your file manager.</source>
         <translation>Telefonunuzun dosyalarına dosya yöneticinizden göz atmak için fuse3 paketini kurun.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="228"/>
+        <location filename="rust_strings.h" line="223"/>
         <source>Install gstreamer1.0-pipewire and gstreamer1.0-tools, and the desktop portal (xdg-desktop-portal) if it&apos;s missing.</source>
         <translation>gstreamer1.0-pipewire ve gstreamer1.0-tools paketlerini, eksikse masaüstü portalını da (xdg-desktop-portal) kurun.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="229"/>
+        <location filename="rust_strings.h" line="224"/>
         <source>Install pipewire-pulse (or pulseaudio-utils) for call audio and Find my PC.</source>
         <translation>Arama sesi ve Bilgisayarımı bul için pipewire-pulse (veya pulseaudio-utils) paketini kurun.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="230"/>
+        <location filename="rust_strings.h" line="225"/>
         <source>Install v4l2loopback-dkms, then restart, so apps can use your phone as a camera.</source>
         <translation>Uygulamaların telefonunuzu kamera olarak kullanabilmesi için v4l2loopback-dkms paketini kurun ve yeniden başlatın.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="231"/>
+        <location filename="rust_strings.h" line="226"/>
         <source>It hasn&apos;t connected yet.</source>
         <translation>Henüz bağlanmadı.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="232"/>
+        <location filename="rust_strings.h" line="227"/>
         <source>Keep %1 reachable in the background (%2)</source>
         <translation>%1 cihazını arka planda erişilebilir tutun (%2)</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="233"/>
+        <location filename="rust_strings.h" line="228"/>
         <source>Last seen %1.</source>
         <translation>Son görülme: %1.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="234"/>
+        <location filename="rust_strings.h" line="229"/>
         <source>NectarLink can&apos;t show its icon in the top bar</source>
         <translation>NectarLink simgesini üst çubukta gösteremiyor</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="235"/>
+        <location filename="rust_strings.h" line="230"/>
         <source>NectarLink is in the top bar</source>
         <translation>NectarLink üst çubukta</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="236"/>
+        <location filename="rust_strings.h" line="231"/>
         <source>NectarLink isn&apos;t allowed through Windows Firewall</source>
         <translation>NectarLink&apos;e Windows Güvenlik Duvarı&apos;ndan izin verilmiyor</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="237"/>
+        <location filename="rust_strings.h" line="232"/>
         <source>NectarLink isn&apos;t allowed through the firewall</source>
         <translation>NectarLink&apos;e güvenlik duvarından izin verilmiyor</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="238"/>
+        <location filename="rust_strings.h" line="233"/>
         <source>On Huawei / Honor: open Settings → Battery → App launch, turn off Manage automatically for NectarLink, and keep Auto-launch, Secondary launch, and Run in background on.</source>
         <translation>Huawei / Honor&apos;da: Ayarlar → Pil → Uygulama başlatma&apos;yı açın, NectarLink için Otomatik olarak yönet&apos;i kapatın ve Otomatik başlatma, İkincil başlatma ve Arka planda çalıştır seçeneklerini açık tutun.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="239"/>
+        <location filename="rust_strings.h" line="234"/>
         <source>On OnePlus / OxygenOS: open Settings → Apps → App management → NectarLink → Battery usage and turn on Allow background activity and Allow auto-launch.</source>
         <translation>OnePlus / OxygenOS&apos;ta: Ayarlar → Uygulamalar → Uygulama yönetimi → NectarLink → Pil kullanımı&apos;nı açın ve Arka plan etkinliğine izin ver ile Otomatik başlatmaya izin ver seçeneklerini açın.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="240"/>
+        <location filename="rust_strings.h" line="235"/>
         <source>On Oppo / Realme: open Settings → Apps → App management → NectarLink → Battery usage and turn on Allow background activity and Allow auto-launch.</source>
         <translation>Oppo / Realme&apos;de: Ayarlar → Uygulamalar → Uygulama yönetimi → NectarLink → Pil kullanımı&apos;nı açın ve Arka plan etkinliğine izin ver ile Otomatik başlatmaya izin ver seçeneklerini açın.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="241"/>
+        <location filename="rust_strings.h" line="236"/>
         <source>On Pixel: open Settings → Apps → See all apps → NectarLink → App battery usage, tap Allow background usage, and choose Unrestricted.</source>
         <translation>Pixel&apos;de: Ayarlar → Uygulamalar → Tüm uygulamaları göster → NectarLink → Uygulama pil kullanımı&apos;nı açın, Arka planda kullanıma izin ver&apos;e dokunun ve Kısıtlanmamış&apos;ı seçin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="242"/>
+        <location filename="rust_strings.h" line="237"/>
         <source>On Samsung: open Settings → Apps → NectarLink → Battery and choose Unrestricted, then in Device care → Battery → Background usage limits make sure NectarLink is never put to sleep.</source>
         <translation>Samsung&apos;da: Ayarlar → Uygulamalar → NectarLink → Pil&apos;i açıp Kısıtlanmamış&apos;ı seçin, ardından Cihaz bakımı → Pil → Arka plan kullanım sınırları bölümünde NectarLink&apos;in asla uyku moduna alınmadığından emin olun.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="243"/>
+        <location filename="rust_strings.h" line="238"/>
         <source>On USB</source>
         <translation>USB üzerinden</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="244"/>
+        <location filename="rust_strings.h" line="239"/>
         <source>On Vivo / OriginOS / Funtouch: open Settings → Battery → Background power consumption management → NectarLink and choose Unrestricted, and allow Autostart.</source>
         <translation>Vivo / OriginOS / Funtouch&apos;ta: Ayarlar → Pil → Arka plan güç tüketimi yönetimi → NectarLink&apos;i açıp Kısıtlanmamış&apos;ı seçin ve Otomatik başlatmaya izin verin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="245"/>
+        <location filename="rust_strings.h" line="240"/>
         <source>On Xiaomi / HyperOS / MIUI: open Settings → Apps → Manage apps → NectarLink, turn on Autostart, and set Battery saver to No restrictions.</source>
         <translation>Xiaomi / HyperOS / MIUI&apos;de: Ayarlar → Uygulamalar → Uygulamaları yönet → NectarLink&apos;i açın, Otomatik başlatma&apos;yı açın ve Pil tasarrufu&apos;nu Kısıtlama yok olarak ayarlayın.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="246"/>
+        <location filename="rust_strings.h" line="241"/>
         <source>On public networks Windows keeps other devices from finding this PC. If it&apos;s your home or work network, set it to Private.</source>
         <translation>Windows, genel ağlarda diğer cihazların bu bilgisayarı bulmasını engeller. Bu ağ ev veya iş ağınızsa Özel olarak ayarlayın.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="247"/>
+        <location filename="rust_strings.h" line="242"/>
         <source>On public networks the firewall keeps other devices from finding this PC. If it&apos;s your home or work network, open network settings and set its firewall zone to Home or Trusted.</source>
         <translation>Güvenlik duvarı, genel ağlarda diğer cihazların bu bilgisayarı bulmasını engeller. Bu ağ ev veya iş ağınızsa ağ ayarlarını açın ve güvenlik duvarı bölgesini Home veya Trusted olarak ayarlayın.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="248"/>
+        <location filename="rust_strings.h" line="243"/>
         <source>On this network</source>
         <translation>Bu ağda</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="249"/>
+        <location filename="rust_strings.h" line="244"/>
         <source>Phone as webcam is ready</source>
         <translation>Web kamerası olarak telefon hazır</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="250"/>
+        <location filename="rust_strings.h" line="245"/>
         <source>Phone as webcam needs one more step</source>
         <translation>Web kamerası olarak telefon için bir adım daha gerekiyor</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="251"/>
+        <location filename="rust_strings.h" line="246"/>
         <source>Phone storage can open in your file manager</source>
         <translation>Telefon depolama alanı dosya yöneticinizde açılabilir</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="252"/>
+        <location filename="rust_strings.h" line="247"/>
         <source>Phone storage needs one more step</source>
         <translation>Telefon depolama alanı için bir adım daha gerekiyor</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="253"/>
+        <location filename="rust_strings.h" line="248"/>
         <source>Phones on a USB cable connect through adb. NectarLink starts it every minute or so; start it now if a phone on a cable isn&apos;t showing up.</source>
         <translation>USB kablosundaki telefonlar adb üzerinden bağlanır. NectarLink onu yaklaşık her dakika başlatır; kablodaki bir telefon görünmüyorsa şimdi başlatın.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="254"/>
+        <location filename="rust_strings.h" line="249"/>
         <source>Ready for a USB cable</source>
         <translation>USB kablosu için hazır</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="255"/>
+        <location filename="rust_strings.h" line="250"/>
         <source>Showing this PC&apos;s screen needs one more step</source>
         <translation>Bu bilgisayarın ekranını göstermek için bir adım daha gerekiyor</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="256"/>
+        <location filename="rust_strings.h" line="251"/>
         <source>Someone chose not to allow it when Windows asked. Allow it, and your phone can connect.</source>
         <translation>Windows sorduğunda birisi izin vermemeyi seçti. İzin verirseniz telefonunuz bağlanabilir.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="257"/>
+        <location filename="rust_strings.h" line="252"/>
         <source>Sound is ready</source>
         <translation>Ses hazır</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="258"/>
+        <location filename="rust_strings.h" line="253"/>
         <source>The firewall blocks NectarLink</source>
         <translation>Güvenlik duvarı NectarLink&apos;i engelliyor</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="259"/>
+        <location filename="rust_strings.h" line="254"/>
         <source>The firewall is off for this network</source>
         <translation>Bu ağ için güvenlik duvarı kapalı</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="260"/>
+        <location filename="rust_strings.h" line="255"/>
         <source>The firewall lets your phone connect</source>
         <translation>Güvenlik duvarı telefonunuzun bağlanmasına izin veriyor</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="261"/>
+        <location filename="rust_strings.h" line="256"/>
         <source>The touchpad and keyboard on your phone need the desktop portal (xdg-desktop-portal) or access to /dev/uinput.</source>
         <translation>Telefonunuzdaki dokunmatik yüzey ve klavye için masaüstü portalı (xdg-desktop-portal) veya /dev/uinput erişimi gerekir.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="262"/>
+        <location filename="rust_strings.h" line="257"/>
         <source>This PC can see %1 announce itself on the network, but the router is blocking devices from talking directly to each other (often called AP Isolation, Client Isolation, or Guest Wi-Fi). Move both devices off any Guest Wi-Fi network, turn off AP / Client Isolation in your router&apos;s Wi-Fi settings, or connect with a USB cable.</source>
         <translation>Bu bilgisayar %1 cihazının ağda kendini duyurduğunu görebiliyor, ancak yönlendirici cihazların birbiriyle doğrudan iletişim kurmasını engelliyor (genellikle AP Yalıtımı, İstemci Yalıtımı veya Misafir Wi-Fi olarak adlandırılır). İki cihazı da Misafir Wi-Fi ağından çıkarın, yönlendiricinizin Wi-Fi ayarlarında AP / İstemci Yalıtımı&apos;nı kapatın veya USB kablosuyla bağlanın.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="263"/>
+        <location filename="rust_strings.h" line="258"/>
         <source>This PC isn&apos;t on a network</source>
         <translation>Bu bilgisayar bir ağa bağlı değil</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="264"/>
+        <location filename="rust_strings.h" line="259"/>
         <source>This network</source>
         <translation>Bu ağ</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="265"/>
+        <location filename="rust_strings.h" line="260"/>
         <source>This usually takes a few seconds.</source>
         <translation>Bu genellikle birkaç saniye sürer.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="266"/>
+        <location filename="rust_strings.h" line="261"/>
         <source>To connect over a cable, NectarLink can get Android&apos;s USB tools from Google for you, and the phone needs USB debugging on. Wi-Fi works without them.</source>
         <oldsource>To connect over a cable, install Android&apos;s platform-tools or Android Studio, and turn on USB debugging on the phone. Wi-Fi works without it.</oldsource>
         <translation>Kabloyla bağlanmak için NectarLink, Android&apos;in USB araçlarını sizin için Google&apos;dan indirebilir; telefonda da USB hata ayıklamanın açık olması gerekir. Wi-Fi onlarsız da çalışır.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="267"/>
+        <location filename="rust_strings.h" line="262"/>
         <source>VPNs often keep devices on your network from reaching this PC. If your phone can&apos;t connect, try turning it off.</source>
         <translation>VPN&apos;ler genellikle ağınızdaki cihazların bu bilgisayara ulaşmasını engeller. Telefonunuz bağlanamıyorsa VPN&apos;i kapatmayı deneyin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="268"/>
+        <location filename="rust_strings.h" line="263"/>
         <source>While away</source>
         <translation>Uzaktayken</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="269"/>
+        <location filename="rust_strings.h" line="264"/>
         <source>Windows Firewall blocks NectarLink</source>
         <translation>Windows Güvenlik Duvarı NectarLink&apos;i engelliyor</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="270"/>
+        <location filename="rust_strings.h" line="265"/>
         <source>Windows Firewall is off for this network</source>
         <translation>Bu ağ için Windows Güvenlik Duvarı kapalı</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="271"/>
+        <location filename="rust_strings.h" line="266"/>
         <source>Windows Firewall lets your phone connect</source>
         <translation>Windows Güvenlik Duvarı telefonunuzun bağlanmasına izin veriyor</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="272"/>
+        <location filename="rust_strings.h" line="267"/>
         <source>Your phone can control this PC</source>
         <translation>Telefonunuz bu bilgisayarı kontrol edebilir</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="273"/>
+        <location filename="rust_strings.h" line="268"/>
         <source>Your phone can show this PC&apos;s screen</source>
         <translation>Telefonunuz bu bilgisayarın ekranını gösterebilir</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="274"/>
+        <location filename="rust_strings.h" line="269"/>
         <source>Your phone can&apos;t control this PC yet</source>
         <translation>Telefonunuz bu bilgisayarı henüz kontrol edemiyor</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="275"/>
+        <location filename="rust_strings.h" line="270"/>
         <source>Your phone may not be able to connect. Allow it once here.</source>
         <translation>Telefonunuz bağlanamayabilir. Burada bir kez izin verin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="276"/>
+        <location filename="rust_strings.h" line="271"/>
         <source>a minute ago</source>
         <translation>bir dakika önce</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="277"/>
+        <location filename="rust_strings.h" line="272"/>
         <source>adb is running, so a phone with USB debugging on connects over a cable.</source>
         <translation>adb çalışıyor, bu yüzden USB hata ayıklama açık bir telefon kabloyla bağlanır.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="278"/>
+        <location filename="rust_strings.h" line="273"/>
         <source>adb isn&apos;t running</source>
         <translation>adb çalışmıyor</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="279"/>
+        <location filename="rust_strings.h" line="274"/>
         <source>an hour ago</source>
         <translation>bir saat önce</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="280"/>
+        <location filename="rust_strings.h" line="275"/>
         <source>just now</source>
         <translation>az önce</translation>
     </message>
@@ -2995,32 +3079,32 @@
 <context>
     <name>Errors</name>
     <message>
-        <location filename="rust_strings.h" line="281"/>
+        <location filename="rust_strings.h" line="276"/>
         <source>Something went wrong: %1</source>
         <translation>Bir sorun oluştu: %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="282"/>
+        <location filename="rust_strings.h" line="277"/>
         <source>That device isn&apos;t paired anymore.</source>
         <translation>Bu cihaz artık eşleştirilmiş değil.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="283"/>
+        <location filename="rust_strings.h" line="278"/>
         <source>The device declined.</source>
         <translation>Cihaz reddetti.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="284"/>
+        <location filename="rust_strings.h" line="279"/>
         <source>The device didn&apos;t answer in time.</source>
         <translation>Cihaz zamanında yanıt vermedi.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="285"/>
+        <location filename="rust_strings.h" line="280"/>
         <source>The device isn&apos;t connected right now.</source>
         <translation>Cihaz şu anda bağlı değil.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="286"/>
+        <location filename="rust_strings.h" line="281"/>
         <source>The device&apos;s app doesn&apos;t support that yet.</source>
         <translation>Cihazdaki uygulama bunu henüz desteklemiyor.</translation>
     </message>
@@ -3805,27 +3889,27 @@
 <context>
     <name>FolderSync</name>
     <message>
-        <location filename="rust_strings.h" line="287"/>
+        <location filename="rust_strings.h" line="282"/>
         <source>Couldn&apos;t read the folder on the phone. Check that it&apos;s connected.</source>
         <translation>Telefondaki klasör okunamadı. Telefonun bağlı olduğunu kontrol edin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="288"/>
+        <location filename="rust_strings.h" line="283"/>
         <source>Folders are up to date.</source>
         <translation>Klasörler güncel.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="289"/>
+        <location filename="rust_strings.h" line="284"/>
         <source>Synced %1 file(s).</source>
         <translation>%1 dosya eşitlendi.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="290"/>
+        <location filename="rust_strings.h" line="285"/>
         <source>The phone hasn&apos;t let this PC into its files yet. Allow it on the phone.</source>
         <translation>Telefon bu bilgisayarın dosyalarına erişmesine henüz izin vermedi. Telefonda izin verin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="291"/>
+        <location filename="rust_strings.h" line="286"/>
         <source>Waiting for Wi-Fi. Sync on Wi-Fi only is on, and the phone is away.</source>
         <translation>Wi-Fi bekleniyor. Yalnızca Wi-Fi&apos;da eşitle açık ve telefon uzakta.</translation>
     </message>
@@ -3833,7 +3917,7 @@
 <context>
     <name>Guide</name>
     <message>
-        <location filename="rust_strings.h" line="292"/>
+        <location filename="rust_strings.h" line="287"/>
         <source>1. Install NectarLink on your PC (Windows 11 or Linux) and your Android phone (Android 8.0 or newer).
 2. Connect both devices to the same Wi-Fi network, or plug your phone into your PC with a USB cable.
 3. Open the Pair step in the setup walkthrough, or click + (Pair a new device) at the bottom of the left rail.
@@ -3846,72 +3930,72 @@
 5. O telefonla hangi özelliklerin paylaşılacağını seçin ve yalnızca kullanmak istediğiniz Android izinlerini verin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="293"/>
+        <location filename="rust_strings.h" line="288"/>
         <source>Android permissions and why each is optional</source>
         <translation>Android izinleri ve her birinin neden isteğe bağlı olduğu</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="294"/>
+        <location filename="rust_strings.h" line="289"/>
         <source>Automations</source>
         <translation>Otomasyonlar</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="295"/>
+        <location filename="rust_strings.h" line="290"/>
         <source>Calls</source>
         <translation>Aramalar</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="296"/>
+        <location filename="rust_strings.h" line="291"/>
         <source>Clipboard</source>
         <translation>Pano</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="297"/>
+        <location filename="rust_strings.h" line="292"/>
         <source>Command palette</source>
         <translation>Komut paleti</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="298"/>
+        <location filename="rust_strings.h" line="293"/>
         <source>Connection Doctor</source>
         <translation>Bağlantı Doktoru</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="299"/>
+        <location filename="rust_strings.h" line="294"/>
         <source>Continuity camera</source>
         <translation>Süreklilik Kamerası</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="300"/>
+        <location filename="rust_strings.h" line="295"/>
         <source>Deck</source>
         <translation>Deck</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="301"/>
+        <location filename="rust_strings.h" line="296"/>
         <source>Drop shelf</source>
         <translation>Bırakma rafı</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="302"/>
+        <location filename="rust_strings.h" line="297"/>
         <source>Elevated and Assist modes</source>
         <translation>Yükseltilmiş ve Yardımcı modlar</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="303"/>
+        <location filename="rust_strings.h" line="298"/>
         <source>Features guide</source>
         <translation>Özellik rehberi</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="304"/>
+        <location filename="rust_strings.h" line="299"/>
         <source>Features reference</source>
         <translation>Özellik başvurusu</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="305"/>
+        <location filename="rust_strings.h" line="300"/>
         <source>Handoff</source>
         <translation>Handoff</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="306"/>
+        <location filename="rust_strings.h" line="301"/>
         <source>If your phone and PC do not see each other:
 
 1. Open Connection Doctor from Settings › Connection &amp; About or the Command Palette.
@@ -3926,17 +4010,17 @@
 4. USB hata ayıklama açıkken USB kablosuyla da bağlanabilirsiniz; NectarLink yerel bir tüneli otomatik olarak kurar.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="307"/>
+        <location filename="rust_strings.h" line="302"/>
         <source>Install and first-time setup</source>
         <translation>Kurulum ve ilk ayarlar</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="308"/>
+        <location filename="rust_strings.h" line="303"/>
         <source>Local HTTP API</source>
         <translation>Yerel HTTP API</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="309"/>
+        <location filename="rust_strings.h" line="304"/>
         <source>Local by default
 Your phone and PC talk directly over your local network or USB cable. When Connect over mobile data is on, encrypted traffic can use a relay when away from home. Automatic update checks contact GitHub Releases and can be turned off in Settings › Connection &amp; About › Check for updates.
 
@@ -3955,17 +4039,17 @@ Cihaz başına paylaşım denetimleri
 Bilgisayar klasörlerini paylaş, Uzaktan giriş ve Ters bilgisayar ekranı yansıtma gibi hassas yetenekler, siz açana kadar her eşleştirilmiş cihaz için varsayılan olarak kapalıdır.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="310"/>
+        <location filename="rust_strings.h" line="305"/>
         <source>LocalSend</source>
         <translation>LocalSend</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="311"/>
+        <location filename="rust_strings.h" line="306"/>
         <source>Messages</source>
         <translation>Mesajlar</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="312"/>
+        <location filename="rust_strings.h" line="307"/>
         <source>Most NectarLink features work in Standard mode with regular Android permissions. Two optional modes unlock deeper system integration:
 
 Elevated mode (Wireless debugging or root)
@@ -3988,12 +4072,12 @@ Yardımcı mod (Android Erişilebilirlik Hizmeti)
 - NectarLink, Erişilebilirlik hizmeti üzerinden asla ekran metnini okumaz veya tuş vuruşlarını kaydetmez.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="313"/>
+        <location filename="rust_strings.h" line="308"/>
         <source>Nectar Island</source>
         <translation>Nectar Island</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="314"/>
+        <location filename="rust_strings.h" line="309"/>
         <source>NectarLink links your Android phone and your PC directly on your local network or over a USB cable.
 
 How it works
@@ -4018,7 +4102,7 @@ Android&apos;de yetenek seviyeleri
 - Yardımcı mod (isteğe bağlı): Android Erişilebilirlik hizmetini yalnızca Uzaktan giriş&apos;i etkinleştirdiğinizde, bilgisayarınızın faresi ve klavyesi telefonu kontrol edebilsin diye kullanır.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="315"/>
+        <location filename="rust_strings.h" line="310"/>
         <source>NectarLink never asks for every permission up front. Each feature works independently:
 
 - Notification Access: Required only if you want phone notifications, inline replies, and notification-backed chat threads on your PC.
@@ -4035,97 +4119,97 @@ Android&apos;de yetenek seviyeleri
 - Kamera ve Mikrofon: Yalnızca telefonunuzu web kamerası olarak aktarırken, Süreklilik Kamerası ile çekim yaparken veya sesli not kaydederken gerekir.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="316"/>
+        <location filename="rust_strings.h" line="311"/>
         <source>NectarLink overview</source>
         <translation>NectarLink&apos;e genel bakış</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="317"/>
+        <location filename="rust_strings.h" line="312"/>
         <source>Notifications</source>
         <translation>Bildirimler</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="318"/>
+        <location filename="rust_strings.h" line="313"/>
         <source>Phone as speaker</source>
         <translation>Hoparlör olarak telefon</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="319"/>
+        <location filename="rust_strings.h" line="314"/>
         <source>Phone as webcam</source>
         <translation>Web kamerası olarak telefon</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="320"/>
+        <location filename="rust_strings.h" line="315"/>
         <source>Phone controls</source>
         <translation>Telefon kontrolleri</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="321"/>
+        <location filename="rust_strings.h" line="316"/>
         <source>Photos</source>
         <translation>Fotoğraflar</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="322"/>
+        <location filename="rust_strings.h" line="317"/>
         <source>Privacy and security</source>
         <translation>Gizlilik ve güvenlik</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="323"/>
+        <location filename="rust_strings.h" line="318"/>
         <source>Remote input</source>
         <translation>Uzaktan giriş</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="324"/>
+        <location filename="rust_strings.h" line="319"/>
         <source>Screen mirroring</source>
         <translation>Ekran yansıtma</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="325"/>
+        <location filename="rust_strings.h" line="320"/>
         <source>Select any feature card in the Features guide to inspect its live status, jump directly to its control with Show me, or read how it works and what permissions it uses.</source>
         <translation>Canlı durumunu incelemek, Göster ile doğrudan kontrolüne gitmek veya nasıl çalıştığını ve hangi izinleri kullandığını okumak için Özellik rehberinde herhangi bir özellik kartını seçin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="326"/>
+        <location filename="rust_strings.h" line="321"/>
         <source>Send files</source>
         <translation>Dosya gönder</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="327"/>
+        <location filename="rust_strings.h" line="322"/>
         <source>Share PC folders</source>
         <translation>Bilgisayar klasörlerini paylaş</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="328"/>
+        <location filename="rust_strings.h" line="323"/>
         <source>Share PC screen</source>
         <translation>Bilgisayar ekranını paylaş</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="329"/>
+        <location filename="rust_strings.h" line="324"/>
         <source>Timeline</source>
         <translation>Zaman Çizelgesi</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="330"/>
+        <location filename="rust_strings.h" line="325"/>
         <source>Troubleshooting and Connection Doctor</source>
         <translation>Sorun giderme ve Bağlantı Doktoru</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="331"/>
+        <location filename="rust_strings.h" line="326"/>
         <source>Type on phone</source>
         <translation>Telefona yaz</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="332"/>
+        <location filename="rust_strings.h" line="327"/>
         <source>Voice recorder</source>
         <translation>Ses kaydedici</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="333"/>
+        <location filename="rust_strings.h" line="328"/>
         <source>Wake PC</source>
         <translation>Bilgisayarı uyandır</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="334"/>
+        <location filename="rust_strings.h" line="329"/>
         <source>What it does
 Browses recent photos, camera shots, and screenshots on your phone without copying your entire library first. You can view full-resolution images, copy them to the clipboard, save them to disk, or drag them directly into other Windows apps.
 
@@ -4146,7 +4230,7 @@ Neler gerekir
 - Android telefonunuzda Fotoğraflar ve Medya izninin verilmiş olması.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="335"/>
+        <location filename="rust_strings.h" line="330"/>
         <source>What it does
 Controls your phone&apos;s Do Not Disturb mode, ringer mode (Sound, Vibrate, Silent), flashlight, media volume, screen brightness, Wi-Fi, Bluetooth, and Find My Phone ring from your PC.
 
@@ -4167,7 +4251,7 @@ Neler gerekir
 - Ses düzeyi, el feneri ve Telefonumu Bul Standart modda çalışır; Rahatsız Etmeyin için Rahatsız Etmeyin erişimi gerekir; Wi-Fi ve Bluetooth anahtarları yeni Android sürümlerinde Yükseltilmiş modu kullanır.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="336"/>
+        <location filename="rust_strings.h" line="331"/>
         <source>What it does
 Discovers and exchanges files with nearby devices running LocalSend v2 on your local network without requiring pairing.
 
@@ -4188,7 +4272,7 @@ Neler gerekir
 - Ayarlar › Dosyalar ve Eşitleme bölümünde Yerel ağda LocalSend&apos;in açık olması ve iki cihazın da aynı yerel ağda olması.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="337"/>
+        <location filename="rust_strings.h" line="332"/>
         <source>What it does
 Displays a compact pill at the top center of your primary monitor for incoming calls, live file transfer progress, media playback, and optional notification previews.
 
@@ -4207,7 +4291,7 @@ Neler gerekir
 - Ayarlar › Genel bölümünde Nectar Island&apos;ı açın ve hangi olayların görüneceğini seçin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="338"/>
+        <location filename="rust_strings.h" line="333"/>
         <source>What it does
 Exposes an opt-in localhost HTTP/JSON and Server-Sent Events API on 127.0.0.1 (default port 53320) protected by a bearer token so scripts, CLI tools, and Stream Deck plugins can trigger NectarLink actions.
 
@@ -4226,7 +4310,7 @@ Neler gerekir
 - Ayarlar › Bağlantı ve Hakkında bölümünde Yerel otomasyon API&apos;sini açın ve bearer token&apos;ı api-token.json dosyasından okuyun.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="339"/>
+        <location filename="rust_strings.h" line="334"/>
         <source>What it does
 Forwards keystrokes and pasted text from your PC keyboard directly to your phone without needing to mirror the phone screen.
 
@@ -4247,7 +4331,7 @@ Neler gerekir
 - Telefonunuzda Yardımcı mod (Erişilebilirlik hizmeti), NectarLink giriş yöntemi veya Yükseltilmiş mod.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="340"/>
+        <location filename="rust_strings.h" line="335"/>
         <source>What it does
 Inspects Windows Firewall rules, network profile type (Private vs Public), UDP discovery sockets, and paired phone reachability, and offers one-click fixes.
 
@@ -4268,7 +4352,7 @@ Neler gerekir
 - Bilgisayarınızda her zaman kullanılabilir.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="341"/>
+        <location filename="rust_strings.h" line="336"/>
         <source>What it does
 Keeps selected folders on your phone (such as DCIM/Camera or Download) and folders on your PC in sync in one-way or two-way mode, and lets your phone browse shared PC folders.
 
@@ -4289,7 +4373,7 @@ Neler gerekir
 - Telefonunuzda dosya ve medya erişimi ile Ayarlar&apos;da yapılandırılmış en az bir klasör eşitleme kuralı.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="342"/>
+        <location filename="rust_strings.h" line="337"/>
         <source>What it does
 Lets you read and send SMS and MMS conversations, plus reply to notification-backed chat threads from messaging apps such as WhatsApp, Signal, and Telegram.
 
@@ -4312,7 +4396,7 @@ Neler gerekir
 - Mesajlaşma uygulaması konuşmaları için telefonunuzda Bildirim Erişimi.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="343"/>
+        <location filename="rust_strings.h" line="338"/>
         <source>What it does
 Lets your paired phone wake this PC from sleep or soft power-off over your local network using a Wake-on-LAN packet.
 
@@ -4333,7 +4417,7 @@ Neler gerekir
 - Windows Aygıt Yöneticisi&apos;nde ve BIOS/UEFI&apos;de Wake-on-LAN&apos;ı etkinleştirilmiş bir ağ bağdaştırıcısı (kablolu Ethernet en güvenilir olanıdır).</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="344"/>
+        <location filename="rust_strings.h" line="339"/>
         <source>What it does
 Lets your phone act as a wireless trackpad, keyboard, presentation clicker, and on-screen laser pointer for your PC.
 
@@ -4354,7 +4438,7 @@ Neler gerekir
 - Bilgisayarınızda cihaz başına Uzaktan fare, klavye ve Deck anahtarı (veya telefonunuz kontrol istediğinde çıkan tek seferlik istemden onay).</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="345"/>
+        <location filename="rust_strings.h" line="340"/>
         <source>What it does
 Mirrors your phone notifications to the Home feed and Windows notification pop-ups. You can reply inline to messages, click action buttons, dismiss individual notifications or groups, and undo a recent dismissal.
 
@@ -4379,7 +4463,7 @@ Neler gerekir
 - Bilgisayarınızda cihaz başına Bildirimler anahtarının açık olması.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="346"/>
+        <location filename="rust_strings.h" line="341"/>
         <source>What it does
 Opens a keyboard-first search bar over actions, contacts, message threads, mirrorable apps, phone quick toggles, clipboard history, and navigation pages.
 
@@ -4400,7 +4484,7 @@ Neler gerekir
 - Her zaman çalışır; kapalıyken arka planda hiç bellek kullanmaz.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="347"/>
+        <location filename="rust_strings.h" line="342"/>
         <source>What it does
 Opens a lightweight slide-out panel at the edge of your monitor showing your phone&apos;s latest photo, latest screenshot, recent clipboard items, and recent received files. Drag items out into any app, or drop files onto the Shelf to send them to your phone.
 
@@ -4423,7 +4507,7 @@ Neler gerekir
 - Eşleştirilmiş telefon; son fotoğraf ve ekran görüntüsü kutucukları için telefonunuzda Fotoğraflar izni.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="348"/>
+        <location filename="rust_strings.h" line="343"/>
         <source>What it does
 Provides a unified, searchable chronological feed of files, photos, clipboard items, calls, messages, and voice recordings shared between your phone and PC.
 
@@ -4444,7 +4528,7 @@ Neler gerekir
 - Tüm eşleştirilmiş cihazlar için otomatik çalışır; saklama süresi Ayarlar › Depolama ve Gizlilik bölümünden ayarlanabilir.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="349"/>
+        <location filename="rust_strings.h" line="344"/>
         <source>What it does
 Receives voice notes recorded on your phone and saves them to your PC in your chosen audio format (M4A, MP3, WAV, or FLAC).
 
@@ -4465,7 +4549,7 @@ Neler gerekir
 - Sesli not kaydederken telefonunuzda Mikrofon izni.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="350"/>
+        <location filename="rust_strings.h" line="345"/>
         <source>What it does
 Runs automatic trigger-action rules such as locking your PC when your phone disconnects, pausing media when a call arrives, or running a command when your phone connects.
 
@@ -4484,7 +4568,7 @@ Neler gerekir
 - Orada bir veya daha fazla kural ekleyip açın.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="351"/>
+        <location filename="rust_strings.h" line="346"/>
         <source>What it does
 Sends files, folders, links, and text between your phone and PC at local network speed. If your phone is offline when you send, NectarLink places the item in the Waiting to send queue and delivers it automatically as soon as your phone reconnects.
 
@@ -4505,7 +4589,7 @@ Neler gerekir
 - Eşleştirilmiş telefon ve cihaz başına Dosyalar anahtarının açık olması.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="352"/>
+        <location filename="rust_strings.h" line="347"/>
         <source>What it does
 Sends web links, video links with their current playback timestamp, map coordinates or street addresses, and documents to your phone so they open immediately in the right app.
 
@@ -4524,7 +4608,7 @@ Neler gerekir
 - Eşleştirilmiş telefon; çevrimiçiyken çalışır, telefonunuz çevrimdışıysa otomatik olarak kuyruğa alır.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="353"/>
+        <location filename="rust_strings.h" line="348"/>
         <source>What it does
 Shares copied text, rich HTML/RTF text, images, and small copied file sets between your PC and phone. Keeps an encrypted local history of up to 50 items with pinning and smart context chips for links, phone numbers, addresses, and tracking codes.
 
@@ -4547,7 +4631,7 @@ Neler gerekir
 - Android 10+ sürümlerinde telefondan bilgisayara arka planda pano eşitleme; bildirimleri, NectarLink hızlı ayar kutucuğunu veya Yükseltilmiş modu kullanır.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="354"/>
+        <location filename="rust_strings.h" line="349"/>
         <source>What it does
 Shows incoming and active phone calls on your PC with Answer, Decline, and Reject with SMS actions, plus browsable call history, contacts, and a dialpad.
 
@@ -4570,7 +4654,7 @@ Neler gerekir
 - Arama sesi telefonunuzda (veya telefonunuzla eşleştirilmiş bir kulaklıkta) kalır; Android 12+ sürümlerinde Yükseltilmiş mod sessize alma, hoparlör, bekletme ve tuş takımı kontrollerini açar.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="355"/>
+        <location filename="rust_strings.h" line="350"/>
         <source>What it does
 Streams your PC system audio to your connected phone in real time over the encrypted connection so you can listen through your phone speakers or headphones.
 
@@ -4591,7 +4675,7 @@ Neler gerekir
 - Yerel Wi-Fi veya USB üzerinden bağlı, eşleştirilmiş bir telefon.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="356"/>
+        <location filename="rust_strings.h" line="351"/>
         <source>What it does
 Streams your PC&apos;s screen to your phone so you can view your desktop from across the room and use your phone as a trackpad or laser pointer.
 
@@ -4612,7 +4696,7 @@ Neler gerekir
 - Bilgisayarınızda cihaz başına Bilgisayar ekranını telefonla paylaş anahtarı veya telefonunuz ekranınızı görüntülemek istediğinde tek seferlik onay.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="357"/>
+        <location filename="rust_strings.h" line="352"/>
         <source>What it does
 Streams your phone camera into the NectarLink Virtual Camera on Windows so Zoom, Teams, Meet, Discord, and OBS can use your phone&apos;s rear or front camera at up to 4K.
 
@@ -4635,7 +4719,7 @@ Neler gerekir
 - Diğer uygulamaların görebilmesi için: Ayarlar › Kamera ve Ses bölümündeki Sanal kamera eklentisi.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="358"/>
+        <location filename="rust_strings.h" line="353"/>
         <source>What it does
 Streams your phone screen into a low-latency desktop window with hardware-accelerated decoding, or opens individual Android apps in their own windows on your PC.
 
@@ -4660,7 +4744,7 @@ Neler gerekir
 - Yardımcı mod veya Yükseltilmiş mod, yansıtılan pencerede tıklamanızı, kaydırmanızı ve yazmanızı sağlar.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="359"/>
+        <location filename="rust_strings.h" line="354"/>
         <source>What it does
 Syncs media playback between your phone and PC, switches Windows audio output and microphone devices, and turns your phone into a customizable grid of shortcut tiles, macros, and volume sliders.
 
@@ -4679,7 +4763,7 @@ Neler gerekir
 - Herhangi bir etkin bağlantı üzerinden eşleştirilmiş telefon.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="360"/>
+        <location filename="rust_strings.h" line="355"/>
         <source>What it does
 Triggers your phone camera from any Windows app to snap a photo or scan a document, then copies the result to the Windows clipboard and pastes it into the active window.
 
@@ -5711,17 +5795,17 @@ Neler gerekir
 <context>
     <name>Hotspot</name>
     <message>
-        <location filename="rust_strings.h" line="361"/>
+        <location filename="rust_strings.h" line="356"/>
         <source>%1&apos;s hotspot didn&apos;t show up. Check that it&apos;s on, then pick %2 in Windows&apos; Wi-Fi list.</source>
         <translation>%1 hotspot&apos;u görünmedi. Açık olduğunu kontrol edin, ardından Windows&apos;un Wi-Fi listesinden %2 ağını seçin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="362"/>
+        <location filename="rust_strings.h" line="357"/>
         <source>Connected to %1&apos;s hotspot.</source>
         <translation>%1 hotspot&apos;una bağlanıldı.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="363"/>
+        <location filename="rust_strings.h" line="358"/>
         <source>Couldn&apos;t join %1&apos;s hotspot. Pick %2 in Windows&apos; Wi-Fi list.</source>
         <translation>%1 hotspot&apos;una katılınamadı. Windows&apos;un Wi-Fi listesinden %2 ağını seçin.</translation>
     </message>
@@ -5863,62 +5947,62 @@ Neler gerekir
 <context>
     <name>Links</name>
     <message>
-        <location filename="rust_strings.h" line="364"/>
+        <location filename="rust_strings.h" line="359"/>
         <source>%1: tap the notification on your phone to continue watching.</source>
         <translation>%1: izlemeye devam etmek için telefonunuzdaki bildirime dokunun.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="365"/>
+        <location filename="rust_strings.h" line="360"/>
         <source>%1: tap the notification on your phone to open in Maps.</source>
         <translation>%1: Haritalar&apos;da açmak için telefonunuzdaki bildirime dokunun.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="366"/>
+        <location filename="rust_strings.h" line="361"/>
         <source>Copy a link or address first</source>
         <translation>Önce bir bağlantı veya adres kopyalayın</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="367"/>
+        <location filename="rust_strings.h" line="362"/>
         <source>Copy a web link (https://…), geo: URI, or street address, then choose this again.</source>
         <translation>Bir web bağlantısı (https://…), geo: URI&apos;si veya sokak adresi kopyalayın, ardından bunu yeniden seçin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="368"/>
+        <location filename="rust_strings.h" line="363"/>
         <source>Copy a web link, video URL, or street address, then choose this again to open it on your phone.</source>
         <translation>Bir web bağlantısı, video URL&apos;si veya sokak adresi kopyalayın, ardından telefonunuzda açmak için bunu yeniden seçin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="369"/>
+        <location filename="rust_strings.h" line="364"/>
         <source>Couldn&apos;t send it</source>
         <translation>Gönderilemedi</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="370"/>
+        <location filename="rust_strings.h" line="365"/>
         <source>No phone to open it on</source>
         <translation>Açılacak telefon yok</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="371"/>
+        <location filename="rust_strings.h" line="366"/>
         <source>Pair a phone first, or enable opening links on your phone.</source>
         <translation>Önce bir telefon eşleştirin veya telefonunuzda bağlantıları açmayı etkinleştirin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="372"/>
+        <location filename="rust_strings.h" line="367"/>
         <source>Sent to %1</source>
         <translation>%1 cihazına gönderildi</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="373"/>
+        <location filename="rust_strings.h" line="368"/>
         <source>Tap the notification on your phone to open it.</source>
         <translation>Açmak için telefonunuzdaki bildirime dokunun.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="374"/>
+        <location filename="rust_strings.h" line="369"/>
         <source>That&apos;s not a link or address</source>
         <translation>Bu bir bağlantı veya adres değil</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="375"/>
+        <location filename="rust_strings.h" line="370"/>
         <source>Update NectarLink on %1.</source>
         <translation>%1 cihazındaki NectarLink&apos;i güncelleyin.</translation>
     </message>
@@ -6160,64 +6244,64 @@ Neler gerekir
         <translation>Yenilikler</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1085"/>
+        <location filename="../qml/MainWindow.qml" line="1094"/>
         <source>%1 is ringing this PC</source>
         <translation>%1 bu bilgisayarı çaldırıyor</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1091"/>
+        <location filename="../qml/MainWindow.qml" line="1100"/>
         <source>Stop ringing</source>
         <translation>Çalmayı durdur</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1117"/>
+        <location filename="../qml/MainWindow.qml" line="1126"/>
         <source>Allow %1 to control this PC?</source>
         <translation>%1 bu bilgisayarı kontrol edebilsin mi?</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1124"/>
+        <location filename="../qml/MainWindow.qml" line="1133"/>
         <source>%1 wants to use this PC&apos;s mouse and keyboard. You can change this in Settings.</source>
         <translation>%1 bu bilgisayarın faresini ve klavyesini kullanmak istiyor. Bunu Ayarlar&apos;dan değiştirebilirsiniz.</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1134"/>
-        <location filename="../qml/MainWindow.qml" line="1182"/>
+        <location filename="../qml/MainWindow.qml" line="1143"/>
+        <location filename="../qml/MainWindow.qml" line="1191"/>
         <source>Not now</source>
         <translation>Şimdi değil</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1138"/>
-        <location filename="../qml/MainWindow.qml" line="1187"/>
+        <location filename="../qml/MainWindow.qml" line="1147"/>
+        <location filename="../qml/MainWindow.qml" line="1196"/>
         <source>Allow</source>
         <translation>İzin ver</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1165"/>
+        <location filename="../qml/MainWindow.qml" line="1174"/>
         <source>Allow %1 to view this PC&apos;s screen?</source>
         <translation>%1 bu bilgisayarın ekranını görüntüleyebilsin mi?</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1172"/>
+        <location filename="../qml/MainWindow.qml" line="1181"/>
         <source>%1 wants to view this PC&apos;s screen. Control needs Remote mouse, keyboard &amp; Deck in Settings.</source>
         <translation>%1 bu bilgisayarın ekranını görüntülemek istiyor. Kontrol için Ayarlar&apos;da Uzaktan fare, klavye ve Deck gerekir.</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1191"/>
+        <location filename="../qml/MainWindow.qml" line="1200"/>
         <source>Allow for this device</source>
         <translation>Bu cihaz için izin ver</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1220"/>
+        <location filename="../qml/MainWindow.qml" line="1229"/>
         <source>Photo ready on clipboard</source>
         <translation>Fotoğraf panoda hazır</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1237"/>
+        <location filename="../qml/MainWindow.qml" line="1246"/>
         <source>Keep on clipboard</source>
         <translation>Panoda tut</translation>
     </message>
     <message>
-        <location filename="../qml/MainWindow.qml" line="1241"/>
+        <location filename="../qml/MainWindow.qml" line="1250"/>
         <source>Paste into active window</source>
         <translation>Etkin pencereye yapıştır</translation>
     </message>
@@ -6225,17 +6309,17 @@ Neler gerekir
 <context>
     <name>Media</name>
     <message>
-        <location filename="rust_strings.h" line="376"/>
+        <location filename="rust_strings.h" line="371"/>
         <source>Media is turned off for that device.</source>
         <translation>Bu cihaz için medya kapalı.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="377"/>
+        <location filename="rust_strings.h" line="372"/>
         <source>That player can&apos;t do that.</source>
         <translation>Bu oynatıcı bunu yapamıyor.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="378"/>
+        <location filename="rust_strings.h" line="373"/>
         <source>That player isn&apos;t playing anymore.</source>
         <translation>Bu oynatıcı artık oynatmıyor.</translation>
     </message>
@@ -6243,22 +6327,22 @@ Neler gerekir
 <context>
     <name>Messages</name>
     <message>
-        <location filename="rust_strings.h" line="379"/>
+        <location filename="rust_strings.h" line="374"/>
         <source>Attachment is %1 (MMS supports up to 900 KB)</source>
         <translation>Ek boyutu %1 (MMS en fazla 900 KB destekler)</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="380"/>
+        <location filename="rust_strings.h" line="375"/>
         <source>Group texts can&apos;t be sent from the PC yet.</source>
         <translation>Grup mesajları henüz bilgisayardan gönderilemiyor.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="381"/>
+        <location filename="rust_strings.h" line="376"/>
         <source>Only image or voice-note audio files can be attached.</source>
         <translation>Yalnızca görüntü veya sesli not dosyaları eklenebilir.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="382"/>
+        <location filename="rust_strings.h" line="377"/>
         <source>The text wasn&apos;t sent: this conversation isn&apos;t loaded yet. Try again in a moment.</source>
         <translation>Mesaj gönderilmedi: bu konuşma henüz yüklenmedi. Birazdan tekrar deneyin.</translation>
     </message>
@@ -6579,122 +6663,122 @@ Neler gerekir
 <context>
     <name>Mirror</name>
     <message>
-        <location filename="rust_strings.h" line="383"/>
+        <location filename="rust_strings.h" line="378"/>
         <source>Couldn&apos;t start recording.</source>
         <translation>Kayıt başlatılamadı.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="384"/>
+        <location filename="rust_strings.h" line="379"/>
         <source>Mirror recording</source>
         <translation>Yansıtma kaydı</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="385"/>
+        <location filename="rust_strings.h" line="380"/>
         <source>Mirror screenshot</source>
         <translation>Yansıtma ekran görüntüsü</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="386"/>
+        <location filename="rust_strings.h" line="381"/>
         <source>Mirroring is turned off for this phone.</source>
         <translation>Bu telefon için yansıtma kapalı.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="387"/>
+        <location filename="rust_strings.h" line="382"/>
         <source>Recording from %1, saved in Downloads/Nectarlink</source>
         <translation>%1 kaydı, İndirilenler/Nectarlink klasörüne kaydedildi</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="388"/>
+        <location filename="rust_strings.h" line="383"/>
         <source>Recording from %1, saved in Downloads\Nectarlink</source>
         <translation>%1 kaydı, İndirilenler\Nectarlink klasörüne kaydedildi</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="389"/>
+        <location filename="rust_strings.h" line="384"/>
         <source>Saved %1</source>
         <translation>Kaydedildi: %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="390"/>
+        <location filename="rust_strings.h" line="385"/>
         <source>Saved %1 to Downloads/Nectarlink.</source>
         <translation>%1, İndirilenler/Nectarlink klasörüne kaydedildi.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="391"/>
+        <location filename="rust_strings.h" line="386"/>
         <source>Saved %1 to Downloads\Nectarlink.</source>
         <translation>%1, İndirilenler\Nectarlink klasörüne kaydedildi.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="392"/>
+        <location filename="rust_strings.h" line="387"/>
         <source>Screenshot copied to clipboard.</source>
         <translation>Ekran görüntüsü panoya kopyalandı.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="393"/>
+        <location filename="rust_strings.h" line="388"/>
         <source>Screenshot from %1, saved in Downloads/Nectarlink</source>
         <translation>%1 ekran görüntüsü, İndirilenler/Nectarlink klasörüne kaydedildi</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="394"/>
+        <location filename="rust_strings.h" line="389"/>
         <source>Screenshot from %1, saved in Downloads\Nectarlink</source>
         <translation>%1 ekran görüntüsü, İndirilenler\Nectarlink klasörüne kaydedildi</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="395"/>
+        <location filename="rust_strings.h" line="390"/>
         <source>Sending %1 files…</source>
         <translation>%1 dosya gönderiliyor…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="396"/>
+        <location filename="rust_strings.h" line="391"/>
         <source>Sending %1…</source>
         <translation>Gönderiliyor: %1…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="397"/>
+        <location filename="rust_strings.h" line="392"/>
         <source>Set up Wireless debugging in NectarLink on the phone to open its apps here.</source>
         <translation>Uygulamalarını burada açmak için telefondaki NectarLink&apos;te Kablosuz hata ayıklamayı ayarlayın.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="398"/>
+        <location filename="rust_strings.h" line="393"/>
         <source>Show in folder</source>
         <translation>Klasörde göster</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="399"/>
+        <location filename="rust_strings.h" line="394"/>
         <source>The app didn&apos;t open on the phone. Try again, or open NectarLink on the phone to check Wireless debugging.</source>
         <translation>Uygulama telefonda açılmadı. Tekrar deneyin veya Kablosuz hata ayıklamayı kontrol etmek için telefonda NectarLink&apos;i açın.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="400"/>
+        <location filename="rust_strings.h" line="395"/>
         <source>The phone ignores taps from this PC. In its Developer options, turn on USB debugging (Security settings).</source>
         <translation>Telefon bu bilgisayardan gelen dokunuşları yok sayıyor. Geliştirici seçeneklerinde USB hata ayıklama (Güvenlik ayarları) seçeneğini aç.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="401"/>
+        <location filename="rust_strings.h" line="396"/>
         <source>The phone isn&apos;t connected.</source>
         <translation>Telefon bağlı değil.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="402"/>
+        <location filename="rust_strings.h" line="397"/>
         <source>The screenshot couldn&apos;t be copied to the clipboard.</source>
         <translation>Ekran görüntüsü panoya kopyalanamadı.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="403"/>
+        <location filename="rust_strings.h" line="398"/>
         <source>The screenshot couldn&apos;t be saved.</source>
         <translation>Ekran görüntüsü kaydedilemedi.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="404"/>
+        <location filename="rust_strings.h" line="399"/>
         <source>This PC can&apos;t decode the phone&apos;s video.</source>
         <translation>Bu bilgisayar telefonun videosunun kodunu çözemiyor.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="405"/>
+        <location filename="rust_strings.h" line="400"/>
         <source>This phone&apos;s app doesn&apos;t share its screen yet. Update NectarLink on the phone.</source>
         <translation>Bu telefondaki uygulama henüz ekranını paylaşmıyor. Telefondaki NectarLink&apos;i güncelleyin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="406"/>
+        <location filename="rust_strings.h" line="401"/>
         <source>Wait for the screen to appear first.</source>
         <translation>Önce ekranın görünmesini bekleyin.</translation>
     </message>
@@ -6910,7 +6994,7 @@ Neler gerekir
 <context>
     <name>Mp4</name>
     <message>
-        <location filename="rust_strings.h" line="407"/>
+        <location filename="rust_strings.h" line="402"/>
         <source>No video frames were recorded yet.</source>
         <translation>Henüz hiç video karesi kaydedilmedi.</translation>
     </message>
@@ -7004,47 +7088,47 @@ Neler gerekir
 <context>
     <name>Notifications</name>
     <message>
-        <location filename="rust_strings.h" line="408"/>
+        <location filename="rust_strings.h" line="403"/>
         <source>Code copied</source>
         <translation>Kod kopyalandı</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="409"/>
+        <location filename="rust_strings.h" line="404"/>
         <source>Copy code</source>
         <translation>Kodu kopyala</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="410"/>
+        <location filename="rust_strings.h" line="405"/>
         <source>Dismissed %1 from %2</source>
         <translation>%2 kaynağından %1 kapatıldı</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="411"/>
+        <location filename="rust_strings.h" line="406"/>
         <source>Dismissed %1 notifications</source>
         <translation>%1 bildirim kapatıldı</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="412"/>
+        <location filename="rust_strings.h" line="407"/>
         <source>Dismissed from %1</source>
         <translation>%1 kaynağından kapatıldı</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="413"/>
+        <location filename="rust_strings.h" line="408"/>
         <source>Notification dismissed</source>
         <translation>Bildirim kapatıldı</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="414"/>
+        <location filename="rust_strings.h" line="409"/>
         <source>Open</source>
         <translation>Aç</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="415"/>
+        <location filename="rust_strings.h" line="410"/>
         <source>Reply</source>
         <translation>Yanıtla</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="416"/>
+        <location filename="rust_strings.h" line="411"/>
         <source>That notification is gone from the phone.</source>
         <translation>Bu bildirim artık telefonda yok.</translation>
     </message>
@@ -7160,17 +7244,17 @@ Neler gerekir
 <context>
     <name>Obs</name>
     <message>
-        <location filename="rust_strings.h" line="417"/>
+        <location filename="rust_strings.h" line="412"/>
         <source>OBS isn&apos;t reachable on port %1. Turn on its WebSocket server.</source>
         <translation>OBS&apos;ye %1 bağlantı noktasından ulaşılamıyor. OBS&apos;nin WebSocket sunucusunu açın.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="418"/>
+        <location filename="rust_strings.h" line="413"/>
         <source>OBS: %1</source>
         <translation>OBS: %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="419"/>
+        <location filename="rust_strings.h" line="414"/>
         <source>The service on that port isn&apos;t OBS.</source>
         <translation>Bu bağlantı noktasındaki hizmet OBS değil.</translation>
     </message>
@@ -7350,7 +7434,7 @@ Neler gerekir
 <context>
     <name>PcMirror</name>
     <message>
-        <location filename="rust_strings.h" line="420"/>
+        <location filename="rust_strings.h" line="415"/>
         <source>Can&apos;t find the player&apos;s window. Play the video on this PC again, then turn on Play on phone.</source>
         <translation>Oynatıcının penceresi bulunamıyor. Videoyu bu bilgisayarda yeniden oynatın, ardından Telefonda oynat&apos;ı açın.</translation>
     </message>
@@ -7358,102 +7442,102 @@ Neler gerekir
 <context>
     <name>PhoneInstall</name>
     <message>
-        <location filename="rust_strings.h" line="421"/>
+        <location filename="rust_strings.h" line="416"/>
         <source>Android said: %1</source>
         <translation>Android&apos;in yanıtı: %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="422"/>
+        <location filename="rust_strings.h" line="417"/>
         <source>Another build of NectarLink is on this phone</source>
         <translation>Bu telefonda NectarLink&apos;in başka bir sürümü var</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="423"/>
+        <location filename="rust_strings.h" line="418"/>
         <source>Check this PC&apos;s internet connection and try again. (%1)</source>
         <translation>Bu bilgisayarın internet bağlantısını kontrol edip yeniden deneyin. (%1)</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="424"/>
+        <location filename="rust_strings.h" line="419"/>
         <source>Couldn&apos;t download the phone app</source>
         <translation>Telefon uygulaması indirilemedi</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="425"/>
+        <location filename="rust_strings.h" line="420"/>
         <source>Free up some storage on the phone, then try again.</source>
         <translation>Telefonda biraz yer açıp yeniden deneyin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="426"/>
+        <location filename="rust_strings.h" line="421"/>
         <source>In Developer options, turn on Install via USB, then try again. On Xiaomi, Redmi and POCO phones it may ask you to sign in to a Xiaomi account first.</source>
         <translation>Geliştirici seçeneklerinde USB üzerinden yükle&apos;yi açıp yeniden deneyin. Xiaomi, Redmi ve POCO telefonlarda önce bir Xiaomi hesabıyla oturum açmanız istenebilir.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="427"/>
+        <location filename="rust_strings.h" line="422"/>
         <source>It didn&apos;t match its checksum, so it wasn&apos;t installed. Try again.</source>
         <translation>Sağlama toplamıyla eşleşmediği için yüklenmedi. Yeniden deneyin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="428"/>
+        <location filename="rust_strings.h" line="423"/>
         <source>It was signed differently (a test build, or one from another store), so Android won&apos;t update it. Replacing it removes it with its data, including the PCs it&apos;s paired with, then installs this one.</source>
         <translation>Farklı imzalanmış (bir test sürümü ya da başka bir mağazadan), bu yüzden Android onu güncellemez. Değiştirmek onu, eşleştiği bilgisayarlar dahil verileriyle birlikte kaldırır ve ardından bunu yükler.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="429"/>
+        <location filename="rust_strings.h" line="424"/>
         <source>Keep it plugged in and unlocked until the install is done, then try again.</source>
         <translation>Yükleme bitene kadar telefonu takılı ve kilidi açık tutun, sonra yeniden deneyin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="430"/>
+        <location filename="rust_strings.h" line="425"/>
         <source>NectarLink needs Android 8.0 or newer.</source>
         <translation>NectarLink, Android 8.0 veya daha yenisini gerektirir.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="431"/>
+        <location filename="rust_strings.h" line="426"/>
         <source>The download was damaged</source>
         <translation>İndirilen dosya bozuk</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="432"/>
+        <location filename="rust_strings.h" line="427"/>
         <source>The install was stopped on the phone</source>
         <translation>Yükleme telefonda durduruldu</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="433"/>
+        <location filename="rust_strings.h" line="428"/>
         <source>The phone already has a newer version</source>
         <translation>Telefonda zaten daha yeni bir sürüm var</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="434"/>
+        <location filename="rust_strings.h" line="429"/>
         <source>The phone asked whether to allow it and the answer was no, or Google Play Protect stopped it. Try again and allow it on the phone. If Play Protect stops it, turn off Verify apps over USB in Developer options for the install.</source>
         <translation>Telefon yüklemeye izin verilip verilmeyeceğini sordu ve yanıt hayır oldu ya da Google Play Protect durdurdu. Yeniden deneyin ve telefonda izin verin. Play Protect durdurursa, yükleme sırasında Geliştirici seçeneklerinde USB üzerinden uygulamaları doğrula&apos;yı kapatın.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="435"/>
+        <location filename="rust_strings.h" line="430"/>
         <source>The phone blocks installs over USB</source>
         <translation>Telefon USB üzerinden yüklemeyi engelliyor</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="436"/>
+        <location filename="rust_strings.h" line="431"/>
         <source>The phone didn&apos;t install it</source>
         <translation>Telefon yüklemedi</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="437"/>
+        <location filename="rust_strings.h" line="432"/>
         <source>The phone is out of space</source>
         <translation>Telefonda yer kalmadı</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="438"/>
+        <location filename="rust_strings.h" line="433"/>
         <source>The phone stopped answering</source>
         <translation>Telefon yanıt vermeyi bıraktı</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="439"/>
+        <location filename="rust_strings.h" line="434"/>
         <source>There&apos;s nothing to install. Open NectarLink on the phone to pair it.</source>
         <translation>Yüklenecek bir şey yok. Eşleştirmek için telefonda NectarLink&apos;i açın.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="440"/>
+        <location filename="rust_strings.h" line="435"/>
         <source>This phone&apos;s Android is too old</source>
         <translation>Bu telefonun Android sürümü çok eski</translation>
     </message>
@@ -7512,7 +7596,7 @@ Neler gerekir
     </message>
     <message>
         <location filename="../qml/components/PhoneInstallPane.qml" line="213"/>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="739"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="740"/>
         <source>Try again</source>
         <translation>Yeniden dene</translation>
     </message>
@@ -7522,203 +7606,207 @@ Neler gerekir
         <translation>Google&apos;dan indir</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="224"/>
         <source>Downloading them means you accept Google&apos;s &lt;a href=&quot;https://developer.android.com/studio/terms&quot;&gt;Android SDK terms&lt;/a&gt;.</source>
-        <translation>İndirerek Google&apos;ın &lt;a href=&quot;https://developer.android.com/studio/terms&quot;&gt;Android SDK koşullarını&lt;/a&gt; kabul etmiş olursunuz.</translation>
+        <translation type="vanished">İndirerek Google&apos;ın &lt;a href=&quot;https://developer.android.com/studio/terms&quot;&gt;Android SDK koşullarını&lt;/a&gt; kabul etmiş olursunuz.</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="237"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="225"/>
+        <source>Downloading them means you accept Google&apos;s &lt;a href=&quot;%1&quot;&gt;Android SDK terms&lt;/a&gt;.</source>
+        <translation>İndirerek Google&apos;ın &lt;a href=&quot;%1&quot;&gt;Android SDK koşullarını&lt;/a&gt; kabul etmiş olursunuz.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="238"/>
         <source>Downloading from Google… %1 of %2 MB</source>
         <translation>Google&apos;dan indiriliyor… %1 / %2 MB</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="238"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="239"/>
         <source>Asking Google which version is current…</source>
         <translation>Güncel sürüm Google&apos;a soruluyor…</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="252"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="253"/>
         <source>Google doesn&apos;t make them for this kind of PC. Install adb from your distribution&apos;s packages (for example: sudo apt install adb), then come back here.</source>
         <translation>Google bu tür bilgisayarlar için onları sunmuyor. adb&apos;yi dağıtımınızın paketlerinden kurun (örneğin: sudo apt install adb), sonra buraya dönün.</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="263"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="264"/>
         <source>%1 is connected</source>
         <translation>%1 bağlı</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="264"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="265"/>
         <source>%1 phones are connected</source>
         <translation>%1 telefon bağlı</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="265"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="266"/>
         <source>Connect the phone</source>
         <translation>Telefonu bağlayın</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="277"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="278"/>
         <source>Unlock %1 and tap Allow on “Allow USB debugging?”. Tick “Always allow from this computer” so it doesn&apos;t ask again.</source>
         <translation>%1 kilidini açın ve “USB hata ayıklamaya izin verilsin mi?” sorusunda İzin ver&apos;e dokunun. Bir daha sormaması için “Bu bilgisayardan her zaman izin ver”i işaretleyin.</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="279"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="280"/>
         <source>Linux needs Android&apos;s USB rules to reach %1. Install your distribution&apos;s android-udev-rules package (on Debian and Ubuntu: android-sdk-platform-tools-common), then plug the phone in again.</source>
         <translation>Linux&apos;un %1 cihazına ulaşması için Android&apos;in USB kuralları gerekir. Dağıtımınızın android-udev-rules paketini kurun (Debian ve Ubuntu&apos;da: android-sdk-platform-tools-common), sonra telefonu yeniden takın.</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="280"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="281"/>
         <source>%1 isn&apos;t answering. Unplug it and plug it back in.</source>
         <translation>%1 yanıt vermiyor. Çıkarıp yeniden takın.</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="293"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="294"/>
         <source>Windows sees the phone but has no driver for its USB debugging. Install your phone maker&apos;s USB driver, then plug the phone in again.</source>
         <translation>Windows telefonu görüyor ama USB hata ayıklaması için sürücüsü yok. Telefon üreticinizin USB sürücüsünü kurun, sonra telefonu yeniden takın.</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="294"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="295"/>
         <source>Find the driver</source>
         <translation>Sürücüyü bul</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="302"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="303"/>
         <source>Plug the phone into this PC with a USB cable. If it&apos;s the first time, turn on USB debugging first:</source>
         <translation>Telefonu bu bilgisayara bir USB kablosuyla takın. İlk kez yapıyorsanız önce USB hata ayıklamayı açın:</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="307"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="308"/>
         <source>On the phone, open Settings › About phone and tap Build number seven times. On Xiaomi phones it&apos;s the OS version; on Samsung it&apos;s under Software information.</source>
         <translation>Telefonda Ayarlar › Telefon hakkında&apos;yı açın ve Derleme numarası&apos;na yedi kez dokunun. Xiaomi telefonlarda bu, işletim sistemi sürümüdür; Samsung&apos;da Yazılım bilgileri altındadır.</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="308"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="309"/>
         <source>Go back to Settings, open Developer options (under System on many phones) and turn on USB debugging.</source>
         <translation>Ayarlar&apos;a dönün, Geliştirici seçenekleri&apos;ni açın (birçok telefonda Sistem altında) ve USB hata ayıklamayı açın.</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="309"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="310"/>
         <source>Use a cable that carries data, since some only charge. If the phone asks what the USB connection is for, pick File transfer.</source>
         <translation>Veri aktaran bir kablo kullanın, çünkü bazıları yalnızca şarj eder. Telefon USB bağlantısının ne için olduğunu sorarsa Dosya aktarımı&apos;nı seçin.</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="318"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="319"/>
         <source>Still nothing? Try another USB port or cable, and check that USB debugging stayed on (some phones turn it off when unplugged).</source>
         <translation>Hâlâ bir şey yok mu? Başka bir USB bağlantı noktası veya kablo deneyin ve USB hata ayıklamanın açık kaldığını kontrol edin (bazı telefonlar çıkarınca kapatır).</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="329"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="330"/>
         <source>Install NectarLink</source>
         <translation>NectarLink&apos;i yükleyin</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="339"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="340"/>
         <source>NectarLink %1 comes from its own releases on GitHub and is checked before it&apos;s sent to the phone.</source>
         <translation>NectarLink %1, GitHub&apos;daki kendi sürümlerinden gelir ve telefona gönderilmeden önce kontrol edilir.</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="340"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="341"/>
         <source>NectarLink comes from its own releases on GitHub and is checked before it&apos;s sent to the phone.</source>
         <translation>NectarLink, GitHub&apos;daki kendi sürümlerinden gelir ve telefona gönderilmeden önce kontrol edilir.</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="610"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="611"/>
         <source>Android %1</source>
         <translation>Android %1</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="613"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="614"/>
         <source>needs Android 8.0 or newer</source>
         <translation>Android 8.0 veya daha yenisi gerekir</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="615"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="616"/>
         <source>NectarLink isn&apos;t on it yet</source>
         <translation>NectarLink henüz yüklü değil</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="617"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="618"/>
         <source>has NectarLink %1, %2 is newer</source>
         <translation>NectarLink %1 yüklü, %2 daha yeni</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="619"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="620"/>
         <source>has NectarLink %1</source>
         <translation>NectarLink %1 yüklü</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="634"/>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="710"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="635"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="711"/>
         <source>Open on phone</source>
         <translation>Telefonda aç</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="635"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="636"/>
         <source>Update</source>
         <translation>Güncelle</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="635"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="636"/>
         <source>Install</source>
         <translation>Yükle</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="655"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="656"/>
         <source>Downloading NectarLink… %1%</source>
         <translation>NectarLink indiriliyor… %%1</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="656"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="657"/>
         <source>Getting NectarLink…</source>
         <translation>NectarLink alınıyor…</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="658"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="659"/>
         <source>Sending it to the phone… %1%</source>
         <translation>Telefona gönderiliyor… %%1</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="660"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="661"/>
         <source>Removing the other build…</source>
         <translation>Diğer sürüm kaldırılıyor…</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="661"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="662"/>
         <source>Installing… If the phone asks whether to allow it, tap Allow or Install.</source>
         <translation>Yükleniyor… Telefon izin verilip verilmeyeceğini sorarsa İzin ver&apos;e veya Yükle&apos;ye dokunun.</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="703"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="704"/>
         <source>NectarLink %1 is installed and opening on the phone. Finish its setup there, then pair it with this PC from Home.</source>
         <translation>NectarLink %1 yüklendi ve telefonda açılıyor. Kurulumu orada bitirin, sonra Ana sayfa&apos;dan bu bilgisayarla eşleştirin.</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="716"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="717"/>
         <source>Done</source>
         <translation>Tamam</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="745"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="746"/>
         <source>Replace it</source>
         <translation>Değiştir</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="751"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="752"/>
         <source>Close</source>
         <translation>Kapat</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="765"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="766"/>
         <source>Remove the NectarLink on %1 with everything it keeps, including the PCs it&apos;s paired with? This can&apos;t be undone.</source>
         <translation>%1 üzerindeki NectarLink, eşleştiği bilgisayarlar dahil tuttuğu her şeyle birlikte kaldırılsın mı? Bu geri alınamaz.</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="771"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="772"/>
         <source>Remove and install</source>
         <translation>Kaldır ve yükle</translation>
     </message>
     <message>
-        <location filename="../qml/components/PhoneInstallPane.qml" line="780"/>
+        <location filename="../qml/components/PhoneInstallPane.qml" line="781"/>
         <source>Cancel</source>
         <translation>İptal</translation>
     </message>
@@ -7726,17 +7814,17 @@ Neler gerekir
 <context>
     <name>PhoneMic</name>
     <message>
-        <location filename="rust_strings.h" line="441"/>
+        <location filename="rust_strings.h" line="436"/>
         <source>Tap Start on %1 to use its microphone.</source>
         <translation>Mikrofonunu kullanmak için %1 cihazında Başlat&apos;a dokunun.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="442"/>
+        <location filename="rust_strings.h" line="437"/>
         <source>The microphone is turned off for this PC on %1.</source>
         <translation>%1 cihazında bu bilgisayar için mikrofon kapalı.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="443"/>
+        <location filename="rust_strings.h" line="438"/>
         <source>Update NectarLink on %1 to use its microphone.</source>
         <translation>Mikrofonunu kullanmak için %1 cihazındaki NectarLink&apos;i güncelleyin.</translation>
     </message>
@@ -7744,22 +7832,22 @@ Neler gerekir
 <context>
     <name>PhoneSound</name>
     <message>
-        <location filename="rust_strings.h" line="444"/>
+        <location filename="rust_strings.h" line="439"/>
         <source>%1 couldn&apos;t ask to share its sound. Check that NectarLink can show notifications on the phone.</source>
         <translation>%1 cihazı ses paylaşımı için izin isteyemedi. NectarLink&apos;in telefonda bildirim gösterebildiğini kontrol edin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="445"/>
+        <location filename="rust_strings.h" line="440"/>
         <source>Mirroring is turned off for this phone.</source>
         <translation>Bu telefon için yansıtma kapalı.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="446"/>
+        <location filename="rust_strings.h" line="441"/>
         <source>The phone isn&apos;t connected.</source>
         <translation>Telefon bağlı değil.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="447"/>
+        <location filename="rust_strings.h" line="442"/>
         <source>Update NectarLink on %1 to play its sound here.</source>
         <translation>Sesini burada çalmak için %1 cihazındaki NectarLink&apos;i güncelleyin.</translation>
     </message>
@@ -7767,62 +7855,62 @@ Neler gerekir
 <context>
     <name>PhotoBackup</name>
     <message>
-        <location filename="rust_strings.h" line="448"/>
+        <location filename="rust_strings.h" line="443"/>
         <source>Can&apos;t write to the backup folder.</source>
         <translation>Yedekleme klasörüne yazılamıyor.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="449"/>
+        <location filename="rust_strings.h" line="444"/>
         <source>Copying, %1 left</source>
         <translation>Kopyalanıyor, %1 kaldı</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="450"/>
+        <location filename="rust_strings.h" line="445"/>
         <source>Looking for new photos…</source>
         <translation>Yeni fotoğraflar aranıyor…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="451"/>
+        <location filename="rust_strings.h" line="446"/>
         <source>Off</source>
         <translation>Kapalı</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="452"/>
+        <location filename="rust_strings.h" line="447"/>
         <source>Photos are turned off for this PC on %1.</source>
         <translation>%1 cihazında bu bilgisayar için fotoğraflar kapalı.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="453"/>
+        <location filename="rust_strings.h" line="448"/>
         <source>The backup folder&apos;s drive is full.</source>
         <translation>Yedekleme klasörünün bulunduğu sürücü dolu.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="454"/>
+        <location filename="rust_strings.h" line="449"/>
         <source>The backup stopped. It tries again in a few minutes.</source>
         <translation>Yedekleme durdu. Birkaç dakika içinde yeniden denenecek.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="455"/>
+        <location filename="rust_strings.h" line="450"/>
         <source>Up to date</source>
         <translation>Güncel</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="456"/>
+        <location filename="rust_strings.h" line="451"/>
         <source>Up to date, %1 backed up</source>
         <translation>Güncel, %1 yedeklendi</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="457"/>
+        <location filename="rust_strings.h" line="452"/>
         <source>Update NectarLink on %1 to back up its photos.</source>
         <translation>Fotoğraflarını yedeklemek için %1 cihazındaki NectarLink&apos;i güncelleyin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="458"/>
+        <location filename="rust_strings.h" line="453"/>
         <source>Waiting for %1</source>
         <translation>%1 bekleniyor</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="459"/>
+        <location filename="rust_strings.h" line="454"/>
         <source>Waiting for Wi-Fi</source>
         <translation>Wi-Fi bekleniyor</translation>
     </message>
@@ -7830,87 +7918,87 @@ Neler gerekir
 <context>
     <name>Photos</name>
     <message>
-        <location filename="rust_strings.h" line="460"/>
+        <location filename="rust_strings.h" line="455"/>
         <source>%1 of %2 couldn&apos;t be moved to %3. They&apos;re in Downloads\Nectarlink.</source>
         <translation>%2 öğeden %1 tanesi %3 konumuna taşınamadı. Downloads\Nectarlink klasöründeler.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="461"/>
+        <location filename="rust_strings.h" line="456"/>
         <source>Copied to clipboard.</source>
         <translation>Panoya kopyalandı.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="462"/>
+        <location filename="rust_strings.h" line="457"/>
         <source>Couldn&apos;t open the share window. Try Save instead.</source>
         <translation>Paylaşma penceresi açılamadı. Bunun yerine Kaydet&apos;i dene.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="464"/>
+        <location filename="rust_strings.h" line="459"/>
         <source>From %1</source>
         <translation>Kaynak: %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="465"/>
+        <location filename="rust_strings.h" line="460"/>
         <source>New photo</source>
         <translation>Yeni fotoğraf</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="466"/>
+        <location filename="rust_strings.h" line="461"/>
         <source>New screenshot</source>
         <translation>Yeni ekran görüntüsü</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="467"/>
+        <location filename="rust_strings.h" line="462"/>
         <source>No recent photos found on the phone.</source>
         <translation>Telefonda son fotoğraf bulunamadı.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="468"/>
+        <location filename="rust_strings.h" line="463"/>
         <source>Opening latest photo…</source>
         <translation>Son fotoğraf açılıyor…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="469"/>
+        <location filename="rust_strings.h" line="464"/>
         <source>Saved %1 items to %2.</source>
         <translation>%1 öğe %2 konumuna kaydedildi.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="470"/>
+        <location filename="rust_strings.h" line="465"/>
         <source>Saved %1 to %2.</source>
         <translation>%1, %2 konumuna kaydedildi.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="474"/>
+        <location filename="rust_strings.h" line="469"/>
         <source>The phone kept them. Deleting from the PC needs All files access on the phone (Android 11 or later).</source>
         <translation>Telefon bunları sakladı. Bilgisayardan silmek için telefonda Tüm dosyalara erişim gerekir (Android 11 veya üstü).</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="463"/>
+        <location filename="rust_strings.h" line="458"/>
         <source>Deleted %1 of %2.</source>
         <translation>%2 öğeden %1 tanesi silindi.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="471"/>
+        <location filename="rust_strings.h" line="466"/>
         <source>That photo isn&apos;t on the phone anymore.</source>
         <translation>Bu fotoğraf artık telefonda değil.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="472"/>
+        <location filename="rust_strings.h" line="467"/>
         <source>The phone doesn&apos;t share photos or files with this PC.</source>
         <translation>Telefon bu bilgisayarla fotoğraf veya dosya paylaşmıyor.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="473"/>
+        <location filename="rust_strings.h" line="468"/>
         <source>The phone isn&apos;t connected right now.</source>
         <translation>Telefon şu anda bağlı değil.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="475"/>
+        <location filename="rust_strings.h" line="470"/>
         <source>The photo couldn&apos;t be copied to the clipboard.</source>
         <translation>Fotoğraf panoya kopyalanamadı.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="476"/>
+        <location filename="rust_strings.h" line="471"/>
         <source>The photo couldn&apos;t be copied. It&apos;s in Downloads\Nectarlink.</source>
         <translation>Fotoğraf kopyalanamadı. İndirilenler\Nectarlink klasöründe.</translation>
     </message>
@@ -8211,32 +8299,32 @@ Neler gerekir
 <context>
     <name>PlayOnPhone</name>
     <message>
-        <location filename="rust_strings.h" line="477"/>
+        <location filename="rust_strings.h" line="472"/>
         <source>Connect your phone to play on it.</source>
         <translation>Telefonunuzda oynatmak için telefonunuzu bağlayın.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="478"/>
+        <location filename="rust_strings.h" line="473"/>
         <source>Media is turned off for %1.</source>
         <translation>%1 için medya kapalı.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="479"/>
+        <location filename="rust_strings.h" line="474"/>
         <source>Opening in %1 on %2. Tap the notification there.</source>
         <translation>%2 cihazında %1 ile açılıyor. Oradaki bildirime dokunun.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="480"/>
+        <location filename="rust_strings.h" line="475"/>
         <source>Sent to %1. Tap the notification there.</source>
         <translation>%1 cihazına gönderildi. Oradaki bildirime dokunun.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="481"/>
+        <location filename="rust_strings.h" line="476"/>
         <source>Tap the notification on %1 to watch.</source>
         <translation>İzlemek için %1 cihazındaki bildirime dokunun.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="482"/>
+        <location filename="rust_strings.h" line="477"/>
         <source>Update NectarLink on %1 to play on it.</source>
         <translation>Telefonda oynatmak için %1 cihazındaki NectarLink&apos;i güncelleyin.</translation>
     </message>
@@ -8244,7 +8332,7 @@ Neler gerekir
 <context>
     <name>Prefs</name>
     <message>
-        <location filename="rust_strings.h" line="483"/>
+        <location filename="rust_strings.h" line="478"/>
         <source>Connected to OBS.</source>
         <translation>OBS&apos;ye bağlanıldı.</translation>
     </message>
@@ -8252,7 +8340,7 @@ Neler gerekir
 <context>
     <name>Recordings</name>
     <message>
-        <location filename="rust_strings.h" line="484"/>
+        <location filename="rust_strings.h" line="479"/>
         <source>Recording from %1 saved</source>
         <translation>%1 kaydı kaydedildi</translation>
     </message>
@@ -8447,57 +8535,57 @@ Neler gerekir
 <context>
     <name>SendTo</name>
     <message>
-        <location filename="rust_strings.h" line="485"/>
+        <location filename="rust_strings.h" line="480"/>
         <source>Copied to your phone&apos;s clipboard.</source>
         <translation>Telefonunuzun panosuna kopyalandı.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="486"/>
+        <location filename="rust_strings.h" line="481"/>
         <source>Couldn&apos;t reach %1.</source>
         <translation>%1 cihazına ulaşılamadı.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="487"/>
+        <location filename="rust_strings.h" line="482"/>
         <source>Couldn&apos;t send %1</source>
         <translation>Gönderilemedi: %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="488"/>
+        <location filename="rust_strings.h" line="483"/>
         <source>Couldn&apos;t send to %1</source>
         <translation>%1 cihazına gönderilemedi</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="489"/>
+        <location filename="rust_strings.h" line="484"/>
         <source>Couldn&apos;t share with %1</source>
         <translation>%1 ile paylaşılamadı</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="490"/>
+        <location filename="rust_strings.h" line="485"/>
         <source>File failed integrity check; partial file kept to resume.</source>
         <translation>Dosya bütünlük denetimini geçemedi; devam edebilmek için kısmi dosya saklandı.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="491"/>
+        <location filename="rust_strings.h" line="486"/>
         <source>Send to %1 with NectarLink</source>
         <translation>NectarLink ile %1 cihazına gönder</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="492"/>
+        <location filename="rust_strings.h" line="487"/>
         <source>Sending to %1…</source>
         <translation>%1 cihazına gönderiliyor…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="493"/>
+        <location filename="rust_strings.h" line="488"/>
         <source>Sent to %1</source>
         <translation>%1 cihazına gönderildi</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="494"/>
+        <location filename="rust_strings.h" line="489"/>
         <source>The transfer didn&apos;t go through.</source>
         <translation>Aktarım tamamlanamadı.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="495"/>
+        <location filename="rust_strings.h" line="490"/>
         <source>Waiting for %1…</source>
         <translation>%1 bekleniyor…</translation>
     </message>
@@ -8616,15 +8704,13 @@ Neler gerekir
         <translation>Doktor, Wake-on-LAN, API ve sürüm</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="30"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3825"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3867"/>
         <source>Support NectarLink</source>
         <translation>NectarLink&apos;i destekle</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="30"/>
         <source>Help keep it going</source>
-        <translation>Devam etmesine yardım et</translation>
+        <translation type="vanished">Devam etmesine yardım et</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="53"/>
@@ -9017,7 +9103,7 @@ Neler gerekir
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="971"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4142"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4185"/>
         <source>Language</source>
         <translation>Dil</translation>
     </message>
@@ -9212,7 +9298,7 @@ Neler gerekir
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1507"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4248"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4291"/>
         <source>Unpair</source>
         <translation>Eşleştirmeyi kaldır</translation>
     </message>
@@ -9260,6 +9346,9 @@ Neler gerekir
         <location filename="../qml/pages/SettingsPage.qml" line="3724"/>
         <location filename="../qml/pages/SettingsPage.qml" line="3791"/>
         <location filename="../qml/pages/SettingsPage.qml" line="3804"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3833"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3846"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3859"/>
         <source>Open</source>
         <translation>Aç</translation>
     </message>
@@ -9337,6 +9426,16 @@ Neler gerekir
         <location filename="../qml/pages/SettingsPage.qml" line="1868"/>
         <source>Phone as microphone</source>
         <translation>Mikrofon olarak telefon</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="30"/>
+        <source>Community</source>
+        <translation>Topluluk</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="30"/>
+        <source>Discord, news and support</source>
+        <translation>Discord, haberler ve destek</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1264"/>
@@ -9967,7 +10066,7 @@ Neler gerekir
         <location filename="../qml/pages/SettingsPage.qml" line="3381"/>
         <location filename="../qml/pages/SettingsPage.qml" line="3412"/>
         <location filename="../qml/pages/SettingsPage.qml" line="3449"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4293"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4336"/>
         <source>Clear</source>
         <translation>Temizle</translation>
     </message>
@@ -10199,7 +10298,7 @@ Neler gerekir
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3555"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4033"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4076"/>
         <source>Network interface</source>
         <translation>Ağ arayüzü</translation>
     </message>
@@ -10211,17 +10310,17 @@ Neler gerekir
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="2143"/>
         <location filename="../qml/pages/SettingsPage.qml" line="3560"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4040"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4083"/>
         <source>System default</source>
         <translation>Sistem varsayılanı</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4039"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4082"/>
         <source>%1 · Direct (without a VPN)</source>
         <translation>%1 · Doğrudan (VPN olmadan)</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4063"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4106"/>
         <source>Could not use this network interface.</source>
         <translation>Bu ağ arayüzü kullanılamadı.</translation>
     </message>
@@ -10369,129 +10468,159 @@ Neler gerekir
         <translation>Her özelliğin neye ihtiyaç duyduğu ve nerede bulunduğu.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3826"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3827"/>
+        <source>Discord</source>
+        <translation>Discord</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3828"/>
+        <source>Our server. Ask questions, share ideas and try new builds with others.</source>
+        <translation>Sunucumuz. Soru sor, fikirlerini paylaş ve yeni sürümleri başkalarıyla dene.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3841"/>
+        <source>X</source>
+        <translation>X</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3842"/>
+        <source>News from Bee, who makes NectarLink.</source>
+        <translation>NectarLink’i yapan Bee’den haberler.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3854"/>
+        <source>GitHub</source>
+        <translation>GitHub</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3855"/>
+        <source>Source code, issues and releases.</source>
+        <translation>Kaynak kodu, sorunlar ve sürümler.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3868"/>
         <source>NectarLink is free and open source. If it makes your days a little easier, you can help keep it going. Thank you!</source>
         <translation>NectarLink ücretsiz ve açık kaynaklıdır. Günlerini biraz kolaylaştırıyorsa devam etmesine yardım edebilirsin. Teşekkürler!</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3831"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3873"/>
         <source>Support</source>
         <translation>Destekle</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3903"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3946"/>
         <source>Sync a folder</source>
         <translation>Klasör eşitle</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3912"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3943"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3955"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3986"/>
         <source>Folder on the phone</source>
         <translation>Telefondaki klasör</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3948"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3991"/>
         <source>Folder on this PC</source>
         <translation>Bu bilgisayardaki klasör</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3963"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4006"/>
         <source>Choose…</source>
         <translation>Seç…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3973"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4016"/>
         <source>Phone to PC</source>
         <translation>Telefondan bilgisayara</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3974"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4017"/>
         <source>PC to phone</source>
         <translation>PC&apos;den telefona</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3975"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4018"/>
         <source>Both ways</source>
         <translation>Her iki yönde</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3986"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4029"/>
         <source>New and changed files on the PC are copied to the phone. Nothing on the phone comes to the PC, and nothing is deleted.</source>
         <translation>PC&apos;deki yeni ve değişen dosyalar telefona kopyalanır. Telefondan PC&apos;ye hiçbir şey gelmez ve hiçbir şey silinmez.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3988"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4031"/>
         <source>Changes on either side are copied to the other. When a file changed on both, both versions are kept.</source>
         <translation>Bir taraftaki değişiklikler diğerine kopyalanır. Bir dosya iki tarafta da değiştiyse iki sürüm de saklanır.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3989"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4032"/>
         <source>New and changed files on the phone are copied to the PC. Nothing on the PC goes to the phone.</source>
         <translation>Telefondaki yeni ve değişen dosyalar bilgisayara kopyalanır. Bilgisayardan telefona hiçbir şey gitmez.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3995"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4000"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4038"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4043"/>
         <source>Also remove from the PC</source>
         <translation>PC&apos;den de kaldır</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3995"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4000"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4038"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4043"/>
         <source>Also remove deleted files</source>
         <translation>Silinen dosyaları da kaldır</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3997"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4040"/>
         <source>A synced file you delete on one side leaves the other. On the PC it goes to the Recycle Bin. On the phone, photos and videos go to its trash where Android has one, and other files are gone for good.</source>
         <translation>Bir tarafta sildiğin eşitlenmiş dosya diğer taraftan da kalkar. PC&apos;de Geri Dönüşüm Kutusu&apos;na gider. Telefonda fotoğraf ve videolar, Android&apos;de varsa çöp kutusuna gider; diğer dosyalar kalıcı olarak silinir.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3998"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4041"/>
         <source>A synced file you delete on the phone goes to the PC&apos;s Recycle Bin.</source>
         <translation>Telefonda sildiğin eşitlenmiş dosya PC&apos;nin Geri Dönüşüm Kutusu&apos;na gider.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4011"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4054"/>
         <source>Add</source>
         <translation>Ekle</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4080"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4123"/>
         <source>Phone&apos;s hotspot network</source>
         <translation>Telefonun hotspot ağı</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4088"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4131"/>
         <source>Wi-Fi networks this PC has joined before. Your system keeps their passwords; NectarLink never sees them.</source>
         <translation>Bu bilgisayarın daha önce katıldığı Wi-Fi ağları. Parolalarını sisteminiz saklar; NectarLink bunları asla görmez.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4089"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4132"/>
         <source>This PC hasn&apos;t saved any Wi-Fi networks yet. Join the phone&apos;s hotspot once from your system Wi-Fi list first.</source>
         <translation>Bu bilgisayar henüz hiç Wi-Fi ağı kaydetmedi. Önce telefonun hotspot&apos;una bir kez sisteminizin Wi-Fi listesinden katılın.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4091"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4134"/>
         <source>Wi-Fi networks this PC has joined before. Windows keeps their passwords; NectarLink never sees them.</source>
         <translation>Bu bilgisayarın daha önce katıldığı Wi-Fi ağları. Parolalarını Windows saklar; NectarLink bunları asla görmez.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4092"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4135"/>
         <source>This PC hasn&apos;t saved any Wi-Fi networks yet. Join the phone&apos;s hotspot once from Windows&apos; Wi-Fi list first.</source>
         <translation>Bu bilgisayar henüz hiç Wi-Fi ağı kaydetmedi. Önce telefonun hotspot&apos;una bir kez Windows&apos;un Wi-Fi listesinden katılın.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4122"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4165"/>
         <source>Don&apos;t join</source>
         <translation>Katılma</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4065"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4131"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4159"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4194"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4222"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4108"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4174"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4202"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4237"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4265"/>
         <source>Close</source>
         <translation>Kapat</translation>
     </message>
@@ -10501,25 +10630,25 @@ Neler gerekir
         <translation>Son güncellemenden bu yana neler değişti.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4205"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4248"/>
         <source>Play the phone&apos;s microphone into</source>
         <translation>Telefonun mikrofonunu şu çıkışa çal</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4235"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4278"/>
         <source>Unpair %1?</source>
         <translation>%1 eşleştirmesi kaldırılsın mı?</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4241"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4284"/>
         <source>Both devices forget each other. You can pair them again any time.</source>
         <translation>İki cihaz da birbirini unutur. İstediğiniz zaman yeniden eşleştirebilirsiniz.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4009"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4246"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4290"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4326"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4052"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4289"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4333"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4369"/>
         <source>Cancel</source>
         <translation>İptal</translation>
     </message>
@@ -10583,32 +10712,32 @@ Neler gerekir
         <translation>Nightly</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3909"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3952"/>
         <source>The phone asks once to let this PC in. NectarLink there also needs All files access, or this folder under Selected folders only.</source>
         <translation>Telefon, bu bilgisayara izin vermek için bir kez sorar. Oradaki NectarLink ayrıca Tüm dosyalara erişim iznine ya da bu klasörün Yalnızca seçili klasörler altında olmasına ihtiyaç duyar.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4170"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4213"/>
         <source>Talk on calls through</source>
         <translation>Aramalarda şununla konuş</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4189"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4232"/>
         <source>No microphone found on this PC.</source>
         <translation>Bu bilgisayarda mikrofon bulunamadı.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4312"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4355"/>
         <source>Clear all local history &amp; caches?</source>
         <translation>Tüm yerel geçmiş ve önbellekler temizlensin mi?</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4321"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4364"/>
         <source>Deletes clipboard history, Timeline, notification history, cached messages, photo thumbnails and transfer history on this PC. Paired devices, settings and downloaded files are kept.</source>
         <translation>Bu bilgisayardaki pano geçmişini, Zaman Çizelgesi&apos;ni, bildirim geçmişini, önbellekteki mesajları, fotoğraf küçük resimlerini ve aktarım geçmişini siler. Eşleştirilmiş cihazlar, ayarlar ve indirilen dosyalar korunur.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4329"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4372"/>
         <source>Clear everything</source>
         <translation>Her şeyi temizle</translation>
     </message>
@@ -10636,72 +10765,72 @@ Neler gerekir
 <context>
     <name>Setup</name>
     <message>
-        <location filename="rust_strings.h" line="496"/>
+        <location filename="rust_strings.h" line="491"/>
         <source>Choose a folder on a drive inside this PC, not a USB or network drive.</source>
         <translation>USB veya ağ sürücüsü değil, bu bilgisayarın içindeki bir sürücüde bir klasör seçin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="497"/>
+        <location filename="rust_strings.h" line="492"/>
         <source>Choose a folder on one of this PC&apos;s drives.</source>
         <translation>Bu bilgisayarın sürücülerinden birinde bir klasör seçin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="498"/>
+        <location filename="rust_strings.h" line="493"/>
         <source>Couldn&apos;t start setup: %1</source>
         <translation>Kurulum başlatılamadı: %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="499"/>
+        <location filename="rust_strings.h" line="494"/>
         <source>Couldn&apos;t uninstall NectarLink: %1</source>
         <translation>NectarLink kaldırılamadı: %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="500"/>
+        <location filename="rust_strings.h" line="495"/>
         <source>Setup can&apos;t use that folder. Choose another one.</source>
         <translation>Kurulum bu klasörü kullanamıyor. Başka bir klasör seçin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="501"/>
+        <location filename="rust_strings.h" line="496"/>
         <source>Setup is taking too long. Try again after restarting the PC.</source>
         <translation>Kurulum çok uzun sürüyor. Bilgisayarı yeniden başlattıktan sonra tekrar deneyin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="502"/>
+        <location filename="rust_strings.h" line="497"/>
         <source>Setup stopped with code %1.</source>
         <translation>Kurulum %1 koduyla durdu.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="503"/>
+        <location filename="rust_strings.h" line="498"/>
         <source>That drive can&apos;t keep the app&apos;s files safe (it isn&apos;t NTFS). Choose another drive.</source>
         <translation>Bu sürücü uygulamanın dosyalarını koruyamaz (NTFS değil). Başka bir sürücü seçin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="504"/>
+        <location filename="rust_strings.h" line="499"/>
         <source>That folder&apos;s path is too long. Choose one closer to the top of a drive.</source>
         <translation>Bu klasörün yolu çok uzun. Sürücünün en üstüne daha yakın bir klasör seçin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="505"/>
+        <location filename="rust_strings.h" line="500"/>
         <source>The uninstaller is missing. Reinstall NectarLink, then uninstall it.</source>
         <translation>Kaldırma programı eksik. NectarLink&apos;i yeniden kurun, ardından kaldırın.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="506"/>
+        <location filename="rust_strings.h" line="501"/>
         <source>There&apos;s a file named %1 there. Choose another place.</source>
         <translation>Orada %1 adlı bir dosya var. Başka bir yer seçin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="507"/>
+        <location filename="rust_strings.h" line="502"/>
         <source>There&apos;s already a %1 folder there with files in it. Choose another place.</source>
         <translation>Orada içinde dosyalar olan bir %1 klasörü zaten var. Başka bir yer seçin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="508"/>
+        <location filename="rust_strings.h" line="503"/>
         <source>Uninstall stopped with code %1.</source>
         <translation>Kaldırma %1 koduyla durdu.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="509"/>
+        <location filename="rust_strings.h" line="504"/>
         <source>Updates here will ask for your permission each time.</source>
         <translation>Buradaki güncellemeler her seferinde izninizi isteyecek.</translation>
     </message>
@@ -11152,17 +11281,17 @@ Neler gerekir
 <context>
     <name>Storage</name>
     <message>
-        <location filename="rust_strings.h" line="510"/>
+        <location filename="rust_strings.h" line="505"/>
         <source>%1&apos;s files aren&apos;t shared with this PC</source>
         <translation>%1 cihazının dosyaları bu bilgisayarla paylaşılmıyor</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="511"/>
+        <location filename="rust_strings.h" line="506"/>
         <source>On the phone, allow All files access for NectarLink.</source>
         <translation>Telefonda NectarLink için Tüm dosyalara erişim izni verin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="512"/>
+        <location filename="rust_strings.h" line="507"/>
         <source>On the phone, turn on Browse this phone&apos;s storage in File Explorer in NectarLink.</source>
         <translation>Telefonda NectarLink&apos;te Bu telefonun depolama alanına Dosya Gezgini&apos;nden göz at seçeneğini açın.</translation>
     </message>
@@ -11170,147 +11299,147 @@ Neler gerekir
 <context>
     <name>Timeline</name>
     <message>
-        <location filename="rust_strings.h" line="513"/>
+        <location filename="rust_strings.h" line="508"/>
         <source>App window #%1</source>
         <translation>Uygulama penceresi #%1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="514"/>
+        <location filename="rust_strings.h" line="509"/>
         <source>Clip (removed from clipboard history)</source>
         <translation>Pano öğesi (pano geçmişinden kaldırıldı)</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="515"/>
+        <location filename="rust_strings.h" line="510"/>
         <source>Copied image</source>
         <translation>Kopyalanan görüntü</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="516"/>
+        <location filename="rust_strings.h" line="511"/>
         <source>Copied link to clipboard.</source>
         <translation>Bağlantı panoya kopyalandı.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="517"/>
+        <location filename="rust_strings.h" line="512"/>
         <source>Copied to clipboard.</source>
         <translation>Panoya kopyalandı.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="518"/>
+        <location filename="rust_strings.h" line="513"/>
         <source>From %1</source>
         <translation>Kaynak: %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="519"/>
+        <location filename="rust_strings.h" line="514"/>
         <source>In progress</source>
         <translation>Devam ediyor</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="520"/>
+        <location filename="rust_strings.h" line="515"/>
         <source>No phone is paired yet.</source>
         <translation>Henüz eşleştirilmiş telefon yok.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="521"/>
+        <location filename="rust_strings.h" line="516"/>
         <source>Opened from %1</source>
         <translation>%1 kaynağından açıldı</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="522"/>
+        <location filename="rust_strings.h" line="517"/>
         <source>Opened on %1</source>
         <translation>%1 cihazında açıldı</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="523"/>
+        <location filename="rust_strings.h" line="518"/>
         <source>Phone microphone</source>
         <translation>Telefon mikrofonu</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="524"/>
+        <location filename="rust_strings.h" line="519"/>
         <source>Phone webcam</source>
         <translation>Telefon web kamerası</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="525"/>
+        <location filename="rust_strings.h" line="520"/>
         <source>Recorded on %1</source>
         <translation>%1 cihazında kaydedildi</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="526"/>
+        <location filename="rust_strings.h" line="521"/>
         <source>Saved from %1</source>
         <translation>%1 kaynağından kaydedildi</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="527"/>
+        <location filename="rust_strings.h" line="522"/>
         <source>Screen mirroring</source>
         <translation>Ekran yansıtma</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="528"/>
+        <location filename="rust_strings.h" line="523"/>
         <source>Sending to %1…</source>
         <translation>%1 cihazına gönderiliyor…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="529"/>
+        <location filename="rust_strings.h" line="524"/>
         <source>Sent clip to %1.</source>
         <translation>Pano öğesi %1 cihazına gönderildi.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="530"/>
+        <location filename="rust_strings.h" line="525"/>
         <source>Sent to %1</source>
         <translation>%1 cihazına gönderildi</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="531"/>
+        <location filename="rust_strings.h" line="526"/>
         <source>Session</source>
         <translation>Oturum</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="532"/>
+        <location filename="rust_strings.h" line="527"/>
         <source>That clip is no longer in clipboard history.</source>
         <translation>Bu öğe artık pano geçmişinde değil.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="533"/>
+        <location filename="rust_strings.h" line="528"/>
         <source>That entry couldn&apos;t be removed. Try again.</source>
         <translation>Bu kayıt kaldırılamadı. Tekrar deneyin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="534"/>
+        <location filename="rust_strings.h" line="529"/>
         <source>That file was moved or deleted.</source>
         <translation>Bu dosya taşınmış veya silinmiş.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="535"/>
+        <location filename="rust_strings.h" line="530"/>
         <source>That isn&apos;t a web link.</source>
         <translation>Bu bir web bağlantısı değil.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="536"/>
+        <location filename="rust_strings.h" line="531"/>
         <source>That photo was moved or deleted.</source>
         <translation>Bu fotoğraf taşınmış veya silinmiş.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="537"/>
+        <location filename="rust_strings.h" line="532"/>
         <source>The Timeline couldn&apos;t be cleared. Try again.</source>
         <translation>Zaman Çizelgesi temizlenemedi. Tekrar deneyin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="538"/>
+        <location filename="rust_strings.h" line="533"/>
         <source>The photo couldn&apos;t be copied to the clipboard.</source>
         <translation>Fotoğraf panoya kopyalanamadı.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="539"/>
+        <location filename="rust_strings.h" line="534"/>
         <source>Voice recording</source>
         <translation>Ses kaydı</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="540"/>
+        <location filename="rust_strings.h" line="535"/>
         <source>With %1</source>
         <translation>%1 ile</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="541"/>
+        <location filename="rust_strings.h" line="536"/>
         <source>device</source>
         <translation>cihaz</translation>
     </message>
@@ -11641,37 +11770,37 @@ Neler gerekir
 <context>
     <name>Transfers</name>
     <message>
-        <location filename="rust_strings.h" line="542"/>
+        <location filename="rust_strings.h" line="537"/>
         <source>Accept in NectarLink to save to Downloads\Nectarlink</source>
         <translation>İndirilenler\Nectarlink klasörüne kaydetmek için NectarLink&apos;te kabul edin</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="543"/>
+        <location filename="rust_strings.h" line="538"/>
         <source>Files are turned off for that device.</source>
         <translation>Bu cihaz için dosyalar kapalı.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="544"/>
+        <location filename="rust_strings.h" line="539"/>
         <source>From %1, opened from Downloads\Nectarlink</source>
         <translation>Kaynak: %1, İndirilenler\Nectarlink klasöründen açıldı</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="545"/>
+        <location filename="rust_strings.h" line="540"/>
         <source>From %1, saved in Downloads\Nectarlink</source>
         <translation>Kaynak: %1, İndirilenler\Nectarlink klasörüne kaydedildi</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="546"/>
+        <location filename="rust_strings.h" line="541"/>
         <source>Nearby device</source>
         <translation>Yakındaki cihaz</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="547"/>
+        <location filename="rust_strings.h" line="542"/>
         <source>That&apos;s too many files to send at once.</source>
         <translation>Bir kerede gönderilemeyecek kadar çok dosya var.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="548"/>
+        <location filename="rust_strings.h" line="543"/>
         <source>There&apos;s nothing to send in there.</source>
         <translation>Orada gönderilecek bir şey yok.</translation>
     </message>
@@ -11679,82 +11808,82 @@ Neler gerekir
 <context>
     <name>Updater</name>
     <message>
-        <location filename="rust_strings.h" line="549"/>
+        <location filename="rust_strings.h" line="544"/>
         <source>Couldn&apos;t check for updates. Check your internet connection.</source>
         <translation>Güncellemeler denetlenemedi. İnternet bağlantınızı kontrol edin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="550"/>
+        <location filename="rust_strings.h" line="545"/>
         <source>NectarLink %1 is available</source>
         <translation>NectarLink %1 kullanılabilir</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="551"/>
+        <location filename="rust_strings.h" line="546"/>
         <source>NectarLink %1 is available.</source>
         <translation>NectarLink %1 kullanılabilir.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="552"/>
+        <location filename="rust_strings.h" line="547"/>
         <source>NectarLink is still on the version you had. Try again from Settings.</source>
         <translation>NectarLink hâlâ önceki sürümde. Ayarlar&apos;dan tekrar deneyin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="553"/>
+        <location filename="rust_strings.h" line="548"/>
         <source>NectarLink is up to date.</source>
         <translation>NectarLink güncel.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="554"/>
+        <location filename="rust_strings.h" line="549"/>
         <source>NectarLink is updated to %1</source>
         <translation>NectarLink %1 sürümüne güncellendi</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="555"/>
+        <location filename="rust_strings.h" line="550"/>
         <source>Nightly %1</source>
         <translation>Nightly %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="556"/>
+        <location filename="rust_strings.h" line="551"/>
         <source>Nightly %1 (%2)</source>
         <translation>Nightly %1 (%2)</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="557"/>
+        <location filename="rust_strings.h" line="552"/>
         <source>The download was damaged, so it wasn&apos;t installed. Try again.</source>
         <translation>İndirilen dosya bozuk olduğu için kurulmadı. Tekrar deneyin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="558"/>
+        <location filename="rust_strings.h" line="553"/>
         <source>The update couldn&apos;t be downloaded. Check your internet connection and try again.</source>
         <translation>Güncelleme indirilemedi. İnternet bağlantınızı kontrol edip tekrar deneyin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="559"/>
+        <location filename="rust_strings.h" line="554"/>
         <source>The update couldn&apos;t be saved. Check that there&apos;s free space and try again.</source>
         <translation>Güncelleme kaydedilemedi. Boş alan olduğunu kontrol edip tekrar deneyin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="560"/>
+        <location filename="rust_strings.h" line="555"/>
         <source>The update couldn&apos;t be started. Try again.</source>
         <translation>Güncelleme başlatılamadı. Tekrar deneyin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="561"/>
+        <location filename="rust_strings.h" line="556"/>
         <source>The update didn&apos;t install</source>
         <translation>Güncelleme kurulmadı</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="562"/>
+        <location filename="rust_strings.h" line="557"/>
         <source>The update is installed. Restart NectarLink to use it.</source>
         <translation>Güncelleme kuruldu. Kullanmak için NectarLink&apos;i yeniden başlatın.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="563"/>
+        <location filename="rust_strings.h" line="558"/>
         <source>Update now, or later from Settings.</source>
         <translation>Şimdi veya daha sonra Ayarlar&apos;dan güncelleyin.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="564"/>
+        <location filename="rust_strings.h" line="559"/>
         <source>Your phone reconnects on its own.</source>
         <translation>Telefonunuz kendiliğinden yeniden bağlanır.</translation>
     </message>
@@ -12312,12 +12441,12 @@ Neler gerekir
 <context>
     <name>Webcam</name>
     <message>
-        <location filename="rust_strings.h" line="565"/>
+        <location filename="rust_strings.h" line="560"/>
         <source>Starting camera on %1…</source>
         <translation>%1 cihazında kamera başlatılıyor…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="566"/>
+        <location filename="rust_strings.h" line="561"/>
         <source>Streaming %1 × %2 · %3 fps from %4</source>
         <translation>%4 cihazından %1 × %2 · %3 fps aktarılıyor</translation>
     </message>

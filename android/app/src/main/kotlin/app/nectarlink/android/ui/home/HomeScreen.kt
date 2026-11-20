@@ -244,6 +244,9 @@ fun HomeScreen(
     showHiveInvite: Boolean = false,
     onTryHive: () -> Unit = {},
     onDismissHiveInvite: () -> Unit = {},
+    showCommunityInvite: Boolean = false,
+    onJoinDiscord: () -> Unit = {},
+    onDismissCommunityInvite: () -> Unit = {},
     backgroundServiceEnabled: Boolean = true,
     onTurnOnBackgroundService: () -> Unit = {},
     onOpenFeaturesGuide: () -> Unit = {},
@@ -256,6 +259,8 @@ fun HomeScreen(
     var showTimeline by remember { mutableStateOf(false) }
     var browseFilesPcId by remember { mutableStateOf<String?>(null) }
     var pulsingTarget by remember { mutableStateOf<GuideHighlightTarget?>(null) }
+    // One card at a time: What's new, then trying Hive, then Discord.
+    val communityInviteVisible = showCommunityInvite && !showWhatsNewGuideBanner && !showHiveInvite
     // Keep a screen of cards composed on each side, so scrolling back does not rebuild them.
     @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
     val listState = androidx.compose.foundation.lazy.rememberLazyListState(
@@ -295,6 +300,7 @@ fun HomeScreen(
                 add("home_header")
                 if (showWhatsNewGuideBanner) add("whats_new_guide_banner")
                 if (showHiveInvite && !showWhatsNewGuideBanner) add("hive_invite")
+                if (communityInviteVisible) add("community_invite")
                 if (state.ringingFrom != null) add("ringing_banner")
                 if (mirrorSession.active) add("mirror_active_banner")
                 if (webcamSession.active) add("webcam_active_banner")
@@ -402,6 +408,12 @@ fun HomeScreen(
         if (showHiveInvite && !showWhatsNewGuideBanner) {
             item(key = "hive_invite", contentType = "banner") {
                 HiveInviteCard(onTry = onTryHive, onDismiss = onDismissHiveInvite)
+            }
+        }
+        // Then, on its own, the ask to come chat on Discord.
+        if (communityInviteVisible) {
+            item(key = "community_invite", contentType = "banner") {
+                CommunityInviteCard(onJoin = onJoinDiscord, onDismiss = onDismissCommunityInvite)
             }
         }
         state.ringingFrom?.let { from ->
@@ -902,6 +914,59 @@ private fun WhatsNewFeaturesGuideCard(
 }
 
 /** "Try Hive, the new theme", with a small window onto the comb in Hive's own colors. */
+/** Asks, now and then after an update, to come chat on the Discord server. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun CommunityInviteCard(onJoin: () -> Unit, onDismiss: () -> Unit) {
+    val isGlass = LocalGlassTheme.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .liquidGlassCard(
+                cornerRadius = 24.dp,
+                isGlass = isGlass,
+                baseColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                tintColor = MaterialTheme.colorScheme.primary,
+                outlineColor = if (isGlass) MaterialTheme.colorScheme.outlineVariant else Color.Transparent,
+            )
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        androidx.compose.foundation.layout.Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(androidx.compose.foundation.shape.CircleShape)
+                .background(MaterialTheme.colorScheme.primaryContainer),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                painterResource(R.drawable.ic_chat),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+        }
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                text = stringResource(R.string.community_invite_title),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                text = stringResource(R.string.community_invite_text),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Button(onClick = onJoin) { Text(stringResource(R.string.community_invite_join)) }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.community_invite_later)) }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun HiveInviteCard(onTry: () -> Unit, onDismiss: () -> Unit) {

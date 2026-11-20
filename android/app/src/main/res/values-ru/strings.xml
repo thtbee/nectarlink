@@ -1409,4 +1409,16 @@
     <!-- Which of the PC's screens to view (#442) -->
     <string name="pc_mirror_screen">Экран %1$d</string>
     <string name="pc_mirror_screen_desc">Экран %1$d из %2$d. Нажмите, чтобы перейти к следующему.</string>
+    <!-- Community: Discord, X, GitHub and support -->
+    <string name="community_title">Сообщество</string>
+    <string name="community_discord_title">Discord</string>
+    <string name="community_discord_body">Наш сервер. Задавайте вопросы, делитесь идеями и пробуйте новые сборки вместе с другими.</string>
+    <string name="community_x_title">X</string>
+    <string name="community_x_body">Новости от Bee, автора NectarLink.</string>
+    <string name="community_github_title">GitHub</string>
+    <string name="community_github_body">Исходный код, задачи и выпуски.</string>
+    <string name="community_invite_title">Заходите в Discord</string>
+    <string name="community_invite_text">Вопросы, идеи и ранние сборки вместе с теми, кто делает NectarLink и пользуется им.</string>
+    <string name="community_invite_join">Войти в Discord</string>
+    <string name="community_invite_later">Не сейчас</string>
 </resources>

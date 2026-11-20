@@ -24,15 +24,12 @@ internal object StarNotification {
     private const val CHANNEL = "project"
     private const val ID = 0x5A7A
     private const val HOUR_MS = 60 * 60 * 1000L
-    private const val REPO = "https://github.com/thtbee/nectarlink"
 
-    /** Where the Support buttons go: the project's tip page. */
-    const val SUPPORT = "https://buymeacoffee.com/thtbee_"
 
     fun supportIntent(context: Context): PendingIntent = PendingIntent.getActivity(
         context,
         1,
-        Intent(Intent.ACTION_VIEW, Uri.parse(SUPPORT)),
+        Intent(Intent.ACTION_VIEW, Uri.parse(Link.DONATE.url)),
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
     )
 
@@ -45,17 +42,18 @@ internal object StarNotification {
         if (lastUpdate > firstInstall) now else firstInstall + HOUR_MS
 
     /** Call when the app opens. Posts it if it's time, or sets an alarm for when it is. */
-    fun onAppOpened(context: Context) {
+    fun onAppOpened(context: Context): Boolean {
         val app = context.applicationContext
-        if (posted(app)) return
-        val info = runCatching { app.packageManager.getPackageInfo(app.packageName, 0) }.getOrNull() ?: return
+        if (posted(app)) return false
+        val info = runCatching { app.packageManager.getPackageInfo(app.packageName, 0) }.getOrNull() ?: return false
         val now = System.currentTimeMillis()
         val at = askAt(info.firstInstallTime, info.lastUpdateTime, now)
         if (at <= now) {
             post(app)
-        } else {
-            app.getSystemService(AlarmManager::class.java)?.set(AlarmManager.RTC, at, alarm(app))
+            return posted(app)
         }
+        app.getSystemService(AlarmManager::class.java)?.set(AlarmManager.RTC, at, alarm(app))
+        return false
     }
 
     private fun posted(context: Context) =
@@ -83,7 +81,7 @@ internal object StarNotification {
         val open = PendingIntent.getActivity(
             context,
             0,
-            Intent(Intent.ACTION_VIEW, Uri.parse(REPO)),
+            Intent(Intent.ACTION_VIEW, Uri.parse(Link.REPO.url)),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         val notification = NotificationCompat.Builder(context, CHANNEL)

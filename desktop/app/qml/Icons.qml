@@ -95,6 +95,8 @@ QtObject {
     readonly property string record: "M12 6a6 6 0 1 0 0 12 6 6 0 0 0 0-12z"
     readonly property string stopSquare: "M7.5 6h9A1.5 1.5 0 0 1 18 7.5v9a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 16.5v-9A1.5 1.5 0 0 1 7.5 6z"
     readonly property string screenOff: "M7.5 2h9A2.5 2.5 0 0 1 19 4.5V13M19 17v2.5a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 5 19.5V5M10 18.5h4M2 2l20 20"
+    readonly property string code: "M16 18l6-6-6-6M8 6l-6 6 6 6"
+    readonly property string megaphone: "M3 11v2a1 1 0 0 0 1 1h2l6 4V6L6 10H4a1 1 0 0 0-1 1zM16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12"
     readonly property string heart: "M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7z"
     readonly property string coffee:"M10 2v2M14 2v2M6 2v2M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1"
     readonly property string resize: "M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"

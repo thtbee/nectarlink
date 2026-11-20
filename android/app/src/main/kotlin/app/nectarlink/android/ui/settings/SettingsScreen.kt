@@ -53,7 +53,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalUriHandler
 import app.nectarlink.android.ui.AppLanguage
 import app.nectarlink.android.ui.StarNotification
 import androidx.compose.material3.RadioButton
@@ -1143,20 +1142,33 @@ fun SettingsScreen(
                     CheckForUpdates(updater)
                 }
             }
+            // Community: Discord, news, the code and support, side by side.
             item(key = "support", contentType = "section") {
-                val uriHandler = LocalUriHandler.current
-                Section(stringResource(R.string.support_title)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            stringResource(R.string.support_body),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.weight(1f).padding(end = 12.dp),
-                        )
-                        FilledTonalButton(onClick = { runCatching { uriHandler.openUri(StarNotification.SUPPORT) } }) {
-                            Text(stringResource(R.string.support_action))
-                        }
-                    }
+                val context = LocalContext.current
+                Section(stringResource(R.string.community_title)) {
+                    CommunityRow(
+                        title = stringResource(R.string.community_discord_title),
+                        body = stringResource(R.string.community_discord_body),
+                        action = stringResource(R.string.clip_action_open),
+                    ) { app.nectarlink.android.ui.Link.open(context, app.nectarlink.android.ui.Link.DISCORD) }
+                    SettingRowDivider()
+                    CommunityRow(
+                        title = stringResource(R.string.community_x_title),
+                        body = stringResource(R.string.community_x_body),
+                        action = stringResource(R.string.clip_action_open),
+                    ) { app.nectarlink.android.ui.Link.open(context, app.nectarlink.android.ui.Link.X) }
+                    SettingRowDivider()
+                    CommunityRow(
+                        title = stringResource(R.string.community_github_title),
+                        body = stringResource(R.string.community_github_body),
+                        action = stringResource(R.string.clip_action_open),
+                    ) { app.nectarlink.android.ui.Link.open(context, app.nectarlink.android.ui.Link.REPO) }
+                    SettingRowDivider()
+                    CommunityRow(
+                        title = stringResource(R.string.support_title),
+                        body = stringResource(R.string.support_body),
+                        action = stringResource(R.string.support_action),
+                    ) { app.nectarlink.android.ui.Link.open(context, app.nectarlink.android.ui.Link.DONATE) }
                 }
             }
         }
@@ -1831,6 +1843,22 @@ private fun SettingRowDivider() {
             MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
         },
     )
+}
+
+/** One row of Community: what it is, and a button that opens it. */
+@Composable
+private fun CommunityRow(title: String, body: String, action: String, onOpen: () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+            Text(title, style = MaterialTheme.typography.titleSmall)
+            Text(
+                body,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        FilledTonalButton(onClick = onOpen) { Text(action) }
+    }
 }
 
 @Composable

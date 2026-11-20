@@ -27,7 +27,7 @@ Item {
         { id: "agents", title: qsTr("AI agents"), icon: Icons.terminal, subtitle: qsTr("Claude Code, Codex, Cursor & more") },
         { id: "storage", title: qsTr("Storage & Privacy"), icon: Icons.clipboardList, subtitle: qsTr("History, caches & retention") },
         { id: "connection", title: qsTr("Connection & About"), icon: Icons.wifi, subtitle: qsTr("Doctor, Wake-on-LAN, API & version") },
-        { id: "support", title: qsTr("Support NectarLink"), icon: Icons.heart, subtitle: qsTr("Help keep it going") }
+        { id: "support", title: qsTr("Community"), icon: Icons.heart, subtitle: qsTr("Discord, news and support") }
     ]
 
     // The languages the app speaks besides the system's ({ code, name }).
@@ -3810,7 +3810,7 @@ Item {
             }
 
             // ================================================================
-            // 10. SUPPORT
+            // 10. COMMUNITY (id "support", as links to it already say)
             // ================================================================
             Column {
                 visible: page.currentSection === "support"
@@ -3819,17 +3819,60 @@ Item {
 
                 Card {
                     width: parent.width
-                    ListRow {
+                    Column {
                         width: parent.width
-                        iconPath: Icons.heart
-                        title: qsTr("Support NectarLink")
-                        description: qsTr("NectarLink is free and open source. If it makes your days a little easier, you can help keep it going. Thank you!")
-                        Button {
-                            objectName: "supportButton"
-                            variant: "tonal"
-                            size: "sm"
-                            text: qsTr("Support")
-                            onClicked: Qt.openUrlExternally("https://buymeacoffee.com/thtbee_")
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.messages
+                            title: qsTr("Discord")
+                            description: qsTr("Our server. Ask questions, share ideas and try new builds with others.")
+                            Button {
+                                objectName: "discordButton"
+                                variant: "tonal"
+                                size: "sm"
+                                text: qsTr("Open")
+                                onClicked: Links.open("discord")
+                            }
+                        }
+                        Divider { width: parent.width }
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.megaphone
+                            title: qsTr("X")
+                            description: qsTr("News from Bee, who makes NectarLink.")
+                            Button {
+                                variant: "tonal"
+                                size: "sm"
+                                text: qsTr("Open")
+                                onClicked: Links.open("x")
+                            }
+                        }
+                        Divider { width: parent.width }
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.code
+                            title: qsTr("GitHub")
+                            description: qsTr("Source code, issues and releases.")
+                            Button {
+                                variant: "tonal"
+                                size: "sm"
+                                text: qsTr("Open")
+                                onClicked: Links.open("repo")
+                            }
+                        }
+                        Divider { width: parent.width }
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.heart
+                            title: qsTr("Support NectarLink")
+                            description: qsTr("NectarLink is free and open source. If it makes your days a little easier, you can help keep it going. Thank you!")
+                            Button {
+                                objectName: "supportButton"
+                                variant: "tonal"
+                                size: "sm"
+                                text: qsTr("Support")
+                                onClicked: Links.open("donate")
+                            }
                         }
                     }
                 }

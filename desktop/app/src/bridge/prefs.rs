@@ -168,6 +168,14 @@ pub mod qobject {
         #[qproperty(bool, star_prompt_updated)]
         /// Minutes the window has been in use, up to when a new install is asked.
         #[qproperty(i32, star_prompt_minutes)]
+        /// The ask to join Discord ended: joined, or dismissed three times.
+        #[qproperty(bool, community_prompt_done)]
+        /// An update armed the ask to join Discord.
+        #[qproperty(bool, community_prompt_due)]
+        /// How many times the ask to join Discord was shown.
+        #[qproperty(i32, community_prompt_count)]
+        /// When it was last armed (Unix seconds); kept as it is.
+        #[qproperty(i64, community_prompt_at)]
         /// JSON array of configured `FolderSyncRule` items.
         #[qproperty(QString, folder_sync_rules_json)]
         /// JSON array of configured `AutomationRule` items.
@@ -410,6 +418,10 @@ pub struct PreferencesRust {
     star_prompt_done: bool,
     star_prompt_updated: bool,
     star_prompt_minutes: i32,
+    community_prompt_done: bool,
+    community_prompt_due: bool,
+    community_prompt_count: i32,
+    community_prompt_at: i64,
     folder_sync_rules_json: QString,
     automation_rules_json: QString,
     window_screen: QString,
@@ -521,6 +533,11 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_star_prompt_done(settings.star_prompt_done);
         self.as_mut().set_star_prompt_updated(settings.star_prompt_updated);
         self.as_mut().set_star_prompt_minutes(settings.star_prompt_minutes.min(i32::MAX as u32) as i32);
+        self.as_mut().set_community_prompt_done(settings.community_prompt_done);
+        self.as_mut().set_community_prompt_due(settings.community_prompt_due);
+        self.as_mut().set_community_prompt_count(settings.community_prompt_count.min(100) as i32);
+        self.as_mut()
+            .set_community_prompt_at(i64::try_from(settings.community_prompt_at).unwrap_or(i64::MAX));
         let folder_rules_json =
             serde_json::to_string(&settings.folder_sync_rules).unwrap_or_else(|_| "[]".into());
         self.as_mut().set_folder_sync_rules_json(QString::from(&folder_rules_json));
@@ -901,6 +918,9 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().on_hive_invite_dismissed_changed(|p| p.save()).release();
         self.as_mut().on_star_prompt_done_changed(|p| p.save()).release();
         self.as_mut().on_star_prompt_minutes_changed(|p| p.save()).release();
+        self.as_mut().on_community_prompt_done_changed(|p| p.save()).release();
+        self.as_mut().on_community_prompt_due_changed(|p| p.save()).release();
+        self.as_mut().on_community_prompt_count_changed(|p| p.save()).release();
 
         super::subscribe(self.qt_thread(), crate::state::Changes::PREFS, Self::refresh_runtime_flags);
     }
@@ -1292,6 +1312,10 @@ impl qobject::Preferences {
             star_prompt_done: p.star_prompt_done,
             star_prompt_updated: p.star_prompt_updated,
             star_prompt_minutes: p.star_prompt_minutes.max(0) as u32,
+            community_prompt_done: p.community_prompt_done,
+            community_prompt_due: p.community_prompt_due,
+            community_prompt_count: p.community_prompt_count.max(0) as u32,
+            community_prompt_at: u64::try_from(p.community_prompt_at).unwrap_or(0),
             obs_port: crate::settings::obs_settings().0,
             obs_password: crate::settings::obs_settings().1,
             window_screen: win_screen,

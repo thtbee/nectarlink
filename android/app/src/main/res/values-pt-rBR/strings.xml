@@ -1537,6 +1537,18 @@
     <!-- Which of the PC's screens to view (#442) -->
     <string name="pc_mirror_screen">Tela %1$d</string>
     <string name="pc_mirror_screen_desc">Mostrando a tela %1$d de %2$d. Toque para ver a próxima.</string>
+    <!-- Community: Discord, X, GitHub and support -->
+    <string name="community_title">Comunidade</string>
+    <string name="community_discord_title">Discord</string>
+    <string name="community_discord_body">Nosso servidor. Tire dúvidas, compartilhe ideias e teste versões novas com outras pessoas.</string>
+    <string name="community_x_title">X</string>
+    <string name="community_x_body">Novidades do Bee, que faz o NectarLink.</string>
+    <string name="community_github_title">GitHub</string>
+    <string name="community_github_body">Código-fonte, issues e versões.</string>
+    <string name="community_invite_title">Venha conversar no Discord</string>
+    <string name="community_invite_text">Dúvidas, ideias e versões antecipadas, com quem faz e usa o NectarLink.</string>
+    <string name="community_invite_join">Entrar no Discord</string>
+    <string name="community_invite_later">Agora não</string>
 </resources>
 
 

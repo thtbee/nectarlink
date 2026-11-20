@@ -1536,6 +1536,18 @@
     <!-- Which of the PC's screens to view (#442) -->
     <string name="pc_mirror_screen">Ekran %1$d</string>
     <string name="pc_mirror_screen_desc">%2$d ekrandan %1$d. gösteriliyor. Sonraki için dokun.</string>
+    <!-- Community: Discord, X, GitHub and support -->
+    <string name="community_title">Topluluk</string>
+    <string name="community_discord_title">Discord</string>
+    <string name="community_discord_body">Sunucumuz. Soru sor, fikirlerini paylaş ve yeni sürümleri başkalarıyla dene.</string>
+    <string name="community_x_title">X</string>
+    <string name="community_x_body">NectarLink’i yapan Bee’den haberler.</string>
+    <string name="community_github_title">GitHub</string>
+    <string name="community_github_body">Kaynak kodu, sorunlar ve sürümler.</string>
+    <string name="community_invite_title">Discord’da sohbete gel</string>
+    <string name="community_invite_text">NectarLink’i yapan ve kullananlarla sorular, fikirler ve erken sürümler.</string>
+    <string name="community_invite_join">Discord’a katıl</string>
+    <string name="community_invite_later">Şimdi değil</string>
 </resources>
 
 

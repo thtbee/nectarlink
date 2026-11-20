@@ -14,6 +14,16 @@ change things that need a step from you, and its notes say so.
   update. Thanks to
   [@zzz1465720680](https://github.com/zzz1465720680)
   ([#461](https://github.com/thtbee/nectarlink/issues/461)).
+- **Community, with the Discord server.** Settings › Community (formerly Support
+  NectarLink) has the [Discord server](https://discord.gg/AA2Dp8PYqf), news on X, the code on
+  GitHub and the support page, side by side. Now and then after an update, a small ask to come
+  chat on Discord appears too: at most once a month, three times in all, and never again after
+  you join.
+- **Set up any AI agent with one prompt.** Settings › AI agents no longer lists particular
+  apps: name the agent, choose what it may do, then copy the prompt it shows into your agent,
+  which adds NectarLink to its own settings and checks that it works. The card says
+  **Connected** once it has. **Set up by hand** has the MCP settings, the commands and the HTTP
+  request. NectarLink no longer edits other apps' settings files itself.
 - **WhatsApp calls from the PC.** On the PC's Calls page, pick **WhatsApp** (or WhatsApp
   Business) under **Call with**, and the call to that contact starts in WhatsApp on the
   phone. If Android won't let NectarLink open WhatsApp right then, a notification on the
