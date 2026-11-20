@@ -71,8 +71,8 @@ QtObject {
     readonly property string power: "M12 2v10M18.4 6.6a9 9 0 1 1-12.77.04"
     readonly property string folder: "M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"
     readonly property string sparkle: "M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"
-    // A four-point star with a small one beside it: something new.
-    readonly property string sparkles: "M12 3l1.9 5.6a2 2 0 0 0 1.3 1.3L21 12l-5.8 2.1a2 2 0 0 0-1.3 1.3L12 21l-1.9-5.6a2 2 0 0 0-1.3-1.3L3 12l5.8-2.1a2 2 0 0 0 1.3-1.3zM19 2v4M21 4h-4"
+    // What's new: a megaphone with a sound wave.
+    readonly property string whatsNew: "M3 10.2v3.6a1.2 1.2 0 0 0 1.2 1.2H7l8.6 4.6a.6.6 0 0 0 .9-.5V4.9a.6.6 0 0 0-.9-.5L7 9H4.2A1.2 1.2 0 0 0 3 10.2zM7 15l1.6 4.6M20 9.5a3.5 3.5 0 0 1 0 5"
     readonly property string island: "M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM9 7.5h6"
     readonly property string shelf: "M12 3L2 8l10 5 10-5-10-5zM2 13l10 5 10-5M2 18l10 5 10-5"
     readonly property string glass: "M8 3h11a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM4 7v11a3 3 0 0 0 3 3h11"

@@ -64,6 +64,10 @@ pub struct Entry {
     /// The markdown after the bold lead, for an entry without one.
     #[serde(skip)]
     pub text: String,
+    /// The ID from the whole text, as before: kept to carry over what was
+    /// seen.
+    #[serde(skip)]
+    pub legacy_id: String,
 }
 
 /// What this device has seen, in `whats-new.json`.
@@ -80,7 +84,14 @@ struct Seen {
     /// The newest release when the panel was last opened.
     #[serde(default)]
     version: String,
+    /// Which IDs `seen` holds: 0 the whole entry's text, 2 its point.
+    #[serde(default)]
+    ids: u8,
 }
+
+/// IDs from an entry's point, so a credit or a reworded line doesn't make an
+/// old entry new again.
+const IDS: u8 = 2;
 
 impl Seen {
     fn path(dir: &Path) -> PathBuf {
@@ -88,10 +99,38 @@ impl Seen {
     }
 
     fn load(dir: &Path) -> Self {
-        std::fs::read_to_string(Self::path(dir))
+        let mut seen: Self = std::fs::read_to_string(Self::path(dir))
             .ok()
             .and_then(|s| serde_json::from_str(&s).ok())
-            .unwrap_or_default()
+            .unwrap_or_default();
+        if seen.ids < IDS {
+            seen.upgrade(&parse(CHANGELOG));
+        }
+        seen
+    }
+
+    /// Carries what was seen over from whole-text IDs to point IDs. An entry
+    /// edited since it was seen can't be matched and counts as unseen once.
+    fn upgrade(&mut self, releases: &[Release]) {
+        let renamed: std::collections::HashMap<&str, &str> = releases
+            .iter()
+            .flat_map(|r| &r.sections)
+            .flat_map(|s| &s.entries)
+            .map(|e| (e.legacy_id.as_str(), e.id.as_str()))
+            .collect();
+        let map = |ids: &mut Vec<String>| {
+            let mut out: Vec<String> = Vec::new();
+            for id in ids.drain(..) {
+                let id = renamed.get(id.as_str()).map_or(id, |new| (*new).to_owned());
+                if !out.contains(&id) {
+                    out.push(id);
+                }
+            }
+            *ids = out;
+        };
+        map(&mut self.seen);
+        map(&mut self.batch);
+        self.ids = IDS;
     }
 
     fn save(&self, dir: &Path) {
@@ -335,14 +374,26 @@ fn parse(text: &str) -> Vec<Release> {
         let Some(section) = release.sections.last_mut() else { return };
         let text = lines.join(" ");
         let (title, rest) = split_lead(&text);
-        let id = entry_id(&release.version, &section.title, &text);
-        section.entries.push(Entry {
-            id,
+        let legacy_id = entry_id(&release.version, &section.title, &text);
+        let mut entry = Entry {
+            id: String::new(),
             title,
             body: rich(rest.trim()),
             unseen: false,
             text: rest.trim().to_owned(),
-        });
+            legacy_id,
+        };
+        // Its point, so editing the rest (a credit, a reworded sentence)
+        // keeps it the same entry; two with the same point stay apart.
+        let key = point(&entry).unwrap_or_else(|| entry.text.clone());
+        let mut id = entry_id(&release.version, &section.title, &key);
+        let mut n = 1;
+        while section.entries.iter().any(|e| e.id == id) {
+            n += 1;
+            id = entry_id(&release.version, &section.title, &format!("{key} #{n}"));
+        }
+        entry.id = id;
+        section.entries.push(entry);
     }
 
     for line in text.lines() {
@@ -602,6 +653,36 @@ To [@someone](https://github.com/someone) for testing.
     }
 
     #[test]
+    fn a_credit_or_reworded_sentence_keeps_the_entry_seen() {
+        let ids = |r: &[Release]| -> Vec<String> {
+            r[0].sections.iter().flat_map(|s| &s.entries).map(|e| e.id.clone()).collect()
+        };
+        let lead = SAMPLE.find("- **").expect("an entry with a lead");
+        let end = SAMPLE[lead..].find('\n').map_or(SAMPLE.len(), |i| lead + i);
+        let edited =
+            format!("{} Thanks to [@someone](https://github.com/someone).{}", &SAMPLE[..end], &SAMPLE[end..]);
+        assert_eq!(ids(&parse(SAMPLE)), ids(&parse(&edited)));
+    }
+
+    #[test]
+    fn what_was_seen_carries_over_to_the_new_ids() {
+        let releases = parse(SAMPLE);
+        let all: Vec<&Entry> = releases.iter().flat_map(|r| &r.sections).flat_map(|s| &s.entries).collect();
+        let mut seen = Seen {
+            seen: all.iter().map(|e| e.legacy_id.clone()).chain(["gone".to_owned()]).collect(),
+            batch: vec![all[0].legacy_id.clone()],
+            ..Seen::default()
+        };
+        seen.upgrade(&releases);
+        assert_eq!(seen.ids, IDS);
+        for e in &all {
+            assert!(seen.seen.contains(&e.id), "{}", e.title);
+        }
+        assert!(seen.seen.contains(&"gone".to_owned()));
+        assert_eq!(seen.batch, vec![all[0].id.clone()]);
+    }
+
+    #[test]
     fn text_cant_add_markup_and_odd_links_stay_text() {
         assert_eq!(rich("a <script> & \"b\""), "a &lt;script&gt; &amp; &quot;b&quot;");
         assert_eq!(rich("[x](javascript:alert(1))"), "[x](javascript:alert(1))");
@@ -646,6 +727,7 @@ To [@someone](https://github.com/someone) for testing.
             body: String::new(),
             unseen: false,
             text: text.into(),
+            legacy_id: String::new(),
         }
     }
 

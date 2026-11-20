@@ -3717,7 +3717,7 @@ Item {
                         Divider { width: parent.width }
                         ListRow {
                             width: parent.width
-                            iconPath: Icons.sparkles
+                            iconPath: Icons.whatsNew
                             title: qsTr("What's new")
                             description: qsTr("What changed since your last update.")
                             Button {

@@ -59,7 +59,7 @@ import org.json.JSONObject
  * What's new (#461), as on the PC: the changes since the last look, one short
  * line each, read from the changelog this build was made from (the core does
  * that, and keeps what was seen). It never opens by itself; a dot on Home's
- * sparkle button says an update brought something new, and opening it clears
+ * What's new button says an update brought something new, and opening it clears
  * the dot.
  */
 internal object WhatsNew {
@@ -151,7 +151,7 @@ internal fun WhatsNewButton() {
         modifier = Modifier.semantics { contentDescription = if (pending) "$label, $dotLabel" else label },
     ) {
         Box {
-            Icon(painterResource(R.drawable.ic_sparkles), contentDescription = null)
+            Icon(painterResource(R.drawable.ic_whats_new), contentDescription = null)
             if (pending) {
                 Box(
                     Modifier

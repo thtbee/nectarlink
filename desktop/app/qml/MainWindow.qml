@@ -885,7 +885,7 @@ NativeWindow {
                 IconButton {
                     id: whatsNewBtn
                     anchors.verticalCenter: parent.verticalCenter
-                    iconPath: Icons.sparkles
+                    iconPath: Icons.whatsNew
                     iconSize: 16
                     label: qsTr("What's new")
                     dot: AppController.whatsNewPending

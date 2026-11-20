@@ -51,18 +51,22 @@ Item {
         card.forceActiveFocus(Qt.PopupFocusReason)
     }
 
-    function close() {
+    // `keyboard`: closed with Esc, so focus goes back to the button (and its
+    // focus ring shows). Closed with the mouse, nothing keeps focus.
+    function close(keyboard) {
         if (!opened)
             return
         opened = false
-        if (anchorItem)
-            anchorItem.forceActiveFocus(Qt.PopupFocusReason)
+        if (keyboard === true && anchorItem)
+            anchorItem.forceActiveFocus(Qt.TabFocusReason)
+        else if (card.activeFocus || card.focus)
+            card.focus = false
     }
 
     Shortcut {
         sequence: "Esc"
         enabled: panel.opened
-        onActivated: panel.close()
+        onActivated: panel.close(true)
     }
 
     // Outside the panel: a click closes it, and the wheel and hover stop here
