@@ -1,24 +1,22 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// macOS notifications through UserNotifications: action buttons, inline
-// replies, in-place updates and click / dismiss events. Rust (mac/toast.rs)
-// owns the state; this file only talks to the system.
+// macOS notifications through UserNotifications. State lives in Rust
+// (mac/toast.rs); this file only talks to the system.
 //
-// UserNotifications only works for a process that runs from an .app bundle
-// with a bundle identifier. From a bare binary (`cargo run`) the first call
-// into it raises an Objective-C exception, so every entry point checks
-// `nl_notif_available()` first and Rust falls back to `osascript`.
+// It needs an .app bundle: from a bare binary the first call raises an
+// Objective-C exception, so every entry point checks bundled() and Rust
+// falls back to `osascript`.
 
 #import <Foundation/Foundation.h>
 #import <UserNotifications/UserNotifications.h>
 
 #include <atomic>
+#include <time.h>
 #include <cstddef>
 #include <cstdint>
 
 extern "C" {
 
-// kind: 0 opened (clicked the banner), 1 action button, 2 inline reply,
-// 3 dismissed. `action` and `text` are empty when they don't apply.
+// kind: 0 opened, 1 action button, 2 reply, 3 dismissed.
 typedef void (*NlNotifEventCallback)(
     int32_t kind,
     const char *device,
@@ -35,8 +33,13 @@ NSString *const kKeyKey = @"nl.key";
 NSString *const kPlainCategory = @"nl.plain";
 
 NlNotifEventCallback g_callback = nullptr;
-// -1 not known yet, 0 the user turned notifications off, 1 allowed.
+// -1 unknown, 0 turned off by the user, 1 allowed.
 std::atomic<int32_t> g_authorization{-1};
+// The permission request failed with NotificationsNotAllowed (a user saying no doesn't).
+std::atomic<bool> g_refused{false};
+// Seconds on the monotonic clock: when nl_notif_start ran, and the last settings refresh.
+std::atomic<int64_t> g_started{0};
+std::atomic<int64_t> g_refreshed{0};
 
 NSString *str(const char *value)
 {
@@ -52,8 +55,14 @@ bool bundled()
     return bundle.bundleIdentifier.length > 0 && [bundle.bundleURL.pathExtension isEqualToString:@"app"];
 }
 
+int64_t now_seconds()
+{
+    return static_cast<int64_t>(clock_gettime_nsec_np(CLOCK_MONOTONIC) / 1000000000ULL);
+}
+
 void refresh_authorization()
 {
+    g_refreshed.store(now_seconds(), std::memory_order_release);
     [[UNUserNotificationCenter currentNotificationCenter]
         getNotificationSettingsWithCompletionHandler:^(UNNotificationSettings *settings) {
             int32_t value = -1;
@@ -65,8 +74,7 @@ void refresh_authorization()
                 value = -1;
                 break;
             default:
-                // Allowed, but "None" for banners and the Notification Center
-                // is as good as off.
+                // Allowed, but banners and the Notification Center are both off.
                 value = (settings.alertSetting == UNNotificationSettingDisabled
                             && settings.notificationCenterSetting == UNNotificationSettingDisabled)
                     ? 0
@@ -87,8 +95,7 @@ NSMutableDictionary<NSString *, UNNotificationCategory *> *categories()
     return registry;
 }
 
-// The category for this set of buttons, registered on first use. A category
-// is fixed per notification, so each distinct set of ids gets its own.
+// A category is fixed per notification: one per distinct set of buttons.
 NSString *category_for(NSArray<NSString *> *ids,
                        NSArray<NSString *> *titles,
                        NSString *reply_id,
@@ -133,8 +140,7 @@ NSString *identifier_for(NSString *device, NSString *key)
     return [NSString stringWithFormat:@"nl:%@:%@", device, key];
 }
 
-// A file the system may take: it moves an attachment into its own store, so
-// hand it a copy and never the caller's file.
+// The system moves an attachment away, so it gets a copy.
 UNNotificationAttachment *attachment_for(NSString *path)
 {
     if (path.length == 0)
@@ -161,8 +167,7 @@ UNNotificationAttachment *attachment_for(NSString *path)
 
 @implementation NectarLinkNotificationDelegate
 
-// Show banners while the app is in front too: the phone's notifications are
-// the point, whether or not NectarLink's window is open.
+// Show banners while the app is in front too.
 - (void)userNotificationCenter:(UNUserNotificationCenter *)center
        willPresentNotification:(UNNotification *)notification
          withCompletionHandler:(void (^)(UNNotificationPresentationOptions))completionHandler
@@ -205,43 +210,52 @@ NectarLinkNotificationDelegate *g_delegate = nil;
 
 extern "C" {
 
-// Whether this process can use UserNotifications at all (it runs from a
-// bundle). When false, none of the other functions does anything.
+// Whether this process runs from a bundle; if not, nothing below does anything.
 bool nl_notif_available(void)
 {
     return bundled();
 }
 
-// Takes the center's delegate and asks for permission (the system prompts the
-// first time only). Returns false when not running from a bundle.
+// Takes the center's delegate and asks for permission (the system asks once).
 bool nl_notif_start(NlNotifEventCallback callback)
 {
     if (!bundled())
         return false;
     g_callback = callback;
+    g_started.store(now_seconds(), std::memory_order_release);
     g_delegate = [[NectarLinkNotificationDelegate alloc] init];
     UNUserNotificationCenter *center = UNUserNotificationCenter.currentNotificationCenter;
     center.delegate = g_delegate;
     [center requestAuthorizationWithOptions:(UNAuthorizationOptionAlert | UNAuthorizationOptionSound)
-                          completionHandler:^(BOOL, NSError *) {
+                          completionHandler:^(BOOL, NSError *error) {
+                              // Only a refusal has an error; a user saying no doesn't.
+                              g_refused.store(error && [error.domain isEqualToString:UNErrorDomain]
+                                                  && error.code == UNErrorCodeNotificationsNotAllowed,
+                                              std::memory_order_release);
                               refresh_authorization();
                           }];
     return true;
 }
 
-// -1 not known yet, 0 off, 1 allowed. Starts a refresh, so the next call
-// sees a change the user made in System Settings.
+// -1 unknown, 0 off by the user, 1 allowed, 2 refused by the system.
+// A new app reads as denied for ~2 s before it's registered, so "denied" in
+// the first 6 s is "unknown". Refreshes in the background every 5 s.
 int32_t nl_notif_authorization(void)
 {
     if (!bundled())
         return -1;
-    refresh_authorization();
-    return g_authorization.load(std::memory_order_acquire);
+    if (now_seconds() - g_refreshed.load(std::memory_order_acquire) >= 5)
+        refresh_authorization();
+    int32_t state = g_authorization.load(std::memory_order_acquire);
+    if (state != 1 && g_refused.load(std::memory_order_acquire))
+        return 2;
+    if (state == 0 && now_seconds() - g_started.load(std::memory_order_acquire) < 6)
+        return -1;
+    return state;
 }
 
 // Shows a notification, or replaces the one with the same device and key.
-// `quiet` is for updating one that's already up (progress): no sound and no
-// new banner.
+// `quiet` updates one in place: no sound, no banner.
 void nl_notif_show(
     const char *device,
     const char *key,
@@ -278,8 +292,7 @@ void nl_notif_show(
     content.userInfo = @{kDeviceKey : device_s, kKeyKey : key_s};
     content.categoryIdentifier = category_for(ids, titles, str(reply_id), str(reply_title));
     content.sound = (silent || quiet) ? nil : UNNotificationSound.defaultSound;
-    // Quiet ones go to the Notification Center without a banner. A call stays
-    // a normal, noticed notification even when it's "silent".
+    // Quiet and silent ones skip the banner; a call never does.
     if (@available(macOS 12.0, *)) {
         content.interruptionLevel = (quiet || (silent && !call)) ? UNNotificationInterruptionLevelPassive
                                                                  : UNNotificationInterruptionLevelActive;
