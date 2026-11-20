@@ -5,12 +5,13 @@ apps update themselves afterwards.
 
 ## What a release is
 
-A GitHub release with four files:
+A GitHub release with five files:
 
 | File | Built by |
 |---|---|
 | `Nectarlink-<version>-x64-setup.exe` | The `windows` job: `scripts/package.ps1`, then `scripts/smoke-installer.ps1` installs and uninstalls it |
 | `Nectarlink-<version>-arm64-setup.exe` | The `windows-arm64` job: cross-compiled and packaged via `scripts/package.ps1 -Arch arm64` |
+| `Nectarlink-<version>-macos-universal.dmg` | The `macos` job: `build-dmg.sh`, signed and notarized when the Apple secrets are set (see Signing) |
 | `Nectarlink-<version>-android.apk` | The `android` job: a release build for 64-bit and 32-bit ARM, signed with the release key and checked with `apksigner verify` |
 | `SHA256SUMS.txt` | The `publish` job, over all installers and APKs |
 
@@ -83,6 +84,34 @@ update signed with the same key as the installed app, so:
   `NECTARLINK_KEYSTORE`) can't update to or from official releases.
 - To sign locally: set `NECTARLINK_KEYSTORE` to the `.jks` path and
   `NECTARLINK_KEYSTORE_PASSWORD`, then `./gradlew assembleRelease`.
+
+**macOS.** `desktop/packaging/macos/build-dmg.sh` builds a universal app
+(`aarch64-apple-darwin` and `x86_64-apple-darwin`, joined with `lipo`), signs
+every library, framework and executable inside out with a Developer ID
+certificate, the hardened runtime and `NectarLink.entitlements` (Qt Quick's
+JIT needs two of them), notarizes the app and the DMG with `notarytool` and
+staples the tickets. `build.yml` does it when these repository secrets are
+set, and falls back to an ad-hoc signature (the user must click "Open Anyway")
+when they aren't, as on forks:
+
+| Secret | What |
+|---|---|
+| `APPLE_CERT_P12` | Base64 of the **Developer ID Application** certificate with its private key, exported from Keychain Access as a `.p12` |
+| `APPLE_CERT_PASSWORD` | The password the `.p12` was exported with |
+| `APPLE_API_KEY` | Base64 of an App Store Connect API key (`.p8`) with the Developer role, which `notarytool` signs in with |
+| `APPLE_API_KEY_ID` | That key's ID |
+| `APPLE_API_ISSUER` | The issuer ID shown on App Store Connect's Keys page |
+
+All five must be set, or none: with the certificate and key present the
+script runs with `REQUIRE_SIGNING=1`, so a rejected notarization fails the
+build instead of shipping an unsigned app. To sign on your own Mac, set
+`SIGN_IDENTITY` (a `Developer ID Application: ...` name from `security
+find-identity -v -p codesigning`) and either `NOTARY_PROFILE` (made once with
+`xcrun notarytool store-credentials`) or the three `APPLE_API_*` variables,
+then run `bash desktop/packaging/macos/build-dmg.sh`. `ARCH=arm64` builds for
+the Mac's own chip only, which is what Homebrew's Qt supports; a universal
+build needs the universal Qt from the Qt installer. The Mac updater doesn't
+exist yet, so the DMG isn't in the update feed.
 
 **Windows.** The installer and the app aren't Authenticode-signed yet, so
 SmartScreen warns on first download until the files build reputation. Options

@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# A tag like v0.1.0 builds the Windows installers, the Linux packages and the
-# signed Android app (build.yml), and puts them on a draft GitHub release
+# A tag like v0.1.0 builds the Windows installers, the Linux packages, the
+# signed and notarized universal macOS DMG and the signed Android app
+# (build.yml), and puts them on a draft GitHub release
 # with their SHA-256 sums, which the apps' updaters check, for a maintainer
 # to review and publish. Publishing it updates the stable channel's feed
 # (channels.yml).
@@ -44,6 +45,11 @@ jobs:
     secrets:
       ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
       ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      APPLE_CERT_P12: ${{ secrets.APPLE_CERT_P12 }}
+      APPLE_CERT_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
+      APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+      APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+      APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
 
   publish:
     name: Draft the release
