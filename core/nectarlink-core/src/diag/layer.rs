@@ -70,7 +70,10 @@ pub struct RingLayer {
 }
 
 impl RingLayer {
+    /// The first layer made is the app's own log: what a report includes
+    /// ([`super::ring::active_files`]).
     pub fn new(ring: Arc<RingLog>) -> RingLayer {
+        super::ring::set_active(&ring);
         RingLayer { ring }
     }
 }

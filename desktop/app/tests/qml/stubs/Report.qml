@@ -13,6 +13,7 @@ QtObject {
     property string sendState: ""
     property int sentIssue: 0
     property int sends: 0
+    property bool phoneLogWaiting: false
     signal requested()
     function open() { requested() }
     function guessArea() { return guessed }

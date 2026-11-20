@@ -117,6 +117,9 @@ pub mod types {
     pub const ELEVATED_USB_READY: &str = "elevated.usb.ready";
     pub const MIC_START: &str = "mic.start";
     pub const MIC_STOP: &str = "mic.stop";
+    pub const DIAG_ASK: &str = "diag.ask";
+    pub const DIAG_PART: &str = "diag.part";
+    pub const DIAG_LOG: &str = "diag.log";
     pub const WEBCAM_START: &str = "webcam.start";
     pub const WEBCAM_STOP: &str = "webcam.stop";
     pub const WEBCAM_KEYFRAME: &str = "webcam.keyframe";
@@ -4728,6 +4731,183 @@ impl StorageChanged {
     }
 }
 
+// ---- Problem reports (docs/protocol/diag.md) ----
+
+pub mod diag {
+    /// Offered by devices that answer `diag.ask`.
+    pub const REPORT: &str = "diag.report";
+    /// Most log text in one `diag.log`.
+    pub const MAX_LOG_BYTES: usize = 24 * 1024;
+    /// Most log lines in one `diag.log`.
+    pub const MAX_LOG_LINES: usize = 400;
+    /// Most checks, facts or hardware lines in a part.
+    pub const MAX_ITEMS: usize = 32;
+    /// Most days of feature health in a part.
+    pub const MAX_DAYS: usize = 14;
+    /// Most crashes in a part.
+    pub const MAX_CRASHES: usize = 5;
+    /// Longest single text value in a part.
+    pub const MAX_TEXT: usize = 200;
+}
+
+/// Body of `diag.ask`: a paired device is making a problem report and asks
+/// for this device's part. `log` asks for the recent activity log too,
+/// which its user has to agree to on this device.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DiagAsk {
+    #[serde(default)]
+    pub log: bool,
+    #[serde(default)]
+    pub just_now: bool,
+    /// Echoed as `diag.log`'s `ask`, so a log nobody asked for is dropped.
+    #[serde(default)]
+    pub nonce: u64,
+}
+
+/// What a device says about itself in a report: versions and hardware,
+/// never names.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DiagFacts {
+    #[serde(default)]
+    pub app_version: String,
+    #[serde(default)]
+    pub channel: String,
+    #[serde(default)]
+    pub install: String,
+    #[serde(default)]
+    pub os: String,
+    #[serde(default)]
+    pub arch: String,
+    #[serde(default)]
+    pub hardware: Vec<String>,
+    /// `[name, value]`, from fixed lists.
+    #[serde(default)]
+    pub extra: Vec<(String, String)>,
+}
+
+/// One day of feature health: feature, then outcome code and count.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DiagDay {
+    pub day: String,
+    pub counts: Vec<(String, Vec<(String, u32)>)>,
+}
+
+/// One crash: where in NectarLink's code, what kind, never values.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DiagCrash {
+    pub sig: String,
+    pub kind: String,
+    pub location: String,
+    pub message: String,
+    pub version: String,
+    pub at: u64,
+}
+
+/// What became of the log a `diag.ask` asked for.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DiagLogState {
+    /// Not asked for.
+    #[default]
+    NotAsked,
+    /// The user is being asked; `diag.log` follows with the answer.
+    Asking,
+    /// Asked too recently; not asked again.
+    Busy,
+    /// A state from a newer device.
+    #[serde(other)]
+    Unknown,
+}
+
+/// Answer to `diag.ask`.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DiagPart {
+    pub facts: DiagFacts,
+    /// `[check, outcome]`.
+    #[serde(default)]
+    pub checks: Vec<(String, String)>,
+    #[serde(default)]
+    pub health: Vec<DiagDay>,
+    #[serde(default)]
+    pub crashes: Vec<DiagCrash>,
+    #[serde(default)]
+    pub log: DiagLogState,
+}
+
+impl DiagPart {
+    /// Within the limits in [`diag`], whatever the sender put in.
+    pub fn sanitized(mut self) -> DiagPart {
+        let cut = |s: &mut String| {
+            if let Some((at, _)) = s.char_indices().nth(diag::MAX_TEXT) {
+                s.truncate(at);
+            }
+        };
+        let f = &mut self.facts;
+        for s in [&mut f.app_version, &mut f.channel, &mut f.install, &mut f.os, &mut f.arch] {
+            cut(s);
+        }
+        f.hardware.truncate(diag::MAX_ITEMS);
+        f.hardware.iter_mut().for_each(cut);
+        f.extra.truncate(diag::MAX_ITEMS);
+        self.checks.truncate(diag::MAX_ITEMS);
+        for (name, value) in f.extra.iter_mut().chain(self.checks.iter_mut()) {
+            cut(name);
+            cut(value);
+        }
+        self.health.truncate(diag::MAX_DAYS);
+        for day in &mut self.health {
+            cut(&mut day.day);
+            day.counts.truncate(diag::MAX_ITEMS);
+            for (feature, codes) in &mut day.counts {
+                cut(feature);
+                codes.truncate(diag::MAX_ITEMS);
+                codes.iter_mut().for_each(|(code, _)| cut(code));
+            }
+        }
+        self.crashes.truncate(diag::MAX_CRASHES);
+        for c in &mut self.crashes {
+            for s in [&mut c.sig, &mut c.kind, &mut c.location, &mut c.message, &mut c.version] {
+                cut(s);
+            }
+        }
+        self
+    }
+}
+
+/// Body of `diag.log`: the answer to a `diag.ask` that asked for the log,
+/// once this device's user has answered. `ask` is that request's `nonce`.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DiagLog {
+    pub ask: u64,
+    /// The user said no (or didn't answer in time).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub declined: bool,
+    #[serde(default)]
+    pub lines: Vec<String>,
+}
+
+impl DiagLog {
+    /// At most [`diag::MAX_LOG_LINES`] lines and [`diag::MAX_LOG_BYTES`],
+    /// newest kept, one line each.
+    pub fn sanitized(mut self) -> DiagLog {
+        let skip = self.lines.len().saturating_sub(diag::MAX_LOG_LINES);
+        self.lines.drain(..skip);
+        let mut total = 0;
+        let mut keep = Vec::new();
+        for line in self.lines.into_iter().rev() {
+            let line = line.replace(['\r', '\n'], " ");
+            total += line.len() + 1;
+            if total > diag::MAX_LOG_BYTES {
+                break;
+            }
+            keep.push(line);
+        }
+        keep.reverse();
+        self.lines = keep;
+        self
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -6556,5 +6736,64 @@ mod tests {
         for code in ["", "Input_Blocked", "input blocked", &"a".repeat(33), "über"] {
             assert!(!MirrorNotice { session: 0, code: code.into() }.is_valid(), "{code}");
         }
+    }
+
+    #[test]
+    fn diag_parts_stay_within_limits() {
+        let long = "x".repeat(500);
+        let part = DiagPart {
+            facts: DiagFacts {
+                os: long.clone(),
+                hardware: vec![long.clone(); 50],
+                extra: vec![(long.clone(), long.clone()); 50],
+                ..DiagFacts::default()
+            },
+            checks: vec![("a".into(), "ok".into()); 40],
+            health: vec![DiagDay { day: "2026-11-20".into(), counts: vec![] }; 30],
+            crashes: vec![DiagCrash::default(); 9],
+            log: DiagLogState::Asking,
+        }
+        .sanitized();
+        assert_eq!(part.facts.os.chars().count(), diag::MAX_TEXT);
+        assert_eq!(part.facts.hardware.len(), diag::MAX_ITEMS);
+        assert!(part.facts.extra.iter().all(|(n, v)| n.len() == diag::MAX_TEXT && v.len() == diag::MAX_TEXT));
+        assert_eq!(part.checks.len(), diag::MAX_ITEMS);
+        assert_eq!(part.health.len(), diag::MAX_DAYS);
+        assert_eq!(part.crashes.len(), diag::MAX_CRASHES);
+
+        let log = DiagLog { ask: 7, declined: false, lines: vec!["line\nE forged".into(); 1000] }.sanitized();
+        assert!(log.lines.len() <= diag::MAX_LOG_LINES);
+        assert!(log.lines.iter().all(|l| !l.contains('\n')));
+        assert!(log.lines.iter().map(|l| l.len() + 1).sum::<usize>() <= diag::MAX_LOG_BYTES);
+    }
+
+    #[test]
+    fn diag_messages_round_trip_and_tolerate_newer_devices() {
+        #[derive(Serialize)]
+        struct Newer {
+            facts: NewerFacts,
+            log: &'static str,
+            later: u32,
+        }
+        #[derive(Serialize)]
+        struct NewerFacts {
+            app_version: &'static str,
+            future: u32,
+        }
+        let env = crate::Envelope::new(
+            types::DIAG_PART,
+            &Newer { facts: NewerFacts { app_version: "0.1.6", future: 1 }, log: "something_new", later: 2 },
+        )
+        .unwrap();
+        let part: DiagPart = env.body().unwrap();
+        assert_eq!(part.facts.app_version, "0.1.6");
+        assert_eq!(part.log, DiagLogState::Unknown);
+        #[derive(Serialize)]
+        struct Empty {}
+        let ask: DiagAsk = crate::Envelope::new(types::DIAG_ASK, &Empty {}).unwrap().body().unwrap();
+        assert_eq!(ask, DiagAsk { log: false, just_now: false, nonce: 0 });
+        let log = DiagLog { ask: 3, declined: true, lines: vec![] };
+        let back: DiagLog = crate::Envelope::new(types::DIAG_LOG, &log).unwrap().body().unwrap();
+        assert_eq!(back, log);
     }
 }

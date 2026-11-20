@@ -212,6 +212,8 @@ class AppUpdater(context: Context) {
         _state.value = State.Checking
         val found = withContext(Dispatchers.IO) {
             runCatching { latest() }.onFailure { Log.i(TAG, "couldn't check for updates", it) }
+                // A report that couldn't be sent goes now; queued ones learn their issue.
+                .also { runCatching { app.nectarlink.android.diag.Reports.followUp(context) } }
         }
         prefs.edit { putLong(LAST_CHECK, System.currentTimeMillis()) }
         _state.value = found.fold(

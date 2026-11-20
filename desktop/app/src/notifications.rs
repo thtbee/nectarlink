@@ -533,6 +533,14 @@ pub fn on_toast(event: ToastEvent) {
             return;
         }
         ToastEvent::Dismissed { device, .. } if device == crate::clipboard::TOAST_GROUP => return,
+        // A phone asks for this PC's log: Share, or not.
+        ToastEvent::Action { device, key, action } if device == crate::report_requests::TOAST_GROUP => {
+            return crate::report_requests::on_toast(key, Some(action.as_str()));
+        }
+        ToastEvent::Dismissed { device, key } if device == crate::report_requests::TOAST_GROUP => {
+            return crate::report_requests::on_toast(key, None);
+        }
+        ToastEvent::Opened { device, .. } if device == crate::report_requests::TOAST_GROUP => return,
         _ => {}
     }
     match event {

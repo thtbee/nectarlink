@@ -71,6 +71,15 @@ struct RecordingPlatform {
 }
 
 impl Platform for RecordingPlatform {
+    fn diag_facts(&self) -> Option<(nectarlink_core::diag::report::DeviceFacts, Vec<(String, String)>)> {
+        let facts = nectarlink_core::diag::report::DeviceFacts {
+            app_version: "0.1.6".into(),
+            os: "Android 16 (API 36)".into(),
+            hardware: vec!["Google Pixel 9".into()],
+            ..Default::default()
+        };
+        Some((facts, vec![("battery_unrestricted".into(), "off".into())]))
+    }
     fn start_ringing(&self) {
         self.rings.lock().unwrap().push(true);
     }
@@ -8078,4 +8087,51 @@ async fn pc_active_needs_notifications_on_both_sides() {
             (pc_active, PhoneToggleValue::Bool(false)),
         ]
     );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn report_parts_come_at_once_and_logs_only_when_shared() {
+    use nectarlink_core::PeerLog;
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[]).await;
+    let mut phone = device_with("Pixel", DeviceKind::Phone, &[]).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+
+    // Facts, checks and the rest come straight back, with no one asked.
+    let part = with_timeout("facts", pc.node.diag_ask(phone_id, false, true)).await.unwrap();
+    assert_eq!(part.log, PeerLog::NotAsked);
+    assert_eq!(part.part.facts.app_version, "0.1.6");
+    assert_eq!(part.part.facts.hardware, ["Google Pixel 9"]);
+    assert_eq!(part.part.checks, [("battery_unrestricted".to_owned(), "off".to_owned())]);
+    assert!(part.part.log.is_empty());
+    assert!(!phone.node.diag_log_waiting(&pc_id));
+
+    // Asking for the log asks the phone's user; nothing comes until they answer.
+    let part = with_timeout("ask for the log", pc.node.diag_ask(phone_id, true, true)).await.unwrap();
+    assert_eq!(part.log, PeerLog::Asking);
+    wait_for(&mut phone, "the phone is asked", |e| match e {
+        NodeEvent::DiagLogAsked { device } if *device == pc_id => Some(()),
+        _ => None,
+    })
+    .await;
+    assert!(phone.node.diag_log_waiting(&pc_id));
+
+    // Asking again straight away doesn't ask the user a second time.
+    let again = with_timeout("ask again", pc.node.diag_ask(phone_id, true, true)).await.unwrap();
+    assert_eq!(again.log, PeerLog::Busy);
+
+    // Not sharing sends no lines.
+    with_timeout("decline", phone.node.diag_log_answer(pc_id, false)).await.unwrap();
+    let lines = wait_for(&mut pc, "the answer", |e| match e {
+        NodeEvent::DiagLog { device, nonce, lines } if *device == phone_id && *nonce == part.nonce => {
+            Some(lines.clone())
+        }
+        _ => None,
+    })
+    .await;
+    assert_eq!(lines, None);
+    assert!(!phone.node.diag_log_waiting(&pc_id));
+
+    // An answer with no request behind it does nothing.
+    with_timeout("unasked", phone.node.diag_log_answer(pc_id, true)).await.unwrap();
 }

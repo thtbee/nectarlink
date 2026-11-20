@@ -8364,6 +8364,34 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
     </message>
 </context>
 <context>
+    <name>ReportRequests</name>
+    <message>
+        <location filename="rust_strings.h" line="485"/>
+        <source>%1 asks for this PC&apos;s log</source>
+        <translation>%1 がこの PC のログを求めています</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="486"/>
+        <source>Don&apos;t share</source>
+        <translation>共有しない</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="487"/>
+        <source>For a problem report you&apos;re making. The log has no names, messages, files, numbers or addresses. You see the whole report before it&apos;s sent.</source>
+        <translation>作成中の問題レポート用です。ログには名前、メッセージ、ファイル、番号、アドレスは含まれません。送信前にレポート全体を確認できます。</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="488"/>
+        <source>Share</source>
+        <translation>共有</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="489"/>
+        <source>Your phone</source>
+        <translation>お使いのスマートフォン</translation>
+    </message>
+</context>
+<context>
     <name>ReportSheet</name>
     <message>
         <location filename="../qml/components/ReportSheet.qml" line="20"/>
@@ -8495,57 +8523,62 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
         <translation>レポートをコピーしました。GitHub のページで Report 欄に貼り付けて送信してください。</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="292"/>
+        <location filename="../qml/components/ReportSheet.qml" line="283"/>
+        <source>Your phone is asking whether to share its log. Tap Share on the phone to add it.</source>
+        <translation>スマートフォンがログを共有するか確認しています。追加するにはスマートフォンで「共有」をタップしてください。</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="300"/>
         <source>Sending the report</source>
         <translation>レポートを送信中</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="293"/>
+        <location filename="../qml/components/ReportSheet.qml" line="301"/>
         <source>Sent. This is report #%1.</source>
         <translation>送信しました。レポート #%1 です。</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="294"/>
+        <location filename="../qml/components/ReportSheet.qml" line="302"/>
         <source>Sent. It will be filed shortly.</source>
         <translation>送信しました。まもなく登録されます。</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="295"/>
+        <location filename="../qml/components/ReportSheet.qml" line="303"/>
         <source>NectarLink couldn&apos;t reach the report service. It will send the report later by itself.</source>
         <translation>NectarLink がレポートサービスに接続できませんでした。後で自動的に送信します。</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="296"/>
+        <location filename="../qml/components/ReportSheet.qml" line="304"/>
         <source>Too many reports came from this network today. Use Open on GitHub, or send it tomorrow.</source>
         <translation>今日はこのネットワークからのレポートが多すぎます。「GitHub で開く」を使うか、明日送信してください。</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="297"/>
+        <location filename="../qml/components/ReportSheet.qml" line="305"/>
         <source>The report couldn&apos;t be sent. Use Open on GitHub instead.</source>
         <translation>レポートを送信できませんでした。代わりに「GitHub で開く」を使ってください。</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="308"/>
+        <location filename="../qml/components/ReportSheet.qml" line="316"/>
         <source>View it</source>
         <translation>見る</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="317"/>
+        <location filename="../qml/components/ReportSheet.qml" line="325"/>
         <source>Back</source>
         <translation>戻る</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="323"/>
+        <location filename="../qml/components/ReportSheet.qml" line="331"/>
         <source>Copy</source>
         <translation>コピー</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="332"/>
+        <location filename="../qml/components/ReportSheet.qml" line="340"/>
         <source>Open on GitHub</source>
         <translation>GitHub で開く</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="341"/>
+        <location filename="../qml/components/ReportSheet.qml" line="349"/>
         <source>Send</source>
         <translation>送信</translation>
     </message>
@@ -8561,57 +8594,57 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
 <context>
     <name>SendTo</name>
     <message>
-        <location filename="rust_strings.h" line="485"/>
+        <location filename="rust_strings.h" line="490"/>
         <source>Copied to your phone&apos;s clipboard.</source>
         <translation>スマートフォンのクリップボードにコピーされました。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="486"/>
+        <location filename="rust_strings.h" line="491"/>
         <source>Couldn&apos;t reach %1.</source>
         <translation>%1 に接続できませんでした。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="487"/>
+        <location filename="rust_strings.h" line="492"/>
         <source>Couldn&apos;t send %1</source>
         <translation>%1を送信できませんでした</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="488"/>
+        <location filename="rust_strings.h" line="493"/>
         <source>Couldn&apos;t send to %1</source>
         <translation>%1 に送信できませんでした</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="489"/>
+        <location filename="rust_strings.h" line="494"/>
         <source>Couldn&apos;t share with %1</source>
         <translation>%1 と共有できませんでした</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="490"/>
+        <location filename="rust_strings.h" line="495"/>
         <source>File failed integrity check; partial file kept to resume.</source>
         <translation>ファイルの整合性チェックに失敗しました。再開のため、一部のファイルを保持しています。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="491"/>
+        <location filename="rust_strings.h" line="496"/>
         <source>Send to %1 with NectarLink</source>
         <translation>NectarLinkで%1に送信</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="492"/>
+        <location filename="rust_strings.h" line="497"/>
         <source>Sending to %1…</source>
         <translation>%1へ送信中…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="493"/>
+        <location filename="rust_strings.h" line="498"/>
         <source>Sent to %1</source>
         <translation>%1 に送信済み</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="494"/>
+        <location filename="rust_strings.h" line="499"/>
         <source>The transfer didn&apos;t go through.</source>
         <translation>転送がうまくいきませんでした。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="495"/>
+        <location filename="rust_strings.h" line="500"/>
         <source>Waiting for %1…</source>
         <translation>%1を待機中…</translation>
     </message>
@@ -10693,72 +10726,72 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
 <context>
     <name>Setup</name>
     <message>
-        <location filename="rust_strings.h" line="496"/>
+        <location filename="rust_strings.h" line="501"/>
         <source>Choose a folder on a drive inside this PC, not a USB or network drive.</source>
         <translation>USBやネットワークドライブではなく、このPC内のドライブにあるフォルダーを選択してください。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="497"/>
+        <location filename="rust_strings.h" line="502"/>
         <source>Choose a folder on one of this PC&apos;s drives.</source>
         <translation>このPCのドライブのいずれかでフォルダーを選択してください。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="498"/>
+        <location filename="rust_strings.h" line="503"/>
         <source>Couldn&apos;t start setup: %1</source>
         <translation>セットアップを開始できませんでした: %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="499"/>
+        <location filename="rust_strings.h" line="504"/>
         <source>Couldn&apos;t uninstall NectarLink: %1</source>
         <translation>NectarLinkをアンインストールできませんでした: %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="500"/>
+        <location filename="rust_strings.h" line="505"/>
         <source>Setup can&apos;t use that folder. Choose another one.</source>
         <translation>セットアップでそのフォルダーは使用できません。別のフォルダーを選択してください。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="501"/>
+        <location filename="rust_strings.h" line="506"/>
         <source>Setup is taking too long. Try again after restarting the PC.</source>
         <translation>セットアップに時間がかかりすぎています。PCを再起動してからもう一度お試しください。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="502"/>
+        <location filename="rust_strings.h" line="507"/>
         <source>Setup stopped with code %1.</source>
         <translation>コード %1 でセットアップが停止しました。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="503"/>
+        <location filename="rust_strings.h" line="508"/>
         <source>That drive can&apos;t keep the app&apos;s files safe (it isn&apos;t NTFS). Choose another drive.</source>
         <translation>そのドライブではアプリのファイルを安全に保存できません（NTFSではありません）。別のドライブを選択してください。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="504"/>
+        <location filename="rust_strings.h" line="509"/>
         <source>That folder&apos;s path is too long. Choose one closer to the top of a drive.</source>
         <translation>そのフォルダーのパスが長すぎます。ドライブの上位に近いものを選んでください。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="505"/>
+        <location filename="rust_strings.h" line="510"/>
         <source>The uninstaller is missing. Reinstall NectarLink, then uninstall it.</source>
         <translation>アンインストーラーがありません。NectarLinkを再インストールしてから、アンインストールしてください。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="506"/>
+        <location filename="rust_strings.h" line="511"/>
         <source>There&apos;s a file named %1 there. Choose another place.</source>
         <translation>そこに %1 という名前のファイルがあります。別の場所を選択してください。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="507"/>
+        <location filename="rust_strings.h" line="512"/>
         <source>There&apos;s already a %1 folder there with files in it. Choose another place.</source>
         <translation>そこにはすでにファイルが入った %1 フォルダーがあります。別の場所を選択してください。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="508"/>
+        <location filename="rust_strings.h" line="513"/>
         <source>Uninstall stopped with code %1.</source>
         <translation>アンインストールがコード %1 で停止しました。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="509"/>
+        <location filename="rust_strings.h" line="514"/>
         <source>Updates here will ask for your permission each time.</source>
         <translation>ここでの更新には、その都度許可が求められます。</translation>
     </message>
@@ -11197,17 +11230,17 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
 <context>
     <name>Storage</name>
     <message>
-        <location filename="rust_strings.h" line="510"/>
+        <location filename="rust_strings.h" line="515"/>
         <source>%1&apos;s files aren&apos;t shared with this PC</source>
         <translation>%1のファイルはこのPCと共有されていません</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="511"/>
+        <location filename="rust_strings.h" line="516"/>
         <source>On the phone, allow All files access for NectarLink.</source>
         <translation>スマートフォンで、NectarLinkに「すべてのファイルへのアクセス」を許可してください。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="512"/>
+        <location filename="rust_strings.h" line="517"/>
         <source>On the phone, turn on Browse this phone&apos;s storage in File Explorer in NectarLink.</source>
         <translation>スマートフォン側で、NectarLinkの「エクスプローラーでこのスマートフォンのストレージを参照」をオンにします。</translation>
     </message>
@@ -11215,147 +11248,147 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
 <context>
     <name>Timeline</name>
     <message>
-        <location filename="rust_strings.h" line="513"/>
+        <location filename="rust_strings.h" line="518"/>
         <source>App window #%1</source>
         <translation>アプリウィンドウ #%1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="514"/>
+        <location filename="rust_strings.h" line="519"/>
         <source>Clip (removed from clipboard history)</source>
         <translation>クリップ（クリップボード履歴から削除）</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="515"/>
+        <location filename="rust_strings.h" line="520"/>
         <source>Copied image</source>
         <translation>コピーした画像</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="516"/>
+        <location filename="rust_strings.h" line="521"/>
         <source>Copied link to clipboard.</source>
         <translation>リンクをクリップボードにコピーしました。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="517"/>
+        <location filename="rust_strings.h" line="522"/>
         <source>Copied to clipboard.</source>
         <translation>クリップボードにコピーしました。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="518"/>
+        <location filename="rust_strings.h" line="523"/>
         <source>From %1</source>
         <translation>%1から</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="519"/>
+        <location filename="rust_strings.h" line="524"/>
         <source>In progress</source>
         <translation>進行中</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="520"/>
+        <location filename="rust_strings.h" line="525"/>
         <source>No phone is paired yet.</source>
         <translation>まだペアリングされているスマートフォンはありません。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="521"/>
+        <location filename="rust_strings.h" line="526"/>
         <source>Opened from %1</source>
         <translation>%1から開きました</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="522"/>
+        <location filename="rust_strings.h" line="527"/>
         <source>Opened on %1</source>
         <translation>%1で開きました</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="523"/>
+        <location filename="rust_strings.h" line="528"/>
         <source>Phone microphone</source>
         <translation>スマートフォンのマイク</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="524"/>
+        <location filename="rust_strings.h" line="529"/>
         <source>Phone webcam</source>
         <translation>スマートフォンのウェブカメラ</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="525"/>
+        <location filename="rust_strings.h" line="530"/>
         <source>Recorded on %1</source>
         <translation>%1 で録音</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="526"/>
+        <location filename="rust_strings.h" line="531"/>
         <source>Saved from %1</source>
         <translation>%1から保存済み</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="527"/>
+        <location filename="rust_strings.h" line="532"/>
         <source>Screen mirroring</source>
         <translation>画面ミラーリング</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="528"/>
+        <location filename="rust_strings.h" line="533"/>
         <source>Sending to %1…</source>
         <translation>%1へ送信中…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="529"/>
+        <location filename="rust_strings.h" line="534"/>
         <source>Sent clip to %1.</source>
         <translation>クリップを%1に送信しました。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="530"/>
+        <location filename="rust_strings.h" line="535"/>
         <source>Sent to %1</source>
         <translation>%1 に送信済み</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="531"/>
+        <location filename="rust_strings.h" line="536"/>
         <source>Session</source>
         <translation>セッション</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="532"/>
+        <location filename="rust_strings.h" line="537"/>
         <source>That clip is no longer in clipboard history.</source>
         <translation>そのクリップはクリップボードの履歴から消えました。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="533"/>
+        <location filename="rust_strings.h" line="538"/>
         <source>That entry couldn&apos;t be removed. Try again.</source>
         <translation>その項目は削除できませんでした。もう一度お試しください。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="534"/>
+        <location filename="rust_strings.h" line="539"/>
         <source>That file was moved or deleted.</source>
         <translation>そのファイルは移動または削除されました。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="535"/>
+        <location filename="rust_strings.h" line="540"/>
         <source>That isn&apos;t a web link.</source>
         <translation>それはウェブリンクではありません。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="536"/>
+        <location filename="rust_strings.h" line="541"/>
         <source>That photo was moved or deleted.</source>
         <translation>その写真は移動または削除されました。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="537"/>
+        <location filename="rust_strings.h" line="542"/>
         <source>The Timeline couldn&apos;t be cleared. Try again.</source>
         <translation>タイムラインをクリアできませんでした。もう一度お試しください。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="538"/>
+        <location filename="rust_strings.h" line="543"/>
         <source>The photo couldn&apos;t be copied to the clipboard.</source>
         <translation>写真をクリップボードにコピーできませんでした。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="539"/>
+        <location filename="rust_strings.h" line="544"/>
         <source>Voice recording</source>
         <translation>音声録音</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="540"/>
+        <location filename="rust_strings.h" line="545"/>
         <source>With %1</source>
         <translation>%1で</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="541"/>
+        <location filename="rust_strings.h" line="546"/>
         <source>device</source>
         <translation>デバイス</translation>
     </message>
@@ -11686,37 +11719,37 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
 <context>
     <name>Transfers</name>
     <message>
-        <location filename="rust_strings.h" line="542"/>
+        <location filename="rust_strings.h" line="547"/>
         <source>Accept in NectarLink to save to Downloads\Nectarlink</source>
         <translation>NectarLinkで承認すると、Downloads\Nectarlinkに保存されます。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="543"/>
+        <location filename="rust_strings.h" line="548"/>
         <source>Files are turned off for that device.</source>
         <translation>そのデバイスではファイルが無効になっています。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="544"/>
+        <location filename="rust_strings.h" line="549"/>
         <source>From %1, opened from Downloads\Nectarlink</source>
         <translation>%1 から、Downloads\Nectarlink 経由で開きました</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="545"/>
+        <location filename="rust_strings.h" line="550"/>
         <source>From %1, saved in Downloads\Nectarlink</source>
         <translation>%1から、Downloads\Nectarlinkに保存済み</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="546"/>
+        <location filename="rust_strings.h" line="551"/>
         <source>Nearby device</source>
         <translation>近くのデバイス</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="547"/>
+        <location filename="rust_strings.h" line="552"/>
         <source>That&apos;s too many files to send at once.</source>
         <translation>一度に送信するにはファイル数が多すぎます。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="548"/>
+        <location filename="rust_strings.h" line="553"/>
         <source>There&apos;s nothing to send in there.</source>
         <translation>そこに送信するものはありません。</translation>
     </message>
@@ -11724,82 +11757,82 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
 <context>
     <name>Updater</name>
     <message>
-        <location filename="rust_strings.h" line="549"/>
+        <location filename="rust_strings.h" line="554"/>
         <source>Couldn&apos;t check for updates. Check your internet connection.</source>
         <translation>アップデートを確認できませんでした。インターネット接続を確認してください。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="550"/>
+        <location filename="rust_strings.h" line="555"/>
         <source>NectarLink %1 is available</source>
         <translation>NectarLink %1 が利用可能です</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="551"/>
+        <location filename="rust_strings.h" line="556"/>
         <source>NectarLink %1 is available.</source>
         <translation>NectarLink %1 が利用可能です。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="552"/>
+        <location filename="rust_strings.h" line="557"/>
         <source>NectarLink is still on the version you had. Try again from Settings.</source>
         <translation>NectarLinkはまだ以前のバージョンのままです。設定からもう一度お試しください。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="553"/>
+        <location filename="rust_strings.h" line="558"/>
         <source>NectarLink is up to date.</source>
         <translation>NectarLinkは最新の状態です。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="554"/>
+        <location filename="rust_strings.h" line="559"/>
         <source>NectarLink is updated to %1</source>
         <translation>NectarLinkが%1に更新されました</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="555"/>
+        <location filename="rust_strings.h" line="560"/>
         <source>Nightly %1</source>
         <translation>ナイトリー %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="556"/>
+        <location filename="rust_strings.h" line="561"/>
         <source>Nightly %1 (%2)</source>
         <translation>ナイトリー %1 (%2)</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="557"/>
+        <location filename="rust_strings.h" line="562"/>
         <source>The download was damaged, so it wasn&apos;t installed. Try again.</source>
         <translation>ダウンロードファイルが破損していたため、インストールできませんでした。もう一度お試しください。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="558"/>
+        <location filename="rust_strings.h" line="563"/>
         <source>The update couldn&apos;t be downloaded. Check your internet connection and try again.</source>
         <translation>アップデートをダウンロードできませんでした。インターネット接続を確認して、もう一度お試しください。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="559"/>
+        <location filename="rust_strings.h" line="564"/>
         <source>The update couldn&apos;t be saved. Check that there&apos;s free space and try again.</source>
         <translation>アップデートを保存できませんでした。空き容量を確認して、もう一度お試しください。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="560"/>
+        <location filename="rust_strings.h" line="565"/>
         <source>The update couldn&apos;t be started. Try again.</source>
         <translation>アップデートを開始できませんでした。もう一度お試しください。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="561"/>
+        <location filename="rust_strings.h" line="566"/>
         <source>The update didn&apos;t install</source>
         <translation>アップデートがインストールされませんでした</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="562"/>
+        <location filename="rust_strings.h" line="567"/>
         <source>The update is installed. Restart NectarLink to use it.</source>
         <translation>アップデートがインストールされました。NectarLinkを再起動してご利用ください。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="563"/>
+        <location filename="rust_strings.h" line="568"/>
         <source>Update now, or later from Settings.</source>
         <translation>今すぐ更新するか、後で「設定」から更新してください。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="564"/>
+        <location filename="rust_strings.h" line="569"/>
         <source>Your phone reconnects on its own.</source>
         <translation>スマートフォンが自動的に再接続されます。</translation>
     </message>
@@ -12357,12 +12390,12 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
 <context>
     <name>Webcam</name>
     <message>
-        <location filename="rust_strings.h" line="565"/>
+        <location filename="rust_strings.h" line="570"/>
         <source>Starting camera on %1…</source>
         <translation>%1 でカメラを起動しています…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="566"/>
+        <location filename="rust_strings.h" line="571"/>
         <source>Streaming %1 × %2 · %3 fps from %4</source>
         <translation>%4 から %1 × %2 · %3 fps でストリーミング中</translation>
     </message>

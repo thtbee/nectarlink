@@ -96,6 +96,11 @@ pub fn configure(dir: &Path, version: &str) {
     let _ = CONFIG.set(Config { dir: dir.to_owned(), version: version.to_owned() });
 }
 
+/// The diagnostics folder [`configure`] named, if it was called.
+pub fn dir() -> Option<&'static Path> {
+    CONFIG.get().map(|c| c.dir.as_path())
+}
+
 /// Marks this run as ended normally.
 pub fn end_run() {
     let Some(config) = CONFIG.get() else { return };

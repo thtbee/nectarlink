@@ -350,6 +350,7 @@ private sealed interface ScreenRoute {
     data class Failed(val message: String) : ScreenRoute
     data object Walkthrough : ScreenRoute
     data object FeaturesGuide : ScreenRoute
+    data object Report : ScreenRoute
     data object Pairing : ScreenRoute
     data class Webcam(val pcId: String) : ScreenRoute
     data class Recorder(val pcId: String) : ScreenRoute
@@ -384,6 +385,7 @@ private fun App(
     var manualWalkthroughOpen by rememberSaveable { mutableStateOf(false) }
     var activeFirstRunWalkthrough by rememberSaveable { mutableStateOf(false) }
     var featuresGuideOpen by rememberSaveable { mutableStateOf(false) }
+    var reportOpen by rememberSaveable { mutableStateOf(false) }
     var pendingHighlightTarget by rememberSaveable { mutableStateOf<GuideHighlightTarget?>(null) }
     var remotePcId by rememberSaveable { mutableStateOf<String?>(null) }
     var remoteInitialMode by rememberSaveable { mutableStateOf(RemoteMode.Touchpad) }
@@ -530,6 +532,7 @@ private fun App(
         state.status is CoreStatus.Failed -> ScreenRoute.Failed(state.status.message)
         showWalkthrough -> ScreenRoute.Walkthrough
         featuresGuideOpen -> ScreenRoute.FeaturesGuide
+        reportOpen -> ScreenRoute.Report
         pairing || state.pairing != PairingState.Idle -> ScreenRoute.Pairing
         webcamDevice != null -> ScreenRoute.Webcam(webcamDevice.id)
         recordDevice != null -> ScreenRoute.Recorder(recordDevice.id)
@@ -685,6 +688,17 @@ private fun App(
                             pairing = true
                         },
                         onAccessChanged = core::refreshNotificationAccess,
+                        modifier = Modifier.fillMaxSize().padding(padding),
+                    )
+                }
+            }
+            ScreenRoute.Report -> {
+                Scaffold(snackbarHost = { SnackbarHost(snackbar) }) { padding ->
+                    app.nectarlink.android.ui.settings.ReportScreen(
+                        state = state,
+                        onAsk = core::reportAsk,
+                        reportLogs = core.reportLogs,
+                        onBack = { reportOpen = false },
                         modifier = Modifier.fillMaxSize().padding(padding),
                     )
                 }
@@ -1039,6 +1053,7 @@ private fun App(
                                     onOpenFeaturesGuide = {
                                         featuresGuideOpen = true
                                     },
+                                    onReportProblem = { reportOpen = true },
                                     highlightTarget = pendingHighlightTarget,
                                     onHighlightConsumed = { pendingHighlightTarget = null },
                                     modifier = Modifier.fillMaxSize(),

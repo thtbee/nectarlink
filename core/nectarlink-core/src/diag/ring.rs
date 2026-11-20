@@ -54,7 +54,11 @@ impl RingLog {
 
     /// The two files, newest first.
     pub fn files(&self) -> [PathBuf; 2] {
-        [self.dir.join(CURRENT), self.dir.join(PREVIOUS)]
+        Self::files_in(&self.dir)
+    }
+
+    fn files_in(dir: &Path) -> [PathBuf; 2] {
+        [dir.join(CURRENT), dir.join(PREVIOUS)]
     }
 
     /// Appends one line (`line` ends with a newline). A line that doesn't
@@ -87,6 +91,18 @@ impl RingLog {
         state.file = Some(file);
         Ok(())
     }
+}
+
+/// The folder of the app's own log, once its layer is made.
+static ACTIVE: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+
+pub(super) fn set_active(ring: &RingLog) {
+    let _ = ACTIVE.set(ring.dir.clone());
+}
+
+/// The app's own log files, newest first; empty before logging starts.
+pub fn active_files() -> Vec<PathBuf> {
+    ACTIVE.get().map(|dir| RingLog::files_in(dir).to_vec()).unwrap_or_default()
 }
 
 #[cfg(test)]

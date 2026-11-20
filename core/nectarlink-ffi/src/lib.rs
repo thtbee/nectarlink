@@ -685,6 +685,17 @@ pub enum Event {
     ContactsChanged {
         id: String,
     },
+    /// A paired device making a problem report asks for this phone's recent
+    /// activity log: ask the user, then `report_log_answer`.
+    DiagLogAsked {
+        id: String,
+    },
+    /// The log asked for with `report_ask` arrived (`shared`) or was
+    /// declined; `report_prepare` now includes it.
+    ReportLogArrived {
+        id: String,
+        shared: bool,
+    },
     /// A paired phone's screen (session 0) or app window started or
     /// stopped showing (PCs only).
     Mirroring {
@@ -2524,6 +2535,14 @@ impl Event {
             }
             NodeEvent::CallLogChanged { device } => Event::CallLogChanged { id: device.to_string() },
             NodeEvent::ContactsChanged { device } => Event::ContactsChanged { id: device.to_string() },
+            NodeEvent::DiagLogAsked { device } => Event::DiagLogAsked { id: device.to_string() },
+            NodeEvent::DiagLog { device, nonce, lines } => {
+                let shared = lines.is_some();
+                if !peer_log_arrived(device, nonce, lines) {
+                    return None;
+                }
+                Event::ReportLogArrived { id: device.to_string(), shared }
+            }
             NodeEvent::SmsChanged { device, thread } => Event::SmsChanged { id: device.to_string(), thread },
             NodeEvent::PhotosChanged { device } => Event::PhotosChanged { id: device.to_string() },
             NodeEvent::Mirroring { device, session, on } => {
@@ -2779,6 +2798,9 @@ pub trait Platform: Send + Sync {
     /// A PC asked for contacts matching `query` (or all with phone numbers
     /// when null), favorites first then alphabetical, skipping `offset`.
     fn contacts(&self, query: Option<String>, offset: u32, limit: u32) -> Vec<Contact>;
+    /// This phone's part of a problem report a paired PC is making: what it
+    /// says about itself and its checks (`Reports.phone`).
+    fn diag_facts(&self) -> Option<ReportDevice>;
     /// A PC asked for this phone's screen (and, with `audio`, its sound):
     /// ask the user (then call `mirror_open`, and `mirror_open_audio` for
     /// the sound). With `app` (and a `session` other than 0): run that app
@@ -2934,6 +2956,9 @@ impl std::fmt::Debug for PlatformAdapter {
 }
 
 impl core::Platform for PlatformAdapter {
+    fn diag_facts(&self) -> Option<(core::diag::report::DeviceFacts, Vec<(String, String)>)> {
+        self.0.diag_facts().map(ReportDevice::split)
+    }
     fn start_ringing(&self) {
         self.0.start_ringing();
     }
@@ -3658,6 +3683,42 @@ impl NectarlinkNode {
         let id = parse_id(&pc_id)?;
         let node = self.node.clone();
         self.run(async move { Ok(node.elevated_usb_start(id, apk, token, grants).await?) }).await
+    }
+
+    /// Asks paired device `id` for its part of the problem report being
+    /// made; with `log`, its user is asked to share its recent log too
+    /// (a `ReportLogArrived` event follows). `report_prepare` includes what
+    /// came back.
+    pub async fn report_ask(&self, id: String, log: bool, just_now: bool) -> ReportPeer {
+        let Ok(peer) = parse_id(&id) else { return ReportPeer::Offline };
+        let node = self.node.clone();
+        let asked = self.run(async move { Ok(node.diag_ask(peer, log, just_now).await?) }).await;
+        match asked {
+            Ok(part) => {
+                let state = match part.log {
+                    core::PeerLog::Asking => ReportPeer::Asking,
+                    core::PeerLog::Busy => ReportPeer::Busy,
+                    core::PeerLog::NotAsked => ReportPeer::Included,
+                };
+                peer_parts().insert(peer, part);
+                state
+            }
+            Err(NectarlinkError::Unsupported) => ReportPeer::Unsupported,
+            Err(_) => ReportPeer::Offline,
+        }
+    }
+
+    /// This phone's user answered `id`'s request for its log.
+    pub async fn report_log_answer(&self, id: String, share: bool) -> Result<()> {
+        let peer = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.diag_log_answer(peer, share).await?) }).await
+    }
+
+    /// Whether `id` still waits for this phone's user to answer its request
+    /// for the log.
+    pub fn report_log_waiting(&self, id: String) -> bool {
+        parse_id(&id).is_ok_and(|peer| self.node.diag_log_waiting(&peer))
     }
 
     pub async fn ring(&self, id: String, on: bool) -> Result<()> {
@@ -5064,6 +5125,7 @@ pub fn init_logging(filter: String, diag_dir: String, data_dir: String, version:
     use core::diag::{self, RingLayer, RingLog};
     use tracing_subscriber::{EnvFilter, prelude::*};
     let diag_dir = std::path::PathBuf::from(diag_dir);
+    let _ = DIAG_DIR.set(diag_dir.clone());
     diag::init_roots(std::path::Path::new(&data_dir));
     diag::crash::configure(&diag_dir, &version);
     diag::health::init(&diag_dir);
@@ -5116,6 +5178,350 @@ pub fn record_crash(kind: String, location: String, message: String, thread: Opt
     };
     crash::record(&record);
     core::diag::health::count(core::diag::health::Feature::Crash, core::diag::health::Code::Ok);
+}
+
+/// Where the phone keeps its diagnostics, from [`init_logging`].
+static DIAG_DIR: std::sync::OnceLock<std::path::PathBuf> = std::sync::OnceLock::new();
+/// The report made last, for Send and Open on GitHub.
+static LAST_REPORT: std::sync::Mutex<Option<core::diag::report::Report>> = std::sync::Mutex::new(None);
+
+fn diag_dir() -> std::path::PathBuf {
+    DIAG_DIR.get().cloned().unwrap_or_default()
+}
+
+fn now_secs() -> u64 {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs())
+}
+
+/// A `name: value` fact, or a check and its outcome, for a report.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct ReportPair {
+    pub name: String,
+    pub value: String,
+}
+
+/// Paired devices' parts from `report_ask`, by device.
+static PEER_PARTS: std::sync::Mutex<Option<std::collections::HashMap<DeviceId, core::PeerPart>>> =
+    std::sync::Mutex::new(None);
+
+struct PeerParts(std::sync::MutexGuard<'static, Option<std::collections::HashMap<DeviceId, core::PeerPart>>>);
+
+impl std::ops::Deref for PeerParts {
+    type Target = std::collections::HashMap<DeviceId, core::PeerPart>;
+    fn deref(&self) -> &Self::Target {
+        self.0.as_ref().expect("made on lock")
+    }
+}
+
+impl std::ops::DerefMut for PeerParts {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.0.as_mut().expect("made on lock")
+    }
+}
+
+fn peer_parts() -> PeerParts {
+    let mut guard = PEER_PARTS.lock().unwrap_or_else(|e| e.into_inner());
+    guard.get_or_insert_with(Default::default);
+    PeerParts(guard)
+}
+
+/// Adds a log that arrived to the part it was asked with. False when no
+/// part is waiting for it.
+fn peer_log_arrived(device: DeviceId, nonce: u64, lines: Option<Vec<String>>) -> bool {
+    let mut parts = peer_parts();
+    let Some(part) = parts.get_mut(&device).filter(|p| p.nonce == nonce) else { return false };
+    part.log = core::PeerLog::NotAsked;
+    if let Some(lines) = lines {
+        part.part.log = lines;
+    }
+    true
+}
+
+/// What became of asking a paired device for its part of a report.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum ReportPeer {
+    /// Its part is in the report.
+    Included,
+    /// Its part is in, and its user is being asked to share its log.
+    Asking,
+    /// Its part is in; it was asked for its log moments ago.
+    Busy,
+    /// It's offline, or didn't answer in time.
+    Offline,
+    /// It runs a NectarLink that doesn't answer yet.
+    Unsupported,
+}
+
+/// What a device says about itself in a report: versions and hardware,
+/// never names. `extra` and `checks` come from fixed lists.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct ReportDevice {
+    /// The paired device's ID; "" for this phone.
+    #[uniffi(default = "")]
+    pub id: String,
+    /// `Phone` or `PC`.
+    pub role: String,
+    pub app_version: String,
+    pub channel: String,
+    pub install: String,
+    pub os: String,
+    pub arch: String,
+    pub hardware: Vec<String>,
+    pub extra: Vec<ReportPair>,
+    pub checks: Vec<ReportPair>,
+}
+
+impl ReportDevice {
+    fn split(self) -> (core::diag::report::DeviceFacts, Vec<(String, String)>) {
+        let pairs = |list: Vec<ReportPair>| list.into_iter().map(|p| (p.name, p.value)).collect::<Vec<_>>();
+        let checks = pairs(self.checks);
+        let facts = core::diag::report::DeviceFacts {
+            role: self.role,
+            app_version: self.app_version,
+            channel: self.channel,
+            install: self.install,
+            os: self.os,
+            arch: self.arch,
+            hardware: self.hardware,
+            extra: pairs(self.extra),
+        };
+        (facts, checks)
+    }
+}
+
+/// The area a recent crash or failure on this phone points to: an `Area` id.
+#[uniffi::export]
+pub fn report_guess_area() -> String {
+    core::diag::report::guess_area(&diag_dir()).id().to_owned()
+}
+
+/// Makes a report on this phone and returns its exact text. `phone` is this
+/// phone with its checks; `others` are paired devices as far as the phone
+/// knows them. `parts` leaves out the parts whose bit isn't set (1 devices,
+/// 2 checks, 4 health, 8 crashes, 16 log).
+#[uniffi::export]
+pub fn report_prepare(
+    area: String,
+    other: String,
+    text: String,
+    just_now: bool,
+    parts: i32,
+    phone: ReportDevice,
+    others: Vec<ReportDevice>,
+) -> String {
+    use core::diag::report::{self, Area, DevicePart, Parts};
+    let dir = diag_dir();
+    let mut made = report::Report::new(Area::parse(&area).unwrap_or(Area::Other), &other, &text, just_now);
+    made.parts = Parts {
+        devices: parts & 1 != 0,
+        checks: parts & 2 != 0,
+        health: parts & 4 != 0,
+        crashes: parts & 8 != 0,
+        log: parts & 16 != 0,
+    };
+    let (facts, checks) = phone.split();
+    made.devices.push(report::local_part(&dir, &dir.join("logs"), facts, checks, just_now));
+    if others.is_empty() {
+        made.missing.push("no_paired_device".into());
+    }
+    let parts = peer_parts();
+    for device in others {
+        let asked = parse_id(&device.id).ok().and_then(|id| parts.get(&id));
+        let role = device.role.clone();
+        let (mut facts, checks) = device.split();
+        match asked {
+            Some(peer) => {
+                let mut part = peer.part.clone();
+                part.facts.role = role;
+                part.facts.extra.extend(facts.extra);
+                if peer.log == core::PeerLog::Asking && made.parts.log {
+                    made.missing
+                        .push(format!("{}_log_waiting_for_its_user", part.facts.role.to_ascii_lowercase()));
+                }
+                made.devices.push(part);
+            }
+            None => {
+                facts.role = role;
+                made.devices.push(DevicePart { facts, checks, ..DevicePart::default() });
+            }
+        }
+    }
+    drop(parts);
+    let rendered = made.render();
+    *LAST_REPORT.lock().unwrap_or_else(|e| e.into_inner()) = Some(made);
+    rendered
+}
+
+/// Whether `text` seems to have an email address or phone number in it.
+#[uniffi::export]
+pub fn report_looks_like_contact(text: String) -> bool {
+    core::diag::report::looks_like_contact(&text)
+}
+
+/// A new GitHub issue for the report made last, with its short parts
+/// filled in; the full text is pasted into it.
+#[uniffi::export]
+pub fn report_issue_url() -> Option<String> {
+    LAST_REPORT.lock().unwrap_or_else(|e| e.into_inner()).as_ref().map(core::diag::report::Report::issue_url)
+}
+
+/// A report ready to POST to [`report_service`]`/v1/report`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct OutgoingReport {
+    pub rid: String,
+    /// Sent as is, as `application/json`.
+    pub body: String,
+    /// Sent as `X-Proof`.
+    pub proof: String,
+    pub at: u64,
+}
+
+impl From<core::diag::send::Outgoing> for OutgoingReport {
+    fn from(o: core::diag::send::Outgoing) -> Self {
+        OutgoingReport { rid: o.rid, body: o.body, proof: o.proof, at: o.at }
+    }
+}
+
+impl From<OutgoingReport> for core::diag::send::Outgoing {
+    fn from(o: OutgoingReport) -> Self {
+        core::diag::send::Outgoing { rid: o.rid, body: o.body, proof: o.proof, at: o.at }
+    }
+}
+
+/// The report service's address.
+#[uniffi::export]
+pub fn report_service() -> String {
+    core::diag::send::REPORT_SERVICE.to_owned()
+}
+
+/// The request for the report made last, with its proof of work. Takes
+/// about a second: call it off the main thread. `crash_sig` makes it a
+/// crash report, sent from the crash card.
+#[uniffi::export]
+pub fn report_outgoing(crash_sig: Option<String>) -> Option<OutgoingReport> {
+    use core::diag::send::{Kind, Outgoing};
+    let made = LAST_REPORT.lock().unwrap_or_else(|e| e.into_inner()).clone()?;
+    let kind = if crash_sig.is_some() { Kind::Crash } else { Kind::Person };
+    Some(Outgoing::new(&made, kind, crash_sig.as_deref(), now_secs()).into())
+}
+
+/// What became of a sent report.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum ReportOutcome {
+    Filed {
+        issue: u64,
+    },
+    Queued,
+    /// Couldn't reach the service: kept, and sent at the next chance.
+    Later,
+    Limited,
+    Failed,
+}
+
+/// Reads the service's answer to `outgoing` (`status` 0 when it couldn't be
+/// reached), keeps what has to be kept, and says what happened.
+#[uniffi::export]
+pub fn report_answer(outgoing: OutgoingReport, status: u16, body: Vec<u8>) -> ReportOutcome {
+    use core::diag::send::{self, Answer, Sent};
+    let dir = diag_dir();
+    let answer = if status == 0 { Answer::Later } else { Answer::read(status, &body) };
+    let outgoing: send::Outgoing = outgoing.into();
+    let follow = |issue: Option<u64>| {
+        send::clear_pending_if(&dir, &outgoing.rid);
+        send::remember(
+            &dir,
+            Sent { rid: outgoing.rid.clone(), issue, at: outgoing.at, comments: 0, closed: false },
+            now_secs(),
+        );
+    };
+    match answer {
+        Answer::Filed { issue } => {
+            follow(Some(issue));
+            ReportOutcome::Filed { issue }
+        }
+        Answer::Queued => {
+            follow(None);
+            ReportOutcome::Queued
+        }
+        Answer::Later => {
+            send::keep_pending(&dir, &outgoing);
+            ReportOutcome::Later
+        }
+        Answer::Limited => ReportOutcome::Limited,
+        Answer::Refused => {
+            send::clear_pending_if(&dir, &outgoing.rid);
+            ReportOutcome::Failed
+        }
+    }
+}
+
+/// What this phone says about itself in the daily count.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct CountInstall {
+    pub app: String,
+    pub channel: String,
+    pub platform: String,
+    pub os: String,
+    pub hardware: String,
+}
+
+/// Today's count to POST to `report_service()/v1/ping` (as JSON, with
+/// `X-Proof`), or null when it went out already today.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct DailyCount {
+    pub body: String,
+    pub proof: String,
+}
+
+#[uniffi::export]
+pub fn daily_count_due(install: CountInstall) -> Option<DailyCount> {
+    let install = core::diag::usage::Install {
+        app: install.app,
+        channel: install.channel,
+        platform: install.platform,
+        os: install.os,
+        hardware: install.hardware,
+    };
+    core::diag::usage::due(&diag_dir(), &install, now_secs()).map(|(body, proof)| DailyCount { body, proof })
+}
+
+/// Today's count went out (or was refused for good): not again today.
+#[uniffi::export]
+pub fn daily_count_sent() {
+    core::diag::usage::sent(&diag_dir(), now_secs());
+}
+
+/// The report that couldn't be sent yet, to send at the next update check.
+#[uniffi::export]
+pub fn report_pending() -> Option<OutgoingReport> {
+    core::diag::send::pending(&diag_dir()).map(Into::into)
+}
+
+/// Sent reports still waiting in the service's queue: their `rid`s, to ask
+/// `GET /v1/report/<rid>` which issue each became.
+#[uniffi::export]
+pub fn report_queued() -> Vec<String> {
+    core::diag::send::sent(&diag_dir(), now_secs())
+        .into_iter()
+        .filter(|s| s.issue.is_none())
+        .map(|s| s.rid)
+        .collect()
+}
+
+/// The service's answer about the queued report `rid`.
+#[uniffi::export]
+pub fn report_queued_answer(rid: String, status: u16, body: Vec<u8>) {
+    use core::diag::send::{self, Answer};
+    let dir = diag_dir();
+    match Answer::read(status, &body) {
+        Answer::Filed { issue } => {
+            if let Some(entry) = send::sent(&dir, now_secs()).into_iter().find(|s| s.rid == rid) {
+                send::remember(&dir, send::Sent { issue: Some(issue), ..entry }, now_secs());
+            }
+        }
+        Answer::Refused => send::forget(&dir, &rid),
+        _ => {}
+    }
 }
 
 #[cfg(test)]

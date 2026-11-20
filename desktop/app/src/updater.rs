@@ -236,10 +236,14 @@ pub fn can_install_unattended() -> bool {
 /// or sooner when asked ([`check_soon`]), while automatic checks are on.
 pub fn start() {
     if !can_update() {
-        // No update checks here, but a report that couldn't be sent still goes.
+        // No update checks here, but the daily count and a report that
+        // couldn't be sent still go.
         let _ = std::thread::Builder::new().name("reports".into()).spawn(|| {
             std::thread::sleep(FIRST_CHECK);
-            crate::bridge::report::follow_up();
+            loop {
+                crate::bridge::report::follow_up();
+                std::thread::sleep(Duration::from_secs(6 * 3600));
+            }
         });
         return;
     }

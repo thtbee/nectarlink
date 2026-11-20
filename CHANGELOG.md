@@ -13,7 +13,11 @@ change things that need a step from you, and its notes say so.
   find the cause: versions, the Doctor's checks, how features have been doing, recent crashes
   and the recent log. You read the whole report first and can leave any part out. **Send**
   files it as an issue for you, no GitHub account needed; **Open on GitHub** fills in a new
-  issue and copies the report to paste into it. Crashes are recorded on
+  issue and copies the report to paste into it. The phone has its own **Report a problem** in
+  Settings, and each app asks the other for its details; the other device's log is added only
+  when you tap **Share** on it.
+- **An anonymous daily count.** Once a day each app sends its version, platform and device
+  model, and how features did, with no ID ([what's sent](docs/guide/privacy-and-security.md)). Crashes are recorded on
   both apps now, and the phone keeps its own small log.
 - **AI agents can use NectarLink.** Claude Code, Claude Desktop, Codex, Cursor, Gemini CLI,
   VS Code and other AI assistants on the PC can read notifications and texts, send files and

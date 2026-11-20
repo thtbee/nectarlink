@@ -8389,6 +8389,34 @@ O que precisa
     </message>
 </context>
 <context>
+    <name>ReportRequests</name>
+    <message>
+        <location filename="rust_strings.h" line="485"/>
+        <source>%1 asks for this PC&apos;s log</source>
+        <translation>%1 pede o registro deste PC</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="486"/>
+        <source>Don&apos;t share</source>
+        <translation>Não compartilhar</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="487"/>
+        <source>For a problem report you&apos;re making. The log has no names, messages, files, numbers or addresses. You see the whole report before it&apos;s sent.</source>
+        <translation>Para um relatório de problema que você está fazendo. O registro não tem nomes, mensagens, arquivos, números nem endereços. Você vê o relatório inteiro antes de ele ser enviado.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="488"/>
+        <source>Share</source>
+        <translation>Compartilhar</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="489"/>
+        <source>Your phone</source>
+        <translation>Seu celular</translation>
+    </message>
+</context>
+<context>
     <name>ReportSheet</name>
     <message>
         <location filename="../qml/components/ReportSheet.qml" line="20"/>
@@ -8520,57 +8548,62 @@ O que precisa
         <translation>O relatório foi copiado. Na página do GitHub, cole no campo Report e envie.</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="292"/>
+        <location filename="../qml/components/ReportSheet.qml" line="283"/>
+        <source>Your phone is asking whether to share its log. Tap Share on the phone to add it.</source>
+        <translation>Seu celular está perguntando se deve compartilhar o registro. Toque em Compartilhar no celular para incluir.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="300"/>
         <source>Sending the report</source>
         <translation>Enviando o relatório</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="293"/>
+        <location filename="../qml/components/ReportSheet.qml" line="301"/>
         <source>Sent. This is report #%1.</source>
         <translation>Enviado. Este é o relatório #%1.</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="294"/>
+        <location filename="../qml/components/ReportSheet.qml" line="302"/>
         <source>Sent. It will be filed shortly.</source>
         <translation>Enviado. Ele será registrado em breve.</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="295"/>
+        <location filename="../qml/components/ReportSheet.qml" line="303"/>
         <source>NectarLink couldn&apos;t reach the report service. It will send the report later by itself.</source>
         <translation>O NectarLink não conseguiu falar com o serviço de relatórios. Ele vai enviar o relatório mais tarde sozinho.</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="296"/>
+        <location filename="../qml/components/ReportSheet.qml" line="304"/>
         <source>Too many reports came from this network today. Use Open on GitHub, or send it tomorrow.</source>
         <translation>Muitos relatórios vieram desta rede hoje. Use Abrir no GitHub ou envie amanhã.</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="297"/>
+        <location filename="../qml/components/ReportSheet.qml" line="305"/>
         <source>The report couldn&apos;t be sent. Use Open on GitHub instead.</source>
         <translation>Não foi possível enviar o relatório. Use Abrir no GitHub.</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="308"/>
+        <location filename="../qml/components/ReportSheet.qml" line="316"/>
         <source>View it</source>
         <translation>Ver</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="317"/>
+        <location filename="../qml/components/ReportSheet.qml" line="325"/>
         <source>Back</source>
         <translation>Voltar</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="323"/>
+        <location filename="../qml/components/ReportSheet.qml" line="331"/>
         <source>Copy</source>
         <translation>Copiar</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="332"/>
+        <location filename="../qml/components/ReportSheet.qml" line="340"/>
         <source>Open on GitHub</source>
         <translation>Abrir no GitHub</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="341"/>
+        <location filename="../qml/components/ReportSheet.qml" line="349"/>
         <source>Send</source>
         <translation>Enviar</translation>
     </message>
@@ -8586,57 +8619,57 @@ O que precisa
 <context>
     <name>SendTo</name>
     <message>
-        <location filename="rust_strings.h" line="485"/>
+        <location filename="rust_strings.h" line="490"/>
         <source>Copied to your phone&apos;s clipboard.</source>
         <translation>Copiado para a área de transferência do celular.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="486"/>
+        <location filename="rust_strings.h" line="491"/>
         <source>Couldn&apos;t reach %1.</source>
         <translation>Não foi possível acessar %1.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="487"/>
+        <location filename="rust_strings.h" line="492"/>
         <source>Couldn&apos;t send %1</source>
         <translation>Não foi possível enviar %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="488"/>
+        <location filename="rust_strings.h" line="493"/>
         <source>Couldn&apos;t send to %1</source>
         <translation>Não foi possível enviar para %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="489"/>
+        <location filename="rust_strings.h" line="494"/>
         <source>Couldn&apos;t share with %1</source>
         <translation>Não foi possível compartilhar com %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="490"/>
+        <location filename="rust_strings.h" line="495"/>
         <source>File failed integrity check; partial file kept to resume.</source>
         <translation>O arquivo falhou na verificação de integridade. A parte recebida foi mantida para continuar depois.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="491"/>
+        <location filename="rust_strings.h" line="496"/>
         <source>Send to %1 with NectarLink</source>
         <translation>Enviar para %1 com o NectarLink</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="492"/>
+        <location filename="rust_strings.h" line="497"/>
         <source>Sending to %1…</source>
         <translation>Enviando para %1…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="493"/>
+        <location filename="rust_strings.h" line="498"/>
         <source>Sent to %1</source>
         <translation>Enviado para %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="494"/>
+        <location filename="rust_strings.h" line="499"/>
         <source>The transfer didn&apos;t go through.</source>
         <translation>Não foi possível concluir a transferência.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="495"/>
+        <location filename="rust_strings.h" line="500"/>
         <source>Waiting for %1…</source>
         <translation>Aguardando %1…</translation>
     </message>
@@ -10730,72 +10763,72 @@ O que precisa
 <context>
     <name>Setup</name>
     <message>
-        <location filename="rust_strings.h" line="496"/>
+        <location filename="rust_strings.h" line="501"/>
         <source>Choose a folder on a drive inside this PC, not a USB or network drive.</source>
         <translation>Escolha uma pasta em uma unidade deste PC, não em uma unidade USB ou de rede.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="497"/>
+        <location filename="rust_strings.h" line="502"/>
         <source>Choose a folder on one of this PC&apos;s drives.</source>
         <translation>Escolha uma pasta em uma das unidades deste PC.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="498"/>
+        <location filename="rust_strings.h" line="503"/>
         <source>Couldn&apos;t start setup: %1</source>
         <translation>Não foi possível iniciar a instalação: %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="499"/>
+        <location filename="rust_strings.h" line="504"/>
         <source>Couldn&apos;t uninstall NectarLink: %1</source>
         <translation>Não foi possível desinstalar o NectarLink: %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="500"/>
+        <location filename="rust_strings.h" line="505"/>
         <source>Setup can&apos;t use that folder. Choose another one.</source>
         <translation>A instalação não pode usar essa pasta. Escolha outra.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="501"/>
+        <location filename="rust_strings.h" line="506"/>
         <source>Setup is taking too long. Try again after restarting the PC.</source>
         <translation>A instalação está demorando demais. Tente de novo depois de reiniciar o PC.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="502"/>
+        <location filename="rust_strings.h" line="507"/>
         <source>Setup stopped with code %1.</source>
         <translation>A instalação parou com o código %1.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="503"/>
+        <location filename="rust_strings.h" line="508"/>
         <source>That drive can&apos;t keep the app&apos;s files safe (it isn&apos;t NTFS). Choose another drive.</source>
         <translation>Essa unidade não consegue proteger os arquivos do app (não é NTFS). Escolha outra unidade.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="504"/>
+        <location filename="rust_strings.h" line="509"/>
         <source>That folder&apos;s path is too long. Choose one closer to the top of a drive.</source>
         <translation>O caminho dessa pasta é muito longo. Escolha uma pasta mais perto da raiz da unidade.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="505"/>
+        <location filename="rust_strings.h" line="510"/>
         <source>The uninstaller is missing. Reinstall NectarLink, then uninstall it.</source>
         <translation>O desinstalador não foi encontrado. Reinstale o NectarLink e depois desinstale-o.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="506"/>
+        <location filename="rust_strings.h" line="511"/>
         <source>There&apos;s a file named %1 there. Choose another place.</source>
         <translation>Já existe um arquivo chamado %1 lá. Escolha outro lugar.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="507"/>
+        <location filename="rust_strings.h" line="512"/>
         <source>There&apos;s already a %1 folder there with files in it. Choose another place.</source>
         <translation>Já existe uma pasta %1 com arquivos lá. Escolha outro lugar.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="508"/>
+        <location filename="rust_strings.h" line="513"/>
         <source>Uninstall stopped with code %1.</source>
         <translation>A desinstalação foi interrompida com o código %1.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="509"/>
+        <location filename="rust_strings.h" line="514"/>
         <source>Updates here will ask for your permission each time.</source>
         <translation>As atualizações neste local vão pedir sua permissão toda vez.</translation>
     </message>
@@ -11234,17 +11267,17 @@ O que precisa
 <context>
     <name>Storage</name>
     <message>
-        <location filename="rust_strings.h" line="510"/>
+        <location filename="rust_strings.h" line="515"/>
         <source>%1&apos;s files aren&apos;t shared with this PC</source>
         <translation>Os arquivos de %1 não estão compartilhados com este PC</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="511"/>
+        <location filename="rust_strings.h" line="516"/>
         <source>On the phone, allow All files access for NectarLink.</source>
         <translation>No celular, permita Acesso a todos os arquivos para o NectarLink.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="512"/>
+        <location filename="rust_strings.h" line="517"/>
         <source>On the phone, turn on Browse this phone&apos;s storage in File Explorer in NectarLink.</source>
         <translation>No celular, ative Explorar o armazenamento deste celular pelo Explorador de Arquivos no NectarLink.</translation>
     </message>
@@ -11252,147 +11285,147 @@ O que precisa
 <context>
     <name>Timeline</name>
     <message>
-        <location filename="rust_strings.h" line="513"/>
+        <location filename="rust_strings.h" line="518"/>
         <source>App window #%1</source>
         <translation>Janela de app #%1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="514"/>
+        <location filename="rust_strings.h" line="519"/>
         <source>Clip (removed from clipboard history)</source>
         <translation>Item copiado (removido do histórico da área de transferência)</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="515"/>
+        <location filename="rust_strings.h" line="520"/>
         <source>Copied image</source>
         <translation>Imagem copiada</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="516"/>
+        <location filename="rust_strings.h" line="521"/>
         <source>Copied link to clipboard.</source>
         <translation>Link copiado para a área de transferência.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="517"/>
+        <location filename="rust_strings.h" line="522"/>
         <source>Copied to clipboard.</source>
         <translation>Copiado para a área de transferência.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="518"/>
+        <location filename="rust_strings.h" line="523"/>
         <source>From %1</source>
         <translation>De %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="519"/>
+        <location filename="rust_strings.h" line="524"/>
         <source>In progress</source>
         <translation>Em andamento</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="520"/>
+        <location filename="rust_strings.h" line="525"/>
         <source>No phone is paired yet.</source>
         <translation>Nenhum celular pareado ainda.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="521"/>
+        <location filename="rust_strings.h" line="526"/>
         <source>Opened from %1</source>
         <translation>Aberto a partir de %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="522"/>
+        <location filename="rust_strings.h" line="527"/>
         <source>Opened on %1</source>
         <translation>Aberto em %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="523"/>
+        <location filename="rust_strings.h" line="528"/>
         <source>Phone microphone</source>
         <translation>Microfone do celular</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="524"/>
+        <location filename="rust_strings.h" line="529"/>
         <source>Phone webcam</source>
         <translation>Webcam do celular</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="525"/>
+        <location filename="rust_strings.h" line="530"/>
         <source>Recorded on %1</source>
         <translation>Gravado em %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="526"/>
+        <location filename="rust_strings.h" line="531"/>
         <source>Saved from %1</source>
         <translation>Salvo de %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="527"/>
+        <location filename="rust_strings.h" line="532"/>
         <source>Screen mirroring</source>
         <translation>Espelhamento de tela</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="528"/>
+        <location filename="rust_strings.h" line="533"/>
         <source>Sending to %1…</source>
         <translation>Enviando para %1…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="529"/>
+        <location filename="rust_strings.h" line="534"/>
         <source>Sent clip to %1.</source>
         <translation>Item enviado para %1.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="530"/>
+        <location filename="rust_strings.h" line="535"/>
         <source>Sent to %1</source>
         <translation>Enviado para %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="531"/>
+        <location filename="rust_strings.h" line="536"/>
         <source>Session</source>
         <translation>Sessão</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="532"/>
+        <location filename="rust_strings.h" line="537"/>
         <source>That clip is no longer in clipboard history.</source>
         <translation>Esse item não está mais no histórico da área de transferência.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="533"/>
+        <location filename="rust_strings.h" line="538"/>
         <source>That entry couldn&apos;t be removed. Try again.</source>
         <translation>Não foi possível remover esse item. Tente de novo.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="534"/>
+        <location filename="rust_strings.h" line="539"/>
         <source>That file was moved or deleted.</source>
         <translation>Esse arquivo foi movido ou apagado.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="535"/>
+        <location filename="rust_strings.h" line="540"/>
         <source>That isn&apos;t a web link.</source>
         <translation>Isso não é um link da web.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="536"/>
+        <location filename="rust_strings.h" line="541"/>
         <source>That photo was moved or deleted.</source>
         <translation>Essa foto foi movida ou apagada.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="537"/>
+        <location filename="rust_strings.h" line="542"/>
         <source>The Timeline couldn&apos;t be cleared. Try again.</source>
         <translation>Não foi possível limpar a Linha do tempo. Tente de novo.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="538"/>
+        <location filename="rust_strings.h" line="543"/>
         <source>The photo couldn&apos;t be copied to the clipboard.</source>
         <translation>Não foi possível copiar a foto para a área de transferência.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="539"/>
+        <location filename="rust_strings.h" line="544"/>
         <source>Voice recording</source>
         <translation>Gravação de voz</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="540"/>
+        <location filename="rust_strings.h" line="545"/>
         <source>With %1</source>
         <translation>Com %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="541"/>
+        <location filename="rust_strings.h" line="546"/>
         <source>device</source>
         <translation>dispositivo</translation>
     </message>
@@ -11723,37 +11756,37 @@ O que precisa
 <context>
     <name>Transfers</name>
     <message>
-        <location filename="rust_strings.h" line="542"/>
+        <location filename="rust_strings.h" line="547"/>
         <source>Accept in NectarLink to save to Downloads\Nectarlink</source>
         <translation>Aceite no NectarLink para salvar em Downloads\Nectarlink</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="543"/>
+        <location filename="rust_strings.h" line="548"/>
         <source>Files are turned off for that device.</source>
         <translation>O compartilhamento de arquivos está desativado para esse dispositivo.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="544"/>
+        <location filename="rust_strings.h" line="549"/>
         <source>From %1, opened from Downloads\Nectarlink</source>
         <translation>De %1, aberto em Downloads\Nectarlink</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="545"/>
+        <location filename="rust_strings.h" line="550"/>
         <source>From %1, saved in Downloads\Nectarlink</source>
         <translation>De %1, salvo em Downloads\Nectarlink</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="546"/>
+        <location filename="rust_strings.h" line="551"/>
         <source>Nearby device</source>
         <translation>Dispositivo por perto</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="547"/>
+        <location filename="rust_strings.h" line="552"/>
         <source>That&apos;s too many files to send at once.</source>
         <translation>São muitos arquivos para enviar de uma vez.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="548"/>
+        <location filename="rust_strings.h" line="553"/>
         <source>There&apos;s nothing to send in there.</source>
         <translation>Não há nada para enviar aí.</translation>
     </message>
@@ -11761,82 +11794,82 @@ O que precisa
 <context>
     <name>Updater</name>
     <message>
-        <location filename="rust_strings.h" line="549"/>
+        <location filename="rust_strings.h" line="554"/>
         <source>Couldn&apos;t check for updates. Check your internet connection.</source>
         <translation>Não foi possível verificar se há atualizações. Confira sua conexão com a internet.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="550"/>
+        <location filename="rust_strings.h" line="555"/>
         <source>NectarLink %1 is available</source>
         <translation>O NectarLink %1 está disponível</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="551"/>
+        <location filename="rust_strings.h" line="556"/>
         <source>NectarLink %1 is available.</source>
         <translation>O NectarLink %1 está disponível.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="552"/>
+        <location filename="rust_strings.h" line="557"/>
         <source>NectarLink is still on the version you had. Try again from Settings.</source>
         <translation>O NectarLink continua na versão que você tinha. Tente de novo em Configurações.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="553"/>
+        <location filename="rust_strings.h" line="558"/>
         <source>NectarLink is up to date.</source>
         <translation>O NectarLink está atualizado.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="554"/>
+        <location filename="rust_strings.h" line="559"/>
         <source>NectarLink is updated to %1</source>
         <translation>O NectarLink foi atualizado para %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="555"/>
+        <location filename="rust_strings.h" line="560"/>
         <source>Nightly %1</source>
         <translation>Nightly %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="556"/>
+        <location filename="rust_strings.h" line="561"/>
         <source>Nightly %1 (%2)</source>
         <translation>Nightly %1 (%2)</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="557"/>
+        <location filename="rust_strings.h" line="562"/>
         <source>The download was damaged, so it wasn&apos;t installed. Try again.</source>
         <translation>O arquivo baixado foi corrompido e não foi instalado. Tente de novo.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="558"/>
+        <location filename="rust_strings.h" line="563"/>
         <source>The update couldn&apos;t be downloaded. Check your internet connection and try again.</source>
         <translation>Não foi possível baixar a atualização. Confira sua conexão com a internet e tente de novo.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="559"/>
+        <location filename="rust_strings.h" line="564"/>
         <source>The update couldn&apos;t be saved. Check that there&apos;s free space and try again.</source>
         <translation>Não foi possível salvar a atualização. Confira se há espaço livre e tente de novo.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="560"/>
+        <location filename="rust_strings.h" line="565"/>
         <source>The update couldn&apos;t be started. Try again.</source>
         <translation>Não foi possível iniciar a atualização. Tente de novo.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="561"/>
+        <location filename="rust_strings.h" line="566"/>
         <source>The update didn&apos;t install</source>
         <translation>A atualização não foi instalada</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="562"/>
+        <location filename="rust_strings.h" line="567"/>
         <source>The update is installed. Restart NectarLink to use it.</source>
         <translation>A atualização foi instalada. Reinicie o NectarLink para começar a usá-la.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="563"/>
+        <location filename="rust_strings.h" line="568"/>
         <source>Update now, or later from Settings.</source>
         <translation>Atualize agora ou depois em Configurações.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="564"/>
+        <location filename="rust_strings.h" line="569"/>
         <source>Your phone reconnects on its own.</source>
         <translation>O celular se reconecta sozinho.</translation>
     </message>
@@ -12394,12 +12427,12 @@ O que precisa
 <context>
     <name>Webcam</name>
     <message>
-        <location filename="rust_strings.h" line="565"/>
+        <location filename="rust_strings.h" line="570"/>
         <source>Starting camera on %1…</source>
         <translation>Iniciando a câmera em %1…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="566"/>
+        <location filename="rust_strings.h" line="571"/>
         <source>Streaming %1 × %2 · %3 fps from %4</source>
         <translation>Transmitindo de %4 em %1 × %2, a %3 fps</translation>
     </message>

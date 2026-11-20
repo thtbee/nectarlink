@@ -175,6 +175,14 @@ impl fmt::Debug for NodeConfig {
 /// Implemented by each app (Windows, Android). Calls may come from any
 /// thread and must not block for long.
 pub trait Platform: Send + Sync + 'static {
+    /// This device's part of a problem report a paired device is making
+    /// (`diag.ask`, docs/protocol/diag.md): what it says about itself, and
+    /// its checks as `(check, outcome)`. Versions, hardware and settings
+    /// from fixed lists, never names. `None` when it has nothing to add.
+    fn diag_facts(&self) -> Option<(crate::diag::report::DeviceFacts, Vec<(String, String)>)> {
+        None
+    }
+
     /// Start ringing loudly (find my device), even on silent.
     fn start_ringing(&self) {}
     /// Stop ringing.

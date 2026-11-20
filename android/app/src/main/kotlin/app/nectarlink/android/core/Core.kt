@@ -266,6 +266,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 8)
     private val _queuedNotices = MutableSharedFlow<OfflineQueuedNotice>(extraBufferCapacity = 8)
     private val _clipSuggestions = MutableSharedFlow<ClipSuggestionNotice>(extraBufferCapacity = 4)
+    private val _reportLogs = MutableSharedFlow<String>(extraBufferCapacity = 4)
     @Volatile private var node: NectarlinkNode? = null
     @Volatile private var startJob: Job? = null
     @Volatile private var runJob: Job? = null
@@ -371,6 +372,9 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     /** Context action suggestions for newly received clipboard text. */
     val clipSuggestions: SharedFlow<ClipSuggestionNotice> = _clipSuggestions.asSharedFlow()
 
+    /** A paired device's log for the report being made arrived, or its user said no: its ID. */
+    val reportLogs: SharedFlow<String> = _reportLogs.asSharedFlow()
+
     data class OfflineQueuedNotice(
         val message: String,
         val queueId: String?,
@@ -436,6 +440,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 BuildConfig.VERSION_NAME,
             )
             app.nectarlink.android.diag.Crashes.noteExits(context)
+            // Today's count, and a report that couldn't be sent before; off the start path.
+            currentRunScope.launch(Dispatchers.IO) { runCatching { app.nectarlink.android.diag.Reports.followUp(context) } }
             val initialAwayMode = app.nectarlink.android.ui.Preferences.isAwayModeEnabled(context)
             val options = NodeOptions(
                 dataDir = context.noBackupFilesDir.resolve("core").absolutePath,
@@ -997,6 +1003,9 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 }
                 refreshSendQueue()
             }
+            is Event.DiagLogAsked ->
+                app.nectarlink.android.diag.LogRequests.show(context, event.id, _state.value.nameOf(event.id).orEmpty())
+            is Event.ReportLogArrived -> _reportLogs.tryEmit(event.id)
             else -> {}
         }
     }
@@ -1247,6 +1256,24 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     /** Gives the call's sound back to this phone and tells [pcId]. */
     fun callAudioStop(pcId: String) {
         command { it.callAudioStop(pcId) }
+    }
+
+    /**
+     * Asks paired device [id] for its part of the report being made (and, with [log], its
+     * user to share its recent log). Null when the core isn't running.
+     */
+    suspend fun reportAsk(id: String, log: Boolean, justNow: Boolean): app.nectarlink.core.ReportPeer? {
+        val node = node ?: return null
+        return withContext(Dispatchers.IO) { node.reportAsk(id, log, justNow) }
+    }
+
+    /** Share or Don't share on [pcId]'s request for this phone's log. */
+    fun answerLogRequest(pcId: String, share: Boolean) {
+        scope.launch(Dispatchers.IO) {
+            val currentNode = node ?: return@launch
+            runCatching { currentNode.reportLogAnswer(pcId, share) }
+                .onFailure { Log.i(TAG, "couldn't answer the log request", it) }
+        }
     }
 
     /** The PC's request for the microphone is answered or withdrawn: take it off Home and the shade. */

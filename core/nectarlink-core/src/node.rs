@@ -91,6 +91,7 @@ const BASE_CAPABILITIES: &[&str] = &[
     "task.notify",
     nectarlink_protocol::messages::UPDATE_HINT,
     nectarlink_protocol::messages::mirror::PACE,
+    nectarlink_protocol::messages::diag::REPORT,
 ];
 
 /// This device's mutable description, sent to peers.
@@ -220,6 +221,8 @@ pub(crate) struct Shared {
     /// Stop signals for phone webcam streams arriving here, by phone.
     pub(crate) webcam_stops: Mutex<HashMap<DeviceId, Arc<tokio::sync::Notify>>>,
     /// Stop signals for phone microphone streams arriving here, by phone.
+    /// Problem-report requests in flight, both ways.
+    pub(crate) diag_asks: crate::diag_ask::State,
     pub(crate) mic_stops: Mutex<HashMap<DeviceId, Arc<tokio::sync::Notify>>>,
     /// Stop signals for a call's sound arriving here, by peer.
     pub(crate) call_audio_stops: Mutex<HashMap<DeviceId, Arc<tokio::sync::Notify>>>,
@@ -1990,6 +1993,7 @@ impl Node {
             watch_offers: Mutex::new(HashMap::new()),
             webcam_stops: Mutex::new(HashMap::new()),
             mic_stops: Mutex::new(HashMap::new()),
+            diag_asks: crate::diag_ask::State::default(),
             call_audio_stops: Mutex::new(HashMap::new()),
             remote: Mutex::new(Default::default()),
             storage: Mutex::new(Default::default()),
@@ -2382,6 +2386,30 @@ impl Node {
             tokio::time::sleep(Duration::from_millis(150)).await;
         }
         self.shared.forget_peer(&peer).await
+    }
+
+    /// Asks a paired device for its part of a problem report
+    /// (docs/protocol/diag.md). With `log`, its user is asked to share the
+    /// recent activity log too, which comes later as a `NodeEvent::DiagLog`.
+    pub async fn diag_ask(
+        &self,
+        peer: DeviceId,
+        log: bool,
+        just_now: bool,
+    ) -> Result<crate::diag_ask::PeerPart> {
+        let session = self.connected(&peer)?;
+        crate::diag_ask::ask(&self.shared, &session, log, just_now).await
+    }
+
+    /// This device's user answered `peer`'s request for the log.
+    pub async fn diag_log_answer(&self, peer: DeviceId, share: bool) -> Result<()> {
+        crate::diag_ask::answer_log(&self.shared, peer, share).await
+    }
+
+    /// Whether `peer` is still waiting for this device's user to answer its
+    /// request for the log.
+    pub fn diag_log_waiting(&self, peer: &DeviceId) -> bool {
+        crate::diag_ask::is_waiting(&self.shared, peer)
     }
 
     /// Asks a device to start or stop ringing.

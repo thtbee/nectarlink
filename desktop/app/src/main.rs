@@ -58,6 +58,7 @@ mod pointer_flow;
 mod qr;
 mod recordings;
 mod remote;
+mod report_requests;
 mod send_to;
 mod settings;
 mod setup;
@@ -109,6 +110,9 @@ const BUNDLED_FONTS: i32 = 4;
 struct DesktopPlatform;
 
 impl Platform for DesktopPlatform {
+    fn diag_facts(&self) -> Option<(nectarlink_core::diag::report::DeviceFacts, Vec<(String, String)>)> {
+        Some(bridge::report::own_facts())
+    }
     fn start_ringing(&self) {
         win::sound::start_ringing();
     }

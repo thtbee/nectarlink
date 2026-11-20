@@ -274,6 +274,14 @@ Sheet {
                 muted: true
                 text: qsTr("The report is copied. On the GitHub page, paste it into the Report box, then submit.")
             }
+            Txt {
+                width: parent.width
+                visible: Report.phoneLogWaiting && (sheet.parts & 16) !== 0
+                wrapMode: Text.WordWrap
+                role: "bodySmall"
+                muted: true
+                text: qsTr("Your phone is asking whether to share its log. Tap Share on the phone to add it.")
+            }
             Item {
                 width: parent.width
                 height: Math.max(sendStatus.height, viewSent.visible ? viewSent.height : 0)

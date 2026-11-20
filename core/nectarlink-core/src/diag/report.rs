@@ -419,6 +419,34 @@ pub fn local_part(
     }
 }
 
+/// The area a crash in the last 15 minutes, or the feature that failed most
+/// today, points to: what Report a problem starts on.
+pub fn guess_area(diag_dir: &Path) -> Area {
+    let now = now();
+    let crash = super::crash::records(diag_dir).into_iter().find(|r| now.saturating_sub(r.at) < 15 * 60);
+    Area::guess(crash.as_ref().map(|r| r.location.as_str()), recent_failure(diag_dir))
+}
+
+/// The feature that failed most today, if any did.
+fn recent_failure(diag_dir: &Path) -> Option<health::Feature> {
+    use health::Feature;
+    let today = health::days(diag_dir).pop()?;
+    today
+        .counts
+        .iter()
+        .filter_map(|(feature, codes)| {
+            let failed: u32 = codes
+                .iter()
+                .filter(|(code, _)| !matches!(code.as_str(), "ok" | "lan" | "usb" | "relay" | "cancelled"))
+                .map(|(_, n)| n)
+                .sum();
+            (failed > 0).then(|| (Feature::parse(feature), failed))
+        })
+        .filter(|(f, _)| !matches!(f, Some(Feature::Crash | Feature::UncleanExit) | None))
+        .max_by_key(|(_, n)| *n)
+        .and_then(|(f, _)| f)
+}
+
 /// What the user typed, as a report keeps it: at most `max` characters,
 /// tabs and line breaks kept, other control characters (which could hide
 /// text) dropped, and folders and addresses treated like the log's.

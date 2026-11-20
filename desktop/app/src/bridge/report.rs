@@ -14,12 +14,11 @@ use std::{
 use cxx_qt::Threading;
 use cxx_qt_lib::QString;
 use nectarlink_core::{
-    LinkState,
+    DeviceId, LinkState, PeerLog,
     diag::{
-        crash,
-        health::{self, Feature},
         report::{self, Area, DeviceFacts, DevicePart, Parts},
         send::{self, Answer, Kind, Outgoing, Sent},
+        usage,
     },
 };
 
@@ -46,6 +45,8 @@ pub mod qobject {
         #[qproperty(QString, send_state, cxx_name = "sendState")]
         /// The issue the report became, once `filed`.
         #[qproperty(i32, sent_issue, cxx_name = "sentIssue")]
+        /// A paired phone was asked for its log: its user has to tap Share on it.
+        #[qproperty(bool, phone_log_waiting, cxx_name = "phoneLogWaiting")]
         type Report = super::ReportRust;
     }
 
@@ -106,10 +107,22 @@ pub struct ReportRust {
     busy: bool,
     send_state: QString,
     sent_issue: i32,
+    phone_log_waiting: bool,
 }
 
-/// The report made last, for Open on GitHub.
+/// The report made last, for Send and Open on GitHub.
 static LAST: Mutex<Option<report::Report>> = Mutex::new(None);
+/// Logs paired devices shared for the report being made, by device, with
+/// the nonce they were asked with; `None` lines until they arrive.
+static PEER_LOGS: Mutex<Vec<PeerLogEntry>> = Mutex::new(Vec::new());
+/// A device asked for its log, the nonce it was asked with, and its lines once they arrive.
+type PeerLogEntry = (DeviceId, u64, Option<Vec<String>>);
+/// The last report's inputs, to make it again when a device's log arrives.
+static INPUTS: Mutex<Option<Inputs>> = Mutex::new(None);
+/// Area, the user's name for it, the description, "just now", parts.
+type Inputs = (Area, String, String, bool, Parts);
+/// The Report object, to show the remade report.
+static QT: Mutex<Option<cxx_qt::CxxQtThread<qobject::Report>>> = Mutex::new(None);
 /// Bumped by each `prepare`, so an older one finishing late is dropped.
 static GENERATION: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
@@ -121,11 +134,7 @@ impl qobject::Report {
     }
 
     pub fn guess_area(&self) -> QString {
-        let diag_dir = core_host::host().data_dir.join("diag");
-        let now = now();
-        let recent_crash = crash::records(&diag_dir).into_iter().find(|r| now.saturating_sub(r.at) < 15 * 60);
-        let failing = recent_failure(&diag_dir);
-        QString::from(Area::guess(recent_crash.as_ref().map(|r| r.location.as_str()), failing).id())
+        QString::from(report::guess_area(&diag_dir()).id())
     }
 
     pub fn prepare(
@@ -149,15 +158,20 @@ impl qobject::Report {
         };
         self.as_mut().set_busy(true);
         let qt = self.qt_thread();
+        *QT.lock().unwrap_or_else(|e| e.into_inner()) = Some(self.qt_thread());
+        *INPUTS.lock().unwrap_or_else(|e| e.into_inner()) =
+            Some((area, other.clone(), text.clone(), just_now, parts));
         let spawned = std::thread::Builder::new().name("report".into()).spawn(move || {
-            let made = std::panic::catch_unwind(|| build(area, &other, &text, just_now, parts)).ok();
+            let made = std::panic::catch_unwind(|| build(area, &other, &text, just_now, parts, true)).ok();
             let rendered = made.as_ref().map(report::Report::render).unwrap_or_default();
             if GENERATION.load(std::sync::atomic::Ordering::SeqCst) != generation {
                 return;
             }
             *LAST.lock().unwrap_or_else(|e| e.into_inner()) = made;
+            let waiting = log_waiting();
             let _ = qt.queue(move |mut object| {
                 object.as_mut().set_preview(QString::from(&rendered));
+                object.as_mut().set_phone_log_waiting(waiting);
                 object.set_busy(false);
             });
         });
@@ -249,9 +263,10 @@ fn deliver(outgoing: &Outgoing) -> Option<Answer> {
     Some(answer)
 }
 
-/// At an update check: sends the report that couldn't go before, and asks
-/// which issue queued ones became.
+/// At an update check: sends the daily count and the report that couldn't
+/// go before, and asks which issue queued ones became.
 pub fn follow_up() {
+    daily_count();
     let dir = diag_dir();
     if let Some(pending) = send::pending(&dir) {
         match deliver(&pending) {
@@ -274,48 +289,92 @@ pub fn follow_up() {
     }
 }
 
+/// Sends today's count (`diag::usage`) if it hasn't gone yet.
+fn daily_count() {
+    // Builds from source and test runs aren't installs.
+    if cfg!(debug_assertions) {
+        return;
+    }
+    let dir = diag_dir();
+    let facts = pc_facts();
+    let install = usage::Install {
+        app: facts.app_version,
+        channel: facts.channel,
+        platform: std::env::consts::OS.into(),
+        os: facts.os,
+        hardware: String::new(),
+    };
+    let Some((body, proof)) = usage::due(&dir, &install, now()) else { return };
+    let url = format!("{}/v1/ping", send::REPORT_SERVICE);
+    match crate::win::http::post_json(&url, &[("X-Proof", &proof)], body.as_bytes(), 4096) {
+        // Counted, or refused for good: either way, not again today.
+        Ok((status, _)) if status < 500 && status != 429 => usage::sent(&dir, now()),
+        Ok((status, _)) => tracing::info!(code = status, "the daily count wasn't taken"),
+        Err(e) => tracing::info!(error = e, "the daily count couldn't be sent"),
+    }
+}
+
 fn diag_dir() -> std::path::PathBuf {
     core_host::host().data_dir.join("diag")
 }
 
-/// The feature that failed most in the last day, if any did.
-fn recent_failure(diag_dir: &std::path::Path) -> Option<Feature> {
-    let today = health::days(diag_dir).pop()?;
-    today
-        .counts
-        .iter()
-        .filter_map(|(feature, codes)| {
-            let failed: u32 = codes.iter().filter(|(code, _)| !is_success(code)).map(|(_, n)| n).sum();
-            (failed > 0).then(|| (Feature::parse(feature), failed))
-        })
-        .filter(|(f, _)| !matches!(f, Some(Feature::Crash | Feature::UncleanExit) | None))
-        .max_by_key(|(_, n)| *n)
-        .and_then(|(f, _)| f)
-}
-
-fn is_success(code: &str) -> bool {
-    matches!(code, "ok" | "lan" | "usb" | "relay" | "cancelled")
-}
-
 /// The report with this PC's part and what the PC knows of each paired
 /// device (shared when they paired: model and Android version).
-fn build(area: Area, other: &str, text: &str, just_now: bool, parts: Parts) -> report::Report {
+fn build(area: Area, other: &str, text: &str, just_now: bool, parts: Parts, ask: bool) -> report::Report {
     let host = core_host::host();
     let diag_dir = host.data_dir.join("diag");
     let log_dir = crate::logging::logs_dir(&host.data_dir);
     let mut made = report::Report::new(area, other, text, just_now);
     made.parts = parts;
-    let checks = std::panic::catch_unwind(|| crate::doctor::diagnose(&crate::doctor::gather(), now() as i64))
-        .unwrap_or_default()
-        .into_iter()
-        .map(|c| (c.id, format!("{:?}", c.outcome).to_ascii_lowercase()))
-        .collect();
+    let checks = doctor_checks();
     made.devices.push(report::local_part(&diag_dir, &log_dir, pc_facts(), checks, just_now));
-    let paired = core_host::node().and_then(|node| node.paired_devices().ok()).unwrap_or_default();
+    let node = core_host::node();
+    let paired = node.as_ref().and_then(|node| node.paired_devices().ok()).unwrap_or_default();
     if paired.is_empty() {
         made.missing.push("no_paired_device".into());
     }
+    if ask {
+        PEER_LOGS.lock().unwrap_or_else(|e| e.into_inner()).clear();
+        ASKED.lock().unwrap_or_else(|e| e.into_inner()).clear();
+    }
     for device in paired {
+        let online = matches!(device.link, LinkState::Online { .. });
+        if ask
+            && online
+            && let Some(node) = node.clone()
+        {
+            let asked = core_host::host()
+                .runtime
+                .block_on(async move { node.diag_ask(device.id, parts.log, just_now).await });
+            match asked {
+                Ok(part) => {
+                    if part.log == PeerLog::Asking {
+                        PEER_LOGS
+                            .lock()
+                            .unwrap_or_else(|e| e.into_inner())
+                            .push((device.id, part.nonce, None));
+                    }
+                    ASKED.lock().unwrap_or_else(|e| e.into_inner()).push((device.id, part));
+                }
+                Err(e) => tracing::info!(error = %e, "a paired device didn't send its part"),
+            }
+        }
+        let asked =
+            ASKED.lock().unwrap_or_else(|e| e.into_inner()).iter().find(|(id, _)| *id == device.id).cloned();
+        if let Some((_, peer)) = asked {
+            let mut part = peer.part;
+            part.facts.role = "Phone".into();
+            let logs = PEER_LOGS.lock().unwrap_or_else(|e| e.into_inner());
+            match logs.iter().find(|(id, _, _)| *id == device.id) {
+                Some((_, _, Some(lines))) => part.log = lines.clone(),
+                Some((_, _, None)) if parts.log => {
+                    made.missing.push("phone_log_waiting_for_share_on_the_phone".into())
+                }
+                _ => {}
+            }
+            made.devices.push(part);
+            continue;
+        }
         let link = match device.link {
             LinkState::Online { path, .. } => format!("online ({path:?})").to_ascii_lowercase(),
             LinkState::Connecting => "connecting".into(),
@@ -334,6 +393,63 @@ fn build(area: Area, other: &str, text: &str, just_now: bool, parts: Parts) -> r
         made.devices.push(DevicePart { facts, ..DevicePart::default() });
     }
     made
+}
+
+/// The parts paired devices sent for the report being made.
+static ASKED: Mutex<Vec<(DeviceId, nectarlink_core::PeerPart)>> = Mutex::new(Vec::new());
+
+/// A paired device's log arrived for the report being made (`lines`), or
+/// its user said no: makes the report again with it.
+pub fn peer_log_arrived(device: DeviceId, nonce: u64, lines: Option<Vec<String>>) {
+    {
+        let mut logs = PEER_LOGS.lock().unwrap_or_else(|e| e.into_inner());
+        let Some(entry) = logs.iter_mut().find(|(id, n, _)| *id == device && *n == nonce) else { return };
+        match lines {
+            Some(lines) => entry.2 = Some(lines),
+            None => {
+                logs.retain(|(id, _, _)| *id != device);
+            }
+        }
+    }
+    let Some((area, other, text, just_now, parts)) = INPUTS.lock().unwrap_or_else(|e| e.into_inner()).clone()
+    else {
+        return;
+    };
+    let Some(qt) = QT.lock().unwrap_or_else(|e| e.into_inner()).clone() else { return };
+    let generation = GENERATION.load(std::sync::atomic::Ordering::SeqCst);
+    let _ = std::thread::Builder::new().name("report".into()).spawn(move || {
+        let Ok(made) = std::panic::catch_unwind(|| build(area, &other, &text, just_now, parts, false)) else {
+            return;
+        };
+        if GENERATION.load(std::sync::atomic::Ordering::SeqCst) != generation {
+            return;
+        }
+        let rendered = made.render();
+        *LAST.lock().unwrap_or_else(|e| e.into_inner()) = Some(made);
+        let waiting = log_waiting();
+        let _ = qt.queue(move |mut object| {
+            object.as_mut().set_preview(QString::from(&rendered));
+            object.set_phone_log_waiting(waiting);
+        });
+    });
+}
+
+/// Whether a paired device's log is still waiting for its user.
+fn log_waiting() -> bool {
+    PEER_LOGS.lock().unwrap_or_else(|e| e.into_inner()).iter().any(|(_, _, lines)| lines.is_none())
+}
+
+/// What this PC says about itself in a phone's report, with its checks.
+pub fn own_facts() -> (DeviceFacts, Vec<(String, String)>) {
+    (pc_facts(), doctor_checks())
+}
+
+fn doctor_checks() -> Vec<(String, String)> {
+    std::panic::catch_unwind(|| crate::doctor::diagnose(&crate::doctor::gather(), now() as i64))
+        .unwrap_or_default()
+        .into_iter()
+        .map(|c| (c.id, format!("{:?}", c.outcome).to_ascii_lowercase()))
+        .collect()
 }
 
 /// What this PC says about itself.

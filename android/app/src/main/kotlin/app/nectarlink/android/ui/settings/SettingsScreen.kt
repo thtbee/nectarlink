@@ -142,6 +142,7 @@ fun SettingsScreen(
     onOpenRelaySettings: () -> Unit = {},
     onOpenWalkthrough: () -> Unit = {},
     onOpenFeaturesGuide: () -> Unit = {},
+    onReportProblem: () -> Unit = {},
     highlightTarget: GuideHighlightTarget? = null,
     onHighlightConsumed: () -> Unit = {},
     modifier: Modifier = Modifier,
@@ -1153,6 +1154,20 @@ fun SettingsScreen(
                         )
                         FilledTonalButton(onClick = { runCatching { uriHandler.openUri(StarNotification.SUPPORT) } }) {
                             Text(stringResource(R.string.support_action))
+                        }
+                    }
+                    SettingRowDivider()
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                            Text(stringResource(R.string.report_title), style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                stringResource(R.string.report_entry_body),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        OutlinedButton(onClick = onReportProblem) {
+                            Text(stringResource(R.string.clip_action_open))
                         }
                     }
                 }

@@ -211,6 +211,13 @@ pub fn clear_pending(dir: &Path) {
     let _ = fs::remove_file(dir.join(PENDING_FILE));
 }
 
+/// Clears the pending report if it's `rid` (it went out after all).
+pub fn clear_pending_if(dir: &Path, rid: &str) {
+    if pending(dir).is_some_and(|p| p.rid == rid) {
+        clear_pending(dir);
+    }
+}
+
 /// A report that was sent: filed as `issue`, or still queued.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Sent {
