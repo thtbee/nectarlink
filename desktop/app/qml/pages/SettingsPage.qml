@@ -3791,6 +3791,19 @@ Item {
                             onClicked: Qt.openUrlExternally("https://buymeacoffee.com/thtbee_")
                         }
                     }
+                    Divider { width: parent.width }
+                    ListRow {
+                        width: parent.width
+                        iconPath: Icons.warning
+                        title: qsTr("Report a problem")
+                        description: qsTr("Tell us what went wrong. You see the whole report before it goes anywhere.")
+                        Button {
+                            variant: "tonal"
+                            size: "sm"
+                            text: qsTr("Open")
+                            onClicked: Report.open()
+                        }
+                    }
                 }
             }
         }
