@@ -429,7 +429,13 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 val currentRunScope = CoroutineScope(scope.coroutineContext + currentRun)
                 runScope = currentRunScope
                 val job = currentRunScope.launch(Dispatchers.IO) {
-            initLogging(if (BuildConfig.DEBUG) "debug,iroh=info,swarm_discovery=error" else "info,iroh=warn,swarm_discovery=error")
+            initLogging(
+                if (BuildConfig.DEBUG) "debug,iroh=info,swarm_discovery=error" else "info,iroh=warn,swarm_discovery=error",
+                app.nectarlink.android.diag.Crashes.dir(context).absolutePath,
+                context.dataDir.absolutePath,
+                BuildConfig.VERSION_NAME,
+            )
+            app.nectarlink.android.diag.Crashes.noteExits(context)
             val initialAwayMode = app.nectarlink.android.ui.Preferences.isAwayModeEnabled(context)
             val options = NodeOptions(
                 dataDir = context.noBackupFilesDir.resolve("core").absolutePath,

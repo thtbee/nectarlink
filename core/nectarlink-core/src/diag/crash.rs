@@ -79,7 +79,7 @@ static CONFIG: OnceLock<Config> = OnceLock::new();
 /// the one before ended, if there was one. Also where [`record`] and the
 /// panic hook write; only the first call counts.
 pub fn begin_run(dir: &Path, version: &str) -> Option<PreviousRun> {
-    let _ = CONFIG.set(Config { dir: dir.to_owned(), version: version.to_owned() });
+    configure(dir, version);
     let path = dir.join(RUN_FILE);
     let previous = fs::read(&path)
         .ok()
@@ -87,6 +87,13 @@ pub fn begin_run(dir: &Path, version: &str) -> Option<PreviousRun> {
         .map(|run| PreviousRun { version: run.version, started: run.started, clean: run.clean });
     write_run(dir, RunFile { version: version.to_owned(), started: now(), clean: false });
     previous
+}
+
+/// Where [`record`] and the panic hook write, without marking a run (for
+/// Android, where the system ends apps all the time and says why instead).
+/// Only the first call counts.
+pub fn configure(dir: &Path, version: &str) {
+    let _ = CONFIG.set(Config { dir: dir.to_owned(), version: version.to_owned() });
 }
 
 /// Marks this run as ended normally.
@@ -110,9 +117,19 @@ fn write_run(dir: &Path, run: RunFile) {
     }
 }
 
+/// The version [`configure`] or [`begin_run`] was given.
+pub fn version() -> String {
+    CONFIG.get().map(|c| c.version.clone()).unwrap_or_default()
+}
+
 /// Keeps a record of every Rust panic from now on, then lets the panic go
-/// on as before (the previous hook still runs).
+/// on as before (the previous hook still runs). Only the first call counts.
 pub fn install_panic_hook() {
+    static ONCE: std::sync::Once = std::sync::Once::new();
+    ONCE.call_once(install_panic_hook_now);
+}
+
+fn install_panic_hook_now() {
     let previous = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
         let location = info.location().map(|l| format!("{}:{}:{}", l.file(), l.line(), l.column()));
@@ -330,6 +347,15 @@ mod tests {
             "rust/library/core/src/option.rs:2033:5"
         );
         assert_eq!(normalize_location(r"desktop\app\src\mirror.rs:9:1"), "desktop/app/src/mirror.rs:9:1");
+    }
+
+    #[test]
+    fn signatures_match_the_phone_apps() {
+        // android/.../diag/CrashesTest.kt checks the same value.
+        assert_eq!(
+            signature(&["exception", "app.nectarlink.android.Foo.bar", "java.lang.IllegalStateException"]),
+            "b3af6c6e31db"
+        );
     }
 
     #[test]

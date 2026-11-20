@@ -48,6 +48,8 @@ class NectarlinkApplication : Application(), DefaultLifecycleObserver {
 
     override fun onCreate() {
         super<Application>.onCreate()
+        // First, so a crash anywhere after is kept.
+        app.nectarlink.android.diag.Crashes.install(this)
         // Before the core starts: its network code reads the phone's DNS servers.
         app.nectarlink.android.core.AndroidContext.install(this)
         // Before Elevated: it waits while paused for a banking app.

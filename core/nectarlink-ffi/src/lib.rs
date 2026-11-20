@@ -5048,17 +5048,55 @@ pub fn install_id_from(platform_id: String) -> Option<String> {
     core::install_id_from(&platform_id)
 }
 
-/// Sends core logs to the platform log (logcat on Android). Call once,
-/// before starting the node. `filter` uses tracing's syntax, e.g. "info".
+/// One of the two activity log files on a phone.
+const PHONE_LOG_SEGMENT_BYTES: u64 = 256 * 1024;
+
+/// Sends core logs to the platform log (logcat on Android) and to the
+/// private activity log in `diag_dir/logs` (`nectarlink_core::diag`), and
+/// keeps a record of any Rust panic in `diag_dir/crashes`. Call once, before
+/// starting the node; later calls change nothing. `filter` uses tracing's
+/// syntax, e.g. "info"; `data_dir` is the app's own folder, named in log
+/// text instead of spelled out.
 #[uniffi::export]
-pub fn init_logging(filter: String) {
+pub fn init_logging(filter: String, diag_dir: String, data_dir: String, version: String) {
+    use std::sync::Arc;
+
+    use core::diag::{self, RingLayer, RingLog};
     use tracing_subscriber::{EnvFilter, prelude::*};
+    let diag_dir = std::path::PathBuf::from(diag_dir);
+    diag::init_roots(std::path::Path::new(&data_dir));
+    diag::crash::configure(&diag_dir, &version);
+    diag::crash::install_panic_hook();
     let filter = EnvFilter::try_new(&filter).unwrap_or_else(|_| EnvFilter::new("info"));
     #[cfg(target_os = "android")]
     let layer = paranoid_android::layer("Nectarlink").with_ansi(false);
     #[cfg(not(target_os = "android"))]
     let layer = tracing_subscriber::fmt::layer();
-    let _ = tracing_subscriber::registry().with(filter).with(layer).try_init();
+    let ring = RingLog::open(&diag_dir.join("logs"), PHONE_LOG_SEGMENT_BYTES)
+        .ok()
+        .map(|r| RingLayer::new(Arc::new(r)));
+    let _ = tracing_subscriber::registry().with(filter).with(layer).with(ring).try_init();
+}
+
+/// A crash the phone app found itself (its own Java or Kotlin crash, or one
+/// Android reported), kept with the core's own records. `kind` is
+/// `exception`, `native` or `anr`; `location` and `message` must be fixed
+/// text and names from the app's code, never values.
+#[uniffi::export]
+pub fn record_crash(kind: String, location: String, message: String, thread: Option<String>, at: u64) {
+    use core::diag::crash;
+    let clean = |text: &str| -> String { core::diag::redact::text(text).chars().take(200).collect() };
+    let (kind, location, message) = (clean(&kind), clean(&location), clean(&message));
+    let record = crash::CrashRecord {
+        sig: crash::signature(&[&kind, &location, &message]),
+        kind,
+        location,
+        message,
+        thread: thread.map(|t| clean(&t)),
+        version: crash::version(),
+        at,
+    };
+    crash::record(&record);
 }
 
 #[cfg(test)]
