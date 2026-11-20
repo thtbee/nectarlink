@@ -8,6 +8,12 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Report a problem.** **Settings › Connection & About › Report a problem** on the PC (and at
+  the bottom of the Connection Doctor) puts what you say went wrong together with what helps
+  find the cause: versions, the Doctor's checks, how features have been doing, recent crashes
+  and the recent log. You read the whole report first, can leave any part out, and **Open on
+  GitHub** fills in a new issue and copies the report to paste into it. Crashes are recorded on
+  both apps now, and the phone keeps its own small log.
 - **AI agents can use NectarLink.** Claude Code, Claude Desktop, Codex, Cursor, Gemini CLI,
   VS Code and other AI assistants on the PC can read notifications and texts, send files and
   messages, control media, look at and copy photos, work with the phone's files, change its

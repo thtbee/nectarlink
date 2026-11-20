@@ -122,6 +122,8 @@ If plugging your phone into your PC with a USB cable does not trigger USB auto-p
 
 - By design, a PC cannot turn on your phone's camera silently. Look at your phone and tap the **`<PC>` wants to use your camera** notification (or open NectarLink on your phone and tap **Webcam › Start webcam**).
 
-## 8. Inspecting Diagnostic Logs
+## 8. Reporting a Problem
 
-If you need to report a bug, open **Settings › Connection & About** on your PC and click **Open logs** (next to the NectarLink version row) to open the local log directory in File Explorer. NectarLink never logs notification text, SMS message bodies, or clipboard contents to its log files.
+On your PC, open **Settings › Connection & About** and click **Report a problem** (also at the bottom of the `Connection Doctor`). Pick what it's about, say what happened, and NectarLink adds what helps us find the cause: app and system versions, what the Doctor checked, how features have been doing, recent crashes and the recent activity log. You see the whole report before anything leaves your PC, and you can leave any part out. **Open on GitHub** opens a new issue with the short parts filled in and copies the report to paste into it. Reports are public on GitHub.
+
+The report holds no names, messages, files, numbers or addresses from NectarLink: the log is written that way from the start ([privacy](privacy-and-security.md)). **Open logs** next to it opens the log folder itself.

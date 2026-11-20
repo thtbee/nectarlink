@@ -165,6 +165,14 @@ Sheet {
             spacing: 10
             Button {
                 variant: "text"
+                text: qsTr("Report a problem")
+                onClicked: {
+                    sheet.close()
+                    Report.open()
+                }
+            }
+            Button {
+                variant: "text"
                 text: qsTr("Check again")
                 enabled: !AppController.doctorBusy
                 onClicked: AppController.runDoctor()

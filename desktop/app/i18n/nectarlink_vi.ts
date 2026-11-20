@@ -2953,11 +2953,16 @@
     </message>
     <message>
         <location filename="../qml/components/DoctorSheet.qml" line="168"/>
+        <source>Report a problem</source>
+        <translation>Báo cáo sự cố</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/DoctorSheet.qml" line="176"/>
         <source>Check again</source>
         <translation>Kiểm tra lại</translation>
     </message>
     <message>
-        <location filename="../qml/components/DoctorSheet.qml" line="172"/>
+        <location filename="../qml/components/DoctorSheet.qml" line="180"/>
         <source>Done</source>
         <translation>Xong</translation>
     </message>
@@ -8368,6 +8373,153 @@ Nó cần gì
     </message>
 </context>
 <context>
+    <name>ReportSheet</name>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="19"/>
+        <source>Connection</source>
+        <translation>Kết nối</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="20"/>
+        <source>Mirroring and app windows</source>
+        <translation>Phản chiếu và cửa sổ ứng dụng</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="21"/>
+        <source>Clipboard</source>
+        <translation>Bảng nhớ tạm</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="22"/>
+        <source>Audio</source>
+        <translation>Âm thanh</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="23"/>
+        <source>Calls and messages</source>
+        <translation>Cuộc gọi và tin nhắn</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="24"/>
+        <source>Files and photos</source>
+        <translation>Tệp và ảnh</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="25"/>
+        <source>Notifications</source>
+        <translation>Thông báo</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="26"/>
+        <source>Something else</source>
+        <translation>Vấn đề khác</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="59"/>
+        <source>Report a problem</source>
+        <translation>Báo cáo sự cố</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="59"/>
+        <location filename="../qml/components/ReportSheet.qml" line="263"/>
+        <source>Your report</source>
+        <translation>Báo cáo của bạn</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="76"/>
+        <source>What is it about?</source>
+        <translation>Vấn đề về gì?</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="102"/>
+        <location filename="../qml/components/ReportSheet.qml" line="115"/>
+        <source>What part of NectarLink?</source>
+        <translation>Phần nào của NectarLink?</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="119"/>
+        <location filename="../qml/components/ReportSheet.qml" line="149"/>
+        <source>What happened?</source>
+        <translation>Chuyện gì đã xảy ra?</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="137"/>
+        <source>What you did, what you expected, and what happened instead.</source>
+        <translation>Bạn đã làm gì, bạn mong đợi gì và thực tế đã xảy ra gì.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="161"/>
+        <location filename="../qml/components/ReportSheet.qml" line="166"/>
+        <source>It happened just now</source>
+        <translation>Vừa mới xảy ra</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="176"/>
+        <source>Check the connection first</source>
+        <translation>Kiểm tra kết nối trước</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="183"/>
+        <source>Next</source>
+        <translation>Tiếp</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="203"/>
+        <source>This is everything in the report. It will be public on GitHub. It has no names, messages, files, numbers or addresses from NectarLink, only what you wrote above.</source>
+        <translation>Đây là toàn bộ nội dung báo cáo. Báo cáo sẽ công khai trên GitHub. Nó không có tên, tin nhắn, tệp, số điện thoại hay địa chỉ từ NectarLink, chỉ có những gì bạn viết ở trên.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="211"/>
+        <source>What you wrote looks like it has an email address or phone number in it. Reports are public, so go back and remove it unless you mean to share it.</source>
+        <translation>Có vẻ như nội dung bạn viết có địa chỉ email hoặc số điện thoại. Báo cáo là công khai, vì vậy hãy quay lại và xóa đi trừ khi bạn muốn chia sẻ.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="218"/>
+        <source>About the devices</source>
+        <translation>Về các thiết bị</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="219"/>
+        <source>Checks</source>
+        <translation>Các kiểm tra</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="220"/>
+        <source>How features have been doing</source>
+        <translation>Các tính năng hoạt động thế nào</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="221"/>
+        <source>Crashes</source>
+        <translation>Sự cố treo</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="222"/>
+        <source>Activity log</source>
+        <translation>Nhật ký hoạt động</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="273"/>
+        <source>The report is copied. On the GitHub page, paste it into the Report box, then submit.</source>
+        <translation>Đã sao chép báo cáo. Trên trang GitHub, hãy dán vào ô Report rồi gửi.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="280"/>
+        <source>Back</source>
+        <translation>Quay lại</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="286"/>
+        <source>Copy</source>
+        <translation>Sao chép</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="294"/>
+        <source>Open on GitHub</source>
+        <translation>Mở trên GitHub</translation>
+    </message>
+</context>
+<context>
     <name>SadBee</name>
     <message>
         <location filename="../qml/setup/SadBee.qml" line="23"/>
@@ -8882,7 +9034,7 @@ Nó cần gì
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="971"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4093"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4101"/>
         <source>Language</source>
         <translation>Ngôn ngữ</translation>
     </message>
@@ -9055,7 +9207,7 @@ Nó cần gì
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1507"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4199"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4207"/>
         <source>Unpair</source>
         <translation>Hủy ghép nối</translation>
     </message>
@@ -9089,8 +9241,8 @@ Nó cần gì
         <location filename="../qml/pages/SettingsPage.qml" line="1703"/>
         <location filename="../qml/pages/SettingsPage.qml" line="2503"/>
         <location filename="../qml/pages/SettingsPage.qml" line="3298"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3742"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3755"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3750"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3763"/>
         <source>Open</source>
         <translation>Mở</translation>
     </message>
@@ -9155,7 +9307,7 @@ Nó cần gì
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="30"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3776"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3784"/>
         <source>Support NectarLink</source>
         <translation>Ủng hộ NectarLink</translation>
     </message>
@@ -9867,7 +10019,7 @@ Nó cần gì
         <location filename="../qml/pages/SettingsPage.qml" line="3345"/>
         <location filename="../qml/pages/SettingsPage.qml" line="3376"/>
         <location filename="../qml/pages/SettingsPage.qml" line="3413"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4244"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4252"/>
         <source>Clear</source>
         <translation>Xóa</translation>
     </message>
@@ -10069,7 +10221,7 @@ Nó cần gì
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3519"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3984"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3992"/>
         <source>Network interface</source>
         <translation>Giao diện mạng</translation>
     </message>
@@ -10081,17 +10233,17 @@ Nó cần gì
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="2119"/>
         <location filename="../qml/pages/SettingsPage.qml" line="3524"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3991"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3999"/>
         <source>System default</source>
         <translation>Mặc định của hệ thống</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3990"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3998"/>
         <source>%1 · Direct (without a VPN)</source>
         <translation>%1 · Trực tiếp (không qua VPN)</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4014"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4022"/>
         <source>Could not use this network interface.</source>
         <translation>Không thể sử dụng giao diện mạng này.</translation>
     </message>
@@ -10223,8 +10375,8 @@ Nó cần gì
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3667"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3686"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3691"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3694"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3699"/>
         <source>Check for updates</source>
         <translation>Kiểm tra cập nhật</translation>
     </message>
@@ -10234,188 +10386,193 @@ Nó cần gì
         <translation>Mở nhật ký</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3719"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3722"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3684"/>
+        <source>Report a problem</source>
+        <translation>Báo cáo sự cố</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3727"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3730"/>
         <source>Install updates automatically</source>
         <translation>Tự động cài đặt cập nhật</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3720"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3728"/>
         <source>When nobody is using the PC and nothing is in progress.</source>
         <translation>Khi không có ai đang dùng PC và không có gì đang tiến hành.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3737"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3745"/>
         <source>Setup walkthrough</source>
         <translation>Hướng dẫn thiết lập</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3738"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3746"/>
         <source>Re-open the setup guide.</source>
         <translation>Mở lại hướng dẫn thiết lập.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3750"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3758"/>
         <source>Features guide</source>
         <translation>Hướng dẫn tính năng</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3751"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3759"/>
         <source>What each feature needs and where to find it.</source>
         <translation>Mỗi tính năng cần gì và tìm nó ở đâu.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3777"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3785"/>
         <source>NectarLink is free and open source. If it makes your days a little easier, you can help keep it going. Thank you!</source>
         <translation>NectarLink miễn phí và mã nguồn mở. Nếu nó giúp ngày của bạn dễ dàng hơn một chút, bạn có thể ủng hộ để nó tiếp tục phát triển. Cảm ơn bạn!</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3782"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3790"/>
         <source>Support</source>
         <translation>Ủng hộ</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3854"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3862"/>
         <source>Sync a folder</source>
         <translation>Đồng bộ một thư mục</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3860"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3868"/>
         <source>The phone asks once to let this PC in. NectarLink there also needs All files access, or this folder under Selected folders only.</source>
         <translation>Điện thoại hỏi một lần để cho phép PC này truy cập. NectarLink trên điện thoại cũng cần quyền All files access, hoặc thư mục này nằm trong Selected folders only.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3863"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3894"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3871"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3902"/>
         <source>Folder on the phone</source>
         <translation>Thư mục trên điện thoại</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3899"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3907"/>
         <source>Folder on this PC</source>
         <translation>Thư mục trên PC này</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3914"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3922"/>
         <source>Choose…</source>
         <translation>Chọn…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3924"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3932"/>
         <source>Phone to PC</source>
         <translation>Điện thoại sang PC</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3925"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3933"/>
         <source>PC to phone</source>
         <translation>PC sang điện thoại</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3926"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3934"/>
         <source>Both ways</source>
         <translation>Cả hai chiều</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3937"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3945"/>
         <source>New and changed files on the PC are copied to the phone. Nothing on the phone comes to the PC, and nothing is deleted.</source>
         <translation>Các tệp mới và thay đổi trên PC được sao chép sang điện thoại. Không có gì trên điện thoại được đưa về PC, và không có gì bị xóa.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3939"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3947"/>
         <source>Changes on either side are copied to the other. When a file changed on both, both versions are kept.</source>
         <translation>Thay đổi ở một bên được sao chép sang bên kia. Khi một tệp thay đổi ở cả hai bên, cả hai phiên bản đều được giữ.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3940"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3948"/>
         <source>New and changed files on the phone are copied to the PC. Nothing on the PC goes to the phone.</source>
         <translation>Các tệp mới và thay đổi trên điện thoại được sao chép sang PC. Không có gì trên PC được đưa sang điện thoại.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3946"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3951"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3954"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3959"/>
         <source>Also remove from the PC</source>
         <translation>Cũng xóa khỏi PC</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3946"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3951"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3954"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3959"/>
         <source>Also remove deleted files</source>
         <translation>Cũng xóa các tệp đã xóa</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3948"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3956"/>
         <source>A synced file you delete on one side leaves the other. On the PC it goes to the Recycle Bin. On the phone, photos and videos go to its trash where Android has one, and other files are gone for good.</source>
         <translation>Một tệp đã đồng bộ mà bạn xóa ở một bên cũng sẽ bị xóa ở bên kia. Trên PC nó được đưa vào Recycle Bin. Trên điện thoại, ảnh và video được đưa vào thùng rác nếu Android có, còn các tệp khác sẽ mất vĩnh viễn.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3949"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3957"/>
         <source>A synced file you delete on the phone goes to the PC&apos;s Recycle Bin.</source>
         <translation>Một tệp đã đồng bộ mà bạn xóa trên điện thoại sẽ được đưa vào Recycle Bin của PC.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3962"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3970"/>
         <source>Add</source>
         <translation>Thêm</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4031"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4039"/>
         <source>Phone&apos;s hotspot network</source>
         <translation>Mạng điểm phát sóng của điện thoại</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4039"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4047"/>
         <source>Wi-Fi networks this PC has joined before. Your system keeps their passwords; NectarLink never sees them.</source>
         <translation>Các mạng Wi-Fi mà PC này từng kết nối. Hệ thống của bạn giữ mật khẩu của chúng; NectarLink không bao giờ thấy chúng.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4040"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4048"/>
         <source>This PC hasn&apos;t saved any Wi-Fi networks yet. Join the phone&apos;s hotspot once from your system Wi-Fi list first.</source>
         <translation>PC này chưa lưu mạng Wi-Fi nào. Hãy tham gia điểm phát sóng của điện thoại một lần từ danh sách Wi-Fi của hệ thống trước.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4042"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4050"/>
         <source>Wi-Fi networks this PC has joined before. Windows keeps their passwords; NectarLink never sees them.</source>
         <translation>Các mạng Wi-Fi mà PC này từng kết nối. Windows giữ mật khẩu của chúng; NectarLink không bao giờ thấy chúng.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4043"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4051"/>
         <source>This PC hasn&apos;t saved any Wi-Fi networks yet. Join the phone&apos;s hotspot once from Windows&apos; Wi-Fi list first.</source>
         <translation>PC này chưa lưu mạng Wi-Fi nào. Hãy tham gia điểm phát sóng của điện thoại một lần từ danh sách Wi-Fi của Windows trước.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4073"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4081"/>
         <source>Don&apos;t join</source>
         <translation>Không tham gia</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4016"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4082"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4110"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4145"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4173"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4024"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4090"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4118"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4153"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4181"/>
         <source>Close</source>
         <translation>Đóng</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4156"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4164"/>
         <source>Play the phone&apos;s microphone into</source>
         <translation>Phát micrô của điện thoại vào</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4186"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4194"/>
         <source>Unpair %1?</source>
         <translation>Hủy ghép nối %1?</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4192"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4200"/>
         <source>Both devices forget each other. You can pair them again any time.</source>
         <translation>Cả hai thiết bị quên nhau. Bạn có thể ghép nối lại bất cứ lúc nào.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3960"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4197"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4241"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4277"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3968"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4205"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4249"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4285"/>
         <source>Cancel</source>
         <translation>Hủy</translation>
     </message>
@@ -10430,62 +10587,62 @@ Nó cần gì
         <translation>Cũng gửi những nội dung mà trình quản lý mật khẩu đánh dấu là riêng tư. Nó rời khỏi bảng nhớ tạm của điện thoại sau một phút ở nơi Android cho phép, và không bao giờ được giữ trong lịch sử.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3688"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3696"/>
         <source>Looks for a new build every couple of hours, and tells your phone.</source>
         <translation>Tìm bản build mới vài giờ một lần, và thông báo cho điện thoại của bạn.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3689"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3697"/>
         <source>Looks for a new release twice a day, and tells your phone.</source>
         <translation>Tìm bản phát hành mới hai lần một ngày, và thông báo cho điện thoại của bạn.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3700"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3708"/>
         <source>Update channel</source>
         <translation>Kênh cập nhật</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3702"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3710"/>
         <source>The newest build from every couple of hours, with the latest fixes and features, and sometimes new bugs. Back on Stable, this PC keeps its build until the next release is newer.</source>
         <translation>Bản build mới nhất vài giờ một lần, với các bản sửa lỗi và tính năng mới nhất, và đôi khi cả lỗi mới. Khi quay lại Stable, PC này giữ nguyên bản build hiện tại cho đến khi bản phát hành tiếp theo mới hơn.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3703"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3711"/>
         <source>Releases, tested and less often.</source>
         <translation>Bản phát hành đã kiểm thử và ít thường xuyên hơn.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3706"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3714"/>
         <source>Stable</source>
         <translation>Stable</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3707"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3715"/>
         <source>Nightly</source>
         <translation>Nightly</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4121"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4129"/>
         <source>Talk on calls through</source>
         <translation>Nói trong cuộc gọi qua</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4140"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4148"/>
         <source>No microphone found on this PC.</source>
         <translation>Không tìm thấy micrô trên PC này.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4263"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4271"/>
         <source>Clear all local history &amp; caches?</source>
         <translation>Xóa toàn bộ lịch sử và bộ nhớ đệm cục bộ?</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4272"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4280"/>
         <source>Deletes clipboard history, Timeline, notification history, cached messages, photo thumbnails and transfer history on this PC. Paired devices, settings and downloaded files are kept.</source>
         <translation>Xóa lịch sử bảng nhớ tạm, Timeline, lịch sử thông báo, tin nhắn đã đệm, hình thu nhỏ ảnh và lịch sử chuyển trên PC này. Thiết bị đã ghép nối, cài đặt và các tệp đã tải xuống được giữ lại.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4280"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4288"/>
         <source>Clear everything</source>
         <translation>Xóa tất cả</translation>
     </message>

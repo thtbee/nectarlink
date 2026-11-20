@@ -3676,6 +3676,14 @@ Item {
                                     text: qsTr("Open logs")
                                     onClicked: Qt.openUrlExternally(AppController.logsUrl())
                                 }
+                                Button {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    variant: "outline"
+                                    size: "sm"
+                                    iconPath: Icons.warning
+                                    text: qsTr("Report a problem")
+                                    onClicked: Report.open()
+                                }
                             }
                         }
                         Divider { width: parent.width; visible: AppController.canUpdate }

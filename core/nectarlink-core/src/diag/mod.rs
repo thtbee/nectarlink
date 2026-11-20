@@ -14,6 +14,7 @@ pub mod crash;
 pub mod health;
 pub mod layer;
 pub mod redact;
+pub mod report;
 pub mod ring;
 
 pub use layer::RingLayer;

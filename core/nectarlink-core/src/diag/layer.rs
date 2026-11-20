@@ -48,6 +48,7 @@ pub const SAFE_FIELDS: &[&str] = &[
     "from",
     "hotkey",
     "kind",
+    "language",
     "layout",
     "location",
     "path",
