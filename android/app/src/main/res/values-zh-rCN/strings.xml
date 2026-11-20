@@ -59,7 +59,7 @@
     <string name="notifications_off">NectarLink需要通知使用权，才能把本手机的通知显示在电脑上。</string>
     <string name="notifications_restricted">开关是灰色的？打开应用信息，点按 ⋮，选择“允许受限设置”，然后重试。</string>
     <string name="action_allow">允许</string>
-    <string name="clip_share_label">发送到电脑</string>
+    <string name="clip_share_label">用 NectarLink 发送</string>
     <string name="channel_transfers">文件传输</string>
     <string name="channel_received">已接收文件</string>
     <string name="channel_pc_media">电脑上的媒体</string>
@@ -330,6 +330,7 @@
         <item quantity="other">已连接到 %1$d 台电脑</item>
     </plurals>
     <string name="notification_waiting">正在等待电脑</string>
+    <string name="notification_waiting_network">正在等待 Wi-Fi 以连接你的电脑</string>
     <string name="notification_not_paired">尚未与电脑配对</string>
     <plurals name="transfer_files">
         <item quantity="one">%1$d 个文件</item>
@@ -445,6 +446,10 @@
     <string name="start_without_asking_hint">此电脑请求时，相机或麦克风会立即开启，无需在手机上轻触。需要 Elevated。没有 Elevated 时，手机会照常询问。</string>
     <string name="mirror_ask_toggle">共享屏幕前先询问</string>
     <string name="mirror_ask_hint">每次这台电脑想查看你的屏幕时，都会等你点按。关闭后，Elevated 会立即共享。</string>
+    <string name="clip_share_toggle">共享我的剪贴板</string>
+    <string name="clip_share_hint">开启 Elevated 时，你复制的内容会自动发送过去。仍可手动发送。</string>
+    <string name="clip_accept_toggle">接收它的剪贴板</string>
+    <string name="clip_accept_hint">在那边复制的内容会进入这台手机的剪贴板。</string>
     <string name="recorder_notification_recording">正在为 %1$s 录音</string>
     <string name="recorder_notification_paused">录音已暂停（%1$s）</string>
     <string name="recorder_permission_title">允许使用麦克风</string>
@@ -1029,10 +1034,10 @@
     <string name="guide_queue_limits">最多保存 200 项或 10 GiB。文件 7 天后过期；剪贴板内容和链接 24 小时后过期。</string>
     <string name="guide_share_title">发送到电脑</string>
     <string name="guide_share_summary">通过系统分享面板，从任意 Android 应用将链接、文本、照片或文档分享到电脑。</string>
-    <string name="guide_share_where">Android 分享面板 › 发送到电脑</string>
+    <string name="guide_share_where">Android 分享面板 › 用 NectarLink 发送</string>
     <string name="guide_share_needs">已配对电脑</string>
     <string name="guide_share_ext_1">1. 在手机上的任意浏览器、相册或文档应用中点按分享。</string>
-    <string name="guide_share_ext_2">2. 选择 NectarLink（发送到电脑或电脑上打开）。</string>
+    <string name="guide_share_ext_2">2. 选择 NectarLink（用 NectarLink 发送或电脑上打开）。</string>
     <string name="guide_share_need_1">至少一台已配对电脑。</string>
     <string name="guide_share_phone_1">从 Android 分享中分享任意链接或文件，并选择目标电脑。</string>
     <string name="guide_share_pc_1">链接在电脑的默认浏览器中打开；文件保存到下载文件夹。</string>

@@ -27,6 +27,7 @@ material-colors.workspace = true
 miniz_oxide = "0.9"
 nectarlink-adb.workspace = true
 nectarlink-core.workspace = true
+nectarlink-actions.workspace = true
 nectarlink-vcam.workspace = true
 qrcode.workspace = true
 rand.workspace = true

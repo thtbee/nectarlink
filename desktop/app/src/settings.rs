@@ -593,6 +593,11 @@ pub struct Settings {
     /// TCP port on `127.0.0.1` for the localhost automation API.
     #[serde(default = "default_local_api_port", alias = "local_api_port")]
     pub local_api_port: u16,
+    /// Whether AI agents may use NectarLink through MCP, the CLI or the v2
+    /// API (off by default; see `crate::agents`).
+    pub agent_access_enabled: bool,
+    /// Every agent is read-only, whatever its own permissions say.
+    pub agent_read_only: bool,
     /// Automatically place small incoming received files onto the Windows clipboard (`CF_HDROP`).
     #[serde(default = "default_true", alias = "clipboard_auto_copy_received_files")]
     pub clipboard_auto_copy_received_files: bool,
@@ -770,6 +775,8 @@ impl Default for Settings {
             shelf_hotkey: "Ctrl+Alt+S".into(),
             local_api_enabled: false,
             local_api_port: default_local_api_port(),
+            agent_access_enabled: false,
+            agent_read_only: false,
             clipboard_auto_copy_received_files: true,
             open_shared_files: false,
             sync_wifi_only: false,
@@ -1055,6 +1062,8 @@ mod tests {
             shelf_hotkey: "Ctrl+Alt+E".into(),
             local_api_enabled: true,
             local_api_port: 54321,
+            agent_access_enabled: true,
+            agent_read_only: true,
             clipboard_auto_copy_received_files: false,
             open_shared_files: true,
             sync_wifi_only: true,

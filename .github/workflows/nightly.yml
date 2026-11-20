@@ -173,7 +173,9 @@ jobs:
             "" \
             "$changes" \
             "" \
-            "$compare" > notes.md
+            "$compare" \
+            "" \
+            "Trying it out? Tell us how it goes in the Hive on Discord: https://discord.gg/AA2Dp8PYqf" > notes.md
           gh release create "v$VERSION" *.exe *.dmg *.deb *.rpm *.AppImage *.tar.gz *.apk install.sh SHA256SUMS.txt \
             --repo "$GITHUB_REPOSITORY" --target "$COMMIT" --prerelease \
             --title "Nightly $NUMBER · $NAME ($VERSION)" --notes-file notes.md
@@ -182,6 +184,14 @@ jobs:
           set -euo pipefail
           python3 source/.github/scripts/write-feed.py nightly "v$VERSION" "$NAME" nightly.json
           bash source/.github/scripts/publish-feed.sh nightly nightly.json
+      - name: Tell Discord
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_NIGHTLY_WEBHOOK }}
+          DISCORD_ROLE_ID: ${{ vars.DISCORD_NIGHTLY_ROLE_ID }}
+        run: |
+          printf '%s\n' "$CHANGES" | python3 source/.github/scripts/discord-post.py \
+            "Nightly $NUMBER · $NAME ($VERSION)" \
+            "https://github.com/$GITHUB_REPOSITORY/releases/tag/v$VERSION"
       - name: Keep the last six nightlies
         run: |
           set -euo pipefail

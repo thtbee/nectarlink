@@ -104,6 +104,10 @@ pub mod qobject {
         #[qproperty(QString, command_palette_hotkey)]
         /// Global hotkey for the Shelf panel (e.g. `"Ctrl+Alt+S"`).
         #[qproperty(QString, shelf_hotkey)]
+        /// AI agents may use NectarLink (MCP, the CLI, the v2 API). Off by default.
+        #[qproperty(bool, agent_access_enabled)]
+        /// Every agent is read-only.
+        #[qproperty(bool, agent_read_only)]
         /// Opt-in localhost HTTP/JSON + SSE automation API (`127.0.0.1`).
         #[qproperty(bool, local_api_enabled)]
         /// TCP port for the localhost automation API (default `53320`).
@@ -369,6 +373,8 @@ pub struct PreferencesRust {
     continuity_scan_hotkey: QString,
     command_palette_hotkey: QString,
     shelf_hotkey: QString,
+    agent_access_enabled: bool,
+    agent_read_only: bool,
     local_api_enabled: bool,
     local_api_port: i32,
     local_api_token_path: QString,
@@ -476,6 +482,8 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_continuity_scan_hotkey(QString::from(&settings.continuity_scan_hotkey));
         self.as_mut().set_command_palette_hotkey(QString::from(&settings.command_palette_hotkey));
         self.as_mut().set_shelf_hotkey(QString::from(&settings.shelf_hotkey));
+        self.as_mut().set_agent_access_enabled(settings.agent_access_enabled);
+        self.as_mut().set_agent_read_only(settings.agent_read_only);
         self.as_mut().set_local_api_enabled(settings.local_api_enabled);
         self.as_mut().set_local_api_port(i32::from(settings.local_api_port));
         let token_path = crate::local_api::token_file_path();
@@ -719,6 +727,22 @@ impl cxx_qt::Initialize for qobject::Preferences {
                     &String::from(&p.shelf_hotkey),
                 );
                 p.save();
+            })
+            .release();
+        self.as_mut()
+            .on_agent_access_enabled_changed(|p| {
+                let settings = p.current_settings();
+                let _ = settings.save(&core_host::host().data_dir);
+                crate::agents::sync_from_settings();
+                save_in_background(settings);
+            })
+            .release();
+        self.as_mut()
+            .on_agent_read_only_changed(|p| {
+                let settings = p.current_settings();
+                let _ = settings.save(&core_host::host().data_dir);
+                crate::agents::sync_from_settings();
+                save_in_background(settings);
             })
             .release();
         self.as_mut()
@@ -1211,6 +1235,8 @@ impl qobject::Preferences {
             continuity_scan_hotkey: String::from(&p.continuity_scan_hotkey),
             command_palette_hotkey: String::from(&p.command_palette_hotkey),
             shelf_hotkey: String::from(&p.shelf_hotkey),
+            agent_access_enabled: p.agent_access_enabled,
+            agent_read_only: p.agent_read_only,
             local_api_enabled: p.local_api_enabled,
             local_api_port: u16::try_from(p.local_api_port)
                 .ok()
@@ -1276,6 +1302,7 @@ fn save_in_background(settings: Settings) {
             tracing::warn!(error = %e, "can't save preferences");
         } else {
             crate::local_api::sync_from_settings();
+            crate::agents::sync_from_settings();
         }
         *written = seq;
     };

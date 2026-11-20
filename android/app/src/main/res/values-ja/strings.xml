@@ -65,7 +65,7 @@
     <string name="notifications_off">NectarLinkがこのスマートフォンの通知をPCに表示するには、通知へのアクセス権限が必要です。</string>
     <string name="notifications_restricted">スイッチがグレーアウトしていますか？アプリ情報を開き、⋮をタップして「制限付き設定を許可」を選択し、再度お試しください。</string>
     <string name="action_allow">許可</string>
-    <string name="clip_share_label">PCに送信</string>
+    <string name="clip_share_label">NectarLink で送信</string>
     <string name="channel_transfers">ファイル転送</string>
     <string name="channel_received">受信済みファイル</string>
     <string name="channel_pc_media">PCでのメディア</string>
@@ -339,6 +339,7 @@
         <item quantity="other">%1$d台のPCに接続済み</item>
     </plurals>
     <string name="notification_waiting">PCを待機中</string>
+    <string name="notification_waiting_network">PC に接続するため Wi-Fi を待っています</string>
     <string name="notification_not_paired">まだPCとペアリングされていません</string>
     <plurals name="transfer_files">
         <item quantity="other">%1$d 個のファイル</item>
@@ -457,6 +458,10 @@
     <string name="start_without_asking_hint">このPCがリクエストすると、スマートフォンを操作しなくてもすぐにオンになります。昇格が必要です。昇格していない場合は、通常通りスマートフォン側にリクエストが届きます。</string>
     <string name="mirror_ask_toggle">画面を共有する前に確認する</string>
     <string name="mirror_ask_hint">この PC が画面を見ようとするたびに、タップを待ちます。オフの場合、Elevated はすぐに共有します。</string>
+    <string name="clip_share_toggle">クリップボードを共有</string>
+    <string name="clip_share_hint">Elevated がオンの間、コピーした内容が自動で送られます。手動で送ることもできます。</string>
+    <string name="clip_accept_toggle">相手のクリップボードを受け取る</string>
+    <string name="clip_accept_hint">相手でコピーした内容がこのスマートフォンのクリップボードに入ります。</string>
     <string name="recorder_notification_recording">%1$s の録音中</string>
     <string name="recorder_notification_paused">録音一時停止中 (%1$s)</string>
     <string name="recorder_permission_title">マイクへのアクセスを許可する</string>
@@ -1122,10 +1127,10 @@
     <!-- 9. Send to PC -->
     <string name="guide_share_title">PCに送信</string>
     <string name="guide_share_summary">あらゆるAndroidアプリから、システムの共有シート経由でリンク、テキスト、写真、またはドキュメントをPCに共有できます。</string>
-    <string name="guide_share_where">Android 共有シート › PCに送信</string>
+    <string name="guide_share_where">Android 共有シート › NectarLink で送信</string>
     <string name="guide_share_needs">ペアリング済みのPC</string>
     <string name="guide_share_ext_1">1. スマートフォンの任意のブラウザ、ギャラリー、またはドキュメントアプリで「共有」をタップします。</string>
-    <string name="guide_share_ext_2">2. NectarLink（PCに送信またはPCで開く）を選択します。</string>
+    <string name="guide_share_ext_2">2. NectarLink（NectarLink で送信またはPCで開く）を選択します。</string>
     <string name="guide_share_need_1">ペアリング済みのPCが1台以上。</string>
     <string name="guide_share_phone_1">Androidの「共有」から任意のリンクやファイルを共有し、対象のPCを選択してください。</string>
     <string name="guide_share_pc_1">リンクはPCの既定のブラウザで開き、ファイルは「ダウンロード」に保存されます。</string>

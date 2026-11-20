@@ -22,6 +22,14 @@ const IMAGE_CAPABILITY: &str = "clip.image";
 
 /// The device toggle that allows the clipboard for a device.
 pub(crate) const TOGGLE: &str = "clipboard";
+/// The device toggle that takes a device's clipboard here (on by default). With it
+/// off, this device still sends its clipboard there, but takes nothing back (#453).
+pub(crate) const RECEIVE_TOGGLE: &str = "clipboard_receive";
+
+/// Whether `peer`'s clipboard may be put on this device's.
+fn accepts(shared: &Shared, peer: &crate::DeviceId) -> bool {
+    shared.toggle_on(peer, TOGGLE) && shared.toggle_on(peer, RECEIVE_TOGGLE)
+}
 
 /// Handles `clip.set`. Returns false for other message types.
 pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &Envelope) -> Result<bool> {
@@ -29,7 +37,7 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
         return Ok(false);
     }
     let peer = session.peer;
-    let reply = if !shared.toggle_on(&peer, TOGGLE) {
+    let reply = if !accepts(shared, &peer) {
         Envelope::error(ErrorCode::Denied, "the clipboard is off for this device")
     } else {
         match env.body::<ClipSet>() {
@@ -184,7 +192,7 @@ async fn take_image(
         .and_then(|env| env.expect_body::<ClipImage>(clip::IMAGE).ok())
         .filter(ClipImage::is_valid)
         .ok_or((ErrorCode::BadMessage, "invalid image"))?;
-    if !shared.toggle_on(&peer, TOGGLE) {
+    if !accepts(shared, &peer) {
         return Err((ErrorCode::Denied, "the clipboard is off for this device"));
     }
     let size = usize::try_from(image.size).map_err(|_| (ErrorCode::BadMessage, "invalid image"))?;

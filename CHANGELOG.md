@@ -16,6 +16,23 @@ change things that need a step from you, and its notes say so.
   password is kept encrypted on the PC with a key only the phone holds, behind its
   fingerprint, and sealed so only the lock screen can read it, not apps running as you. Only for unlocking, not the first sign-in after a restart
   ([#36](https://github.com/thtbee/nectarlink/pull/36)).
+- **AI agents can use NectarLink.** Claude Code, Claude Desktop, Codex, Cursor, Gemini CLI,
+  VS Code and other AI assistants on the PC can read notifications and texts, send files and
+  messages, control media, look at and copy photos, work with the phone's files, change its
+  quick settings, open phone apps on the PC, press Deck tiles, wake or power off PCs, and
+  follow what happens as it happens, through MCP or the `nectarlink-agent` command. Off by
+  default: turn it on in **Settings › AI agents**, add each agent with Read only or Everyday
+  permissions, and click **Add to** to put it in that app's settings (or copy the setup line
+  it shows). **Permissions** changes what each agent may do, area by area. Sending a text,
+  replying, calling, deleting or shutting down always waits for your OK in NectarLink, and
+  every agent's activity is listed there
+  ([docs](https://github.com/thtbee/nectarlink/blob/main/docs/guide/ai-agents.md)).
+- **Share and accept the clipboard separately, per device.** In the phone's Settings, under
+  each paired device: **Share my clipboard with it** decides whether what you copy goes
+  there by itself (with Elevated on), and **Accept its clipboard** whether what it copies
+  lands on this phone. Both are on, so nothing changes unless you turn one off. Thanks to
+  [@FlootingDream](https://github.com/FlootingDream)
+  ([#453](https://github.com/thtbee/nectarlink/issues/453)).
 - **Ask before sharing your screen, per PC.** In the phone's Settings, under each PC:
   with it on, that PC's requests to see your screen always wait for your tap, even when
   Elevated could share it at once. Off by default, so nothing changes unless you turn it on.
@@ -178,7 +195,7 @@ change things that need a step from you, and its notes say so.
   Thanks to José María Garcia Dominguez, and to
   [@KevinL50-sysadmin](https://github.com/KevinL50-sysadmin) for review passes on it
   ([#348](https://github.com/thtbee/nectarlink/pull/348), [#402](https://github.com/thtbee/nectarlink/pull/402),
-  [#438](https://github.com/thtbee/nectarlink/pull/438)).
+  [#438](https://github.com/thtbee/nectarlink/pull/438), [#480](https://github.com/thtbee/nectarlink/pull/480)).
 
 - **Vietnamese.** NectarLink speaks Tiếng Việt now: on the Android phone and
   the Windows PC, every screen is translated. Language (Settings › Appearance on the
@@ -288,6 +305,15 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **NectarLink starts even when the network isn't up yet at sign-in.** Starting with
+  Windows while the network was still coming up could stop it with "Service 'mdns'
+  error" until it was started again. It now starts without finding phones on the network
+  and turns that on as soon as it can. Thanks to [@AdamB2023](https://github.com/AdamB2023)
+  ([#466](https://github.com/thtbee/nectarlink/issues/466)).
+- **The share sheet says "Send with NectarLink".** It said "Send to PC", but it sends to
+  whichever paired device is connected, another phone included. Each device still shows
+  by name next to it. Thanks to [@FlootingDream](https://github.com/FlootingDream)
+  ([#458](https://github.com/thtbee/nectarlink/issues/458)).
 - **Shizuku forks work for Elevated.** Elevated offered Shizuku only when Shizuku's own
   app was installed. It now also offers it when a fork under another name is running
   (#452).
@@ -345,8 +371,8 @@ change things that need a step from you, and its notes say so.
   ([#431](https://github.com/thtbee/nectarlink/issues/431)).
 - **The phone stops trying to reach PCs when it can't.** With no Wi-Fi, Ethernet or VPN,
   and Connect over mobile data off, it no longer dials every two minutes in the background:
-  it waits until a network comes back, which saves battery away from home. A USB cable to
-  the PC still connects. Thanks to [@ThePharaohArt](https://github.com/ThePharaohArt)
+  it waits until a network comes back, which saves battery away from home, and its
+  notification says it's waiting for Wi-Fi. A USB cable to the PC still connects. Thanks to [@ThePharaohArt](https://github.com/ThePharaohArt)
   ([#397](https://github.com/thtbee/nectarlink/issues/397)).
 - **Sharing the PC's screen on Wayland recovers when the desktop doesn't answer.**
   Starting it while the desktop was locked (on COSMIC, say) left the phone on

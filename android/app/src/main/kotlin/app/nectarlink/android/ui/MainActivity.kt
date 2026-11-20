@@ -999,6 +999,7 @@ private fun App(
                                     onSetStorageEnabled = core::setStorageEnabled,
                                     onSetMicEnabled = core::setMicEnabled,
                                     onSetUnlockEnabled = core::setUnlockEnabled,
+                                    onSetClipboardAccepted = core::setClipboardAccepted,
                                     startWithoutAsking = startWithoutAsking,
                                     onSetStartWithoutAsking = { pc, on -> app.nectarlink.android.service.PcAutoStart.set(context, pc, on) },
                                     onAddSafFolder = core::addSafFolder,

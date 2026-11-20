@@ -59,7 +59,7 @@
     <string name="notifications_off">NectarLink нужен доступ к уведомлениям, чтобы показывать уведомления этого телефона на ПК.</string>
     <string name="notifications_restricted">Переключатель неактивен? Откройте «О приложении», нажмите ⋮, выберите «Разрешить доступ к ограниченным настройкам» и попробуйте снова.</string>
     <string name="action_allow">Разрешить</string>
-    <string name="clip_share_label">Отправить на ПК</string>
+    <string name="clip_share_label">Отправить через NectarLink</string>
     <string name="channel_transfers">Передача файлов</string>
     <string name="channel_received">Полученные файлы</string>
     <string name="channel_pc_media">Медиа на ПК</string>
@@ -334,6 +334,7 @@
         <item quantity="other">Подключено к %1$d ПК</item>
     </plurals>
     <string name="notification_waiting">Ожидание ПК</string>
+    <string name="notification_waiting_network">Ждёт Wi-Fi, чтобы подключиться к ПК</string>
     <string name="notification_not_paired">Ещё не связан с ПК</string>
     <plurals name="transfer_files">
         <item quantity="one">%1$d файл</item>
@@ -453,6 +454,10 @@
     <string name="start_without_asking_hint">Когда этот ПК просит, они сразу включаются, без нажатия на телефоне. Нужен Elevated. Без него телефон спрашивает как обычно.</string>
     <string name="mirror_ask_toggle">Спрашивать перед показом экрана</string>
     <string name="mirror_ask_hint">Каждый раз, когда этот ПК хочет увидеть экран, он ждёт вашего нажатия. Без этого Elevated показывает экран сразу.</string>
+    <string name="clip_share_toggle">Делиться моим буфером обмена</string>
+    <string name="clip_share_hint">Скопированное уходит туда само, пока включён Elevated. Отправлять вручную тоже можно.</string>
+    <string name="clip_accept_toggle">Принимать его буфер обмена</string>
+    <string name="clip_accept_hint">Скопированное там попадает в буфер обмена этого телефона.</string>
     <string name="recorder_notification_recording">Запись для %1$s</string>
     <string name="recorder_notification_paused">Запись на паузе (%1$s)</string>
     <string name="recorder_permission_title">Разрешите доступ к микрофону</string>
@@ -1041,10 +1046,10 @@
     <string name="guide_queue_limits">Вмещает до 200 элементов или 10 ГиБ. Файлы истекают через 7 дней, фрагменты и ссылки через 24 часа.</string>
     <string name="guide_share_title">Отправить на ПК</string>
     <string name="guide_share_summary">Делитесь ссылками, текстом, фото или документами из любого приложения Android с ПК через системное меню «Поделиться».</string>
-    <string name="guide_share_where">Меню «Поделиться» Android › Отправить на ПК</string>
+    <string name="guide_share_where">Меню «Поделиться» Android › Отправить через NectarLink</string>
     <string name="guide_share_needs">Связанный ПК</string>
     <string name="guide_share_ext_1">1. Нажмите «Поделиться» в браузере, галерее или приложении документов на телефоне.</string>
-    <string name="guide_share_ext_2">2. Выберите NectarLink («Отправить на ПК» или «Открыть на ПК»).</string>
+    <string name="guide_share_ext_2">2. Выберите NectarLink («Отправить через NectarLink» или «Открыть на ПК»).</string>
     <string name="guide_share_need_1">Хотя бы один связанный ПК.</string>
     <string name="guide_share_phone_1">Поделитесь любой ссылкой или файлом через «Поделиться» Android и выберите нужный ПК.</string>
     <string name="guide_share_pc_1">Ссылки открываются в браузере ПК по умолчанию, файлы сохраняются в «Загрузки».</string>

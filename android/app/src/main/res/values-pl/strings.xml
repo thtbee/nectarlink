@@ -65,7 +65,7 @@
     <string name="notifications_off">NectarLink potrzebuje dostępu do powiadomień, aby wyświetlać powiadomienia z tego telefonu na komputerze.</string>
     <string name="notifications_restricted">Przełącznik jest nieaktywny? Otwórz Informacje o aplikacji, dotknij ⋮, wybierz „Zezwól na ustawienia z ograniczonym dostępem” i spróbuj ponownie.</string>
     <string name="action_allow">Zezwól</string>
-    <string name="clip_share_label">Wyślij na komputer</string>
+    <string name="clip_share_label">Wyślij przez NectarLink</string>
     <string name="channel_transfers">Przesyłanie plików</string>
     <string name="channel_received">Odebrane pliki</string>
     <string name="channel_pc_media">Multimedia na komputerze</string>
@@ -347,6 +347,7 @@
         <item quantity="other">Połączono z %1$d komputerami</item>
     </plurals>
     <string name="notification_waiting">Oczekiwanie na komputer</string>
+    <string name="notification_waiting_network">Czekam na Wi-Fi, by połączyć się z komputerem</string>
     <string name="notification_not_paired">Jeszcze nie sparowano z komputerem</string>
     <plurals name="transfer_files">
         <item quantity="one">%1$d plik</item>
@@ -471,6 +472,10 @@
     <string name="start_without_asking_hint">Na żądanie tego komputera kamera i mikrofon włączą się od razu, bez dotykania telefonu. Wymaga Elevated. Bez niego telefon zapyta o zgodę jak zwykle.</string>
     <string name="mirror_ask_toggle">Pytaj przed udostępnieniem ekranu</string>
     <string name="mirror_ask_hint">Za każdym razem, gdy ten komputer chce zobaczyć ekran, czeka na Twoje dotknięcie. Bez tego Elevated udostępnia go od razu.</string>
+    <string name="clip_share_toggle">Udostępniaj mój schowek</string>
+    <string name="clip_share_hint">To, co skopiujesz, trafia tam samo, gdy Elevated jest włączone. Ręczne wysyłanie nadal działa.</string>
+    <string name="clip_accept_toggle">Przyjmuj jego schowek</string>
+    <string name="clip_accept_hint">To, co tam skopiujesz, trafia do schowka tego telefonu.</string>
     <string name="recorder_notification_recording">Nagrywanie dla %1$s</string>
     <string name="recorder_notification_paused">Nagrywanie wstrzymane (%1$s)</string>
     <string name="recorder_permission_title">Zezwól na dostęp do mikrofonu telefonu</string>
@@ -1143,10 +1148,10 @@
     <!-- 9. Send to PC -->
     <string name="guide_share_title">Wyślij na komputer</string>
     <string name="guide_share_summary">Udostępniaj linki, tekst, zdjęcia lub dokumenty z dowolnej aplikacji Android na komputer przez systemowy panel udostępniania.</string>
-    <string name="guide_share_where">Panel udostępniania systemu Android › Wyślij na komputer</string>
+    <string name="guide_share_where">Panel udostępniania systemu Android › Wyślij przez NectarLink</string>
     <string name="guide_share_needs">Sparowany komputer</string>
     <string name="guide_share_ext_1">1. Dotknij Udostępnij w dowolnej przeglądarce, galerii lub aplikacji do dokumentów na telefonie.</string>
-    <string name="guide_share_ext_2">2. Wybierz NectarLink (Wyślij na komputer lub Otwórz na komputerze).</string>
+    <string name="guide_share_ext_2">2. Wybierz NectarLink (Wyślij przez NectarLink lub Otwórz na komputerze).</string>
     <string name="guide_share_need_1">Co najmniej jeden sparowany komputer.</string>
     <string name="guide_share_phone_1">Udostępnij dowolny link lub plik przez panel udostępniania systemu Android i wybierz komputer docelowy.</string>
     <string name="guide_share_pc_1">Linki otwierają się w domyślnej przeglądarce na komputerze, a pliki zapisują się w folderze Pobieranie.</string>

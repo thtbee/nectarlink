@@ -1830,10 +1830,12 @@ impl qobject::AppController {
         let mut list = QList::default();
         let (Some(id), Some(node)) = (super::parse_device(device), core_host::node()) else { return list };
         for (name, on) in node.device_toggles(id).unwrap_or_default() {
-            // Unlock with phone: on Windows, with a phone that can keep the key
-            // behind a fingerprint.
-            if name == nectarlink_core::unlock::TOGGLE
-                && !(cfg!(windows) && node.peer_offers(id, nectarlink_core::unlock::KEY))
+            // Set on the phone (#453); the PC keeps taking the clipboard. Unlock
+            // with phone: on Windows, with a phone that can keep the key behind
+            // a fingerprint.
+            if name == "clipboard_receive"
+                || (name == nectarlink_core::unlock::TOGGLE
+                    && !(cfg!(windows) && node.peer_offers(id, nectarlink_core::unlock::KEY)))
             {
                 continue;
             }

@@ -24,6 +24,7 @@ Item {
         { id: "notifications", title: qsTr("Notifications"), icon: Icons.bell, subtitle: qsTr("Do not disturb & app rules") },
         { id: "files_sync", title: qsTr("Files & Sync"), icon: Icons.folder, subtitle: qsTr("Folder sync, storage & recordings") },
         { id: "shortcuts", title: qsTr("Shortcuts & Rules"), icon: Icons.bolt, subtitle: qsTr("Hotkeys & automations") },
+        { id: "agents", title: qsTr("AI agents"), icon: Icons.terminal, subtitle: qsTr("Claude Code, Codex, Cursor & more") },
         { id: "storage", title: qsTr("Storage & Privacy"), icon: Icons.clipboardList, subtitle: qsTr("History, caches & retention") },
         { id: "connection", title: qsTr("Connection & About"), icon: Icons.wifi, subtitle: qsTr("Doctor, Wake-on-LAN, API & version") },
         { id: "support", title: qsTr("Support NectarLink"), icon: Icons.heart, subtitle: qsTr("Help keep it going") }
@@ -3567,6 +3568,14 @@ Item {
                 sourceComponent: Component {
                     PhoneInstallPane { width: parent ? parent.width : 0 }
                 }
+            }
+
+            // ================================================================
+            // AI AGENTS
+            // ================================================================
+            AgentsSection {
+                visible: page.currentSection === "agents"
+                width: visible ? parent.width : 0
             }
 
             // ================================================================

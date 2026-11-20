@@ -255,15 +255,15 @@ pub async fn start_on_port(port: u16, token: String) -> std::io::Result<(SocketA
 }
 
 #[derive(Debug)]
-struct HttpRequest {
-    method: String,
-    path: String,
-    query: HashMap<String, String>,
-    headers: HashMap<String, String>,
-    body: Vec<u8>,
+pub(crate) struct HttpRequest {
+    pub(crate) method: String,
+    pub(crate) path: String,
+    pub(crate) query: HashMap<String, String>,
+    pub(crate) headers: HashMap<String, String>,
+    pub(crate) body: Vec<u8>,
 }
 
-async fn read_http_request(stream: &mut TcpStream) -> std::io::Result<Option<HttpRequest>> {
+pub(crate) async fn read_http_request(stream: &mut TcpStream) -> std::io::Result<Option<HttpRequest>> {
     let mut buf = Vec::with_capacity(2048);
     let mut chunk = [0u8; 2048];
     let header_end = loop {
@@ -372,7 +372,7 @@ fn from_hex(b: u8) -> Option<u8> {
     }
 }
 
-async fn write_json_response(
+pub(crate) async fn write_json_response(
     stream: &mut TcpStream,
     status_code: u16,
     status_text: &str,
@@ -443,7 +443,7 @@ fn try_node() -> Option<nectarlink_core::Node> {
 #[cfg(test)]
 static TEST_CLIPBOARD: Mutex<String> = Mutex::new(String::new());
 
-fn read_pc_clipboard() -> String {
+pub(crate) fn read_pc_clipboard() -> String {
     #[cfg(test)]
     {
         return TEST_CLIPBOARD.lock().unwrap_or_else(|e| e.into_inner()).clone();
@@ -457,7 +457,7 @@ fn read_pc_clipboard() -> String {
     }
 }
 
-fn write_pc_clipboard(text: &str) -> Result<(), String> {
+pub(crate) fn write_pc_clipboard(text: &str) -> Result<(), String> {
     #[cfg(test)]
     {
         *TEST_CLIPBOARD.lock().unwrap_or_else(|e| e.into_inner()) = text.to_owned();
@@ -810,7 +810,7 @@ fn handle_get_timeline(query: &HashMap<String, String>) -> (u16, &'static str, V
 }
 
 /// The token in an `Authorization: Bearer <token>` value.
-fn bearer_token(value: &str) -> Option<&str> {
+pub(crate) fn bearer_token(value: &str) -> Option<&str> {
     let trimmed = value.trim();
     // `get`: byte 7 may fall inside a multi-byte character.
     match (trimmed.get(..7), trimmed.get(7..)) {

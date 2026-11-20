@@ -65,7 +65,7 @@
     <string name="notifications_off">O NectarLink precisa do Acesso a notificações para mostrar no PC as notificações deste celular.</string>
     <string name="notifications_restricted">A opção está desativada? Abra Informações do app, toque em ⋮, escolha “Permitir configurações restritas” e tente de novo.</string>
     <string name="action_allow">Permitir</string>
-    <string name="clip_share_label">Enviar para PC</string>
+    <string name="clip_share_label">Enviar com o NectarLink</string>
     <string name="channel_transfers">Transferências de arquivos</string>
     <string name="channel_received">Arquivos recebidos</string>
     <string name="channel_pc_media">Mídia no seu PC</string>
@@ -341,6 +341,7 @@
         <item quantity="other">Conectado a %1$d PCs</item>
     </plurals>
     <string name="notification_waiting">Aguardando seu PC</string>
+    <string name="notification_waiting_network">Aguardando Wi-Fi para chegar ao seu PC</string>
     <string name="notification_not_paired">Ainda não pareado com um PC</string>
     <plurals name="transfer_files">
         <item quantity="one">%1$d arquivo</item>
@@ -461,6 +462,10 @@
     <string name="start_without_asking_hint">Quando este PC pedir, eles ligam na hora, sem precisar tocar no celular. Precisa do Elevated. Sem ele, o celular pergunta como sempre.</string>
     <string name="mirror_ask_toggle">Perguntar antes de compartilhar a tela</string>
     <string name="mirror_ask_hint">Sempre que este PC quiser ver sua tela, ele espera seu toque. Sem isso, o Elevated compartilha na hora.</string>
+    <string name="clip_share_toggle">Compartilhar minha área de transferência</string>
+    <string name="clip_share_hint">O que você copia vai sozinho enquanto o Elevated está ligado. Enviar à mão continua funcionando.</string>
+    <string name="clip_accept_toggle">Aceitar a área de transferência dele</string>
+    <string name="clip_accept_hint">O que for copiado lá vai para a área de transferência deste celular.</string>
     <string name="recorder_notification_recording">Gravando para %1$s</string>
     <string name="recorder_notification_paused">Gravação pausada (%1$s)</string>
     <string name="recorder_permission_title">Permitir acesso ao microfone</string>
@@ -1128,10 +1133,10 @@
     <!-- 9. Send to PC -->
     <string name="guide_share_title">Enviar para PC</string>
     <string name="guide_share_summary">Compartilhe links, textos, fotos ou documentos de qualquer app Android com seu PC pelo menu de compartilhamento do sistema.</string>
-    <string name="guide_share_where">Menu de compartilhamento do Android › Enviar para PC</string>
+    <string name="guide_share_where">Menu de compartilhamento do Android › Enviar com o NectarLink</string>
     <string name="guide_share_needs">PC pareado</string>
     <string name="guide_share_ext_1">1. Toque em Compartilhar em qualquer navegador, galeria ou app de documentos no celular.</string>
-    <string name="guide_share_ext_2">2. Selecione NectarLink (Enviar para PC ou Abrir no PC).</string>
+    <string name="guide_share_ext_2">2. Selecione NectarLink (Enviar com o NectarLink ou Abrir no PC).</string>
     <string name="guide_share_need_1">Pelo menos um PC pareado.</string>
     <string name="guide_share_phone_1">Compartilhe qualquer link ou arquivo pelo menu Compartilhar do Android e escolha o PC de destino.</string>
     <string name="guide_share_pc_1">Os links abrem no navegador padrão do PC; os arquivos são salvos em Downloads.</string>

@@ -8,6 +8,7 @@
 // A GUI app: no console window in release builds.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod agents;
 mod app_shortcuts;
 mod automations;
 mod battery;
@@ -709,6 +710,7 @@ fn main() -> ExitCode {
     phone_mic::init(&settings);
     call_audio::init(&settings);
     local_api::init(&settings);
+    agents::init(&settings);
     win::widget::write_state_snapshot(&data_dir);
     win::tray::update_hotkeys(
         &settings.continuity_photo_hotkey,
@@ -834,6 +836,7 @@ fn main() -> ExitCode {
     pc_mirror::stop_all();
     photos::clear_shared_files();
     local_api::stop();
+    agents::stop();
     win::ble_beacon::stop();
     webcam::shutdown();
     storage::shutdown();

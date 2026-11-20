@@ -531,6 +531,7 @@ Section "Uninstall"
     RMDir /r /REBOOTOK "$INSTDIR"
   ${Else}
     Delete "$INSTDIR\${EXE}"
+    Delete "$INSTDIR\nectarlink-agent.exe"
     !insertmacro MoveAsideInUse "nectarlink_vcam.dll"
     !insertmacro MoveAsideInUse "nectarlink_credprov.dll"
     Delete "$INSTDIR\AppxManifest.xml"

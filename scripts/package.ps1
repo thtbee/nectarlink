@@ -102,10 +102,10 @@ if (-not $SkipBuild) {
     if ($isArm64) {
         $env:QMAKE = Join-Path $arm64ToolDir "qmake6.exe"
         if (-not (Test-Path $env:QMAKE)) { $env:QMAKE = Join-Path $arm64ToolDir "qmake.exe" }
-        Invoke-Native "the build" { cargo build --locked --release --target aarch64-pc-windows-msvc -p nectarlink-desktop -p nectarlink-vcam -p nectarlink-credprov }
+        Invoke-Native "the build" { cargo build --locked --release --target aarch64-pc-windows-msvc -p nectarlink-desktop -p nectarlink-mcp -p nectarlink-vcam -p nectarlink-credprov }
     } else {
         $env:PATH = "$(Join-Path $targetKit 'bin');$env:PATH"
-        Invoke-Native "the build" { cargo build --locked --release -p nectarlink-desktop -p nectarlink-vcam -p nectarlink-credprov }
+        Invoke-Native "the build" { cargo build --locked --release -p nectarlink-desktop -p nectarlink-mcp -p nectarlink-vcam -p nectarlink-credprov }
     }
 }
 $exe = Join-Path $targetDir 'nectarlink-desktop.exe'
@@ -138,6 +138,10 @@ if (Test-Path $stage) {
 }
 New-Item -ItemType Directory -Force $stage | Out-Null
 Copy-Item $exe $stage
+# What AI agents run (Settings > AI agents), next to the app so its setup lines find it.
+$agentExe = Join-Path $targetDir 'nectarlink-agent.exe'
+if (-not (Test-Path $agentExe)) { throw "no release build at $agentExe" }
+Copy-Item $agentExe $stage
 Copy-Item $vcamDll $stage
 Copy-Item $credprovDll $stage
 

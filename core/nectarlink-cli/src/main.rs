@@ -536,6 +536,44 @@ enum Command {
         #[arg(required = true, trailing_var_arg = true, allow_hyphen_values = true)]
         target: Vec<String>,
     },
+    /// For AI agents: serve NectarLink over MCP on stdin and stdout, through
+    /// the running app (Settings > AI agents).
+    Mcp {
+        /// The agent's name, as added in NectarLink.
+        #[arg(long, env = "NECTARLINK_AGENT")]
+        agent: String,
+        /// Only three tools (search, describe, run), for clients with a tool limit.
+        #[arg(long)]
+        dispatch: bool,
+        /// Only these toolsets (comma separated), e.g. core,messages.
+        #[arg(long, value_delimiter = ',')]
+        toolsets: Vec<String>,
+    },
+    /// For AI agents and scripts: run one action through the running app and
+    /// print its JSON answer.
+    Do {
+        /// The action, e.g. devices.list or sms.send.
+        action: String,
+        /// The agent's name, as added in NectarLink.
+        #[arg(long, env = "NECTARLINK_AGENT")]
+        agent: String,
+        /// The arguments as a JSON object.
+        #[arg(long)]
+        args: Option<String>,
+        /// The device, by id or name.
+        #[arg(long)]
+        device: Option<String>,
+        /// Indented output.
+        #[arg(long)]
+        pretty: bool,
+    },
+    /// For AI agents and scripts: list the actions this agent may use.
+    Actions {
+        #[arg(long, env = "NECTARLINK_AGENT")]
+        agent: String,
+        #[arg(long)]
+        pretty: bool,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -2594,6 +2632,27 @@ fn main() -> Result<()> {
                     .with_writer(std::io::stderr)
                     .init();
 
+                // Agent commands talk to the running app and never start a node.
+                match &cli.command {
+                    Command::Mcp { agent, dispatch, toolsets } => {
+                        return nectarlink_mcp::cli::mcp(agent, *dispatch, toolsets).await;
+                    }
+                    Command::Do { action, agent, args, device, pretty } => {
+                        return nectarlink_mcp::cli::run(
+                            agent,
+                            action,
+                            args.as_deref(),
+                            device.as_deref(),
+                            *pretty,
+                        )
+                        .await;
+                    }
+                    Command::Actions { agent, pretty } => {
+                        return nectarlink_mcp::cli::list(agent, *pretty).await;
+                    }
+                    _ => {}
+                }
+
                 if let Command::NotifyWhen { title, device, target } = &cli.command {
                     return Box::pin(run_notify_when(&cli, title.as_deref(), device.as_deref(), target))
                         .await;
@@ -4342,7 +4401,9 @@ async fn run(cli: &Cli, node: &Node) -> Result<()> {
             println!("Notification sent to connected PCs (and to others when they connect).");
             watch(node, false).await?;
         }
-        Command::NotifyWhen { .. } => unreachable!("handled in main"),
+        Command::NotifyWhen { .. } | Command::Mcp { .. } | Command::Do { .. } | Command::Actions { .. } => {
+            unreachable!("handled in main")
+        }
     }
     Ok(())
 }
