@@ -94,7 +94,7 @@
     <string name="channel_elevated">Configuración de depuración inalámbrica</string>
     <string name="elevated_title">Elevated</string>
     <string name="elevated_not_set_up">Control táctil en tiempo real, todas las teclas y controles para silenciar, poner en espera y usar el teclado en las llamadas desde tu PC.</string>
-    <string name="elevated_turn_on_wireless">Activar la depuración inalámbrica por sí solo</string>
+    <string name="elevated_turn_on_wireless">Activar automáticamente la depuración inalámbrica</string>
     <string name="elevated_turn_on_wireless_hint">Elevated la necesita, así que la vuelve a activar cuando la encuentra desactivada, en cualquier Wi-Fi. Desactiva esto para activarla tú en Opciones de desarrollador.</string>
     <string name="elevated_waiting">Esperando la depuración inalámbrica. Actívala en Opciones de desarrollador.</string>
     <string name="elevated_starting">Iniciando…</string>
@@ -345,7 +345,7 @@
         <item quantity="other">Conectado a %1$d PC</item>
     </plurals>
     <string name="notification_waiting">Esperando a tu PC</string>
-    <string name="notification_waiting_network">Esperando wifi para llegar a tu PC</string>
+    <string name="notification_waiting_network">Esperando Wi-Fi para conectar con tu PC</string>
     <string name="notification_not_paired">Aún no se ha emparejado con un PC</string>
     <plurals name="transfer_files">
         <item quantity="one">%1$d archivo</item>
@@ -459,7 +459,7 @@
     <string name="mirror_ask_toggle">Preguntar antes de compartir mi pantalla</string>
     <string name="mirror_ask_hint">Cada vez que este PC quiera ver tu pantalla, esperará a que toques. Sin esto, Elevated la comparte al instante.</string>
     <string name="clip_share_toggle">Compartir mi portapapeles</string>
-    <string name="clip_share_hint">Lo que copias llega solo mientras Elevated está activado. Enviarlo a mano sigue funcionando.</string>
+    <string name="clip_share_hint">Lo que copias se envía automáticamente mientras Elevated está activado. Enviarlo a mano sigue funcionando.</string>
     <string name="clip_accept_toggle">Aceptar su portapapeles</string>
     <string name="clip_accept_hint">Lo que copie ahí llega al portapapeles de este teléfono.</string>
     <string name="recorder_notification_recording">Grabando para %1$s</string>
