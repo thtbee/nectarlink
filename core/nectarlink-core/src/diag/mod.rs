@@ -10,6 +10,7 @@
 //! ([`redact`]). It's kept in two files of a fixed size ([`ring`]), so it
 //! never grows past that however long the app runs.
 
+pub mod crash;
 pub mod layer;
 pub mod redact;
 pub mod ring;

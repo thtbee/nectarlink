@@ -19,6 +19,7 @@ mod clipboard;
 mod command_palette;
 mod continuity_camera;
 mod core_host;
+mod crash_events;
 mod deck;
 mod doctor;
 mod feed;
@@ -473,12 +474,30 @@ fn uninstall() {
     startup::remove();
 }
 
-fn install_panic_logging() {
-    let default = std::panic::take_hook();
-    std::panic::set_hook(Box::new(move |info| {
-        tracing::error!("panic: {info}");
-        default(info);
-    }));
+/// Marks this run as started and logs how the last one ended. A run that
+/// ended badly without a crash record of its own may have crashed outside
+/// Rust; Windows' record of that is looked for in the background.
+fn note_previous_run(diag_dir: &Path) {
+    use nectarlink_core::diag::crash;
+    let version = env!("CARGO_PKG_VERSION");
+    let Some(previous) = crash::begin_run(diag_dir, version) else { return };
+    if previous.clean {
+        return;
+    }
+    if let Some(record) = crash::crashed(&previous, &crash::records(diag_dir)) {
+        tracing::warn!(sig = %record.sig, kind = %record.kind, version = %previous.version, "the last run crashed");
+        return;
+    }
+    std::thread::Builder::new()
+        .name("crash-events".into())
+        .spawn(move || match crash_events::native_crash_since(previous.started, &previous.version) {
+            Some(record) => {
+                tracing::warn!(sig = %record.sig, kind = %record.kind, version = %previous.version, "the last run crashed");
+                crash::record(&record);
+            }
+            None => tracing::info!(version = %previous.version, "the last run ended without quitting"),
+        })
+        .ok();
 }
 
 /// The installer's or uninstaller's window: no core, no data folder, no log
@@ -574,7 +593,7 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     }
     logging::init(&data_dir);
-    install_panic_logging();
+    nectarlink_core::diag::crash::install_panic_hook();
     // Home and the other phone pages only load with a paired phone, and a
     // page that fails to load must fail the check.
     if options.ui_check
@@ -622,6 +641,8 @@ fn main() -> ExitCode {
         }
     };
 
+    // Only the copy that runs marks the run: a second one would overwrite it.
+    note_previous_run(&data_dir.join("diag"));
     // Before any window: toasts and the taskbar both go by this ID.
     win::toast::set_process_id();
     // Logging out or shutting down sends SIGTERM: quit as Quit does, so
@@ -813,6 +834,7 @@ fn main() -> ExitCode {
     win::net::stop();
     core_host::shutdown();
     drop(app);
+    nectarlink_core::diag::crash::end_run();
     if options.ui_check {
         let problems = bridge::native::ffi::qml_problem_count();
         if problems > 0 {
