@@ -138,6 +138,7 @@ fn install_panic_hook_now() {
         let thread = std::thread::current().name().map(str::to_owned);
         let version = CONFIG.get().map_or("", |c| c.version.as_str());
         let record = panic_record(location.as_deref(), fixed, formatted, thread, version, now());
+        // log-ok: the message is the record's, already cut to its fixed part.
         tracing::error!(sig = %record.sig, location = %record.location, "panic: {}", record.message);
         if let Some(config) = CONFIG.get() {
             save(&config.dir, &record);

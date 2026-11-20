@@ -900,6 +900,7 @@ pub fn run_service() -> ExitCode {
     let log_path =
         std::env::current_exe().ok().and_then(|exe| exe.parent().map(|dir| dir.join("update.log")));
     let log = |message: &str| {
+        // log-ok: the update service's own fixed lines, also written to update.log.
         tracing::info!("{message}");
         if let Some(path) = &log_path {
             let line = format!("{} {message}\n", unix_seconds_now());

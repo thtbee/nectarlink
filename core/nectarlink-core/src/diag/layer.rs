@@ -241,6 +241,28 @@ mod tests {
         fs::read_to_string(&ring.files()[0]).unwrap()
     }
 
+    /// Personal details the way real code tends to log them by mistake: none
+    /// may reach the file.
+    #[test]
+    fn canary_personal_details_never_reach_the_log() {
+        let file = "/media/usb/Holiday Photos/CANARY-FILE.jpg";
+        let out = logged(|| {
+            let target = "nectarlink_core::canary";
+            tracing::info!(target: "nectarlink_core::canary", text = "CANARY-NOTE dinner at 7", "notification posted");
+            tracing::info!(target: "nectarlink_core::canary", name = "CANARY-NAME Mum", "contact synced");
+            tracing::info!(target: "nectarlink_core::canary", clip = "CANARY-CLIP hunter2", "clipboard sent");
+            tracing::info!(target: "nectarlink_core::canary", url = "https://CANARY-URL.example/x", "link opened");
+            tracing::info!(target: "nectarlink_core::canary", number = "+447700900123", "sms sent");
+            tracing::warn!(target: "nectarlink_core::canary", error = format!("can't open {file}: denied"), "send failed");
+            tracing::warn!(target: "nectarlink_core::canary", "dialing 203.0.113.77:53319 for {target}");
+            tracing::warn!(target: "iroh::canary", path = "CANARY-THIRD-PARTY", "library line");
+        });
+        for marker in ["CANARY-", "dinner", "Mum", "hunter2", "+4477", "Holiday", "203.0.113.77"] {
+            assert!(!out.contains(marker), "{marker} reached the log:\n{out}");
+        }
+        assert_eq!(out.lines().count(), 8, "{out}");
+    }
+
     #[test]
     fn fields_not_on_the_list_are_hidden() {
         let out = logged(|| {

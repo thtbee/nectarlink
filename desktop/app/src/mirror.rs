@@ -581,7 +581,7 @@ pub fn screenshot_file(window: Window) {
     let dir = core_host::downloads_dir();
     if let Err(e) = std::fs::create_dir_all(&dir) {
         let subdir = if cfg!(windows) { "Downloads\\Nectarlink" } else { "Downloads/Nectarlink" };
-        tracing::warn!(error = %e, "can't create {subdir}");
+        tracing::warn!(error = %e, path = %subdir, "can't create the folder");
         set_notice(window, "Couldn't save screenshot");
         show_message(tr!("Mirror", "The screenshot couldn't be saved."));
         return;
@@ -675,7 +675,7 @@ pub fn toggle_recording(window: Window) {
     let dir = core_host::downloads_dir();
     if let Err(e) = std::fs::create_dir_all(&dir) {
         let subdir = if cfg!(windows) { "Downloads\\Nectarlink" } else { "Downloads/Nectarlink" };
-        tracing::warn!(error = %e, "can't create {subdir}");
+        tracing::warn!(error = %e, path = %subdir, "can't create the folder");
         set_notice(window, "Couldn't start recording");
         show_message(tr!("Mirror", "Couldn't start recording."));
         return;

@@ -71,6 +71,11 @@ jobs:
       - name: Format
         if: runner.os == 'Linux'
         run: cargo fmt --all --check
+      - name: Log lines keep personal details out
+        if: runner.os == 'Linux'
+        run: |
+          python3 -m unittest discover -s .github/scripts -p 'test_check_log_privacy.py'
+          python3 .github/scripts/check_log_privacy.py
       - name: Clippy
         shell: bash
         run: cargo clippy --locked $CORE_CRATES --all-targets -- -D warnings

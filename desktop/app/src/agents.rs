@@ -681,7 +681,7 @@ pub fn set_up(kind: &str, label: &str, exe: &str) {
     std::thread::spawn(move || {
         let result = set_up_now(&kind, &label, &exe);
         if let Err(e) = &result {
-            tracing::warn!(kind, "agent setup failed: {e}");
+            tracing::warn!(kind, error = %e, "agent setup failed");
         }
         *lock(&SETUP) = Some((kind, result));
         core_host::host().hub.changed(Changes::PREFS);
