@@ -60,12 +60,12 @@ fn agents() -> Option<&'static Agents> {
         .get_or_init(|| {
             let dir = agents_dir(&core_host::host().data_dir);
             if let Err(e) = make_private_dir(&dir) {
-                tracing::warn!("can't make the agents folder: {e}");
+                tracing::warn!(error = %e, "can't make the agents folder");
             }
             let store = match Store::open(&dir.join("agents.db")) {
                 Ok(s) => Arc::new(s),
                 Err(e) => {
-                    tracing::warn!("agent access unavailable: {e}");
+                    tracing::warn!(error = %e, "agent access unavailable");
                     return None;
                 }
             };
@@ -84,7 +84,7 @@ fn upgrade_presets(store: &Store) {
         if let Some(grants) = nectarlink_actions::upgrade_preset(&c.grants) {
             c.grants = grants;
             if let Err(e) = store.update_client(&c) {
-                tracing::warn!("can't update agent {}: {e}", c.label);
+                tracing::warn!(error = %e, "can't update an agent");
             }
         }
     }
@@ -150,7 +150,7 @@ fn apply(settings: &Settings) {
                     *lock(&a.server) = Some(server);
                 }
                 if let Err(e) = write_server_file(&dir, addr.port()) {
-                    tracing::warn!("can't write agents/server.json: {e}");
+                    tracing::warn!(error = %e, "can't write agents/server.json");
                 }
                 tracing::info!(%addr, "agent access listening");
             }

@@ -95,7 +95,8 @@ fn replace_ignoring_case(text: &str, needle: &str, with: &str) -> String {
     out
 }
 
-/// `text` as the log may write it: this device's folders named, network
+/// `text` as the log may write it: this device's folders named, the user's
+/// own files and folders cut down to what kind of file they are, network
 /// addresses replaced by their kind, and control characters (which could
 /// fake extra log lines) shown as spaces.
 pub fn text(text: &str) -> String {
@@ -103,8 +104,105 @@ pub fn text(text: &str) -> String {
         Some(roots) => roots.replace(text),
         None => text.to_owned(),
     };
-    let masked = mask_addresses(&named);
+    let masked = mask_addresses(&collapse_paths(&named));
     masked.chars().map(|c| if c.is_control() { ' ' } else { c }).collect()
+}
+
+/// Cuts every path in `text` that isn't inside one of the app's own folders
+/// down to its kind: `<home>\…\<file>.jpg` under the home folder,
+/// `<file>.jpg` anywhere else. A path is taken to run to the next quote, line
+/// break, `: `, `, `, `; ` or ` -> `, or to the end, since paths may have
+/// spaces in them; when that swallows words after a path, those go too,
+/// which errs on the side of writing less.
+fn collapse_paths(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut i = 0;
+    while i < text.len() {
+        let rest = &text[i..];
+        let at_boundary = i == 0
+            || text[..i]
+                .ends_with(|c: char| c.is_whitespace() || matches!(c, '"' | '\'' | '=' | '(' | '[' | '`'));
+        if at_boundary && let Some(home) = path_start(rest) {
+            let len = path_len(rest);
+            let path = &rest[..len];
+            if is_build_path(path) {
+                out.push_str(path);
+            } else if home {
+                let sep = if path.contains('\\') { '\\' } else { '/' };
+                out.push_str("<home>");
+                // The home folder itself names nothing more.
+                if path.len() > "<home>".len() + 1 {
+                    out.push(sep);
+                    out.push('…');
+                    out.push(sep);
+                    out.push_str(&file_kind(path));
+                }
+            } else {
+                out.push_str(&file_kind(path));
+            }
+            i += len;
+            continue;
+        }
+        let c = rest.chars().next().unwrap_or_default();
+        out.push(c);
+        i += c.len_utf8().max(1);
+    }
+    out
+}
+
+/// Whether a user's path starts `text`: `Some(true)` for one under the home
+/// folder (already named `<home>`), `Some(false)` for any other absolute
+/// path that isn't inside the app's own folders.
+fn path_start(text: &str) -> Option<bool> {
+    let b = text.as_bytes();
+    if let Some(after) = text.strip_prefix("<home>") {
+        return (after.is_empty() || after.starts_with(['\\', '/'])).then_some(true);
+    }
+    // C:\ or C:/
+    if b.len() >= 3 && b[0].is_ascii_alphabetic() && b[1] == b':' && (b[2] == b'\\' || b[2] == b'/') {
+        return Some(false);
+    }
+    // \\server\share
+    if text.starts_with(r"\\") && b.get(2).is_some_and(u8::is_ascii_alphanumeric) {
+        return Some(false);
+    }
+    // /home/..., /media/... : two parts at least, so `/os2` or `1/2` aren't paths.
+    if b.first() == Some(&b'/') && b.get(1).is_some_and(|c| c.is_ascii_alphanumeric() || *c == b'.') {
+        let first_part = text[1..].split(['/', ' ', ':', ',', '"', '\'']).next().unwrap_or("");
+        if text[1 + first_part.len()..].starts_with('/') {
+            return Some(false);
+        }
+    }
+    None
+}
+
+/// Whether `path` is where the app was built rather than anything on this
+/// device: a panic's location in a library (`…/.cargo/registry/src/…`) or in
+/// Rust itself (`/rustc/<hash>/…`).
+fn is_build_path(path: &str) -> bool {
+    path.starts_with("/rustc/") || path.replace('\\', "/").contains("/.cargo/registry/")
+}
+
+/// How far the path at the start of `text` runs.
+fn path_len(text: &str) -> usize {
+    const ENDS: [&str; 7] = ["\"", "'", "\n", ": ", ", ", "; ", " -> "];
+    ENDS.iter().filter_map(|end| text.find(end)).min().unwrap_or(text.len())
+}
+
+/// `<file>.ext` for a path whose last part has a short plain extension,
+/// else `<file>`.
+fn file_kind(path: &str) -> String {
+    let last = path.rsplit(['\\', '/']).next().unwrap_or("");
+    match last.rsplit_once('.') {
+        Some((stem, ext))
+            if !stem.is_empty()
+                && (1..=8).contains(&ext.len())
+                && ext.chars().all(|c| c.is_ascii_alphanumeric()) =>
+        {
+            format!("<file>.{}", ext.to_ascii_lowercase())
+        }
+        _ => "<file>".to_owned(),
+    }
 }
 
 /// Replaces each word of `text` that is an IP address, with or without a
@@ -280,6 +378,35 @@ mod tests {
         assert_eq!(mask_addresses("addrs=[10.0.0.2:1, 10.0.0.3:2]"), "addrs=[lan-v4:1, lan-v4:2]");
         // Versions and times aren't addresses.
         assert_eq!(mask_addresses("version 0.1.6 at 12:30:01"), "version 0.1.6 at 12:30:01");
+    }
+
+    #[test]
+    fn the_users_files_become_their_kind() {
+        let home = if cfg!(windows) { r"C:\Users\Alice" } else { "/home/alice" };
+        let roots = Roots::new(vec![(home.into(), "<home>")]);
+        let named = |t: &str| collapse_paths(&roots.replace(t));
+        if cfg!(windows) {
+            assert_eq!(
+                named(r"create C:\Users\Alice\My Videos\clip one.MP4: Access is denied. (os error 5)"),
+                r"create <home>\…\<file>.mp4: Access is denied. (os error 5)"
+            );
+            assert_eq!(named(r"adb=C:\Users\Alice"), "adb=<home>");
+        } else {
+            assert_eq!(
+                named("create /home/alice/My Videos/clip one.MP4: denied"),
+                "create <home>/…/<file>.mp4: denied"
+            );
+        }
+        assert_eq!(named(r"open D:\Photos\Trip\IMG_1.jpg: not found"), "open <file>.jpg: not found");
+        assert_eq!(named(r#"can't read "/media/usb/Notes/diary.txt""#), r#"can't read "<file>.txt""#);
+        assert_eq!(named("missing /mnt/backup/Plans for Q3"), "missing <file>");
+        assert_eq!(named(r"\\nas\share\cv.pdf, retrying"), "<file>.pdf, retrying");
+        // Codes, URLs and source locations aren't the user's paths.
+        assert_eq!(named("io:NotFound/os2"), "io:NotFound/os2");
+        assert_eq!(named("see https://x.com/a/b"), "see https://x.com/a/b");
+        assert_eq!(named("at core/src/node.rs:12:5"), "at core/src/node.rs:12:5");
+        let registry = r"at C:\Users\runner\.cargo\registry\src\index\iroh-1.0\src\lib.rs:9:1";
+        assert_eq!(named(registry), registry);
     }
 
     #[test]

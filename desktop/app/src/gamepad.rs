@@ -95,7 +95,7 @@ fn run(rx: &Receiver<Cmd>) {
             Ok(Cmd::Set { peer, pad, reply }) => {
                 let result = apply(&mut pads, peer, pad);
                 if let Err(e) = &result {
-                    tracing::debug!("controller for {peer}: {e}");
+                    tracing::debug!(peer = %peer.short(), error = %e, "controller not set");
                 }
                 if let Some(reply) = reply {
                     let _ = reply.send(result);
