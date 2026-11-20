@@ -13,6 +13,22 @@
 #   APPLE_API_KEY_PATH, APPLE_API_KEY_ID, APPLE_API_ISSUER  an App Store Connect key
 # With both, the app and the DMG are notarized and stapled.
 # REQUIRE_SIGNING=1 makes missing credentials an error.
+#
+# The phone-as-webcam virtual camera is a CoreMediaIO camera extension built
+# from desktop/vcam/macos and embedded in the app, which installs it itself.
+# That needs a provisioning profile from the Apple Developer portal (see
+# desktop/vcam/macos/README.md), given as a file:
+#   HOST_PROVISIONING_PROFILE  .provisionprofile for app.nectarlink.desktop
+#                              (Developer ID, System Extension capability). Needs
+#                              SIGN_IDENTITY to be the certificate it was made for.
+#   VCAM_PROVISIONING_PROFILE  optional, .provisionprofile for
+#                              app.nectarlink.desktop.camera-extension; the
+#                              extension works without one
+#   APPLE_TEAM_ID              the team ID (read from the profile or identity if unset)
+#   REQUIRE_VCAM=1             error out unless the host profile is given and used
+#   SKIP_VCAM=1                leave the camera extension out of the app
+# Without the profiles the extension is still embedded and signed, but the app
+# can't install it: Settings > Virtual camera > Set up reports that.
 
 set -euo pipefail
 
@@ -192,6 +208,80 @@ install_binary() {
 install_binary nectarlink-desktop "${MACOS_DIR}/nectarlink-desktop" required
 install_binary nectarlink-agent "${MACOS_DIR}/nectarlink-agent" optional
 
+# --- Virtual camera extension ------------------------------------------------
+
+HOST_BUNDLE_ID="app.nectarlink.desktop"
+VCAM_DIR="${REPO_ROOT}/desktop/vcam/macos"
+VCAM_BUILD="${STAGE_DIR}/vcam"
+EXT_NAME="${HOST_BUNDLE_ID}.camera-extension.systemextension"
+EXT_DEST="${CONTENTS_DIR}/Library/SystemExtensions/${EXT_NAME}"
+HOST_ENTITLEMENTS="${ENTITLEMENTS}"
+VCAM_PROFILES=0
+
+profile_team_id() {
+    security cms -D -i "$1" 2>/dev/null | plutil -extract 'TeamIdentifier.0' raw -o - - 2>/dev/null || true
+}
+
+if [[ "${SKIP_VCAM:-0}" != "1" ]]; then
+    HOST_PROFILE="${HOST_PROVISIONING_PROFILE:-}"
+    VCAM_PROFILE="${VCAM_PROVISIONING_PROFILE:-}"
+    for profile in "${HOST_PROFILE}" "${VCAM_PROFILE}"; do
+        if [[ -n "${profile}" && ! -f "${profile}" ]]; then
+            echo "error: provisioning profile ${profile} not found" >&2
+            exit 1
+        fi
+    done
+    if [[ -n "${HOST_PROFILE}" ]]; then
+        if [[ -n "${SIGN_IDENTITY}" ]]; then
+            VCAM_PROFILES=1
+        else
+            echo "warning: the provisioning profile needs SIGN_IDENTITY; building the camera extension without it" >&2
+        fi
+    elif [[ -n "${VCAM_PROFILE}" ]]; then
+        echo "error: VCAM_PROVISIONING_PROFILE needs HOST_PROVISIONING_PROFILE too" >&2
+        exit 1
+    fi
+    if [[ "${REQUIRE_VCAM:-0}" == "1" && "${VCAM_PROFILES}" != "1" ]]; then
+        echo "error: REQUIRE_VCAM=1 but HOST_PROVISIONING_PROFILE and SIGN_IDENTITY are not both set" >&2
+        exit 1
+    fi
+
+    # The team ID names the App Group: explicit, else the profile's, else the
+    # signing identity's "(TEAMID)" (looked up when it is a hash).
+    TEAM_ID="${APPLE_TEAM_ID:-}"
+    [[ -n "${TEAM_ID}" || -z "${HOST_PROFILE}" ]] || TEAM_ID="$(profile_team_id "${HOST_PROFILE}")"
+    if [[ -z "${TEAM_ID}" && -n "${SIGN_IDENTITY}" ]]; then
+        TEAM_ID="$(security find-identity -v -p codesigning ${KEYCHAIN_PATH:+"${KEYCHAIN_PATH}"} 2>/dev/null \
+            | grep -F "${SIGN_IDENTITY}" | sed -n 's/.*(\([A-Z0-9]\{10\}\))".*/\1/p' | head -n 1 || true)"
+        if [[ -z "${TEAM_ID}" ]]; then
+            TEAM_ID="$(printf '%s' "${SIGN_IDENTITY}" | sed -n 's/.*(\([A-Z0-9]\{10\}\)).*/\1/p')"
+        fi
+    fi
+    if [[ -z "${TEAM_ID}" && "${VCAM_PROFILES}" == "1" ]]; then
+        echo "error: can't tell the Apple team ID; set APPLE_TEAM_ID" >&2
+        exit 1
+    fi
+
+    echo "Building the virtual camera extension (${DMG_ARCH}${TEAM_ID:+, team ${TEAM_ID}})..."
+    ARCHS="${DMG_ARCH}" VERSION="${VERSION}" BUNDLE_VERSION="${BUNDLE_VERSION}" TEAM_ID="${TEAM_ID}" \
+        HOST_BUNDLE_ID="${HOST_BUNDLE_ID}" EXT_PROFILE="${VCAM_PROFILE}" \
+        PROFILE_KEYS="$([[ "${VCAM_PROFILES}" == "1" ]] && echo 1 || echo 0)" \
+        bash "${VCAM_DIR}/build-vcam-extension.sh" "${VCAM_BUILD}"
+
+    mkdir -p "${CONTENTS_DIR}/Library/SystemExtensions"
+    cp -R "${VCAM_BUILD}/${EXT_NAME}" "${EXT_DEST}"
+
+    if [[ "${VCAM_PROFILES}" == "1" ]]; then
+        cp "${HOST_PROFILE}" "${CONTENTS_DIR}/embedded.provisionprofile"
+        # The app's own entitlements plus the ones the profile backs.
+        HOST_ENTITLEMENTS="${STAGE_DIR}/NectarLink.host.entitlements"
+        cp "${ENTITLEMENTS}" "${HOST_ENTITLEMENTS}"
+        /usr/libexec/PlistBuddy -c "Merge ${VCAM_BUILD}/HostApp.entitlements" "${HOST_ENTITLEMENTS}"
+    else
+        echo "warning: no provisioning profile: the camera extension is bundled but macOS will refuse to install it" >&2
+    fi
+fi
+
 # Translations go in Resources: Contents/MacOS is for code only, which
 # is what codesign expects there. Compiled here from the catalogues with
 # Qt's lrelease; the ones the build left next to the binary otherwise.
@@ -257,14 +347,27 @@ if [[ -d "${CONTENTS_DIR}/Frameworks" ]]; then
     done < <(find "${CONTENTS_DIR}/Frameworks" -maxdepth 1 -name '*.framework' -print0)
 fi
 [[ ! -f "${MACOS_DIR}/nectarlink-agent" ]] || sign_path "${MACOS_DIR}/nectarlink-agent"
-sign_path "${MACOS_DIR}/nectarlink-desktop" "${ENTITLEMENTS}"
-sign_path "${APP_DIR}" "${ENTITLEMENTS}"
+if [[ -d "${EXT_DEST:-}" ]]; then
+    sign_path "${EXT_DEST}" "${VCAM_BUILD}/NectarLinkCamera.entitlements"
+fi
+sign_path "${MACOS_DIR}/nectarlink-desktop" "${HOST_ENTITLEMENTS}"
+sign_path "${APP_DIR}" "${HOST_ENTITLEMENTS}"
 
 codesign --verify --deep --strict --verbose=2 "${APP_DIR}"
 ACTUAL_ARCHS="$(lipo -archs "${MACOS_DIR}/nectarlink-desktop" | tr ' ' '\n' | sort | tr '\n' ' ' | sed 's/ $//')"
 if [[ "${ACTUAL_ARCHS}" != "${EXPECTED_ARCHS}" ]]; then
     echo "error: nectarlink-desktop has architectures '${ACTUAL_ARCHS}', expected '${EXPECTED_ARCHS}'" >&2
     exit 1
+fi
+
+if [[ -d "${EXT_DEST:-}" ]]; then
+    ACTUAL_ARCHS="$(lipo -archs "${EXT_DEST}/Contents/MacOS/${EXT_NAME%.systemextension}" | tr ' ' '\n' | sort | tr '\n' ' ' | sed 's/ $//')"
+    if [[ "${ACTUAL_ARCHS}" != "${EXPECTED_ARCHS}" ]]; then
+        echo "error: the camera extension has architectures '${ACTUAL_ARCHS}', expected '${EXPECTED_ARCHS}'" >&2
+        exit 1
+    fi
+    codesign --verify --strict --verbose=2 "${EXT_DEST}"
+    echo "Bundled the camera extension: ${EXT_DEST#"${APP_DIR}"/}"
 fi
 
 if [[ -n "${SIGN_IDENTITY}" && "${#NOTARY_ARGS[@]}" -gt 0 ]]; then
