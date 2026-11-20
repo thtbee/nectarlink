@@ -8406,148 +8406,188 @@ Neler gerekir
 <context>
     <name>ReportSheet</name>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="19"/>
+        <location filename="../qml/components/ReportSheet.qml" line="20"/>
         <source>Connection</source>
         <translation>Bağlantı</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="20"/>
+        <location filename="../qml/components/ReportSheet.qml" line="21"/>
         <source>Mirroring and app windows</source>
         <translation>Yansıtma ve uygulama pencereleri</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="21"/>
+        <location filename="../qml/components/ReportSheet.qml" line="22"/>
         <source>Clipboard</source>
         <translation>Pano</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="22"/>
+        <location filename="../qml/components/ReportSheet.qml" line="23"/>
         <source>Audio</source>
         <translation>Ses</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="23"/>
+        <location filename="../qml/components/ReportSheet.qml" line="24"/>
         <source>Calls and messages</source>
         <translation>Aramalar ve mesajlar</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="24"/>
+        <location filename="../qml/components/ReportSheet.qml" line="25"/>
         <source>Files and photos</source>
         <translation>Dosyalar ve fotoğraflar</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="25"/>
+        <location filename="../qml/components/ReportSheet.qml" line="26"/>
         <source>Notifications</source>
         <translation>Bildirimler</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="26"/>
+        <location filename="../qml/components/ReportSheet.qml" line="27"/>
         <source>Something else</source>
         <translation>Başka bir şey</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="59"/>
+        <location filename="../qml/components/ReportSheet.qml" line="61"/>
         <source>Report a problem</source>
         <translation>Sorun bildir</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="59"/>
-        <location filename="../qml/components/ReportSheet.qml" line="263"/>
+        <location filename="../qml/components/ReportSheet.qml" line="61"/>
+        <location filename="../qml/components/ReportSheet.qml" line="265"/>
         <source>Your report</source>
         <translation>Raporun</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="76"/>
+        <location filename="../qml/components/ReportSheet.qml" line="78"/>
         <source>What is it about?</source>
         <translation>Ne hakkında?</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="102"/>
-        <location filename="../qml/components/ReportSheet.qml" line="115"/>
+        <location filename="../qml/components/ReportSheet.qml" line="104"/>
+        <location filename="../qml/components/ReportSheet.qml" line="117"/>
         <source>What part of NectarLink?</source>
-        <translation>NectarLink'in hangi kısmı?</translation>
+        <translation>NectarLink&apos;in hangi kısmı?</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="119"/>
-        <location filename="../qml/components/ReportSheet.qml" line="149"/>
+        <location filename="../qml/components/ReportSheet.qml" line="121"/>
+        <location filename="../qml/components/ReportSheet.qml" line="151"/>
         <source>What happened?</source>
         <translation>Ne oldu?</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="137"/>
+        <location filename="../qml/components/ReportSheet.qml" line="139"/>
         <source>What you did, what you expected, and what happened instead.</source>
         <translation>Ne yaptın, ne bekledin ve onun yerine ne oldu.</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="161"/>
-        <location filename="../qml/components/ReportSheet.qml" line="166"/>
+        <location filename="../qml/components/ReportSheet.qml" line="163"/>
+        <location filename="../qml/components/ReportSheet.qml" line="168"/>
         <source>It happened just now</source>
         <translation>Az önce oldu</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="176"/>
+        <location filename="../qml/components/ReportSheet.qml" line="178"/>
         <source>Check the connection first</source>
         <translation>Önce bağlantıyı kontrol et</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="183"/>
+        <location filename="../qml/components/ReportSheet.qml" line="185"/>
         <source>Next</source>
         <translation>İleri</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="203"/>
+        <location filename="../qml/components/ReportSheet.qml" line="205"/>
         <source>This is everything in the report. It will be public on GitHub. It has no names, messages, files, numbers or addresses from NectarLink, only what you wrote above.</source>
-        <translation>Raporda olan her şey bu. GitHub'da herkese açık olacak. NectarLink'ten ad, mesaj, dosya, numara veya adres içermez, yalnızca yukarıda yazdıkların.</translation>
+        <translation>Raporda olan her şey bu. GitHub&apos;da herkese açık olacak. NectarLink&apos;ten ad, mesaj, dosya, numara veya adres içermez, yalnızca yukarıda yazdıkların.</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="211"/>
+        <location filename="../qml/components/ReportSheet.qml" line="213"/>
         <source>What you wrote looks like it has an email address or phone number in it. Reports are public, so go back and remove it unless you mean to share it.</source>
         <translation>Yazdıklarında bir e-posta adresi ya da telefon numarası var gibi görünüyor. Raporlar herkese açık, paylaşmak istemiyorsan geri dönüp kaldır.</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="218"/>
+        <location filename="../qml/components/ReportSheet.qml" line="220"/>
         <source>About the devices</source>
         <translation>Cihazlar hakkında</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="219"/>
+        <location filename="../qml/components/ReportSheet.qml" line="221"/>
         <source>Checks</source>
         <translation>Kontroller</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="220"/>
+        <location filename="../qml/components/ReportSheet.qml" line="222"/>
         <source>How features have been doing</source>
         <translation>Özellikler nasıl çalıştı</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="221"/>
+        <location filename="../qml/components/ReportSheet.qml" line="223"/>
         <source>Crashes</source>
         <translation>Çökmeler</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="222"/>
+        <location filename="../qml/components/ReportSheet.qml" line="224"/>
         <source>Activity log</source>
         <translation>Etkinlik günlüğü</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="273"/>
+        <location filename="../qml/components/ReportSheet.qml" line="275"/>
         <source>The report is copied. On the GitHub page, paste it into the Report box, then submit.</source>
         <translation>Rapor kopyalandı. GitHub sayfasında Report kutusuna yapıştırıp gönder.</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="280"/>
+        <location filename="../qml/components/ReportSheet.qml" line="292"/>
+        <source>Sending the report</source>
+        <translation>Rapor gönderiliyor</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="293"/>
+        <source>Sent. This is report #%1.</source>
+        <translation>Gönderildi. Bu, #%1 numaralı rapor.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="294"/>
+        <source>Sent. It will be filed shortly.</source>
+        <translation>Gönderildi. Birazdan kaydedilecek.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="295"/>
+        <source>NectarLink couldn&apos;t reach the report service. It will send the report later by itself.</source>
+        <translation>NectarLink rapor hizmetine ulaşamadı. Raporu daha sonra kendisi gönderecek.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="296"/>
+        <source>Too many reports came from this network today. Use Open on GitHub, or send it tomorrow.</source>
+        <translation>Bugün bu ağdan çok fazla rapor geldi. GitHub'da aç'ı kullan ya da yarın gönder.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="297"/>
+        <source>The report couldn&apos;t be sent. Use Open on GitHub instead.</source>
+        <translation>Rapor gönderilemedi. Bunun yerine GitHub'da aç'ı kullan.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="308"/>
+        <source>View it</source>
+        <translation>Görüntüle</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="317"/>
         <source>Back</source>
         <translation>Geri</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="286"/>
+        <location filename="../qml/components/ReportSheet.qml" line="323"/>
         <source>Copy</source>
         <translation>Kopyala</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="294"/>
+        <location filename="../qml/components/ReportSheet.qml" line="332"/>
         <source>Open on GitHub</source>
-        <translation>GitHub'da aç</translation>
+        <translation>GitHub&apos;da aç</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="341"/>
+        <source>Send</source>
+        <translation>Gönder</translation>
     </message>
 </context>
 <context>

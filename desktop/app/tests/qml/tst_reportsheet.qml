@@ -21,6 +21,9 @@ Item {
             Report.guessed = "files"
             Report.lastPrepare = null
             Report.githubOpened = 0
+            Report.sends = 0
+            Report.sendState = ""
+            Report.sentIssue = 0
             AppController.copied = ""
             sheet.open()
             wait(0)
@@ -50,6 +53,17 @@ Item {
             verify(Report.preview.indexOf("log") < 0)
             sheet.togglePart(16)
             compare(Report.lastPrepare.parts, 31)
+        }
+
+        function test_send_files_it_once() {
+            sheet.step = 1
+            sheet.makeReport()
+            const send = findChild(sheet, "reportSend")
+            verify(send.enabled)
+            send.clicked()
+            compare(Report.sends, 1)
+            compare(Report.sentIssue, 412)
+            verify(!send.enabled)
         }
 
         function test_reopening_starts_over() {

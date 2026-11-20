@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! `Report`: QML singleton for Report a problem (`nectarlink_core::diag::report`).
-//! It gathers this PC's part off the UI thread, shows the exact text, and
-//! opens a new GitHub issue with the short parts filled in; the full text
-//! goes on the clipboard to paste into it. Nothing is sent from here.
+//! It gathers this PC's part off the UI thread and shows the exact text.
+//! Send hands that text to the report service (`diag::send`), which files
+//! it; Open on GitHub opens a new issue with the short parts filled in and
+//! the full text on the clipboard to paste into it.
 
 use std::{
     pin::Pin,
@@ -18,6 +19,7 @@ use nectarlink_core::{
         crash,
         health::{self, Feature},
         report::{self, Area, DeviceFacts, DevicePart, Parts},
+        send::{self, Answer, Kind, Outgoing, Sent},
     },
 };
 
@@ -38,6 +40,12 @@ pub mod qobject {
         #[qproperty(QString, preview)]
         /// Gathering this PC's part.
         #[qproperty(bool, busy)]
+        /// Where Send got to: "", `sending`, `filed`, `queued` (the service
+        /// files it shortly), `later` (kept, sent at the next chance),
+        /// `limited` (too many today) or `failed`.
+        #[qproperty(QString, send_state, cxx_name = "sendState")]
+        /// The issue the report became, once `filed`.
+        #[qproperty(i32, sent_issue, cxx_name = "sentIssue")]
         type Report = super::ReportRust;
     }
 
@@ -80,6 +88,15 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "openOnGithub"]
         fn open_on_github(self: &Report) -> bool;
+
+        /// Sends the report made last to the report service.
+        #[qinvokable]
+        fn send(self: Pin<&mut Report>);
+
+        /// Opens the issue the sent report became.
+        #[qinvokable]
+        #[cxx_name = "openSentIssue"]
+        fn open_sent_issue(self: &Report) -> bool;
     }
 }
 
@@ -87,6 +104,8 @@ pub mod qobject {
 pub struct ReportRust {
     preview: QString,
     busy: bool,
+    send_state: QString,
+    sent_issue: i32,
 }
 
 /// The report made last, for Open on GitHub.
@@ -95,7 +114,9 @@ static LAST: Mutex<Option<report::Report>> = Mutex::new(None);
 static GENERATION: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 impl qobject::Report {
-    pub fn open(self: Pin<&mut Self>) {
+    pub fn open(mut self: Pin<&mut Self>) {
+        self.as_mut().set_send_state(QString::default());
+        self.as_mut().set_sent_issue(0);
         self.requested();
     }
 
@@ -116,6 +137,7 @@ impl qobject::Report {
         parts: i32,
     ) {
         let generation = GENERATION.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
+        self.as_mut().set_send_state(QString::default());
         let area = Area::parse(&String::from(area)).unwrap_or(Area::Other);
         let (other, text) = (String::from(other), String::from(text));
         let parts = Parts {
@@ -162,6 +184,98 @@ impl qobject::Report {
             }
         }
     }
+}
+
+impl qobject::Report {
+    pub fn send(mut self: Pin<&mut Self>) {
+        let Some(made) = LAST.lock().unwrap_or_else(|e| e.into_inner()).clone() else { return };
+        self.as_mut().set_send_state(QString::from("sending"));
+        let qt = self.qt_thread();
+        let spawned = std::thread::Builder::new().name("report-send".into()).spawn(move || {
+            let outgoing = Outgoing::new(&made, Kind::Person, None, now());
+            let (state, issue) = match deliver(&outgoing) {
+                Some(Answer::Filed { issue }) => ("filed", issue),
+                Some(Answer::Queued) => ("queued", 0),
+                Some(Answer::Limited) => ("limited", 0),
+                Some(Answer::Refused) => ("failed", 0),
+                Some(Answer::Later) | None => {
+                    send::keep_pending(&diag_dir(), &outgoing);
+                    ("later", 0)
+                }
+            };
+            let _ = qt.queue(move |mut object| {
+                object.as_mut().set_sent_issue(i32::try_from(issue).unwrap_or(0));
+                object.set_send_state(QString::from(state));
+            });
+        });
+        if spawned.is_err() {
+            self.set_send_state(QString::from("failed"));
+        }
+    }
+
+    pub fn open_sent_issue(&self) -> bool {
+        let issue = *self.sent_issue();
+        issue > 0 && crate::win::shell::open_url(&send::issue_url(issue as u64)).is_ok()
+    }
+}
+
+/// Posts `outgoing` and notes what became of it. `None` when the service
+/// couldn't be reached.
+fn deliver(outgoing: &Outgoing) -> Option<Answer> {
+    let url = format!("{}/v1/report", send::REPORT_SERVICE);
+    let answer = match crate::win::http::post_json(
+        &url,
+        &[("X-Proof", &outgoing.proof)],
+        outgoing.body.as_bytes(),
+        16 * 1024,
+    ) {
+        Ok((status, body)) => Answer::read(status, &body),
+        Err(e) => {
+            tracing::info!(error = e, "the report service can't be reached");
+            return None;
+        }
+    };
+    tracing::info!(state = ?answer, "report sent");
+    let issue = match answer {
+        Answer::Filed { issue } => Some(issue),
+        Answer::Queued => None,
+        _ => return Some(answer),
+    };
+    send::remember(
+        &diag_dir(),
+        Sent { rid: outgoing.rid.clone(), issue, at: outgoing.at, comments: 0, closed: false },
+        now(),
+    );
+    Some(answer)
+}
+
+/// At an update check: sends the report that couldn't go before, and asks
+/// which issue queued ones became.
+pub fn follow_up() {
+    let dir = diag_dir();
+    if let Some(pending) = send::pending(&dir) {
+        match deliver(&pending) {
+            Some(Answer::Later) | None => {}
+            Some(_) => send::clear_pending(&dir),
+        }
+    }
+    for queued in send::sent(&dir, now()).into_iter().filter(|s| s.issue.is_none()) {
+        let url = format!("{}/v1/report/{}", send::REPORT_SERVICE, queued.rid);
+        match crate::win::http::get_status(&url, 4096).map(|(status, body)| Answer::read(status, &body)) {
+            Ok(Answer::Filed { issue }) => {
+                send::remember(&dir, Sent { issue: Some(issue), ..queued }, now());
+            }
+            Ok(Answer::Refused) => {
+                // Unknown to the service: it waited too long and was dropped.
+                send::forget(&dir, &queued.rid);
+            }
+            _ => {}
+        }
+    }
+}
+
+fn diag_dir() -> std::path::PathBuf {
+    core_host::host().data_dir.join("diag")
 }
 
 /// The feature that failed most in the last day, if any did.

@@ -17,6 +17,70 @@ pub fn get(url: &str, limit: usize) -> Result<Vec<u8>, String> {
     Ok(output.stdout)
 }
 
+/// Sends `body` as JSON to an `https://` URL with `headers` (name, value)
+/// and returns the status and up to `limit` bytes of the answer.
+pub fn post_json(
+    url: &str,
+    headers: &[(&str, &str)],
+    body: &[u8],
+    limit: usize,
+) -> Result<(u16, Vec<u8>), String> {
+    let mut args: Vec<String> = vec!["-X".into(), "POST".into(), "--data-binary".into(), "@-".into()];
+    for (name, value) in [("Content-Type", "application/json")].iter().chain(headers) {
+        if name.contains([':', '\r', '\n']) || value.contains(['\r', '\n']) {
+            return Err("bad header".into());
+        }
+        args.push("-H".into());
+        args.push(format!("{name}: {value}"));
+    }
+    curl_status(url, &args, body, limit)
+}
+
+/// A GET that returns any status with its body, for small JSON answers.
+pub fn get_status(url: &str, limit: usize) -> Result<(u16, Vec<u8>), String> {
+    curl_status(url, &[], &[], limit)
+}
+
+/// Runs curl for `url` with `extra` arguments, `stdin` as its input, and
+/// returns the final status and the answer.
+fn curl_status(url: &str, extra: &[String], stdin: &[u8], limit: usize) -> Result<(u16, Vec<u8>), String> {
+    use std::{
+        io::Write as _,
+        process::{Command, Stdio},
+    };
+    if !url.get(..8).is_some_and(|p| p.eq_ignore_ascii_case("https://")) {
+        return Err("only https".into());
+    }
+    let mut child = Command::new("curl")
+        .args(["-sS", "--proto", "=https", "--connect-timeout", "30", "--max-time", "60"])
+        .args(["-H", "Accept: application/json", "-w", "\n%{http_code}"])
+        .args(extra)
+        .args(["--", url])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("curl isn't available: {e}"))?;
+    if let Some(mut input) = child.stdin.take() {
+        input.write_all(stdin).map_err(|e| e.to_string())?;
+    }
+    let output = child.wait_with_output().map_err(|e| e.to_string())?;
+    if !output.status.success() {
+        return Err(format!("curl failed with status {}", output.status));
+    }
+    let out = output.stdout;
+    let split = out.iter().rposition(|&b| b == b'\n').ok_or("no status")?;
+    let status = std::str::from_utf8(&out[split + 1..])
+        .ok()
+        .and_then(|s| s.trim().parse::<u16>().ok())
+        .ok_or("no status")?;
+    let body = out[..split].to_vec();
+    if body.len() > limit {
+        return Err("too large".into());
+    }
+    Ok((status, body))
+}
+
 /// What a conditional GET found.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Fresh {

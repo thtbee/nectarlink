@@ -8414,148 +8414,188 @@ Voraussetzungen
 <context>
     <name>ReportSheet</name>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="19"/>
+        <location filename="../qml/components/ReportSheet.qml" line="20"/>
         <source>Connection</source>
         <translation>Verbindung</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="20"/>
+        <location filename="../qml/components/ReportSheet.qml" line="21"/>
         <source>Mirroring and app windows</source>
         <translation>Spiegeln und App-Fenster</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="21"/>
+        <location filename="../qml/components/ReportSheet.qml" line="22"/>
         <source>Clipboard</source>
         <translation>Zwischenablage</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="22"/>
+        <location filename="../qml/components/ReportSheet.qml" line="23"/>
         <source>Audio</source>
         <translation>Audio</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="23"/>
+        <location filename="../qml/components/ReportSheet.qml" line="24"/>
         <source>Calls and messages</source>
         <translation>Anrufe und Nachrichten</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="24"/>
+        <location filename="../qml/components/ReportSheet.qml" line="25"/>
         <source>Files and photos</source>
         <translation>Dateien und Fotos</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="25"/>
+        <location filename="../qml/components/ReportSheet.qml" line="26"/>
         <source>Notifications</source>
         <translation>Benachrichtigungen</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="26"/>
+        <location filename="../qml/components/ReportSheet.qml" line="27"/>
         <source>Something else</source>
         <translation>Etwas anderes</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="59"/>
+        <location filename="../qml/components/ReportSheet.qml" line="61"/>
         <source>Report a problem</source>
         <translation>Problem melden</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="59"/>
-        <location filename="../qml/components/ReportSheet.qml" line="263"/>
+        <location filename="../qml/components/ReportSheet.qml" line="61"/>
+        <location filename="../qml/components/ReportSheet.qml" line="265"/>
         <source>Your report</source>
         <translation>Dein Bericht</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="76"/>
+        <location filename="../qml/components/ReportSheet.qml" line="78"/>
         <source>What is it about?</source>
         <translation>Worum geht es?</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="102"/>
-        <location filename="../qml/components/ReportSheet.qml" line="115"/>
+        <location filename="../qml/components/ReportSheet.qml" line="104"/>
+        <location filename="../qml/components/ReportSheet.qml" line="117"/>
         <source>What part of NectarLink?</source>
         <translation>Welcher Teil von NectarLink?</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="119"/>
-        <location filename="../qml/components/ReportSheet.qml" line="149"/>
+        <location filename="../qml/components/ReportSheet.qml" line="121"/>
+        <location filename="../qml/components/ReportSheet.qml" line="151"/>
         <source>What happened?</source>
         <translation>Was ist passiert?</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="137"/>
+        <location filename="../qml/components/ReportSheet.qml" line="139"/>
         <source>What you did, what you expected, and what happened instead.</source>
         <translation>Was du gemacht hast, was du erwartet hast und was stattdessen passiert ist.</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="161"/>
-        <location filename="../qml/components/ReportSheet.qml" line="166"/>
+        <location filename="../qml/components/ReportSheet.qml" line="163"/>
+        <location filename="../qml/components/ReportSheet.qml" line="168"/>
         <source>It happened just now</source>
         <translation>Es ist gerade passiert</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="176"/>
+        <location filename="../qml/components/ReportSheet.qml" line="178"/>
         <source>Check the connection first</source>
         <translation>Erst die Verbindung prüfen</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="183"/>
+        <location filename="../qml/components/ReportSheet.qml" line="185"/>
         <source>Next</source>
         <translation>Weiter</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="203"/>
+        <location filename="../qml/components/ReportSheet.qml" line="205"/>
         <source>This is everything in the report. It will be public on GitHub. It has no names, messages, files, numbers or addresses from NectarLink, only what you wrote above.</source>
         <translation>Das ist alles, was im Bericht steht. Er wird auf GitHub öffentlich sein. Er enthält keine Namen, Nachrichten, Dateien, Nummern oder Adressen aus NectarLink, nur das, was du oben geschrieben hast.</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="211"/>
+        <location filename="../qml/components/ReportSheet.qml" line="213"/>
         <source>What you wrote looks like it has an email address or phone number in it. Reports are public, so go back and remove it unless you mean to share it.</source>
         <translation>Was du geschrieben hast, scheint eine E-Mail-Adresse oder Telefonnummer zu enthalten. Berichte sind öffentlich, also geh zurück und entferne sie, außer du willst sie teilen.</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="218"/>
+        <location filename="../qml/components/ReportSheet.qml" line="220"/>
         <source>About the devices</source>
         <translation>Über die Geräte</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="219"/>
+        <location filename="../qml/components/ReportSheet.qml" line="221"/>
         <source>Checks</source>
         <translation>Prüfungen</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="220"/>
+        <location filename="../qml/components/ReportSheet.qml" line="222"/>
         <source>How features have been doing</source>
         <translation>Wie die Funktionen liefen</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="221"/>
+        <location filename="../qml/components/ReportSheet.qml" line="223"/>
         <source>Crashes</source>
         <translation>Abstürze</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="222"/>
+        <location filename="../qml/components/ReportSheet.qml" line="224"/>
         <source>Activity log</source>
         <translation>Aktivitätsprotokoll</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="273"/>
+        <location filename="../qml/components/ReportSheet.qml" line="275"/>
         <source>The report is copied. On the GitHub page, paste it into the Report box, then submit.</source>
         <translation>Der Bericht ist kopiert. Füge ihn auf der GitHub-Seite in das Feld „Report“ ein und sende ihn ab.</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="280"/>
+        <location filename="../qml/components/ReportSheet.qml" line="292"/>
+        <source>Sending the report</source>
+        <translation>Bericht wird gesendet</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="293"/>
+        <source>Sent. This is report #%1.</source>
+        <translation>Gesendet. Das ist Bericht #%1.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="294"/>
+        <source>Sent. It will be filed shortly.</source>
+        <translation>Gesendet. Er wird gleich eingetragen.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="295"/>
+        <source>NectarLink couldn&apos;t reach the report service. It will send the report later by itself.</source>
+        <translation>NectarLink hat den Berichtsdienst nicht erreicht. Der Bericht wird später automatisch gesendet.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="296"/>
+        <source>Too many reports came from this network today. Use Open on GitHub, or send it tomorrow.</source>
+        <translation>Aus diesem Netzwerk kamen heute zu viele Berichte. Nutze „Auf GitHub öffnen“ oder sende ihn morgen.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="297"/>
+        <source>The report couldn&apos;t be sent. Use Open on GitHub instead.</source>
+        <translation>Der Bericht konnte nicht gesendet werden. Nutze stattdessen „Auf GitHub öffnen“.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="308"/>
+        <source>View it</source>
+        <translation>Ansehen</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="317"/>
         <source>Back</source>
         <translation>Zurück</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="286"/>
+        <location filename="../qml/components/ReportSheet.qml" line="323"/>
         <source>Copy</source>
         <translation>Kopieren</translation>
     </message>
     <message>
-        <location filename="../qml/components/ReportSheet.qml" line="294"/>
+        <location filename="../qml/components/ReportSheet.qml" line="332"/>
         <source>Open on GitHub</source>
         <translation>Auf GitHub öffnen</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="341"/>
+        <source>Send</source>
+        <translation>Senden</translation>
     </message>
 </context>
 <context>

@@ -3,8 +3,9 @@ import QtQuick
 import app.nectarlink
 
 // Report a problem: what went wrong in the user's words, then the exact
-// report to read before it goes anywhere. Open on GitHub fills in a new
-// issue and puts the report on the clipboard to paste into it.
+// report to read before it goes anywhere. Send hands it to the report
+// service, which files it as an issue; Open on GitHub fills in a new issue
+// and puts the report on the clipboard to paste into it.
 Sheet {
     id: sheet
     cardWidth: 600
@@ -25,6 +26,7 @@ Sheet {
         { id: "notifications", label: qsTr("Notifications") },
         { id: "other", label: qsTr("Something else") }
     ]
+    readonly property bool ready: !Report.busy && Report.preview.length > 0
     readonly property bool contactWarning: Report.looksLikeContact(description.text) || Report.looksLikeContact(otherArea.text)
 
     function reset() {
@@ -272,6 +274,41 @@ Sheet {
                 muted: true
                 text: qsTr("The report is copied. On the GitHub page, paste it into the Report box, then submit.")
             }
+            Item {
+                width: parent.width
+                height: Math.max(sendStatus.height, viewSent.visible ? viewSent.height : 0)
+                visible: Report.sendState !== ""
+                Txt {
+                    id: sendStatus
+                    anchors.left: parent.left
+                    anchors.right: viewSent.visible ? viewSent.left : parent.right
+                    anchors.rightMargin: viewSent.visible ? 10 : 0
+                    anchors.verticalCenter: parent.verticalCenter
+                    wrapMode: Text.WordWrap
+                    role: "bodySmall"
+                    color: ["limited", "failed"].indexOf(Report.sendState) >= 0 ? Theme.warning : Theme.surfaceContent
+                    text: {
+                        switch (Report.sendState) {
+                        case "sending": return qsTr("Sending the report")
+                        case "filed": return qsTr("Sent. This is report #%1.").arg(Report.sentIssue)
+                        case "queued": return qsTr("Sent. It will be filed shortly.")
+                        case "later": return qsTr("NectarLink couldn't reach the report service. It will send the report later by itself.")
+                        case "limited": return qsTr("Too many reports came from this network today. Use Open on GitHub, or send it tomorrow.")
+                        case "failed": return qsTr("The report couldn't be sent. Use Open on GitHub instead.")
+                        }
+                        return ""
+                    }
+                }
+                Button {
+                    id: viewSent
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: Report.sendState === "filed" && Report.sentIssue > 0
+                    variant: "text"
+                    text: qsTr("View it")
+                    onClicked: Report.openSentIssue()
+                }
+            }
             Row {
                 anchors.right: parent.right
                 spacing: 10
@@ -281,22 +318,29 @@ Sheet {
                     onClicked: sheet.step = 0
                 }
                 Button {
-                    variant: "tonal"
+                    variant: "text"
                     iconPath: Icons.copy
                     text: qsTr("Copy")
-                    enabled: !Report.busy && Report.preview.length > 0
+                    enabled: sheet.ready
                     onClicked: {
                         AppController.copyText(Report.preview)
                         sheet.copied = true
                     }
                 }
                 Button {
+                    variant: "tonal"
                     text: qsTr("Open on GitHub")
-                    enabled: !Report.busy && Report.preview.length > 0
+                    enabled: sheet.ready
                     onClicked: {
                         AppController.copyText(Report.preview)
                         sheet.copied = Report.openOnGithub()
                     }
+                }
+                Button {
+                    objectName: "reportSend"
+                    text: qsTr("Send")
+                    enabled: sheet.ready && ["", "failed", "limited"].indexOf(Report.sendState) >= 0
+                    onClicked: Report.send()
                 }
             }
         }

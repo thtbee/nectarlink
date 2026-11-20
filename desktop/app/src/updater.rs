@@ -236,6 +236,11 @@ pub fn can_install_unattended() -> bool {
 /// or sooner when asked ([`check_soon`]), while automatic checks are on.
 pub fn start() {
     if !can_update() {
+        // No update checks here, but a report that couldn't be sent still goes.
+        let _ = std::thread::Builder::new().name("reports".into()).spawn(|| {
+            std::thread::sleep(FIRST_CHECK);
+            crate::bridge::report::follow_up();
+        });
         return;
     }
     let spawned = std::thread::Builder::new().name("updates".into()).spawn(|| {
@@ -245,6 +250,7 @@ pub fn start() {
             if AUTO.load(Ordering::Relaxed) {
                 check_now(false);
             }
+            crate::bridge::report::follow_up();
             // While an update waits to install itself, look for a quiet moment.
             let next_check = checked + check_every();
             while let Some(left) = next_check.checked_duration_since(Instant::now()) {

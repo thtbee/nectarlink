@@ -16,7 +16,7 @@ use windows::{
         WINHTTP_QUERY_STATUS_CODE, WinHttpCloseHandle, WinHttpConnect, WinHttpOpen, WinHttpOpenRequest,
         WinHttpQueryHeaders, WinHttpReadData, WinHttpReceiveResponse, WinHttpSendRequest, WinHttpSetTimeouts,
     },
-    core::{HSTRING, PCWSTR, w},
+    core::{HSTRING, PCWSTR},
 };
 
 /// Resolve, connect, send and receive limits (ms). GitHub's download host
@@ -114,6 +114,22 @@ impl Response {
 /// bytes from `from` on when that's past 0, and only if it changed from
 /// `etag` when there's one (a 304 answers otherwise).
 fn open(url: &str, from: u64, etag: Option<&str>) -> Result<Response, String> {
+    // GitHub's API wants the Accept header; it's harmless elsewhere.
+    let mut headers = "Accept: application/vnd.github+json, application/octet-stream\r\n".to_owned();
+    if from > 0 {
+        headers.push_str(&format!("Range: bytes={from}-\r\n"));
+    }
+    // An ETag is a short quoted token; anything else isn't sent.
+    if let Some(etag) = etag.filter(|e| e.len() <= 200 && !e.contains(['\r', '\n'])) {
+        headers.push_str(&format!("If-None-Match: {etag}\r\n"));
+    }
+    start("GET", url, &headers, &[])
+}
+
+/// Sends a `method` request for an `https://` URL (following redirects)
+/// with `headers` (each line ending in CRLF) and `body`, and waits for the
+/// status.
+fn start(method: &str, url: &str, headers: &str, body: &[u8]) -> Result<Response, String> {
     let rest = url.strip_prefix("https://").ok_or("only https")?;
     let (host, path) = rest.split_once('/').map_or((rest, "/".to_owned()), |(h, p)| (h, format!("/{p}")));
     let agent = HSTRING::from(format!("Nectarlink/{} (Windows)", env!("CARGO_PKG_VERSION")));
@@ -138,7 +154,7 @@ fn open(url: &str, from: u64, etag: Option<&str>) -> Result<Response, String> {
         }
         let request = Handle(WinHttpOpenRequest(
             connection.0,
-            w!("GET"),
+            &HSTRING::from(method),
             &HSTRING::from(path),
             PCWSTR::null(),
             PCWSTR::null(),
@@ -148,17 +164,11 @@ fn open(url: &str, from: u64, etag: Option<&str>) -> Result<Response, String> {
         if request.0.is_null() {
             return Err(last_error("WinHttpOpenRequest"));
         }
-        // GitHub's API wants the Accept header; it's harmless elsewhere.
-        let mut headers = "Accept: application/vnd.github+json, application/octet-stream\r\n".to_owned();
-        if from > 0 {
-            headers.push_str(&format!("Range: bytes={from}-\r\n"));
-        }
-        // An ETag is a short quoted token; anything else isn't sent.
-        if let Some(etag) = etag.filter(|e| e.len() <= 200 && !e.contains(['\r', '\n'])) {
-            headers.push_str(&format!("If-None-Match: {etag}\r\n"));
-        }
         let headers: Vec<u16> = headers.encode_utf16().collect();
-        WinHttpSendRequest(request.0, Some(&headers), None, 0, 0, 0).map_err(|e| format!("send: {e}"))?;
+        let length = body.len() as u32;
+        let data = (!body.is_empty()).then_some(body.as_ptr().cast::<core::ffi::c_void>());
+        WinHttpSendRequest(request.0, Some(&headers), data, length, length, 0)
+            .map_err(|e| format!("send: {e}"))?;
         WinHttpReceiveResponse(request.0, std::ptr::null_mut()).map_err(|e| format!("receive: {e}"))?;
         let mut status: u32 = 0;
         let mut size = std::mem::size_of::<u32>() as u32;
@@ -182,6 +192,31 @@ pub fn get(url: &str, limit: usize) -> Result<Vec<u8>, String> {
         return Err(format!("HTTP {}", response.status));
     }
     read_all(&response, limit)
+}
+
+/// Sends `body` as JSON to an `https://` URL with `headers` (name, value)
+/// and returns the status and up to `limit` bytes of the answer.
+pub fn post_json(
+    url: &str,
+    headers: &[(&str, &str)],
+    body: &[u8],
+    limit: usize,
+) -> Result<(u16, Vec<u8>), String> {
+    let mut lines = "Accept: application/json\r\nContent-Type: application/json\r\n".to_owned();
+    for (name, value) in headers {
+        if name.contains([':', '\r', '\n']) || value.contains(['\r', '\n']) {
+            return Err("bad header".into());
+        }
+        lines.push_str(&format!("{name}: {value}\r\n"));
+    }
+    let response = start("POST", url, &lines, body)?;
+    Ok((response.status as u16, read_all(&response, limit)?))
+}
+
+/// A GET that returns any status with its body, for small JSON answers.
+pub fn get_status(url: &str, limit: usize) -> Result<(u16, Vec<u8>), String> {
+    let response = start("GET", url, "Accept: application/json\r\n", &[])?;
+    Ok((response.status as u16, read_all(&response, limit)?))
 }
 
 /// What a conditional GET found.

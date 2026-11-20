@@ -16,6 +16,7 @@ pub mod layer;
 pub mod redact;
 pub mod report;
 pub mod ring;
+pub mod send;
 
 pub use layer::RingLayer;
 pub use redact::{addr, init_roots, path, peer};

@@ -10,6 +10,9 @@ QtObject {
     property string guessed: "files"
     property var lastPrepare: null
     property int githubOpened: 0
+    property string sendState: ""
+    property int sentIssue: 0
+    property int sends: 0
     signal requested()
     function open() { requested() }
     function guessArea() { return guessed }
@@ -19,4 +22,6 @@ QtObject {
     }
     function looksLikeContact(text) { return text.indexOf("@") >= 0 }
     function openOnGithub() { githubOpened++; return true }
+    function send() { sends++; sentIssue = 412; sendState = "filed" }
+    function openSentIssue() { return sentIssue > 0 }
 }
