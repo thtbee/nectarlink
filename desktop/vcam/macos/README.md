@@ -86,7 +86,7 @@ launch, which the DMG check in `build.yml` catches.
 
 ### Trying it locally (Apple Development, no portal clicks)
 
-Xcode can make a development profile for you. In a throwaway project, with the Akylas team:
+Xcode can make a development profile for you. In a throwaway project, signed with your own team:
 an application target `app.nectarlink.desktop` (entitlement `com.apple.developer.system-extension.install`
 and the App Group `$(TeamIdentifierPrefix)group.com.nectarlink.desktop`) and a system-extension
 target `app.nectarlink.desktop.camera-extension`. Run
@@ -108,9 +108,9 @@ The workflows (`build.yml`, called by `nightly.yml` and `release.yml`) already s
 DMG with `APPLE_CERT_P12`, `APPLE_CERT_PASSWORD` and the `APPLE_API_*` key. To ship a DMG whose
 camera extension installs:
 
-1. **App ID.** In the Apple Developer portal (Akylas team) the App ID `app.nectarlink.desktop`
-   exists (Xcode registered it) and needs the **System Extension** capability enabled. Check
-   Identifiers → `app.nectarlink.desktop` → Capabilities. The extension's ID
+1. **App ID.** In the Apple Developer portal of the team that signs releases, register the App ID
+   `app.nectarlink.desktop` (macOS) if it isn't there, and enable its **System Extension**
+   capability (Identifiers → `app.nectarlink.desktop` → Capabilities). The extension's ID
    `app.nectarlink.desktop.camera-extension` and the App Group need nothing registered.
 2. **Developer ID profile.** Profiles → **+** → *Developer ID* (macOS) → pick that App ID → pick the
    *Developer ID Application* certificate that is in `APPLE_CERT_P12` → name it, download the
@@ -119,7 +119,7 @@ camera extension installs:
    secret `APPLE_HOST_PROFILE` (Settings → Secrets and variables → Actions). Nothing else changes:
    `nightly.yml` and `release.yml` already pass it to `build.yml`.
 4. **Run it.** Start a Nightly (or push a tag). The log must show `Building the virtual camera
-   extension (universal, team 3UUB5NM43K)` and no "no provisioning profile" warning; with the
+   extension (universal, team <your team ID>)` and no "no provisioning profile" warning; with the
    secret set the build runs with `REQUIRE_VCAM=1` and fails instead of shipping a camera that
    can't install. The step "Check the DMG launches cleanly" runs the signed app, which fails if
    the profile doesn't match the signature.
