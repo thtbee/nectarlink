@@ -1,11 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-//! Phone notifications as macOS notifications, with action buttons, inline
-//! replies, progress updates and click / dismiss events.
-//!
-//! The work is done by UserNotifications (`cpp/mac_notifications.mm`), which
-//! only works for a process running from an `.app` bundle. From a bare binary
-//! (`cargo run`) notifications fall back to plain `osascript` banners, which
-//! carry no buttons, no events and no progress.
+//! Phone notifications on macOS, through UserNotifications
+//! (`cpp/mac_notifications.mm`), which needs an `.app` bundle. Without one
+//! (`cargo run`) they are plain `osascript` banners: no buttons, no events.
 
 use std::{
     collections::HashMap,
@@ -63,12 +59,10 @@ pub struct Progress {
 type OnEvent = Box<dyn Fn(ToastEvent) + Send + Sync>;
 static ON_EVENT: OnceLock<OnEvent> = OnceLock::new();
 
-/// Whether the system notification center is in use, as opposed to the
-/// `osascript` fallback.
+/// Running from a bundle, so the system notification center is usable.
 static NATIVE: AtomicBool = AtomicBool::new(false);
 
-/// What a progress notification last showed, so an update can change its
-/// bar and leave the rest as it was. Keyed by device and notification key.
+/// The last toast of each progress notification, so an update keeps the rest.
 static PROGRESS_TOASTS: Mutex<Option<HashMap<(String, String), Toast>>> = Mutex::new(None);
 
 #[allow(unsafe_code)]
@@ -109,17 +103,39 @@ mod ffi {
     }
 }
 
-/// Whether macOS shows this app's notifications. The user can turn them off
-/// in System Settings > Notifications; until they've been asked, or when
-/// running without a bundle, this says yes.
-pub fn enabled() -> bool {
-    if !NATIVE.load(Ordering::Acquire) {
-        return true;
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Route {
+    Native,
+    /// No bundle, permission not known yet, or refused by the system.
+    Banner,
+    /// The user turned them off: show nothing.
+    Off,
+}
+
+/// `authorization` is the bridge's: -1 unknown, 0 off, 1 allowed, 2 refused.
+fn route_for(native: bool, authorization: i32) -> Route {
+    match (native, authorization) {
+        (false, _) => Route::Banner,
+        (true, 1) => Route::Native,
+        (true, 0) => Route::Off,
+        (true, _) => Route::Banner,
     }
-    // SAFETY: takes no arguments and only reads the cached permission.
+}
+
+fn route() -> Route {
+    let native = NATIVE.load(Ordering::Acquire);
+    if !native {
+        return route_for(false, -1);
+    }
+    // SAFETY: takes no arguments.
     #[allow(unsafe_code)]
     let state = unsafe { ffi::nl_notif_authorization() };
-    state != 0
+    route_for(true, state)
+}
+
+/// Whether the user hasn't turned notifications off in System Settings.
+pub fn enabled() -> bool {
+    route() != Route::Off
 }
 
 pub fn set_process_id() {}
@@ -135,24 +151,22 @@ pub fn unregister() {
     }
 }
 
-/// Takes over the system's notification center and asks for permission (the
-/// system asks the user the first time only). `on_event` gets what the user
-/// does with notifications. The icon is the app's own, which macOS takes from
-/// the bundle, so it isn't written here.
+/// Takes over the notification center and asks for permission. The icon is
+/// the bundle's, so `_icon` isn't used.
 pub fn start(_icon: PathBuf, on_event: impl Fn(ToastEvent) + Send + Sync + 'static) {
     let _ = ON_EVENT.set(Box::new(on_event));
-    // SAFETY: the callback is a plain function that lives for the whole run.
+    // SAFETY: the callback is a plain function.
     #[allow(unsafe_code)]
     let native = unsafe { ffi::nl_notif_start(on_native_event) };
     NATIVE.store(native, Ordering::Release);
     if native {
         tracing::info!("notifications use the macOS notification center");
     } else {
-        tracing::info!("not running from an app bundle: notifications are plain banners without buttons");
+        tracing::info!("not in an app bundle: notifications are plain banners");
     }
 }
 
-/// Called by UserNotifications on a thread of its own.
+/// Called on a thread of the system's.
 #[allow(unsafe_code)]
 unsafe extern "C" fn on_native_event(
     kind: i32,
@@ -165,8 +179,7 @@ unsafe extern "C" fn on_native_event(
         if p.is_null() {
             String::new()
         } else {
-            // SAFETY: a non-null pointer from the bridge is a NUL-terminated
-            // string that lives for the duration of this call.
+            // SAFETY: a non-null pointer from the bridge is a NUL-terminated string.
             unsafe { CStr::from_ptr(p) }.to_string_lossy().into_owned()
         }
     };
@@ -209,7 +222,7 @@ pub fn show(toast: Toast) {
     post(&toast, false);
 }
 
-/// Moves a shown notification's progress, without a new banner or a sound.
+/// Moves a notification's progress in place: no banner, no sound.
 pub fn update_progress(device: &str, key: &str, progress: Progress) {
     let id = (device.to_owned(), key.to_owned());
     let mut shown = PROGRESS_TOASTS.lock().unwrap_or_else(|e| e.into_inner());
@@ -228,7 +241,7 @@ pub fn remove(device: &str, key: &str) {
     });
     if NATIVE.load(Ordering::Acquire) {
         let (device, key) = (c_string(device), c_string(key));
-        // SAFETY: both are NUL-terminated and outlive the call.
+        // SAFETY: NUL-terminated, outlive the call.
         #[allow(unsafe_code)]
         unsafe {
             ffi::nl_notif_remove(device.as_ptr(), key.as_ptr());
@@ -236,12 +249,12 @@ pub fn remove(device: &str, key: &str) {
     }
 }
 
-/// Removes every notification of a device (it stopped sharing, or was unpaired).
+/// Removes every notification of a device.
 pub fn remove_device(device: &str) {
     forget(|shown| shown.retain(|(d, _), _| d != device));
     if NATIVE.load(Ordering::Acquire) {
         let device = c_string(device);
-        // SAFETY: NUL-terminated and outlives the call.
+        // SAFETY: NUL-terminated, outlives the call.
         #[allow(unsafe_code)]
         unsafe {
             ffi::nl_notif_remove_device(device.as_ptr());
@@ -256,14 +269,18 @@ fn forget(edit: impl FnOnce(&mut HashMap<(String, String), Toast>)) {
     }
 }
 
-/// Posts a notification; `quiet` is an update of one that's already up.
+/// `quiet` updates one that's already up.
 fn post(toast: &Toast, quiet: bool) {
     let body = body_with_progress(&toast.body, toast.progress.as_ref());
-    if !NATIVE.load(Ordering::Acquire) {
-        if !quiet {
-            banner(&toast.title, &body, &toast.attribution);
+    match route() {
+        Route::Native => {}
+        Route::Banner => {
+            if !quiet {
+                banner(&toast.title, &body, &toast.attribution);
+            }
+            return;
         }
-        return;
+        Route::Off => return,
     }
 
     let device = c_string(&toast.device);
@@ -271,8 +288,7 @@ fn post(toast: &Toast, quiet: bool) {
     let title = c_string(&toast.title);
     let subtitle = c_string(&toast.attribution);
     let body = c_string(&body);
-    // A picture in the message, or else the phone app's icon (the caller's
-    // photo for a call): macOS shows it as a thumbnail on the right.
+    // The picture, or else the app's icon: a thumbnail on the right.
     let attachment = toast
         .image
         .as_ref()
@@ -285,9 +301,7 @@ fn post(toast: &Toast, quiet: bool) {
     let title_ptrs: Vec<*const c_char> = titles.iter().map(|s| s.as_ptr()).collect();
     let (reply_id, reply_title) =
         toast.reply.as_ref().map(|(id, title)| (c_string(id), c_string(title))).unwrap_or_default();
-    // SAFETY: every pointer is to a NUL-terminated string (or an array of
-    // them, `action_count` long) that outlives the call, and the bridge copies
-    // what it keeps.
+    // SAFETY: NUL-terminated strings (and arrays of them, `action_count` long) that outlive the call; the bridge copies what it keeps.
     #[allow(unsafe_code)]
     unsafe {
         ffi::nl_notif_show(
@@ -309,14 +323,13 @@ fn post(toast: &Toast, quiet: bool) {
     }
 }
 
-/// A C string for the bridge; a NUL inside the text would end it early, so it goes.
+/// A C string; NULs would end it early, so they go.
 fn c_string(text: &str) -> CString {
     CString::new(text.replace('\0', "")).unwrap_or_default()
 }
 
-/// The body, and under it the progress: a bar of ten segments, then the
-/// status and the label ("▰▰▰▱▱▱▱▱▱▱ Sending… 30%"). macOS has no progress bar
-/// in a notification, so the text is replaced in place as it moves.
+/// The body with the progress as a line of text, as macOS has no progress
+/// bar in a notification: "▰▰▰▱▱▱▱▱▱▱ Sending… 30%".
 fn body_with_progress(body: &str, progress: Option<&Progress>) -> String {
     let Some(progress) = progress else {
         return body.to_owned();
@@ -338,7 +351,7 @@ fn body_with_progress(body: &str, progress: Option<&Progress>) -> String {
     }
 }
 
-/// A plain banner through AppleScript, for a process without a bundle.
+/// A plain banner, for a process without a bundle.
 fn banner(title: &str, body: &str, subtitle: &str) {
     let script = banner_script(title, body, subtitle);
     let _ = std::thread::Builder::new().name("toast-banner".into()).spawn(move || {
@@ -355,8 +368,7 @@ fn banner_script(title: &str, body: &str, subtitle: &str) -> String {
     script
 }
 
-/// `text` as an AppleScript string literal. Rust's `{:?}` isn't one: it
-/// writes `\u{..}` for characters AppleScript doesn't know.
+/// `text` as an AppleScript string literal (Rust's `{:?}` writes `\u{..}` escapes it doesn't know).
 fn applescript_string(text: &str) -> String {
     let mut out = String::with_capacity(text.len() + 2);
     out.push('"');
@@ -443,6 +455,20 @@ mod tests {
     fn the_banner_script_has_a_subtitle_only_when_there_is_one() {
         assert_eq!(banner_script("T", "B", ""), r#"display notification "B" with title "T""#);
         assert_eq!(banner_script("T", "B", "S"), r#"display notification "B" with title "T" subtitle "S""#);
+    }
+
+    #[test]
+    fn notifications_go_where_the_system_allows_them() {
+        // Not in a bundle.
+        assert_eq!(route_for(false, 1), Route::Banner);
+        assert_eq!(route_for(false, 0), Route::Banner);
+        // Allowed.
+        assert_eq!(route_for(true, 1), Route::Native);
+        // Turned off by the user: not even a banner.
+        assert_eq!(route_for(true, 0), Route::Off);
+        // Refused, or not answered yet.
+        assert_eq!(route_for(true, 2), Route::Banner);
+        assert_eq!(route_for(true, -1), Route::Banner);
     }
 
     #[test]

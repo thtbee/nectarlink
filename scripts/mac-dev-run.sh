@@ -1,17 +1,12 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Builds the desktop app and runs it from a minimal .app bundle, for trying
-# what only works in a bundle: native notifications (UserNotifications refuses
-# to work for a bare `cargo run` binary), the Keychain's access prompts and
-# the app's name in the menu bar and System Settings.
+# Builds the desktop app and runs it from a minimal .app bundle, for what
+# needs one (native notifications). Not distributable: use build-dmg.sh.
 #
 #   scripts/mac-dev-run.sh [app arguments]
 #
-# It has its own bundle identifier (app.nectarlink.desktop.dev), so the
-# permissions macOS asks for are separate from an installed NectarLink's.
-# Qt is found where the build found it (Homebrew or QT_ROOT_DIR), so there's
-# no macdeployqt step; use desktop/packaging/macos/build-dmg.sh for a
-# distributable app.
+# The bundle id is app.nectarlink.desktop.dev, so permissions are separate
+# from an installed NectarLink's.
 
 set -euo pipefail
 
@@ -36,16 +31,15 @@ sed -e "s/@VERSION@/${VERSION}/g" -e "s/@BUNDLE_VERSION@/${VERSION%%-*}/g" \
     -e 's|<string>NectarLink</string>|<string>NectarLink Dev</string>|' \
     desktop/packaging/macos/Info.plist.in > "${APP}/Contents/Info.plist"
 
-# A clone on APFS, so a big debug binary costs no time or space.
+# An APFS clone: free, even for a big debug binary.
 cp -c "target/${PROFILE_DIR}/nectarlink-desktop" "${APP}/Contents/MacOS/nectarlink-desktop"
 for qm in target/"${PROFILE_DIR}"/nectarlink_*.qm; do
     [[ ! -f "${qm}" ]] || cp "${qm}" "${APP}/Contents/Resources/"
 done
 
-# Ad-hoc by default, which macOS may refuse to send notifications for; set
-# SIGN_IDENTITY (a "Developer ID Application: ..." name or hash) to sign properly.
+# Ad-hoc by default; SIGN_IDENTITY signs with a real identity, which keeps
+# the Keychain's "Always Allow" across rebuilds.
 codesign --force --sign "${SIGN_IDENTITY:--}" --timestamp=none "${APP}"
 
-# Run the binary itself, so its log stays in this terminal; the system still
-# sees the bundle around it.
+# Run the binary itself, so the log stays in this terminal.
 exec "${APP}/Contents/MacOS/nectarlink-desktop" "$@"
