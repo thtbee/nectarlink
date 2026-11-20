@@ -244,16 +244,15 @@ jobs:
           arch: clang_64
           cache: true
           aqtsource: git+https://github.com/miurahr/aqtinstall.git@5a49f2b391ae8ee1d3c0dd87f8b33c1d49a4deb7
-      # The same packaging Nightlies and releases use (builds both
-      # architectures and joins them, ad-hoc signed here), so a broken DMG
-      # shows up here first.
-      - name: Build and package the universal DMG
-        run: bash desktop/packaging/macos/build-dmg.sh
+      # The same packaging Nightlies and releases use, for this runner's
+      # architecture only (they join Apple silicon and Intel into one
+      # universal app), so a broken DMG shows up here first.
+      - name: Build and package the DMG
+        run: ARCH=arm64 bash desktop/packaging/macos/build-dmg.sh
       - name: Check the DMG starts and carries its translations
         run: |
           MNT=$(mktemp -d)
           hdiutil attach dist/*.dmg -mountpoint "$MNT" -nobrowse -quiet
-          [ "$(lipo -archs "$MNT/NectarLink.app/Contents/MacOS/nectarlink-desktop" | tr ' ' '\n' | sort | tr '\n' ' ')" = "arm64 x86_64 " ]
           "$MNT/NectarLink.app/Contents/MacOS/nectarlink-desktop" --version
           ls "$MNT/NectarLink.app/Contents/Resources/"nectarlink_*.qm
           codesign --verify --deep --strict "$MNT/NectarLink.app"

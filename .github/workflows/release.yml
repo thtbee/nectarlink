@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 # A tag like v0.1.0 builds the Windows installers, the Linux packages, the
-# signed and notarized universal macOS DMG and the signed Android app
-# (build.yml), and puts them on a draft GitHub release
+# universal macOS DMG (signed and notarized once the Apple secrets are set)
+# and the signed Android app (build.yml), and puts them on a draft GitHub release
 # with their SHA-256 sums, which the apps' updaters check, for a maintainer
 # to review and publish. Publishing it updates the stable channel's feed
 # (channels.yml).

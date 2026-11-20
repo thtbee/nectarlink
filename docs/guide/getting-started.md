@@ -48,7 +48,7 @@ Each kind of install updates itself the same way it was installed.
 
 1. Download `Nectarlink-<version>-macos-universal.dmg` from the project's GitHub Releases page (Nightlies for now) and open it. One file runs on both Apple silicon and Intel Macs.
 2. Drag **NectarLink** onto **Applications**.
-3. Open NectarLink from Applications. Builds from Releases and Nightlies are signed with a Developer ID and notarized by Apple, so macOS opens them without a warning. A DMG you build yourself isn't: macOS stops it the first time, so open **System Settings › Privacy & Security**, scroll down to the message about NectarLink and click **Open Anyway**.
+3. Open NectarLink from Applications. It isn't signed with an Apple Developer ID yet, so macOS stops it the first time: open **System Settings › Privacy & Security**, scroll down to the message about NectarLink and click **Open Anyway**.
 
 The Mac app doesn't update itself yet: install a new version the same way, over the old one.
 
