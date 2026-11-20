@@ -9,6 +9,7 @@ members = [
     "core/nectarlink-actions",
     "core/nectarlink-mcp",
     "desktop/app",
+    "desktop/credprov",
     "desktop/vcam",
     "tools/xtask",
     "spikes/s1-qt-rust",

@@ -225,6 +225,11 @@ pub(crate) struct Shared {
     pub(crate) call_audio_stops: Mutex<HashMap<DeviceId, Arc<tokio::sync::Notify>>>,
     /// Per-peer rate limiters and prompt state for remote input.
     pub(crate) remote: Mutex<crate::remote::RemoteState>,
+    /// This PC's unlock requests to phones and its record of failures (ADR 0009).
+    pub(crate) unlock_requests: Mutex<crate::unlock::Requests>,
+    /// Phone side: each PC's declined or unanswered unlock prompts, so a PC can't
+    /// keep asking this phone's owner.
+    pub(crate) unlock_prompts: Mutex<HashMap<DeviceId, crate::unlock::Requests>>,
     /// Per-peer prompt state and open folders for the storage service.
     pub(crate) storage: Mutex<crate::storage::StorageState>,
     /// Encrypted-at-rest history of the last 50 clips exchanged with peers.
@@ -745,6 +750,29 @@ impl Shared {
                 .is_some_and(|(_, announced)| crate::session::is_lan_peer_ip(ip, announced))
     }
 
+    /// Whether `ip` is the peer's address on this network, strictly enough to unlock a
+    /// PC with: a private, link-local or loopback address (never a tailnet or CGNAT
+    /// one), or one the peer announced over mDNS here that's also on one of this
+    /// device's own subnets. An address announced here once but reached later from
+    /// elsewhere (a phone's mobile data address) doesn't count.
+    pub(crate) fn is_unlock_local_ip(&self, peer: &DeviceId, ip: std::net::IpAddr) -> bool {
+        let ip = ip.to_canonical();
+        if crate::session::is_private_lan_ip(ip) {
+            return true;
+        }
+        if crate::session::is_tailnet_ip(ip) {
+            return false;
+        }
+        let announced = lock(&self.lan_seen)
+            .get(peer)
+            .is_some_and(|(_, addrs)| addrs.iter().any(|a| a.ip().to_canonical() == ip));
+        announced
+            && self.endpoint.addr().ip_addrs().any(|own| {
+                let own = own.ip().to_canonical();
+                !own.is_loopback() && crate::session::is_same_subnet(own, ip)
+            })
+    }
+
     pub(crate) fn is_connection_allowed(&self, conn: &Connection) -> bool {
         if self.away_mode() || self.is_usb_connection(conn) {
             return true;
@@ -1249,6 +1277,12 @@ impl Shared {
     /// Removes a paired device locally (after we or the peer unpaired).
     pub async fn forget_peer(self: &Arc<Self>, peer: &DeviceId) -> Result<()> {
         let peer_name = self.peer_name(peer);
+        // Keys a phone kept to unlock that PC (ADR 0009). The PC's sealed
+        // passwords go with the device's row.
+        {
+            let (platform, pc) = (self.platform.clone(), *peer);
+            let _ = tokio::task::spawn_blocking(move || platform.unlock_forget(&pc, None)).await;
+        }
         let dropped_count = self
             .store
             .list_send_queue(Some(peer))
@@ -1991,6 +2025,8 @@ impl Node {
             mic_stops: Mutex::new(HashMap::new()),
             call_audio_stops: Mutex::new(HashMap::new()),
             remote: Mutex::new(Default::default()),
+            unlock_requests: Mutex::new(crate::unlock::Requests::new()),
+            unlock_prompts: Mutex::new(HashMap::new()),
             storage: Mutex::new(Default::default()),
             clipboard_history,
             last_clip_suggestion: Mutex::new(None),
@@ -2517,6 +2553,16 @@ impl Node {
                     crate::actions::send_wake_info(&shared, &session).await;
                 }
                 shared.send_deck(&session).await;
+            });
+        }
+        if toggle == crate::unlock::TOGGLE && !enabled {
+            // Off on either side ends it: this side drops what it kept (the
+            // sealed password on a PC, the keys on a phone), and tells the other.
+            let shared = self.shared.clone();
+            self.shared.runtime.spawn(async move {
+                let _ = crate::unlock::forget(&shared, &peer, None).await;
+                let platform = shared.platform.clone();
+                let _ = tokio::task::spawn_blocking(move || platform.unlock_forget(&peer, None)).await;
             });
         }
         if toggle == crate::storage::TOGGLE {
@@ -3816,6 +3862,55 @@ impl Node {
     /// quiet after a restart, when it resumes.
     pub fn keep_transfer_quiet(&self, transfer_id: &str) {
         crate::transfer::mark_quiet_transfer(&self.shared, transfer_id);
+    }
+
+    // ---- Unlock the PC with the phone (ADR 0009, docs/protocol/unlock.md) ----
+
+    /// PC side: lets `phone` unlock this PC's locked session for the Windows
+    /// user `user` (a security identifier; `user_name` is what the phone
+    /// shows). The phone's owner agrees with a strong biometric. `password`
+    /// is kept only sealed under a key the phone holds. Needs the `unlock`
+    /// toggle on at both ends and a direct local connection.
+    pub async fn unlock_enroll(
+        &self,
+        phone: DeviceId,
+        user: &str,
+        user_name: &str,
+        password: crate::unlock::Secret,
+    ) -> Result<()> {
+        let session = self.connected(&phone)?;
+        crate::unlock::enroll(&self.shared, &session, user, user_name, &password).await
+    }
+
+    /// PC side: asks `phone` to release `user`'s password for one unlock. The
+    /// phone's owner confirms with their biometric. `Denied` when declined,
+    /// off, or locked out after repeated failures; `NotFound` when `user`
+    /// isn't enrolled or the phone's key is gone (enroll again).
+    pub async fn unlock_password(&self, phone: DeviceId, user: &str) -> Result<crate::unlock::Secret> {
+        let session = self.connected(&phone)?;
+        crate::unlock::password(&self.shared, &session, user).await
+    }
+
+    /// PC side: whether unlocking with a phone is locked out after repeated failures,
+    /// so the lock screen can say so rather than "not confirmed".
+    pub fn unlock_locked_out(&self) -> bool {
+        lock(&self.shared.unlock_requests).locked_out(std::time::Instant::now()).is_some()
+    }
+
+    /// Whether paired device `peer` offers `capability` (as last heard).
+    pub fn peer_offers(&self, peer: DeviceId, capability: &str) -> bool {
+        self.shared.offers(&peer, capability).unwrap_or(false)
+    }
+
+    /// PC side: the Windows users enrolled to unlock with `phone`, as
+    /// `(security identifier, name)`.
+    pub fn unlock_users(&self, phone: DeviceId) -> Result<Vec<(String, String)>> {
+        Ok(self.shared.store.unlock_entries(&phone)?.into_iter().map(|e| (e.user, e.user_name)).collect())
+    }
+
+    /// PC side: stops `user` (or everyone) unlocking with `phone`.
+    pub async fn unlock_forget(&self, phone: DeviceId, user: Option<&str>) -> Result<()> {
+        crate::unlock::forget(&self.shared, &phone, user).await
     }
 
     // ---- Remote input (docs/protocol/remote.md) ----

@@ -102,16 +102,19 @@ if (-not $SkipBuild) {
     if ($isArm64) {
         $env:QMAKE = Join-Path $arm64ToolDir "qmake6.exe"
         if (-not (Test-Path $env:QMAKE)) { $env:QMAKE = Join-Path $arm64ToolDir "qmake.exe" }
-        Invoke-Native "the build" { cargo build --locked --release --target aarch64-pc-windows-msvc -p nectarlink-desktop -p nectarlink-mcp -p nectarlink-vcam }
+        Invoke-Native "the build" { cargo build --locked --release --target aarch64-pc-windows-msvc -p nectarlink-desktop -p nectarlink-mcp -p nectarlink-vcam -p nectarlink-credprov }
     } else {
         $env:PATH = "$(Join-Path $targetKit 'bin');$env:PATH"
-        Invoke-Native "the build" { cargo build --locked --release -p nectarlink-desktop -p nectarlink-mcp -p nectarlink-vcam }
+        Invoke-Native "the build" { cargo build --locked --release -p nectarlink-desktop -p nectarlink-mcp -p nectarlink-vcam -p nectarlink-credprov }
     }
 }
 $exe = Join-Path $targetDir 'nectarlink-desktop.exe'
 if (-not (Test-Path $exe)) { throw "no release build at $exe" }
 $vcamDll = Join-Path $targetDir 'nectarlink_vcam.dll'
 if (-not (Test-Path $vcamDll)) { throw "no release build at $vcamDll" }
+# Unlock with phone: the credential provider, registered only when turned on.
+$credprovDll = Join-Path $targetDir 'nectarlink_credprov.dll'
+if (-not (Test-Path $credprovDll)) { throw "no release build at $credprovDll" }
 
 # ---- Stage ----
 Step "Stage"
@@ -140,6 +143,7 @@ $agentExe = Join-Path $targetDir 'nectarlink-agent.exe'
 if (-not (Test-Path $agentExe)) { throw "no release build at $agentExe" }
 Copy-Item $agentExe $stage
 Copy-Item $vcamDll $stage
+Copy-Item $credprovDll $stage
 
 Invoke-Native "windeployqt" {
     $deployArgs = @(

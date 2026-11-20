@@ -453,6 +453,16 @@
     <string name="mic_request_card_text">Permanecerá activo hasta que tú o el PC lo detengáis.</string>
     <string name="mic_pc_toggle">Usar este teléfono como micrófono</string>
     <string name="mic_pc_toggle_hint">Activado de forma predeterminada. Este PC puede solicitar el micrófono. Solo se activa cuando tocas Iniciar.</string>
+    <string name="channel_unlock_requests">Desbloqueo del PC</string>
+    <string name="unlock_enroll_title">¿Dejar que %1$s se desbloquee con este teléfono?</string>
+    <string name="unlock_enroll_text">A partir de ahora tu huella podrá desbloquear %1$s. Se pedirá cada vez.</string>
+    <string name="unlock_request_title">¿Desbloquear %1$s?</string>
+    <string name="unlock_request_text">Como %1$s</string>
+    <string name="unlock_prompt_text">Confirma solo si estás ahora mismo frente a este PC.</string>
+    <string name="unlock_pc_toggle">Desbloquear este PC con tu huella</string>
+    <string name="unlock_pc_toggle_hint">Actívalo aquí y en el PC. Cada desbloqueo pide tu huella.</string>
+    <string name="unlock_prompt_directly_hint">Para que la huella se pida al momento en lugar de con una notificación que tocar, permite que NectarLink se muestre sobre otras apps.</string>
+    <string name="unlock_prompt_directly_action">Permitir</string>
     <string name="mic_pc_toggle_hint_auto">Activado de forma predeterminada. Este PC puede solicitar el micrófono, que se activa de inmediato.</string>
     <string name="start_without_asking_toggle">Iniciar la cámara y el micrófono sin preguntar</string>
     <string name="start_without_asking_hint">Cuando este PC lo solicite, se activarán de inmediato, sin necesidad de tocar el teléfono. Requiere Elevated. Sin él, el teléfono pedirá permiso como siempre.</string>

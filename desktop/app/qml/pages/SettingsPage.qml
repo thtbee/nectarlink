@@ -187,7 +187,8 @@ Item {
             : Qt.platform.os === "osx" ? qsTr("Finder integration") : qsTr("File manager integration"),
         remote_input: qsTr("Remote mouse, keyboard & Deck"),
         commands: qsTr("Run Deck shell commands"),
-        remote_files: qsTr("Remote PC file access")
+        remote_files: qsTr("Remote PC file access"),
+        unlock: qsTr("Unlock this PC with the phone")
     })
 
     readonly property var toggleIcons: ({
@@ -210,14 +211,16 @@ Item {
         storage: Icons.folder,
         remote_input: Icons.deck,
         commands: Icons.terminal,
-        remote_files: Icons.globe
+        remote_files: Icons.globe,
+        unlock: Icons.lock
     })
 
     readonly property var toggleDescriptions: ({
         pc_mirror: qsTr("Allow this phone to view this PC's screen."),
         call_audio: qsTr("Move a call's sound to this PC: its speakers and microphone."),
         commands: qsTr("Only enable for a phone you trust."),
-        remote_files: qsTr("Allow this phone to browse and download shared PC files over mobile data.")
+        remote_files: qsTr("Allow this phone to browse and download shared PC files over mobile data."),
+        unlock: qsTr("Unlock the lock screen with your fingerprint on the phone. Off by default; asks for an administrator once.")
     })
 
     readonly property var toggleGroups: [
@@ -261,7 +264,9 @@ Item {
     readonly property var allGroupedKeys: [
         "notifications", "messages", "calls", "call_audio", "contacts",
         "clipboard", "files", "photos", "recordings", "storage", "remote_files",
-        "media", "toggles", "mirroring", "pc_mirror", "webcam", "pc_actions", "remote_input", "commands"
+        "media", "toggles", "mirroring", "pc_mirror", "webcam", "pc_actions", "remote_input", "commands",
+        // Its own row at the top of the card.
+        "unlock"
     ]
 
     FolderDialog {
@@ -1579,6 +1584,119 @@ Item {
                                     }
                                 }
                             }
+                            // Unlock with phone (#36): Windows, with a phone that can keep the key
+                            // behind its fingerprint (only then does the core list the switch).
+                            ListRow {
+                                id: unlockRow
+                                readonly property var item: deviceCard.toggles.find(t => t.name === "unlock")
+                                width: parent.width
+                                visible: Qt.platform.os === "windows" && item !== undefined
+                                iconPath: Icons.lock
+                                title: qsTr("Unlock this PC with the phone")
+                                description: page.toggleDescriptions.unlock
+                                Toggle {
+                                    label: qsTr("Unlock this PC with the phone")
+                                    checked: unlockRow.item !== undefined && unlockRow.item.on
+                                    onToggled: (on) => AppController.setDeviceToggle(deviceCard.deviceId, "unlock", on)
+                                }
+                            }
+                            // Unlock with phone (#36): set up with the Windows password once the switch is on.
+                            Column {
+                                id: unlockSetup
+                                readonly property bool switchOn: deviceCard.toggles.some(t => t.name === "unlock" && t.on)
+                                property bool done: switchOn && AppController.togglesRevision >= 0 && AppController.unlockSetUp(deviceCard.deviceId)
+                                property bool busy: false
+                                property string message: ""
+                                visible: Qt.platform.os === "windows" && switchOn
+                                width: parent.width
+                                // Lined up with the row's text above (icon 20 + 14).
+                                leftPadding: 34
+                                bottomPadding: 8
+                                spacing: 8
+                                Connections {
+                                    target: AppController
+                                    function onUnlockResult(device, result) {
+                                        if (device !== deviceCard.deviceId)
+                                            return
+                                        unlockSetup.busy = false
+                                        unlockPassword.text = ""
+                                        const messages = {
+                                            done: qsTr("Done. On the lock screen, pick Unlock with phone, then confirm on the phone."),
+                                            wrong_password: qsTr("That isn't this account's Windows password."),
+                                            declined: qsTr("Not confirmed on the phone."),
+                                            phone_away: qsTr("The phone isn't connected on this network."),
+                                            phone_cant: qsTr("Turn on Unlock this PC with your fingerprint for this PC on the phone too."),
+                                            failed: qsTr("Couldn't set it up. Try again."),
+                                            registered: "",
+                                            register_failed: qsTr("Windows didn't allow it. Turn it off and on to try again.")
+                                        }
+                                        unlockSetup.message = messages[result] !== undefined ? messages[result] : ""
+                                        unlockSetup.done = AppController.unlockSetUp(deviceCard.deviceId)
+                                    }
+                                }
+                                Txt {
+                                    width: parent.width - unlockSetup.leftPadding
+                                    wrapMode: Text.WordWrap
+                                    role: "bodySmall"
+                                    muted: true
+                                    text: unlockSetup.done
+                                        ? qsTr("Set up for this Windows account. Type the password again here if you change it.")
+                                        : qsTr("Type this account's Windows password once. It's kept locked with a key only the phone has, and the phone asks for your fingerprint every time.")
+                                }
+                                Row {
+                                    spacing: 8
+                                    Rectangle {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: 220
+                                        height: 32
+                                        radius: Theme.radiusSm
+                                        color: Theme.surfaceContainerHighest
+                                        border.width: unlockPassword.activeFocus ? 2 : 1
+                                        border.color: unlockPassword.activeFocus ? Theme.primary : Theme.outlineVariant
+                                        TextInput {
+                                            id: unlockPassword
+                                            anchors.fill: parent
+                                            anchors.leftMargin: 8
+                                            anchors.rightMargin: 8
+                                            verticalAlignment: TextInput.AlignVCenter
+                                            color: Theme.surfaceContent
+                                            selectionColor: Theme.primaryContainer
+                                            selectedTextColor: Theme.primaryContainerContent
+                                            font.pixelSize: 12
+                                            echoMode: TextInput.Password
+                                            passwordCharacter: "\u2022"
+                                            enabled: !unlockSetup.busy
+                                            Accessible.name: qsTr("Windows password")
+                                            onAccepted: unlockSetUpButton.clicked()
+                                            Txt {
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                visible: unlockPassword.text.length === 0 && !unlockPassword.activeFocus
+                                                role: "bodySmall"
+                                                muted: true
+                                                text: qsTr("Windows password")
+                                            }
+                                        }
+                                    }
+                                    Button {
+                                        id: unlockSetUpButton
+                                        size: "sm"
+                                        text: unlockSetup.busy ? qsTr("Confirm on the phone…") : (unlockSetup.done ? qsTr("Update") : qsTr("Set up"))
+                                        enabled: !unlockSetup.busy && unlockPassword.text.length > 0
+                                        onClicked: {
+                                            unlockSetup.busy = true
+                                            unlockSetup.message = ""
+                                            AppController.setUpUnlock(deviceCard.deviceId, unlockPassword.text)
+                                        }
+                                    }
+                                }
+                                Txt {
+                                    visible: unlockSetup.message.length > 0
+                                    width: parent.width - unlockSetup.leftPadding
+                                    wrapMode: Text.WordWrap
+                                    role: "bodySmall"
+                                    text: unlockSetup.message
+                                }
+                            }
                             Repeater {
                                 model: page.toggleGroups
                                 delegate: Column {
@@ -1721,6 +1839,7 @@ Item {
                                     }
                                 }
                             }
+
                         }
                     }
                 }

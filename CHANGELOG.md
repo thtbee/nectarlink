@@ -8,6 +8,14 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Unlock the PC with your phone's fingerprint (Windows, Android 11+).** On the lock
+  screen, pick NectarLink under Sign-in options, press the arrow and confirm with your
+  fingerprint on the phone; allow NectarLink to display over other apps and the fingerprint prompt opens
+  straight away instead of a notification to tap. Off by default on both sides;
+  turning it on asks for an administrator once and for your Windows password once. The
+  password is kept encrypted on the PC with a key only the phone holds, behind its
+  fingerprint, and sealed so only the lock screen can read it, not apps running as you. Only for unlocking, not the first sign-in after a restart
+  ([#36](https://github.com/thtbee/nectarlink/pull/36)).
 - **AI agents can use NectarLink.** Claude Code, Claude Desktop, Codex, Cursor, Gemini CLI,
   VS Code and other AI assistants on the PC can read notifications and texts, send files and
   messages, control media, look at and copy photos, work with the phone's files, change its

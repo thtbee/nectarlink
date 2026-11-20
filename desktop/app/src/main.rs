@@ -284,6 +284,11 @@ struct Options {
     register_vcam: bool,
     /// Elevated helper: unregister `nectarlink_vcam.dll` from `HKLM` and exit.
     unregister_vcam: bool,
+    /// Unlock with phone: register or remove the credential provider (elevated).
+    #[cfg(windows)]
+    register_unlock: bool,
+    #[cfg(windows)]
+    unregister_unlock: bool,
     /// Elevated helper (Windows): register the sparse package and exit (#84).
     register_package: bool,
     /// Out-of-process Windows 11 Widget Board COM server (`--widget-provider`).
@@ -374,6 +379,16 @@ fn parse_options_from<I: IntoIterator<Item = std::ffi::OsString>>(iter: I) -> Op
             Some(win::vcam::UNREGISTER_ARG) => {
                 in_share = false;
                 options.unregister_vcam = true;
+            }
+            #[cfg(windows)]
+            Some(win::unlock::REGISTER_ARG) => {
+                in_share = false;
+                options.register_unlock = true;
+            }
+            #[cfg(windows)]
+            Some(win::unlock::UNREGISTER_ARG) => {
+                in_share = false;
+                options.unregister_unlock = true;
             }
             Some("--register-package") => {
                 in_share = false;
@@ -553,6 +568,21 @@ fn main() -> ExitCode {
     #[cfg(windows)]
     if options.register_package {
         return win::share_target::register_elevated();
+    }
+    #[cfg(windows)]
+    if options.register_unlock || options.unregister_unlock {
+        let done = if options.register_unlock {
+            win::unlock::register_hklm()
+        } else {
+            win::unlock::unregister_hklm()
+        };
+        return match done {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(e) => {
+                eprintln!("nectarlink: unlock with phone: {e}");
+                ExitCode::FAILURE
+            }
+        };
     }
     if options.unregister_vcam {
         return match win::vcam::unregister_hklm() {

@@ -533,6 +533,35 @@ pub trait Platform: Send + Sync + 'static {
     /// `tile` has been validated against the current Deck layout and the
     /// required per-device toggles (`remote_input`, plus `commands` for
     /// `run_command` tiles). `Err` holds a reason for logs.
+    /// Unlock the PC with this phone (ADR 0009), enrolling: after asking its
+    /// owner, and only with a strong biometric, wrap `key` with a key kept in
+    /// the phone's secure hardware for `pc` and `user` and return it wrapped.
+    /// Blocks while the owner answers (up to [`crate::unlock::ENROLL_TTL`]).
+    fn unlock_wrap(
+        &self,
+        _pc: &nectarlink_protocol::DeviceId,
+        _ask: &crate::unlock::Ask,
+        _key: &[u8],
+    ) -> Result<Vec<u8>, crate::unlock::KeyRefusal> {
+        Err(crate::unlock::KeyRefusal::Unsupported)
+    }
+
+    /// Unlock the PC with this phone: after the owner's strong biometric,
+    /// unwrap `wrapped` and return the key. Blocks while the owner answers (up
+    /// to [`crate::unlock::REQUEST_TTL`]).
+    fn unlock_unwrap(
+        &self,
+        _pc: &nectarlink_protocol::DeviceId,
+        _ask: &crate::unlock::Ask,
+        _wrapped: &[u8],
+    ) -> Result<Vec<u8>, crate::unlock::KeyRefusal> {
+        Err(crate::unlock::KeyRefusal::Unsupported)
+    }
+
+    /// Unlock the PC with this phone: delete the keys kept for `pc` (for
+    /// `user`, or all of them).
+    fn unlock_forget(&self, _pc: &nectarlink_protocol::DeviceId, _user: Option<&str>) {}
+
     fn deck_press(&self, _from: &nectarlink_protocol::DeviceId, _tile: &str) -> Result<(), String> {
         Err("this device has no deck actions".into())
     }

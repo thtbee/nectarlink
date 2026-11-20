@@ -546,6 +546,8 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Transfers", "Nearby device"), // desktop/app/src/transfers.rs
     QT_TRANSLATE_NOOP("Transfers", "That's too many files to send at once."), // desktop/app/src/transfers.rs
     QT_TRANSLATE_NOOP("Transfers", "There's nothing to send in there."), // desktop/app/src/transfers.rs
+    QT_TRANSLATE_NOOP("Unlock", "Set up unlocking with %1 again"), // desktop/app/src/win/unlock.rs
+    QT_TRANSLATE_NOOP("Unlock", "Windows didn't accept the password saved for it, so it was probably changed. Set it up again under Unlock this PC with the phone."), // desktop/app/src/win/unlock.rs
     QT_TRANSLATE_NOOP("Updater", "Couldn't check for updates. Check your internet connection."), // desktop/app/src/updater.rs
     QT_TRANSLATE_NOOP("Updater", "NectarLink %1 is available"), // desktop/app/src/updater.rs
     QT_TRANSLATE_NOOP("Updater", "NectarLink %1 is available."), // desktop/app/src/updater.rs
