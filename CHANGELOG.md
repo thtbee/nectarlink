@@ -297,6 +297,10 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **The PC's log keeps your details out and stays small.** It no longer writes your Windows
+  user name inside folder paths, network addresses (only their kind, like "home network"),
+  or values it doesn't know are safe. It also keeps to about 2 MB while NectarLink runs,
+  where it used to grow until the next start. Logs from earlier versions are deleted once.
 - **NectarLink starts even when the network isn't up yet at sign-in.** Starting with
   Windows while the network was still coming up could stop it with "Service 'mdns'
   error" until it was started again. It now starts without finding phones on the network
