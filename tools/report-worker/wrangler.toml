@@ -3,6 +3,7 @@ name = "nectarlink-reports"
 main = "src/index.ts"
 compatibility_date = "2026-11-01"
 workers_dev = true
+preview_urls = false
 
 [vars]
 REPO = "thtbee/nectarlink"
@@ -16,7 +17,7 @@ SENDER_DAILY = "5"
 [[d1_databases]]
 binding = "DB"
 database_name = "nectarlink-reports"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "d6989e74-8119-42cf-892e-915d0ae23742"
 migrations_dir = "migrations"
 
 [triggers]
