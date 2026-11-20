@@ -1538,6 +1538,22 @@
     <string name="relay_region_europe">Europa</string>
     <string name="relay_region_asia_pacific">Azja i Pacyfik</string>
     <string name="relay_region_custom">Własny</string>
+    <!-- What's new (#461) -->
+    <string name="whats_new_dot">Nowe zmiany</string>
+    <string name="whats_new_group_new">Nowe</string>
+    <string name="whats_new_group_changed">Zmienione</string>
+    <string name="whats_new_group_fixed">Naprawione</string>
+    <string name="whats_new_in_this_version">W tej wersji</string>
+    <string name="whats_new_more">i %1$d więcej</string>
+    <string name="whats_new_empty">Nie ma nic do pokazania dla tej kompilacji.</string>
+    <string name="whats_new_release_notes">Informacje o wersji na GitHubie</string>
+    <!-- Calls through WhatsApp from the PC (#434) -->
+    <string name="app_call_channel">Połączenia z komputera</string>
+    <string name="app_call_title">Zadzwoń do: %1$s przez %2$s</string>
+    <string name="app_call_text">Dotknij, aby rozpocząć połączenie.</string>
+    <!-- Which of the PC's screens to view (#442) -->
+    <string name="pc_mirror_screen">Ekran %1$d</string>
+    <string name="pc_mirror_screen_desc">Ekran %1$d z %2$d. Dotknij, aby przejść do następnego.</string>
 </resources>
 
 

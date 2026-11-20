@@ -1579,6 +1579,32 @@ mod imp {
         dst_h: u32,
         bgra: &mut Vec<u8>,
     ) -> Option<(u32, u32)> {
+        capture_rect(region.map(|r| (r, false)), dst_w, dst_h, bgra)
+    }
+
+    /// What the phone views: the screen at `area` (another screen than the
+    /// main one, #442) or else the main one, with the pointer.
+    #[cfg(windows)]
+    fn capture_shown(area: Option<RECT>, dst_w: u32, dst_h: u32, bgra: &mut Vec<u8>) -> bool {
+        capture_rect(area.map(|a| (a, true)), dst_w, dst_h, bgra).is_some()
+    }
+
+    #[cfg(target_os = "linux")]
+    fn capture_shown(_area: Option<()>, dst_w: u32, dst_h: u32, bgra: &mut Vec<u8>) -> bool {
+        capture_screen(None, dst_w, dst_h, bgra).is_some()
+    }
+
+    /// [`capture_screen`], with `region`'s flag saying whether to draw the
+    /// pointer there (a whole screen) or not (a player's window).
+    #[cfg(windows)]
+    fn capture_rect(
+        region: Option<(RECT, bool)>,
+        dst_w: u32,
+        dst_h: u32,
+        bgra: &mut Vec<u8>,
+    ) -> Option<(u32, u32)> {
+        let pointer = region.is_none_or(|(_, pointer)| pointer);
+        let region = region.map(|(r, _)| r);
         // SAFETY: Win32 GDI device context and bitmap calls with balanced cleanup.
         unsafe {
             let hdc_screen = GetDC(None);
@@ -1633,9 +1659,9 @@ mod imp {
                 hCursor: Default::default(),
                 ptScreenPos: POINT::default(),
             };
-            if region.is_none() && GetCursorInfo(&mut ci).is_ok() && (ci.flags.0 & CURSOR_SHOWING.0) != 0 {
-                let cx = ((ci.ptScreenPos.x as i64) * (dst_w as i64) / (src_w as i64)) as i32;
-                let cy = ((ci.ptScreenPos.y as i64) * (dst_h as i64) / (src_h as i64)) as i32;
+            if pointer && GetCursorInfo(&mut ci).is_ok() && (ci.flags.0 & CURSOR_SHOWING.0) != 0 {
+                let cx = (((ci.ptScreenPos.x - src_x) as i64) * (dst_w as i64) / (src_w as i64)) as i32;
+                let cy = (((ci.ptScreenPos.y - src_y) as i64) * (dst_h as i64) / (src_h as i64)) as i32;
                 let _ = DrawIconEx(hdc_mem, cx, cy, ci.hCursor.into(), 0, 0, 0, None, DI_NORMAL);
             }
 
@@ -2246,6 +2272,20 @@ mod imp {
             }
         };
 
+        // The screen the phone picked (#442), when it isn't the main one: its
+        // taps land there too, until this sharing ends.
+        #[cfg(windows)]
+        let screen_area = options
+            .display
+            .filter(|_| options.watch.is_none())
+            .and_then(win::displays::by_id)
+            .filter(|d| !d.primary)
+            .map(|d| d.rect);
+        #[cfg(target_os = "linux")]
+        let screen_area: Option<()> = None;
+        #[cfg(windows)]
+        win::input::set_absolute_area(screen_area);
+
         // Give the phone's PcMirrorView TextureView and MediaCodec a brief moment to
         // mount before sending the initial MirrorConfig and IDR keyframe.
         std::thread::sleep(Duration::from_millis(120));
@@ -2339,6 +2379,11 @@ mod imp {
             let (dst_w, dst_h) = match stream_dims {
                 Some(dims) => dims,
                 None => {
+                    #[cfg(windows)]
+                    let (src_w, src_h) = screen_area.map_or_else(primary_screen_dimensions, |a| {
+                        ((a.right - a.left).max(1) as u32, (a.bottom - a.top).max(1) as u32)
+                    });
+                    #[cfg(target_os = "linux")]
                     let (src_w, src_h) = primary_screen_dimensions();
                     let dims = target_dimensions(src_w, src_h, options.max_size);
                     stream_dims = Some(dims);
@@ -2417,7 +2462,7 @@ mod imp {
                     (Some(place), None) => {
                         capture_screen(Some(place.on_screen), dst_w, dst_h, &mut bgra).is_some()
                     }
-                    (None, _) => capture_screen(None, dst_w, dst_h, &mut bgra).is_some(),
+                    (None, _) => capture_shown(screen_area, dst_w, dst_h, &mut bgra),
                 };
             if captured && let Some(enc) = encoder.as_mut() {
                 bgra_to_nv12(&bgra, dst_w as usize, dst_h as usize, &mut nv12);
@@ -2644,6 +2689,8 @@ mod imp {
             }
         };
         if removed {
+            #[cfg(windows)]
+            win::input::set_absolute_area(None);
             win::input::release_held_buttons();
             crate::input_share::leave_remote();
             core_host::host().hub.changed(crate::state::Changes::REMOTE);

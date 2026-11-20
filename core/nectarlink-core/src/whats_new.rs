@@ -1,14 +1,14 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 //! What's new (#461): the release notes of this build, read from the
 //! CHANGELOG.md it was built from, so they match it exactly and need no
 //! network. The top section is always this build's: the next release's notes
 //! on a Nightly, its own on a release.
 //!
 //! Each entry has an ID made from its text, and the IDs already shown are
-//! saved. After an update with something new, a dot on the What's new button
-//! says so, and the panel lists only what changed since the last look, one
-//! short line per change (its bold lead), Nightly to Nightly too, where the
-//! version's section only grows.
+//! saved, by each app in its own data folder. After an update with something
+//! new, a dot on the What's new button says so, and the panel lists only what
+//! changed since the last look, one short line per change (its bold lead),
+//! Nightly to Nightly too, where the version's section only grows.
 
 use std::{
     collections::HashSet,
@@ -58,7 +58,7 @@ pub struct Entry {
     pub title: String,
     /// The rest, as Qt rich text (bold, links).
     pub body: String,
-    /// Not shown before on this PC.
+    /// Not shown before on this device.
     #[serde(rename = "new")]
     pub unseen: bool,
     /// The markdown after the bold lead, for an entry without one.
@@ -66,7 +66,7 @@ pub struct Entry {
     pub text: String,
 }
 
-/// What this PC has seen, in `whats-new.json`.
+/// What this device has seen, in `whats-new.json`.
 #[derive(Debug, Default, serde::Serialize, serde::Deserialize)]
 struct Seen {
     #[serde(default)]

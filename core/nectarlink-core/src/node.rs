@@ -3261,6 +3261,13 @@ impl Node {
         crate::mirror::notice(&session, mirroring, code).await
     }
 
+    /// A PC's screens, to pick the one to view (`MirrorStart::display`);
+    /// empty from a PC that only shares its main one.
+    pub async fn mirror_displays(&self, peer: DeviceId) -> Result<Vec<crate::MirrorDisplay>> {
+        let session = self.connected(&peer)?;
+        crate::mirror::displays(&self.shared, &session).await
+    }
+
     /// The apps a phone can open in windows of their own (Elevated), by name.
     /// Asks a phone to uninstall `pkg` (D349); only one that offers
     /// `mirror.apps.uninstall`. `Ok` once the phone says it's gone.

@@ -516,7 +516,7 @@ internal class PhoneCalls(
                 if (rawId.isEmpty()) return@mapNotNull null
                 val id = truncateUtf8(rawId, MAX_ID_BYTES)
                 CallSim(id = id, label = simLabel(tm, handle), isDefault = handle == default)
-            }
+            } + AppDial.choices(context)
         }.getOrElse {
             Log.w(TAG, "can't list the SIMs", it)
             emptyList()
@@ -526,6 +526,8 @@ internal class PhoneCalls(
     /** Places a call to [number] on the SIM [sim] (an id from [sims]), or on the default when it's gone. */
     @SuppressLint("MissingPermission")
     fun dialOn(number: String, sim: String): Boolean {
+        // A calling app the PC picked (#434), not a SIM.
+        if (sim.startsWith(AppDial.PREFIX)) return AppDial.dial(context, number, sim)
         val handle = if (canListSims(context)) {
             runCatching {
                 context.getSystemService(TelecomManager::class.java)?.callCapablePhoneAccounts?.firstOrNull {

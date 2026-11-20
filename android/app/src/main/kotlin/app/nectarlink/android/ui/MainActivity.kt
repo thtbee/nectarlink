@@ -131,6 +131,7 @@ class MainActivity : ComponentActivity() {
         val core = (application as NectarlinkApplication).core
         val preferences = Preferences(this)
         StarNotification.onAppOpened(this)
+        lifecycleScope.launch { WhatsNew.onAppOpened(this@MainActivity) }
 
         // Notifications (transfers, calls, requests from PCs) and, on Android
         // 17, the local network, without which no PC can be reached.

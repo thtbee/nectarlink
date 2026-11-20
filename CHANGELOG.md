@@ -8,11 +8,21 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
-- **What's new, in the app.** The sparkle button at the top of the PC app lists what
-  changed since you last looked, in short points by category, with a link to the full
-  release notes. A dot on it means something new arrived with an update. Thanks to
+- **What's new, in the app.** The sparkle button at the top of the PC app, and on the
+  phone's Home, lists what changed since you last looked, in short points by category,
+  with a link to the full release notes. A dot on it means something new arrived with an
+  update. Thanks to
   [@zzz1465720680](https://github.com/zzz1465720680)
   ([#461](https://github.com/thtbee/nectarlink/issues/461)).
+- **WhatsApp calls from the PC.** On the PC's Calls page, pick **WhatsApp** (or WhatsApp
+  Business) under **Call with**, and the call to that contact starts in WhatsApp on the
+  phone. If Android won't let NectarLink open WhatsApp right then, a notification on the
+  phone starts it with a tap. Thanks to [@kedar284](https://github.com/kedar284)
+  ([#434](https://github.com/thtbee/nectarlink/issues/434)).
+- **Pick which of the PC's screens the phone shows.** With more than one screen on the PC,
+  the PC screen view on the phone has a **Screen** button that moves to the next one, and
+  taps land there. Windows only for now. Thanks to
+  [@w-rakeeb](https://github.com/w-rakeeb) ([#442](https://github.com/thtbee/nectarlink/issues/442)).
 - **Dark picture for apps with no dark mode.** The moon button on a mirroring or app
   window swaps light and dark in the picture, so a white map turns dark gray with its
   colors kept. It's remembered for each app.

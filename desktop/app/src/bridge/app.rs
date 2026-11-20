@@ -806,7 +806,8 @@ impl cxx_qt::Initialize for qobject::AppController {
     fn initialize(mut self: Pin<&mut Self>) {
         self.as_mut().set_version(QString::from(env!("CARGO_PKG_VERSION")));
         self.as_mut().set_notifications_paused(crate::notifications::paused());
-        self.as_mut().set_whats_new_pending(crate::whats_new::pending(&crate::core_host::host().data_dir));
+        self.as_mut()
+            .set_whats_new_pending(nectarlink_core::whats_new::pending(&crate::core_host::host().data_dir));
         self.as_mut().set_current_page(QString::from("home"));
         self.as_mut().set_can_update(crate::updater::can_update());
         self.as_mut().set_can_install_unattended(crate::updater::can_install_unattended());
@@ -1645,7 +1646,7 @@ impl qobject::AppController {
     }
 
     pub fn whats_new(&self) -> QString {
-        QString::from(&crate::whats_new::json(&crate::core_host::host().data_dir))
+        QString::from(&nectarlink_core::whats_new::json(&crate::core_host::host().data_dir))
     }
 
     pub fn open_whats_new(self: Pin<&mut Self>) {
@@ -1653,7 +1654,7 @@ impl qobject::AppController {
     }
 
     pub fn mark_whats_new_seen(mut self: Pin<&mut Self>) {
-        crate::whats_new::mark_seen(&crate::core_host::host().data_dir);
+        nectarlink_core::whats_new::mark_seen(&crate::core_host::host().data_dir);
         self.as_mut().set_whats_new_pending(false);
     }
 

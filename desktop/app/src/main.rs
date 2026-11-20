@@ -68,7 +68,6 @@ mod update_relay;
 mod updater;
 mod version;
 mod webcam;
-mod whats_new;
 #[cfg(windows)]
 mod win;
 #[cfg(target_os = "linux")]
@@ -154,6 +153,18 @@ impl Platform for DesktopPlatform {
         }
         pc_mirror::start(*peer, options.clone());
         Ok(())
+    }
+    #[cfg(windows)]
+    fn mirror_displays(&self) -> Vec<nectarlink_core::MirrorDisplay> {
+        win::displays::list()
+            .into_iter()
+            .map(|d| nectarlink_core::MirrorDisplay {
+                id: d.id,
+                width: d.width(),
+                height: d.height(),
+                primary: d.primary,
+            })
+            .collect()
     }
     fn mirror_stop_requested(&self, peer: &nectarlink_core::DeviceId, session: u32) {
         if session == nectarlink_core::MIRROR_SCREEN {
@@ -692,7 +703,7 @@ fn main() -> ExitCode {
         &settings.shelf_hotkey,
     );
     let updated_from = updater::note_running_version(&data_dir);
-    whats_new::note_start(&data_dir, updated_from.is_some());
+    nectarlink_core::whats_new::note_start(&data_dir, updated_from.is_some());
     if updated_from.is_some() {
         let mut saved = settings::Settings::load(&data_dir);
         if saved.ask_for_star_after_update()

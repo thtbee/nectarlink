@@ -1511,6 +1511,22 @@
     <string name="relay_region_europe">ヨーロッパ</string>
     <string name="relay_region_asia_pacific">アジア太平洋地域</string>
     <string name="relay_region_custom">カスタム</string>
+    <!-- What's new (#461) -->
+    <string name="whats_new_dot">新しい変更</string>
+    <string name="whats_new_group_new">新機能</string>
+    <string name="whats_new_group_changed">変更</string>
+    <string name="whats_new_group_fixed">修正</string>
+    <string name="whats_new_in_this_version">このバージョン</string>
+    <string name="whats_new_more">ほか %1$d 件</string>
+    <string name="whats_new_empty">このビルドで表示する項目はありません。</string>
+    <string name="whats_new_release_notes">GitHub のリリースノート</string>
+    <!-- Calls through WhatsApp from the PC (#434) -->
+    <string name="app_call_channel">PC からの通話</string>
+    <string name="app_call_title">%2$s で %1$s に発信</string>
+    <string name="app_call_text">タップして通話を開始します。</string>
+    <!-- Which of the PC's screens to view (#442) -->
+    <string name="pc_mirror_screen">画面 %1$d</string>
+    <string name="pc_mirror_screen_desc">%2$d 台中 %1$d 台目の画面を表示中。タップで次の画面へ。</string>
 </resources>
 
 

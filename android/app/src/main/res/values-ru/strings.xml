@@ -1393,4 +1393,20 @@
     <string name="relay_region_europe">Европа</string>
     <string name="relay_region_asia_pacific">Азиатско-Тихоокеанский регион</string>
     <string name="relay_region_custom">Свой</string>
+    <!-- What's new (#461) -->
+    <string name="whats_new_dot">Новые изменения</string>
+    <string name="whats_new_group_new">Новое</string>
+    <string name="whats_new_group_changed">Изменено</string>
+    <string name="whats_new_group_fixed">Исправлено</string>
+    <string name="whats_new_in_this_version">В этой версии</string>
+    <string name="whats_new_more">и ещё %1$d</string>
+    <string name="whats_new_empty">Для этой сборки нечего показать.</string>
+    <string name="whats_new_release_notes">Заметки о выпуске на GitHub</string>
+    <!-- Calls through WhatsApp from the PC (#434) -->
+    <string name="app_call_channel">Звонки с компьютера</string>
+    <string name="app_call_title">Позвонить: %1$s через %2$s</string>
+    <string name="app_call_text">Нажмите, чтобы начать звонок.</string>
+    <!-- Which of the PC's screens to view (#442) -->
+    <string name="pc_mirror_screen">Экран %1$d</string>
+    <string name="pc_mirror_screen_desc">Экран %1$d из %2$d. Нажмите, чтобы перейти к следующему.</string>
 </resources>

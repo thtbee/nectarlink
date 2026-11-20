@@ -128,6 +128,7 @@ const OPTIONS: MirrorStart = MirrorStart {
     screen_off: false,
     watch: None,
     sound_only: false,
+    display: None,
 };
 /// A short burst, rather than seconds of old frames behind the user's input.
 const BACKLOG: usize = 8;

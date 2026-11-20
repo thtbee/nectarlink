@@ -1196,6 +1196,12 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         return runCatching { node?.webcamCodecs(pcId) }.getOrNull() ?: listOf("h264")
     }
 
+    /** A PC's screens, the main one first; empty when it only shares its main one (#442). */
+    suspend fun pcDisplays(pcId: String): List<app.nectarlink.core.PcDisplay> {
+        startJob?.join()
+        return runCatching { node?.pcDisplays(pcId) }.getOrNull().orEmpty()
+    }
+
     /** Accepted screen codecs from the connected PC; unknown receivers use H.264. */
     suspend fun mirrorCodecs(pcId: String): List<String> {
         startJob?.join()
@@ -2664,6 +2670,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         fps: Int = 30,
         bitrate: Int = 4_000_000,
         watch: String? = null,
+        display: Int? = null,
     ) {
         _pcMirrorCaptureFailed.compareAndSet(id, null)
         command {
@@ -2673,6 +2680,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 fps.coerceIn(10, 60).toUInt(),
                 bitrate.coerceIn(500_000, 20_000_000).toUInt(),
                 watch,
+                display?.takeIf { it >= 0 }?.toUInt(),
             )
         }
     }

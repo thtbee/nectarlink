@@ -122,6 +122,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.nectarlink.android.sms.PhoneSms
+import app.nectarlink.android.ui.WhatsNewButton
 import app.nectarlink.android.ui.guide.GuideHighlightTarget
 import app.nectarlink.android.ui.theme.LocalGlassTheme
 import app.nectarlink.android.ui.theme.LocalReducedMotion
@@ -361,6 +362,8 @@ fun HomeScreen(
                 ) {
                     Text(stringResource(R.string.home_guide_title))
                 }
+                // What's new (#461), with a dot after an update brought something.
+                WhatsNewButton()
                 // Reconnects and syncs with the PCs; spins once to say so.
                 val spin = remember { androidx.compose.animation.core.Animatable(0f) }
                 val scope = rememberCoroutineScope()

@@ -1379,4 +1379,20 @@
     <string name="relay_region_europe">欧洲</string>
     <string name="relay_region_asia_pacific">亚太地区</string>
     <string name="relay_region_custom">自定义</string>
+    <!-- What's new (#461) -->
+    <string name="whats_new_dot">新的变化</string>
+    <string name="whats_new_group_new">新增</string>
+    <string name="whats_new_group_changed">变更</string>
+    <string name="whats_new_group_fixed">修复</string>
+    <string name="whats_new_in_this_version">此版本中</string>
+    <string name="whats_new_more">还有 %1$d 项</string>
+    <string name="whats_new_empty">此版本没有可列出的内容。</string>
+    <string name="whats_new_release_notes">GitHub 上的更新说明</string>
+    <!-- Calls through WhatsApp from the PC (#434) -->
+    <string name="app_call_channel">来自电脑的通话</string>
+    <string name="app_call_title">通过 %2$s 呼叫 %1$s</string>
+    <string name="app_call_text">点按即可开始通话。</string>
+    <!-- Which of the PC's screens to view (#442) -->
+    <string name="pc_mirror_screen">屏幕 %1$d</string>
+    <string name="pc_mirror_screen_desc">正在显示第 %1$d 个屏幕，共 %2$d 个。点按切换到下一个。</string>
 </resources>

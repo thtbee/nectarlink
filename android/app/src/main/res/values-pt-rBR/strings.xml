@@ -1521,6 +1521,22 @@
     <string name="relay_region_europe">Europa</string>
     <string name="relay_region_asia_pacific">Ásia-Pacífico</string>
     <string name="relay_region_custom">Personalizado</string>
+    <!-- What's new (#461) -->
+    <string name="whats_new_dot">Novas mudanças</string>
+    <string name="whats_new_group_new">Novo</string>
+    <string name="whats_new_group_changed">Alterado</string>
+    <string name="whats_new_group_fixed">Corrigido</string>
+    <string name="whats_new_in_this_version">Nesta versão</string>
+    <string name="whats_new_more">e mais %1$d</string>
+    <string name="whats_new_empty">Nada a listar para esta compilação.</string>
+    <string name="whats_new_release_notes">Notas da versão no GitHub</string>
+    <!-- Calls through WhatsApp from the PC (#434) -->
+    <string name="app_call_channel">Chamadas do seu PC</string>
+    <string name="app_call_title">Ligar para %1$s pelo %2$s</string>
+    <string name="app_call_text">Toque para iniciar a chamada.</string>
+    <!-- Which of the PC's screens to view (#442) -->
+    <string name="pc_mirror_screen">Tela %1$d</string>
+    <string name="pc_mirror_screen_desc">Mostrando a tela %1$d de %2$d. Toque para ver a próxima.</string>
 </resources>
 
 

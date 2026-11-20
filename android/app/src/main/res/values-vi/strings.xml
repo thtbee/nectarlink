@@ -1449,4 +1449,20 @@
 <string name="relay_region_europe">Châu Âu</string>
 <string name="relay_region_asia_pacific">Châu Á – Thái Bình Dương</string>
 <string name="relay_region_custom">Tùy chỉnh</string>
+    <!-- What's new (#461) -->
+    <string name="whats_new_dot">Thay đổi mới</string>
+    <string name="whats_new_group_new">Mới</string>
+    <string name="whats_new_group_changed">Đã thay đổi</string>
+    <string name="whats_new_group_fixed">Đã sửa</string>
+    <string name="whats_new_in_this_version">Trong phiên bản này</string>
+    <string name="whats_new_more">và %1$d mục khác</string>
+    <string name="whats_new_empty">Không có gì để hiển thị cho bản dựng này.</string>
+    <string name="whats_new_release_notes">Ghi chú phát hành trên GitHub</string>
+    <!-- Calls through WhatsApp from the PC (#434) -->
+    <string name="app_call_channel">Cuộc gọi từ máy tính</string>
+    <string name="app_call_title">Gọi %1$s qua %2$s</string>
+    <string name="app_call_text">Nhấn để bắt đầu cuộc gọi.</string>
+    <!-- Which of the PC's screens to view (#442) -->
+    <string name="pc_mirror_screen">Màn hình %1$d</string>
+    <string name="pc_mirror_screen_desc">Đang hiện màn hình %1$d trên %2$d. Nhấn để chuyển sang màn hình tiếp theo.</string>
 </resources>

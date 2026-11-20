@@ -24,6 +24,7 @@ windows of their own (§6).
 | `mirror.sound` | phone | Shares its sound on its own, without the screen (`sound_only`, §5) |
 | `mirror.virtual_display` | phone | Runs apps on displays of their own, shown in windows on the PC (Elevated, Android 11+) |
 | `mirror.listen` | PC | Plays a mirrored phone's sound |
+| `mirror.displays` | PC | Lists its screens and shares the one a phone picks (`display`) |
 
 Both devices must allow it: the `mirroring` device toggle, on by default,
 on each side.
@@ -36,7 +37,7 @@ On the control stream.
 t = "mirror.start"     id = n   b = { max_size: uint, fps: uint, bitrate: uint, ? audio: bool,
                                      ? session: uint, ? app: text,
                                      ? stay_awake: bool, ? screen_off: bool, ? watch: text,
-                                     ? sound_only: bool }
+                                     ? sound_only: bool, ? display: uint }
 t = "mirror.stop"      id = n   b = { ? session: uint }
 t = "mirror.power"              b = { ? stay_awake: bool, ? screen_off: bool }
 t = "mirror.keyframe"           b = { ? session: uint }
@@ -44,6 +45,8 @@ t = "mirror.resize"             b = { session: uint, width: uint, height: uint, 
 t = "mirror.notice"             b = { ? session: uint, code: text }
 t = "mirror.apps"      id = n
 t = "mirror.apps"      re = n   b = { apps: [{ pkg: text, label: text, ? icon: bytes }] }
+t = "mirror.displays"  id = n   b = { }
+t = "mirror.displays"  re = n   b = { displays: [{ id: uint, width: uint, height: uint, ? primary: bool }] }
 t = "ok"               re = n
 ```
 
@@ -91,6 +94,12 @@ means 0, so PCs and phones that predate sessions work as before.
   POCO phones do until **USB debugging (Security settings)** is on). A PC
   sends `pc_capture_failed` for session 0 if it cannot start or continue
   sharing its screen. Viewers ignore unknown codes and send no reply.
+- `mirror.displays` (phone → PC): the PC's screens, its main one first, at
+  most 16. Only to a PC offering `mirror.displays` that shares its screen
+  with this phone. The phone names one in `mirror.start`'s `display` for a
+  session 0 view of that PC; a PC shows its main screen when `display` is
+  missing or no longer there, and its taps land on the screen shown. A PC
+  from before this ignores `display`.
 
 ## 3. The video stream
 

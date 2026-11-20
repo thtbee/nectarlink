@@ -1520,6 +1520,22 @@
     <string name="relay_region_europe">Avrupa</string>
     <string name="relay_region_asia_pacific">Asya-Pasifik</string>
     <string name="relay_region_custom">Özel sunucular</string>
+    <!-- What's new (#461) -->
+    <string name="whats_new_dot">Yeni değişiklikler</string>
+    <string name="whats_new_group_new">Yeni</string>
+    <string name="whats_new_group_changed">Değişti</string>
+    <string name="whats_new_group_fixed">Düzeltildi</string>
+    <string name="whats_new_in_this_version">Bu sürümde</string>
+    <string name="whats_new_more">ve %1$d tane daha</string>
+    <string name="whats_new_empty">Bu derleme için gösterilecek bir şey yok.</string>
+    <string name="whats_new_release_notes">GitHub’da sürüm notları</string>
+    <!-- Calls through WhatsApp from the PC (#434) -->
+    <string name="app_call_channel">Bilgisayardan aramalar</string>
+    <string name="app_call_title">%1$s kişisini %2$s ile ara</string>
+    <string name="app_call_text">Aramayı başlatmak için dokun.</string>
+    <!-- Which of the PC's screens to view (#442) -->
+    <string name="pc_mirror_screen">Ekran %1$d</string>
+    <string name="pc_mirror_screen_desc">%2$d ekrandan %1$d. gösteriliyor. Sonraki için dokun.</string>
 </resources>
 
 
