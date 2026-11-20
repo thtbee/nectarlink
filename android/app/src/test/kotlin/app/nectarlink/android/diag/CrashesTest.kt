@@ -58,7 +58,7 @@ class CrashesTest {
     fun androidsExitReasonsMapToCrashesAndBackgroundKills() {
         val background = RunningAppProcessInfo.IMPORTANCE_CACHED
         val onScreen = RunningAppProcessInfo.IMPORTANCE_FOREGROUND
-        assertEquals(Crashes.Outcome.Nothing, Crashes.outcome(ApplicationExitInfo.REASON_CRASH, onScreen, 0))
+        assertEquals(Crashes.Outcome.Counted, Crashes.outcome(ApplicationExitInfo.REASON_CRASH, onScreen, 0))
         assertEquals(
             Crashes.Outcome.Crash("native", "<native>", "signal 11"),
             Crashes.outcome(ApplicationExitInfo.REASON_CRASH_NATIVE, onScreen, 11),

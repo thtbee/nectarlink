@@ -94,6 +94,8 @@ class NectarlinkApplication : Application(), DefaultLifecycleObserver {
     }
 
     override fun onStop(owner: LifecycleOwner) {
+        // Android may end the app without warning from here on.
+        runCatching { app.nectarlink.core.flushHealth() }
         if (!Preferences.isBackgroundServiceEnabled(this)) {
             scheduleStop()
         }

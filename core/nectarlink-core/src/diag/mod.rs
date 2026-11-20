@@ -11,6 +11,7 @@
 //! never grows past that however long the app runs.
 
 pub mod crash;
+pub mod health;
 pub mod layer;
 pub mod redact;
 pub mod ring;

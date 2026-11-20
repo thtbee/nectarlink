@@ -5066,6 +5066,7 @@ pub fn init_logging(filter: String, diag_dir: String, data_dir: String, version:
     let diag_dir = std::path::PathBuf::from(diag_dir);
     diag::init_roots(std::path::Path::new(&data_dir));
     diag::crash::configure(&diag_dir, &version);
+    diag::health::init(&diag_dir);
     diag::crash::install_panic_hook();
     let filter = EnvFilter::try_new(&filter).unwrap_or_else(|_| EnvFilter::new("info"));
     #[cfg(target_os = "android")]
@@ -5076,6 +5077,23 @@ pub fn init_logging(filter: String, diag_dir: String, data_dir: String, version:
         .ok()
         .map(|r| RingLayer::new(Arc::new(r)));
     let _ = tracing_subscriber::registry().with(filter).with(layer).with(ring).try_init();
+}
+
+/// Counts one `feature` that went `code` in the feature health counts
+/// (`nectarlink_core::diag::health`). Unknown names are ignored.
+#[uniffi::export]
+pub fn count_health(feature: String, code: String) {
+    use core::diag::health::{Code, Feature, count};
+    if let (Some(feature), Some(code)) = (Feature::parse(&feature), Code::parse(&code)) {
+        count(feature, code);
+    }
+}
+
+/// Writes the feature health counts so far (when the app goes to the
+/// background: Android may end it without warning after that).
+#[uniffi::export]
+pub fn flush_health() {
+    core::diag::health::flush();
 }
 
 /// A crash the phone app found itself (its own Java or Kotlin crash, or one
@@ -5097,6 +5115,7 @@ pub fn record_crash(kind: String, location: String, message: String, thread: Opt
         at,
     };
     crash::record(&record);
+    core::diag::health::count(core::diag::health::Feature::Crash, core::diag::health::Code::Ok);
 }
 
 #[cfg(test)]

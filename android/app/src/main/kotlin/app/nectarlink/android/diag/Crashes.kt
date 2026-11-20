@@ -7,6 +7,7 @@ import android.content.Context
 import android.os.Build
 import androidx.annotation.RequiresApi
 import app.nectarlink.android.BuildConfig
+import app.nectarlink.core.countHealth
 import app.nectarlink.core.recordCrash
 import org.json.JSONObject
 import java.io.File
@@ -125,7 +126,11 @@ object Crashes {
         for (exit in exits) {
             when (val outcome = outcome(exit.reason, exit.importance, exit.status)) {
                 is Outcome.Crash -> recordCrash(outcome.kind, outcome.location, outcome.message, null, (exit.timestamp / 1000).toULong())
-                Outcome.BackgroundKill -> killed++
+                Outcome.Counted -> countHealth("crash", "ok")
+                Outcome.BackgroundKill -> {
+                    killed++
+                    countHealth("background_kill", "ok")
+                }
                 Outcome.Nothing -> {}
             }
         }
@@ -141,6 +146,8 @@ object Crashes {
 
     internal sealed interface Outcome {
         data class Crash(val kind: String, val location: String, val message: String) : Outcome
+        /** A crash already recorded as it happened: only counted. */
+        data object Counted : Outcome
         data object BackgroundKill : Outcome
         data object Nothing : Outcome
     }
@@ -148,7 +155,7 @@ object Crashes {
     /** What one of Android's exit records means for us. */
     internal fun outcome(reason: Int, importance: Int, status: Int): Outcome = when (reason) {
         // Already recorded as it happened, by [install].
-        ApplicationExitInfo.REASON_CRASH -> Outcome.Nothing
+        ApplicationExitInfo.REASON_CRASH -> Outcome.Counted
         ApplicationExitInfo.REASON_CRASH_NATIVE -> Outcome.Crash("native", "<native>", "signal $status")
         ApplicationExitInfo.REASON_ANR -> Outcome.Crash("anr", "<main>", "not responding")
         ApplicationExitInfo.REASON_LOW_MEMORY,

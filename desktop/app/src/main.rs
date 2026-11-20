@@ -480,12 +480,15 @@ fn uninstall() {
 fn note_previous_run(diag_dir: &Path) {
     use nectarlink_core::diag::crash;
     let version = env!("CARGO_PKG_VERSION");
+    use nectarlink_core::diag::health::{self, Code, Feature};
+    health::init(diag_dir);
     let Some(previous) = crash::begin_run(diag_dir, version) else { return };
     if previous.clean {
         return;
     }
     if let Some(record) = crash::crashed(&previous, &crash::records(diag_dir)) {
         tracing::warn!(sig = %record.sig, kind = %record.kind, version = %previous.version, "the last run crashed");
+        health::count(Feature::Crash, Code::Ok);
         return;
     }
     std::thread::Builder::new()
@@ -494,8 +497,12 @@ fn note_previous_run(diag_dir: &Path) {
             Some(record) => {
                 tracing::warn!(sig = %record.sig, kind = %record.kind, version = %previous.version, "the last run crashed");
                 crash::record(&record);
+                health::count(Feature::Crash, Code::Ok);
             }
-            None => tracing::info!(version = %previous.version, "the last run ended without quitting"),
+            None => {
+                tracing::info!(version = %previous.version, "the last run ended without quitting");
+                health::count(Feature::UncleanExit, Code::Ok);
+            }
         })
         .ok();
 }
@@ -834,6 +841,7 @@ fn main() -> ExitCode {
     win::net::stop();
     core_host::shutdown();
     drop(app);
+    nectarlink_core::diag::health::flush();
     nectarlink_core::diag::crash::end_run();
     if options.ui_check {
         let problems = bridge::native::ffi::qml_problem_count();

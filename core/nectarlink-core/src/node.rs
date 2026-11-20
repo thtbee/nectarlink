@@ -309,6 +309,7 @@ fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
 
 impl Shared {
     pub fn emit(&self, event: NodeEvent) {
+        crate::diag::health::observe(&event);
         // No subscribers is fine; events are a UI convenience.
         let _ = self.events.send(event);
     }
