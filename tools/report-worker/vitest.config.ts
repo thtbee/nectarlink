@@ -7,7 +7,7 @@ export default defineConfig(async () => ({
     cloudflareTest({
       wrangler: { configPath: "./wrangler.toml" },
       miniflare: {
-        bindings: { TEST_MIGRATIONS: await readD1Migrations("./migrations"), POW_BITS: "8" },
+        bindings: { TEST_MIGRATIONS: await readD1Migrations("./migrations"), POW_BITS: "8", STATS_KEY: "test-stats-key" },
       },
     }),
   ],

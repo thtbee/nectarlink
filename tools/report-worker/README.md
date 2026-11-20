@@ -9,6 +9,23 @@ runs as a Cloudflare Worker with a D1 database, and files issues as the
 |---|---|
 | `POST /v1/report` | `200 { issue, url }`, or `202 { queued: true }` when it has to wait |
 | `GET /v1/report/<rid>` | `200 { issue, url }`, `202` while queued, `404` when unknown |
+| `POST /v1/ping` | `204`: the daily count |
+| `GET /stats?key=<key>` | The owner's page of daily totals; `404` without the key |
+
+## The daily count
+
+Once a UTC day each app sends its version and channel, platform, OS
+version, phone model (or nothing on a PC), and how many times each feature
+worked or failed the day before: `{ v, app, channel, platform, os,
+hardware, features }`, at most 8 KB, with a 16-bit proof of work. There's
+no ID. The service adds it to totals per day and throws the report away;
+at most 20 a day count from one address. Totals are kept 400 days.
+
+**The stats page** shows devices per day for the last 30 days, the 7- and
+30-day daily averages, the split by platform, version, OS and model, and
+what failed most in the last week. Without an ID a device can't be told
+apart from day to day, so a week's figure is a daily average, not unique
+devices.
 
 ## What it keeps
 
@@ -65,6 +82,7 @@ Once, as the repository owner:
    npx wrangler d1 create nectarlink-reports      # put its database_id in wrangler.toml
    npx wrangler d1 migrations apply nectarlink-reports --remote
    npx wrangler secret put GITHUB_APP_KEY < path/to/the-key.pem
+   npx wrangler secret put STATS_KEY      # a long random string: the stats page's key
    npx wrangler deploy
    ```
 

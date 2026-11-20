@@ -4,6 +4,8 @@
 //
 //   POST /v1/report        -> 200 { issue, url } or 202 { queued: true }
 //   GET  /v1/report/<rid>  -> 200 { issue, url }, 202 while queued, 404
+//   POST /v1/ping          -> 204: the daily count (usage.ts)
+//   GET  /stats?key=...    -> the owner's page of daily totals
 //
 // Nothing about the sender is kept: no address, no account. Report text is
 // held only while a report waits in the queue.
@@ -11,6 +13,7 @@
 import { AppClient, type GitHub } from "./github";
 import { hex, sha256, verify } from "./pow";
 import { MAX_REQUEST, type Report, issueBody, labels, merge, parse, tally, title } from "./report";
+import { isStatsKey, receivePing, statsPage, sweepUsage } from "./usage";
 
 export interface Env {
   DB: D1Database;
@@ -24,6 +27,8 @@ export interface Env {
   DAILY_ISSUES: string;
   /** Reports a day from one sender. */
   SENDER_DAILY: string;
+  /** Secret: the key in the stats page's link. */
+  STATS_KEY?: string;
 }
 
 const DAY = 86_400;
@@ -49,6 +54,17 @@ export async function handle(request: Request, env: Env, github: GitHub, now: nu
   if (url.pathname === "/v1/report") {
     if (request.method !== "POST") return reply(405, { error: "method" });
     return receive(request, env, github, now);
+  }
+  if (url.pathname === "/v1/ping") {
+    if (request.method !== "POST") return reply(405, { error: "method" });
+    if (!request.headers.get("content-type")?.startsWith("application/json")) return reply(415, { error: "json" });
+    const day = dayOf(now);
+    return receivePing(request, env, now, await senderHash(env, day, request.headers.get("cf-connecting-ip") ?? ""));
+  }
+  if (url.pathname === "/stats") {
+    if (request.method !== "GET") return reply(405, { error: "method" });
+    if (!(await isStatsKey(env, url.searchParams.get("key")))) return reply(404, { error: "not found" });
+    return statsPage(env, now);
   }
   const status = url.pathname.match(/^\/v1\/report\/([0-9a-z]{16,32})$/);
   if (status) {
@@ -240,6 +256,7 @@ export async function sweep(env: Env, github: GitHub, now: number): Promise<void
     env.DB.prepare("DELETE FROM salts WHERE day <> ?1").bind(today),
     env.DB.prepare("DELETE FROM senders WHERE day <> ?1").bind(today),
     env.DB.prepare("DELETE FROM days WHERE day < ?1").bind(dayOf(now - 30 * DAY)),
+    ...sweepUsage(env, now),
   ]);
 }
 
