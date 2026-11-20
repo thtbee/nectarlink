@@ -121,7 +121,7 @@
     <message>
         <location filename="../qml/components/AgentConfirmSheet.qml" line="42"/>
         <source>Press a Deck tile</source>
-        <translation>Pulsar un botón del Deck</translation>
+        <translation>Pulsar un mosaico del Deck</translation>
     </message>
     <message>
         <location filename="../qml/components/AgentConfirmSheet.qml" line="43"/>
@@ -283,7 +283,7 @@
         <location filename="../qml/components/AgentsSection.qml" line="79"/>
         <location filename="../qml/components/AgentsSection.qml" line="152"/>
         <source>Everyday</source>
-        <translation>Diario</translation>
+        <translation>Uso diario</translation>
     </message>
     <message>
         <location filename="../qml/components/AgentsSection.qml" line="79"/>
@@ -339,7 +339,7 @@
     <message>
         <location filename="../qml/components/AgentsSection.qml" line="91"/>
         <source>failed</source>
-        <translation>falló</translation>
+        <translation>fallido</translation>
     </message>
     <message>
         <location filename="../qml/components/AgentsSection.qml" line="102"/>
@@ -434,7 +434,7 @@
     <message>
         <location filename="../qml/components/AgentsSection.qml" line="236"/>
         <source>Add this to the app&apos;s MCP settings:</source>
-        <translation>Añade esto a los ajustes de MCP de la app:</translation>
+        <translation>Añade esto a los ajustes de MCP de la aplicación:</translation>
     </message>
     <message>
         <location filename="../qml/components/AgentsSection.qml" line="258"/>
@@ -7418,7 +7418,7 @@ Qué necesitas
     <message>
         <location filename="../qml/components/PhoneInstallPane.qml" line="179"/>
         <source>Use USB debugging is off in Settings › Connection &amp; About.</source>
-        <translation>Usar la depuración USB está desactivado en Ajustes › Conexión y Acerca de.</translation>
+        <translation>La opción Usar la depuración USB está desactivada en Ajustes › Conexión y Acerca de.</translation>
     </message>
     <message>
         <location filename="../qml/components/PhoneInstallPane.qml" line="188"/>
@@ -10064,7 +10064,7 @@ Qué necesitas
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3506"/>
         <source>Connect, pair, install the app and start Elevated over a USB cable. Your phone asks once to allow USB debugging.</source>
-        <translation>Conecta, empareja, instala la app e inicia Elevated por cable USB. Tu teléfono pregunta una vez si permite la depuración USB.</translation>
+        <translation>Conecta, empareja, instala la aplicación e inicia Elevated por cable USB. Tu teléfono pregunta una vez si permite la depuración USB.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3507"/>
@@ -10117,7 +10117,7 @@ Qué necesitas
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3249"/>
         <source>Notifications that went away stay in the feed&apos;s history this long.</source>
-        <translation>Las notificaciones que desaparecieron siguen en el historial este tiempo.</translation>
+        <translation>Las notificaciones que desaparecieron se quedan en el historial durante este tiempo.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3252"/>
