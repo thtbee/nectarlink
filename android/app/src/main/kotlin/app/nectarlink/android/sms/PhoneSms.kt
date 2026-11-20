@@ -79,10 +79,18 @@ internal class PhoneSms(context: Context, private val onChange: () -> Unit) {
             Telephony.Threads.SNIPPET,
             Telephony.Threads.READ,
             Telephony.Threads.HAS_ATTACHMENT,
+            Telephony.Threads.MESSAGE_COUNT,
         )
-        resolver.query(uri, columns, null, null, "${Telephony.Threads.DATE} DESC")?.use { c ->
+        // A phone whose provider doesn't know the count still lists every conversation.
+        val cursor = runCatching { resolver.query(uri, columns, null, null, "${Telephony.Threads.DATE} DESC") }
+            .getOrElse { resolver.query(uri, columns.dropLast(1).toTypedArray(), null, null, "${Telephony.Threads.DATE} DESC") }
+        cursor?.use { c ->
+            val counted = c.columnCount == columns.size
             buildList {
                 while (size < limit && c.moveToNext()) {
+                    // Conversations left with no SMS or MMS (emptied, or RCS
+                    // only, which Android keeps in the messaging app) aren't listed.
+                    if (counted && !c.isNull(6) && c.getInt(6) == 0) continue
                     val id = c.getLong(0)
                     val people = c.getString(2).orEmpty().split(' ').mapNotNull { it.toLongOrNull()?.let(addresses::get) }
                     if (people.isEmpty()) continue

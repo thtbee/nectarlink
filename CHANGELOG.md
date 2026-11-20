@@ -305,6 +305,9 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **Messages no longer lists empty conversations.** Conversations with no texts left in them
+  (cleared ones, or chats that were only ever RCS) showed on the PC as empty threads. Thanks to
+  [@jed84](https://github.com/jed84) ([#167](https://github.com/thtbee/nectarlink/issues/167)).
 - **NectarLink starts even when the network isn't up yet at sign-in.** Starting with
   Windows while the network was still coming up could stop it with "Service 'mdns'
   error" until it was started again. It now starts without finding phones on the network
