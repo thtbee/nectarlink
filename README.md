@@ -167,7 +167,7 @@ in light and dark. In English, German, Turkish, Simplified Chinese, Brazilian Po
 | Calls & SMS viewer | Yes | Yes | Yes |
 | Phone quick toggles & volume | Yes | Yes | Yes |
 | Clipboard text & image sync | Yes | Yes | Yes (two-way text, incoming photo) |
-| System notifications | Yes | Yes | Yes (system banners) |
+| System notifications | Yes | Yes | Yes (buttons, replies, calls) |
 | Phone screen mirroring | Yes | Yes | Yes (H.264) |
 | Screen recording (MP4) | Yes | Yes | Yes (H.264) |
 | PC audio stream / phone mic | Yes | Yes | Yes (PC audio needs Screen Recording permission) |
