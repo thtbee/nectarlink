@@ -284,6 +284,63 @@ fn now() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_secs())
 }
 
+/// What the crash card has shown: signatures, and whether it's turned off.
+#[derive(Debug, Default, Serialize, Deserialize)]
+struct CardFile {
+    #[serde(default)]
+    shown: Vec<String>,
+    #[serde(default)]
+    off: bool,
+}
+
+const CARD_FILE: &str = "crash-card.json";
+/// How recent a crash the card offers to report.
+const CARD_DAYS: u64 = 7;
+
+fn card_file(dir: &Path) -> CardFile {
+    fs::read(dir.join(CARD_FILE)).ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_default()
+}
+
+fn save_card_file(dir: &Path, file: &CardFile) {
+    if let Ok(json) = serde_json::to_vec(file) {
+        let _ = fs::write(dir.join(CARD_FILE), json);
+    }
+}
+
+/// The crash the crash card should offer to report: the newest one from
+/// this `version` in the last week that it hasn't shown, unless the card
+/// is turned off. Once per crash per version.
+pub fn for_card(dir: &Path, version: &str, now: u64) -> Option<CrashRecord> {
+    let file = card_file(dir);
+    if file.off {
+        return None;
+    }
+    records(dir).into_iter().find(|r| {
+        r.version == version
+            && now.saturating_sub(r.at) < CARD_DAYS * 86_400
+            && !file.shown.iter().any(|s| *s == format!("{}@{}", r.sig, r.version))
+    })
+}
+
+/// The card was shown for `record` (sent, looked at, or put away): not again.
+pub fn card_shown(dir: &Path, record: &CrashRecord) {
+    let mut file = card_file(dir);
+    let key = format!("{}@{}", record.sig, record.version);
+    if !file.shown.contains(&key) {
+        file.shown.push(key);
+        let drop = file.shown.len().saturating_sub(50);
+        file.shown.drain(..drop);
+    }
+    save_card_file(dir, &file);
+}
+
+/// "Don't ask about crashes": the card stays away.
+pub fn card_off(dir: &Path) {
+    let mut file = card_file(dir);
+    file.off = true;
+    save_card_file(dir, &file);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -374,5 +431,45 @@ mod tests {
         assert_eq!(kept.len(), KEEP);
         assert_eq!(kept[0].at, 1007);
         assert_eq!(kept[KEEP - 1].at, 1003);
+    }
+
+    #[test]
+    fn the_card_offers_each_crash_once_until_turned_off() {
+        let dir = tempfile::tempdir().unwrap();
+        let now = 2_000_000_000;
+        let crash = |sig: &str, version: &str, at: u64| CrashRecord {
+            sig: sig.into(),
+            kind: "panic".into(),
+            location: "core/src/node.rs:1:1".into(),
+            message: "boom".into(),
+            thread: None,
+            version: version.into(),
+            at,
+        };
+        fs::create_dir_all(dir.path().join(CRASH_DIR)).unwrap();
+        for c in [
+            crash("aaaaaaaaaaaa", "0.1.6", now - 60),
+            crash("bbbbbbbbbbbb", "0.1.5", now - 30),
+            crash("cccccccccccc", "0.1.6", now - 8 * 86_400),
+        ] {
+            fs::write(
+                dir.path().join(CRASH_DIR).join(format!("{}.json", c.sig)),
+                serde_json::to_vec(&c).unwrap(),
+            )
+            .unwrap();
+        }
+        let first = for_card(dir.path(), "0.1.6", now).unwrap();
+        assert_eq!(first.sig, "aaaaaaaaaaaa");
+        card_shown(dir.path(), &first);
+        assert_eq!(for_card(dir.path(), "0.1.6", now), None);
+        // The same crash in a newer version is offered again.
+        fs::write(
+            dir.path().join(CRASH_DIR).join("new.json"),
+            serde_json::to_vec(&crash("aaaaaaaaaaaa", "0.1.7", now)).unwrap(),
+        )
+        .unwrap();
+        assert!(for_card(dir.path(), "0.1.7", now).is_some());
+        card_off(dir.path());
+        assert_eq!(for_card(dir.path(), "0.1.7", now), None);
     }
 }

@@ -1403,4 +1403,16 @@
     <string name="report_peer_busy">Журнал %1$s уже запрашивали только что. Попробуйте через минуту.</string>
     <string name="report_peer_offline">%1$s не подключён, поэтому в отчёте только то, что он передал при сопряжении.</string>
     <string name="report_peer_old">%1$s нужно обновить, чтобы добавить его данные.</string>
+    <string name="channel_report_replies">Ответы на ваши отчёты</string>
+    <string name="report_reply_title">На ваш отчёт ответили</string>
+    <string name="report_closed_title">Ваш отчёт закрыт</string>
+    <string name="report_notice_text">Отчёт #%1$d. Нажмите, чтобы прочитать на GitHub.</string>
+    <string name="crash_card_sent">Спасибо, отчёт о сбое отправлен</string>
+    <string name="crash_card_title">NectarLink неожиданно закрылся</string>
+    <string name="crash_card_failed">Не удалось отправить отчёт о сбое. Нажмите «Сначала посмотреть», чтобы отправить его иначе.</string>
+    <string name="crash_card_body">Отчёт о сбое помогает его исправить. В нём только то, где в NectarLink произошёл сбой и какие версии вы используете, ничего личного.</string>
+    <string name="crash_card_look">Сначала посмотреть</string>
+    <string name="crash_card_off">Не спрашивать о сбоях</string>
+    <string name="crash_card_fixed">Этот сбой исправлен в NectarLink %1$s. Обновитесь, чтобы получить исправление.</string>
+    <string name="crash_card_update">Обновить</string>
 </resources>

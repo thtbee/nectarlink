@@ -14,6 +14,14 @@ QtObject {
     property int sentIssue: 0
     property int sends: 0
     property bool phoneLogWaiting: false
+    property string crash: ""
+    property string crashState: ""
+    property string crashFixedIn: ""
+    property int crashSends: 0
+    function checkCrash() {}
+    function crashSend() { crashSends++; crashState = "sent" }
+    function crashDone(look) { crash = ""; crashState = ""; if (look) requested() }
+    function crashOff() { crash = ""; crashState = "" }
     signal requested()
     function open() { requested() }
     function guessArea() { return guessed }

@@ -13,14 +13,21 @@ import app.nectarlink.android.BuildConfig
 import app.nectarlink.android.core.Device
 import app.nectarlink.core.Link
 import app.nectarlink.core.CountInstall
+import app.nectarlink.core.CrashCard
 import app.nectarlink.core.OutgoingReport
 import app.nectarlink.core.ReportDevice
 import app.nectarlink.core.ReportOutcome
 import app.nectarlink.core.ReportPair
+import app.nectarlink.core.crashCardFixedIn
 import app.nectarlink.core.dailyCountDue
+import app.nectarlink.core.knownCrashesUrl
 import app.nectarlink.core.dailyCountSent
 import app.nectarlink.core.reportAnswer
+import app.nectarlink.core.reportFollowed
+import app.nectarlink.core.reportIssueAnswer
+import app.nectarlink.core.reportOutgoing
 import app.nectarlink.core.reportPending
+import app.nectarlink.core.reportPrepare
 import app.nectarlink.core.reportQueued
 import app.nectarlink.core.reportQueuedAnswer
 import app.nectarlink.core.reportService
@@ -84,14 +91,33 @@ object Reports {
         checks = emptyList(),
     )
 
+    /**
+     * Sends a crash report for [card]: the crash, versions, checks and feature health, never
+     * the log. True once it's sent or kept to send later. Blocking.
+     */
+    fun sendCrash(context: Context, card: CrashCard, devices: List<Device>): Boolean {
+        reportPrepare(card.area, "", "", false, 15, phone(context), devices.map(::other))
+        val outgoing = reportOutgoing(card.sig) ?: return false
+        return when (deliver(outgoing, follow = false)) {
+            is ReportOutcome.Filed, ReportOutcome.Queued, ReportOutcome.Later -> true
+            ReportOutcome.Limited, ReportOutcome.Failed -> false
+        }
+    }
+
+    /** The version that fixes the crash card's crash, if a newer one does. Blocking. */
+    fun knownFix(): String? {
+        val (status, body) = request(knownCrashesUrl(), null)
+        return if (status.toInt() == 200) crashCardFixedIn(body) else null
+    }
+
     /** Posts [outgoing] and says what became of it. Blocking: call it off the main thread. */
-    fun deliver(outgoing: OutgoingReport): ReportOutcome {
+    fun deliver(outgoing: OutgoingReport, follow: Boolean = true): ReportOutcome {
         val (status, body) = try {
             post("${reportService()}/v1/report", outgoing)
         } catch (_: IOException) {
             0.toUShort() to ByteArray(0)
         }
-        return reportAnswer(outgoing, status, body)
+        return reportAnswer(outgoing, status, body, follow)
     }
 
     /**
@@ -101,6 +127,13 @@ object Reports {
     fun followUp(context: Context) {
         dailyCount(context)
         reportPending()?.let { deliver(it) }
+        // Replies and closed reports: one GET per followed report, numbers only.
+        for (followed in reportFollowed()) {
+            runCatching {
+                val (status, body) = request(followed.url, null)
+                reportIssueAnswer(followed.rid, status, body)?.let { ReportNotices.show(context, it) }
+            }
+        }
         for (rid in reportQueued()) {
             runCatching {
                 val (status, body) = request("${reportService()}/v1/report/$rid", null)

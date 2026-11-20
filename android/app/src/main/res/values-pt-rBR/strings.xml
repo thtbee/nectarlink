@@ -1532,6 +1532,18 @@
     <string name="report_peer_busy">O registro de %1$s foi pedido agora há pouco. Tente de novo em um minuto.</string>
     <string name="report_peer_offline">%1$s não está conectado, então só entra o que ele compartilhou no pareamento.</string>
     <string name="report_peer_old">%1$s precisa de uma atualização para incluir os dados dele.</string>
+    <string name="channel_report_replies">Respostas aos seus relatórios</string>
+    <string name="report_reply_title">Há uma resposta ao seu relatório</string>
+    <string name="report_closed_title">Seu relatório foi fechado</string>
+    <string name="report_notice_text">Relatório #%1$d. Toque para ler no GitHub.</string>
+    <string name="crash_card_sent">Obrigado, o relatório de falha foi enviado</string>
+    <string name="crash_card_title">O NectarLink fechou inesperadamente</string>
+    <string name="crash_card_failed">Não foi possível enviar o relatório de falha. Use Ver antes para enviar de outro jeito.</string>
+    <string name="crash_card_body">Um relatório de falha ajuda a corrigir. Ele diz onde no NectarLink aconteceu e quais versões você usa, nada pessoal.</string>
+    <string name="crash_card_look">Ver antes</string>
+    <string name="crash_card_off">Não perguntar sobre falhas</string>
+    <string name="crash_card_fixed">Esta falha foi corrigida no NectarLink %1$s. Atualize para receber a correção.</string>
+    <string name="crash_card_update">Atualizar</string>
 </resources>
 
 

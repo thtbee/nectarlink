@@ -368,3 +368,60 @@ private fun copyReport(context: Context, text: String) {
     }
     context.getSystemService(ClipboardManager::class.java)?.setPrimaryClip(clip)
 }
+
+/** Where the crash card's Send got to. */
+enum class CrashSend { Idle, Sending, Sent, Failed }
+
+/**
+ * After a crash: a card on Home offering to send a crash report (where in
+ * NectarLink it happened, versions, checks and feature health, never the
+ * log). Once per crash per version; "Don't ask about crashes" turns it off.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun CrashCardView(
+    send: CrashSend,
+    fixedIn: String?,
+    onUpdate: () -> Unit,
+    onSend: () -> Unit,
+    onLookFirst: () -> Unit,
+    onNotNow: () -> Unit,
+    onOff: () -> Unit,
+) {
+    Surface(shape = MaterialTheme.shapes.extraLarge, color = MaterialTheme.colorScheme.secondaryContainer) {
+        Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                stringResource(if (send == CrashSend.Sent) R.string.crash_card_sent else R.string.crash_card_title),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+            if (send != CrashSend.Sent) {
+                Text(
+                    when {
+                        fixedIn != null -> stringResource(R.string.crash_card_fixed, fixedIn)
+                        send == CrashSend.Failed -> stringResource(R.string.crash_card_failed)
+                        else -> stringResource(R.string.crash_card_body)
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (fixedIn != null) {
+                        Button(onClick = onUpdate) { Text(stringResource(R.string.crash_card_update)) }
+                    } else {
+                        Button(enabled = send == CrashSend.Idle, onClick = onSend) { Text(stringResource(R.string.report_send)) }
+                        FilledTonalButton(enabled = send != CrashSend.Sending, onClick = onLookFirst) {
+                            Text(stringResource(R.string.crash_card_look))
+                        }
+                    }
+                    TextButton(enabled = send != CrashSend.Sending, onClick = onNotNow) {
+                        Text(stringResource(R.string.action_not_now))
+                    }
+                }
+                TextButton(onClick = onOff, contentPadding = PaddingValues(0.dp)) {
+                    Text(stringResource(R.string.crash_card_off))
+                }
+            }
+        }
+    }
+}

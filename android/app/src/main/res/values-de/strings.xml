@@ -1533,4 +1533,16 @@
     <string name="report_peer_busy">%1$s wurde gerade erst nach dem Protokoll gefragt. Versuch es in einer Minute noch einmal.</string>
     <string name="report_peer_offline">%1$s ist nicht verbunden, daher ist nur enthalten, was beim Koppeln geteilt wurde.</string>
     <string name="report_peer_old">%1$s braucht ein Update, um seine Angaben hinzuzufügen.</string>
+    <string name="channel_report_replies">Antworten auf deine Berichte</string>
+    <string name="report_reply_title">Es gibt eine Antwort auf deinen Bericht</string>
+    <string name="report_closed_title">Dein Bericht wurde geschlossen</string>
+    <string name="report_notice_text">Bericht #%1$d. Tippe, um ihn auf GitHub zu lesen.</string>
+    <string name="crash_card_sent">Danke, der Absturzbericht ist gesendet</string>
+    <string name="crash_card_title">NectarLink wurde unerwartet beendet</string>
+    <string name="crash_card_failed">Der Absturzbericht konnte nicht gesendet werden. Nutze „Erst ansehen“, um ihn anders zu senden.</string>
+    <string name="crash_card_body">Ein Absturzbericht hilft, das zu beheben. Er sagt, wo in NectarLink es passiert ist und welche Versionen du nutzt, nichts Persönliches.</string>
+    <string name="crash_card_look">Erst ansehen</string>
+    <string name="crash_card_off">Nicht nach Abstürzen fragen</string>
+    <string name="crash_card_fixed">Dieser Absturz ist in NectarLink %1$s behoben. Aktualisiere, um die Korrektur zu bekommen.</string>
+    <string name="crash_card_update">Aktualisieren</string>
 </resources>

@@ -994,6 +994,10 @@ NativeWindow {
         }
     }
 
+    CrashCard {
+        eligible: AppController.status === "ready" && !window.showWalkthrough && window.visible
+    }
+
     StarPrompt {
         eligible: AppController.status === "ready" && !window.showWalkthrough && window.active
         onStarred: Qt.openUrlExternally("https://github.com/thtbee/nectarlink")

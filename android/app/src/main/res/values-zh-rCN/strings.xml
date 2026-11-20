@@ -1392,4 +1392,16 @@
     <string name="report_peer_busy">刚刚已经请求过 %1$s 的日志。请一分钟后再试。</string>
     <string name="report_peer_offline">%1$s 未连接，因此只包含配对时它分享的信息。</string>
     <string name="report_peer_old">%1$s 需要更新才能添加它的信息。</string>
+    <string name="channel_report_replies">你的报告收到的回复</string>
+    <string name="report_reply_title">你的报告有新回复</string>
+    <string name="report_closed_title">你的报告已关闭</string>
+    <string name="report_notice_text">报告 #%1$d。点按即可在 GitHub 上阅读。</string>
+    <string name="crash_card_sent">谢谢，崩溃报告已发送</string>
+    <string name="crash_card_title">NectarLink 意外关闭</string>
+    <string name="crash_card_failed">无法发送崩溃报告。请使用“先看看”以其他方式发送。</string>
+    <string name="crash_card_body">崩溃报告有助于修复问题。它只说明在 NectarLink 的哪个位置发生以及你使用的版本，不含任何个人信息。</string>
+    <string name="crash_card_look">先看看</string>
+    <string name="crash_card_off">不再询问崩溃</string>
+    <string name="crash_card_fixed">此崩溃已在 NectarLink %1$s 中修复。请更新以获取修复。</string>
+    <string name="crash_card_update">更新</string>
 </resources>

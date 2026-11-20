@@ -251,6 +251,52 @@ pub fn remember(dir: &Path, entry: Sent, now: u64) {
     save_sent(dir, &all);
 }
 
+/// Something new on a followed report's issue.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Notice {
+    /// Someone commented.
+    Replied { issue: u64 },
+    /// It was closed (fixed, or answered).
+    Closed { issue: u64 },
+}
+
+/// GitHub's public API address for `issue`: its state and comment count.
+pub fn issue_api_url(issue: u64) -> String {
+    format!("https://api.github.com/repos/thtbee/nectarlink/issues/{issue}")
+}
+
+/// Reads GitHub's answer about the followed report `rid` (`status`, `body`)
+/// and says what's new since the last check, if anything. A closed issue
+/// isn't followed any more. Only numbers are read: no text from GitHub is
+/// shown.
+pub fn check_issue(dir: &Path, rid: &str, status: u16, body: &[u8], now: u64) -> Option<Notice> {
+    #[derive(Deserialize)]
+    struct Issue {
+        number: u64,
+        state: String,
+        comments: u64,
+    }
+    if status != 200 {
+        return None;
+    }
+    let issue: Issue = serde_json::from_slice(body).ok()?;
+    let entry = sent(dir, now).into_iter().find(|s| s.rid == rid && s.issue == Some(issue.number))?;
+    let closed = issue.state == "closed";
+    let notice = if closed && !entry.closed {
+        Some(Notice::Closed { issue: issue.number })
+    } else if issue.comments > entry.comments {
+        Some(Notice::Replied { issue: issue.number })
+    } else {
+        None
+    };
+    if closed {
+        forget(dir, rid);
+    } else if issue.comments != entry.comments {
+        remember(dir, Sent { comments: issue.comments, ..entry }, now);
+    }
+    notice
+}
+
 /// Stops following the report `rid`.
 pub fn forget(dir: &Path, rid: &str) {
     let mut all = all_sent(dir);
@@ -361,6 +407,40 @@ mod tests {
         assert_eq!(Answer::read(403, b""), Answer::Later);
         assert_eq!(Answer::read(503, b""), Answer::Later);
         assert_eq!(issue_url(412), "https://github.com/thtbee/nectarlink/issues/412");
+    }
+
+    #[test]
+    fn replies_and_closing_are_noticed_once() {
+        let dir = tempfile::tempdir().unwrap();
+        let now = 1_000_000;
+        remember(
+            dir.path(),
+            Sent { rid: "r".into(), issue: Some(412), at: now, comments: 0, closed: false },
+            now,
+        );
+        let issue = |state: &str, comments: u64| {
+            format!(r#"{{"number":412,"state":"{state}","comments":{comments},"title":"anything"}}"#)
+                .into_bytes()
+        };
+        assert_eq!(check_issue(dir.path(), "r", 200, &issue("open", 0), now), None);
+        assert_eq!(
+            check_issue(dir.path(), "r", 200, &issue("open", 2), now),
+            Some(Notice::Replied { issue: 412 })
+        );
+        assert_eq!(check_issue(dir.path(), "r", 200, &issue("open", 2), now), None);
+        assert_eq!(check_issue(dir.path(), "r", 304, b"", now), None);
+        assert_eq!(
+            check_issue(dir.path(), "r", 200, &issue("closed", 3), now),
+            Some(Notice::Closed { issue: 412 })
+        );
+        assert!(sent(dir.path(), now).is_empty());
+        // Another issue's answer doesn't count for this report.
+        remember(
+            dir.path(),
+            Sent { rid: "q".into(), issue: Some(7), at: now, comments: 0, closed: false },
+            now,
+        );
+        assert_eq!(check_issue(dir.path(), "q", 200, &issue("open", 5), now), None);
     }
 
     #[test]

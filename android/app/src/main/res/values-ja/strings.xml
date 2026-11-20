@@ -1524,6 +1524,18 @@
     <string name="report_peer_busy">%1$s には少し前にログを求めました。1 分後にもう一度お試しください。</string>
     <string name="report_peer_offline">%1$s が接続されていないため、ペア設定時に共有された情報だけが含まれます。</string>
     <string name="report_peer_old">%1$s の情報を追加するにはアップデートが必要です。</string>
+    <string name="channel_report_replies">レポートへの返信</string>
+    <string name="report_reply_title">レポートに返信があります</string>
+    <string name="report_closed_title">レポートがクローズされました</string>
+    <string name="report_notice_text">レポート #%1$d。タップして GitHub で読む。</string>
+    <string name="crash_card_sent">ありがとうございます。クラッシュレポートを送信しました</string>
+    <string name="crash_card_title">NectarLink が予期せず終了しました</string>
+    <string name="crash_card_failed">クラッシュレポートを送信できませんでした。「先に確認」から別の方法で送ってください。</string>
+    <string name="crash_card_body">クラッシュレポートは修正に役立ちます。NectarLink のどこで起きたかと使用中のバージョンだけで、個人的な情報は含まれません。</string>
+    <string name="crash_card_look">先に確認</string>
+    <string name="crash_card_off">クラッシュについて尋ねない</string>
+    <string name="crash_card_fixed">このクラッシュは NectarLink %1$s で修正されています。アップデートして修正を適用してください。</string>
+    <string name="crash_card_update">アップデート</string>
 </resources>
 
 

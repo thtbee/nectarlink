@@ -1542,4 +1542,16 @@
     <string name="report_peer_busy">A %1$s se le pidió el registro hace un momento. Inténtalo de nuevo en un minuto.</string>
     <string name="report_peer_offline">%1$s no está conectado, así que solo se incluye lo que compartió al vincularlo.</string>
     <string name="report_peer_old">%1$s necesita una actualización para añadir sus datos.</string>
+    <string name="channel_report_replies">Respuestas a tus informes</string>
+    <string name="report_reply_title">Hay una respuesta a tu informe</string>
+    <string name="report_closed_title">Tu informe se cerró</string>
+    <string name="report_notice_text">Informe #%1$d. Toca para leerlo en GitHub.</string>
+    <string name="crash_card_sent">Gracias, el informe de cierre se envió</string>
+    <string name="crash_card_title">NectarLink se cerró de forma inesperada</string>
+    <string name="crash_card_failed">No se pudo enviar el informe de cierre. Usa Ver antes para enviarlo de otra forma.</string>
+    <string name="crash_card_body">Un informe de cierre ayuda a arreglarlo. Dice en qué parte de NectarLink pasó y qué versiones usas, nada personal.</string>
+    <string name="crash_card_look">Ver antes</string>
+    <string name="crash_card_off">No preguntar por cierres inesperados</string>
+    <string name="crash_card_fixed">Este cierre inesperado está corregido en NectarLink %1$s. Actualiza para tener la corrección.</string>
+    <string name="crash_card_update">Actualizar</string>
 </resources>

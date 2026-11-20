@@ -27,6 +27,14 @@ what failed most in the last week. Without an ID a device can't be told
 apart from day to day, so a week's figure is a daily average, not unique
 devices.
 
+## Crashes already fixed
+
+`.github/known-crashes.json` on `main` lists crashes a release fixed:
+`[{ "sig": "b3af6c6e31db", "issue": 482, "fixed_in": "0.1.7" }]`, 16 KB at
+most. The apps' crash card checks its crash against it and offers the
+update instead of a report. Add an entry when a release fixes a crash
+issue; only the version is read, and only when it's plain digits.
+
 ## What it keeps
 
 Nothing about the sender. Reports per sender per day are counted by a hash

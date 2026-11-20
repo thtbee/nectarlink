@@ -16,6 +16,7 @@ use cxx_qt_lib::QString;
 use nectarlink_core::{
     DeviceId, LinkState, PeerLog,
     diag::{
+        crash, known,
         report::{self, Area, DeviceFacts, DevicePart, Parts},
         send::{self, Answer, Kind, Outgoing, Sent},
         usage,
@@ -47,6 +48,12 @@ pub mod qobject {
         #[qproperty(i32, sent_issue, cxx_name = "sentIssue")]
         /// A paired phone was asked for its log: its user has to tap Share on it.
         #[qproperty(bool, phone_log_waiting, cxx_name = "phoneLogWaiting")]
+        /// A crash the crash card offers to report: its signature, or "".
+        #[qproperty(QString, crash)]
+        /// The crash card's Send: "", `sending`, `sent` or `failed`.
+        #[qproperty(QString, crash_state, cxx_name = "crashState")]
+        /// The version that fixes the card's crash, when a newer one does.
+        #[qproperty(QString, crash_fixed_in, cxx_name = "crashFixedIn")]
         type Report = super::ReportRust;
     }
 
@@ -98,6 +105,28 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "openSentIssue"]
         fn open_sent_issue(self: &Report) -> bool;
+
+        /// Looks for a crash to offer on the crash card (once per crash
+        /// per version, unless turned off).
+        #[qinvokable]
+        #[cxx_name = "checkCrash"]
+        fn check_crash(self: Pin<&mut Report>);
+
+        /// Sends a crash report for the card's crash: the crash, versions,
+        /// checks and feature health, never the log.
+        #[qinvokable]
+        #[cxx_name = "crashSend"]
+        fn crash_send(self: Pin<&mut Report>);
+
+        /// Puts the card away for this crash; `look` opens Report a problem.
+        #[qinvokable]
+        #[cxx_name = "crashDone"]
+        fn crash_done(self: Pin<&mut Report>, look: bool);
+
+        /// "Don't ask about crashes".
+        #[qinvokable]
+        #[cxx_name = "crashOff"]
+        fn crash_off(self: Pin<&mut Report>);
     }
 }
 
@@ -108,7 +137,13 @@ pub struct ReportRust {
     send_state: QString,
     sent_issue: i32,
     phone_log_waiting: bool,
+    crash: QString,
+    crash_state: QString,
+    crash_fixed_in: QString,
 }
+
+/// The crash on the crash card.
+static CARD: Mutex<Option<nectarlink_core::diag::crash::CrashRecord>> = Mutex::new(None);
 
 /// The report made last, for Send and Open on GitHub.
 static LAST: Mutex<Option<report::Report>> = Mutex::new(None);
@@ -207,7 +242,7 @@ impl qobject::Report {
         let qt = self.qt_thread();
         let spawned = std::thread::Builder::new().name("report-send".into()).spawn(move || {
             let outgoing = Outgoing::new(&made, Kind::Person, None, now());
-            let (state, issue) = match deliver(&outgoing) {
+            let (state, issue) = match deliver(&outgoing, true) {
                 Some(Answer::Filed { issue }) => ("filed", issue),
                 Some(Answer::Queued) => ("queued", 0),
                 Some(Answer::Limited) => ("limited", 0),
@@ -233,9 +268,75 @@ impl qobject::Report {
     }
 }
 
-/// Posts `outgoing` and notes what became of it. `None` when the service
-/// couldn't be reached.
-fn deliver(outgoing: &Outgoing) -> Option<Answer> {
+impl qobject::Report {
+    pub fn check_crash(mut self: Pin<&mut Self>) {
+        let found = crash::for_card(&diag_dir(), env!("CARGO_PKG_VERSION"), now());
+        let sig = found.as_ref().map(|r| r.sig.clone()).unwrap_or_default();
+        *CARD.lock().unwrap_or_else(|e| e.into_inner()) = found;
+        self.as_mut().set_crash_fixed_in(QString::default());
+        self.as_mut().set_crash(QString::from(&sig));
+        if sig.is_empty() {
+            return;
+        }
+        // Already fixed in a newer version? Then the card offers the update.
+        let qt = self.qt_thread();
+        let _ = std::thread::Builder::new().name("known-crashes".into()).spawn(move || {
+            let Ok(list) = crate::win::http::get(known::KNOWN_URL, known::MAX_BYTES) else { return };
+            if let Some(version) = known::fixed_in(&list, &sig, env!("CARGO_PKG_VERSION")) {
+                let _ = qt.queue(move |object| object.set_crash_fixed_in(QString::from(&version)));
+            }
+        });
+    }
+
+    pub fn crash_send(mut self: Pin<&mut Self>) {
+        let Some(record) = CARD.lock().unwrap_or_else(|e| e.into_inner()).clone() else { return };
+        self.as_mut().set_crash_state(QString::from("sending"));
+        let qt = self.qt_thread();
+        let spawned = std::thread::Builder::new().name("crash-report".into()).spawn(move || {
+            let area = Area::guess(Some(&record.location), None);
+            let parts = Parts { devices: true, checks: true, health: true, crashes: true, log: false };
+            let state = std::panic::catch_unwind(|| build(area, "", "", false, parts, false))
+                .ok()
+                .map(|made| Outgoing::new(&made, Kind::Crash, Some(&record.sig), now()))
+                .map_or("failed", |outgoing| match deliver(&outgoing, false) {
+                    Some(Answer::Filed { .. } | Answer::Queued) => "sent",
+                    Some(Answer::Later) | None => {
+                        send::keep_pending(&diag_dir(), &outgoing);
+                        "sent"
+                    }
+                    _ => "failed",
+                });
+            crash::card_shown(&diag_dir(), &record);
+            let _ = qt.queue(move |object| object.set_crash_state(QString::from(state)));
+        });
+        if spawned.is_err() {
+            self.set_crash_state(QString::from("failed"));
+        }
+    }
+
+    pub fn crash_done(mut self: Pin<&mut Self>, look: bool) {
+        if let Some(record) = CARD.lock().unwrap_or_else(|e| e.into_inner()).take() {
+            crash::card_shown(&diag_dir(), &record);
+        }
+        self.as_mut().set_crash(QString::default());
+        self.as_mut().set_crash_state(QString::default());
+        if look {
+            self.open();
+        }
+    }
+
+    pub fn crash_off(mut self: Pin<&mut Self>) {
+        crash::card_off(&diag_dir());
+        CARD.lock().unwrap_or_else(|e| e.into_inner()).take();
+        self.as_mut().set_crash(QString::default());
+        self.set_crash_state(QString::default());
+    }
+}
+
+/// Posts `outgoing` and notes what became of it; with `follow`, its issue
+/// is checked for replies later. `None` when the service couldn't be
+/// reached.
+fn deliver(outgoing: &Outgoing, follow: bool) -> Option<Answer> {
     let url = format!("{}/v1/report", send::REPORT_SERVICE);
     let answer = match crate::win::http::post_json(
         &url,
@@ -255,6 +356,9 @@ fn deliver(outgoing: &Outgoing) -> Option<Answer> {
         Answer::Queued => None,
         _ => return Some(answer),
     };
+    if !follow {
+        return Some(answer);
+    }
     send::remember(
         &diag_dir(),
         Sent { rid: outgoing.rid.clone(), issue, at: outgoing.at, comments: 0, closed: false },
@@ -269,9 +373,18 @@ pub fn follow_up() {
     daily_count();
     let dir = diag_dir();
     if let Some(pending) = send::pending(&dir) {
-        match deliver(&pending) {
+        match deliver(&pending, true) {
             Some(Answer::Later) | None => {}
             Some(_) => send::clear_pending(&dir),
+        }
+    }
+    // Replies and closed reports: one GET per followed report, numbers only.
+    for followed in send::sent(&dir, now()) {
+        let Some(issue) = followed.issue else { continue };
+        if let Ok((status, body)) = crate::win::http::get_status(&send::issue_api_url(issue), 64 * 1024)
+            && let Some(notice) = send::check_issue(&dir, &followed.rid, status, &body, now())
+        {
+            crate::report_requests::notice(notice);
         }
     }
     for queued in send::sent(&dir, now()).into_iter().filter(|s| s.issue.is_none()) {

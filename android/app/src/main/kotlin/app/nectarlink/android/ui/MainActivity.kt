@@ -45,6 +45,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -98,7 +99,9 @@ import app.nectarlink.android.ui.webcam.WebcamScreen
 import app.nectarlink.android.webcam.WebcamService
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
     @Volatile
@@ -386,6 +389,24 @@ private fun App(
     var activeFirstRunWalkthrough by rememberSaveable { mutableStateOf(false) }
     var featuresGuideOpen by rememberSaveable { mutableStateOf(false) }
     var reportOpen by rememberSaveable { mutableStateOf(false) }
+    var crashCard by remember { mutableStateOf<app.nectarlink.core.CrashCard?>(null) }
+    var crashSend by remember { mutableStateOf(app.nectarlink.android.ui.settings.CrashSend.Idle) }
+    var crashFixedIn by remember { mutableStateOf<String?>(null) }
+    val crashScope = rememberCoroutineScope()
+    val crashReady = state.status is CoreStatus.Ready
+    LaunchedEffect(crashReady) {
+        if (crashReady) {
+            crashCard = withContext(Dispatchers.IO) {
+                runCatching { app.nectarlink.core.crashCard(app.nectarlink.android.BuildConfig.VERSION_NAME) }.getOrNull()
+            }
+            // Already fixed in a newer version? Then the card offers the update.
+            if (crashCard != null) {
+                crashFixedIn = withContext(Dispatchers.IO) {
+                    runCatching { app.nectarlink.android.diag.Reports.knownFix() }.getOrNull()
+                }
+            }
+        }
+    }
     var pendingHighlightTarget by rememberSaveable { mutableStateOf<GuideHighlightTarget?>(null) }
     var remotePcId by rememberSaveable { mutableStateOf<String?>(null) }
     var remoteInitialMode by rememberSaveable { mutableStateOf(RemoteMode.Touchpad) }
@@ -876,6 +897,53 @@ private fun App(
                             Tab.Home -> saveableStateHolder.SaveableStateProvider("tab_home") {
                                 HomeScreen(
                                     state = state,
+                                    crashCard = crashCard?.let { card ->
+                                        {
+                                            val context = LocalContext.current
+                                            app.nectarlink.android.ui.settings.CrashCardView(
+                                                send = crashSend,
+                                                fixedIn = crashFixedIn,
+                                                onUpdate = {
+                                                    (context.applicationContext as app.nectarlink.android.NectarlinkApplication).updater.checkNow()
+                                                    app.nectarlink.core.crashCardDone()
+                                                    crashCard = null
+                                                },
+                                                onSend = {
+                                                    crashSend = app.nectarlink.android.ui.settings.CrashSend.Sending
+                                                    crashScope.launch {
+                                                        val sent = withContext(Dispatchers.IO) {
+                                                            runCatching {
+                                                                app.nectarlink.android.diag.Reports.sendCrash(context, card, state.devices)
+                                                            }.getOrDefault(false)
+                                                        }
+                                                        crashSend = if (sent) {
+                                                            app.nectarlink.android.ui.settings.CrashSend.Sent
+                                                        } else {
+                                                            app.nectarlink.android.ui.settings.CrashSend.Failed
+                                                        }
+                                                        if (sent) {
+                                                            app.nectarlink.core.crashCardDone()
+                                                            kotlinx.coroutines.delay(2500)
+                                                            crashCard = null
+                                                        }
+                                                    }
+                                                },
+                                                onLookFirst = {
+                                                    app.nectarlink.core.crashCardDone()
+                                                    crashCard = null
+                                                    reportOpen = true
+                                                },
+                                                onNotNow = {
+                                                    app.nectarlink.core.crashCardDone()
+                                                    crashCard = null
+                                                },
+                                                onOff = {
+                                                    app.nectarlink.core.crashCardOff()
+                                                    crashCard = null
+                                                },
+                                            )
+                                        }
+                                    },
                                     onRing = core::ring,
                                     onStopRinging = core::stopRinging,
                                     onPairNew = { pairing = true },

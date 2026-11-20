@@ -540,7 +540,9 @@ pub fn on_toast(event: ToastEvent) {
         ToastEvent::Dismissed { device, key } if device == crate::report_requests::TOAST_GROUP => {
             return crate::report_requests::on_toast(key, None);
         }
-        ToastEvent::Opened { device, .. } if device == crate::report_requests::TOAST_GROUP => return,
+        ToastEvent::Opened { device, key } if device == crate::report_requests::TOAST_GROUP => {
+            return crate::report_requests::on_opened(key);
+        }
         _ => {}
     }
     match event {

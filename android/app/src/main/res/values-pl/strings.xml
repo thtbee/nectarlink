@@ -1548,6 +1548,18 @@
     <string name="report_peer_busy">%1$s był przed chwilą proszony o dziennik. Spróbuj ponownie za minutę.</string>
     <string name="report_peer_offline">%1$s nie jest połączony, więc jest tylko to, co udostępnił przy parowaniu.</string>
     <string name="report_peer_old">%1$s wymaga aktualizacji, aby dodać swoje dane.</string>
+    <string name="channel_report_replies">Odpowiedzi na twoje zgłoszenia</string>
+    <string name="report_reply_title">Jest odpowiedź na twoje zgłoszenie</string>
+    <string name="report_closed_title">Twoje zgłoszenie zostało zamknięte</string>
+    <string name="report_notice_text">Zgłoszenie #%1$d. Stuknij, aby przeczytać na GitHubie.</string>
+    <string name="crash_card_sent">Dzięki, raport o awarii został wysłany</string>
+    <string name="crash_card_title">NectarLink niespodziewanie się zamknął</string>
+    <string name="crash_card_failed">Nie udało się wysłać raportu o awarii. Użyj opcji Najpierw zobacz, aby wysłać go inaczej.</string>
+    <string name="crash_card_body">Raport o awarii pomaga ją naprawić. Mówi, gdzie w NectarLink do niej doszło i jakich wersji używasz, nic osobistego.</string>
+    <string name="crash_card_look">Najpierw zobacz</string>
+    <string name="crash_card_off">Nie pytaj o awarie</string>
+    <string name="crash_card_fixed">Ta awaria jest naprawiona w NectarLink %1$s. Zaktualizuj, aby dostać poprawkę.</string>
+    <string name="crash_card_update">Aktualizuj</string>
 </resources>
 
 

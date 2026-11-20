@@ -1534,6 +1534,18 @@
     <string name="report_peer_busy">%1$s was asked for its log a moment ago. Try again in a minute.</string>
     <string name="report_peer_offline">%1$s isn\'t connected, so only what it shared when you paired is included.</string>
     <string name="report_peer_old">%1$s needs an update to add its details.</string>
+    <string name="channel_report_replies">Replies to your reports</string>
+    <string name="report_reply_title">There\'s a reply to your report</string>
+    <string name="report_closed_title">Your report was closed</string>
+    <string name="report_notice_text">Report #%1$d. Tap to read it on GitHub.</string>
+    <string name="crash_card_sent">Thanks, the crash report is sent</string>
+    <string name="crash_card_title">NectarLink closed unexpectedly</string>
+    <string name="crash_card_failed">The crash report couldn\'t be sent. Use Look first to send it another way.</string>
+    <string name="crash_card_body">A crash report helps fix it. It says where in NectarLink it happened and which versions you run, nothing personal.</string>
+    <string name="crash_card_look">Look first</string>
+    <string name="crash_card_off">Don\'t ask about crashes</string>
+    <string name="crash_card_fixed">This crash is fixed in NectarLink %1$s. Update to get the fix.</string>
+    <string name="crash_card_update">Update</string>
 </resources>
 
 

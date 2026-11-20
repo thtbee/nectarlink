@@ -5419,15 +5419,20 @@ pub enum ReportOutcome {
 }
 
 /// Reads the service's answer to `outgoing` (`status` 0 when it couldn't be
-/// reached), keeps what has to be kept, and says what happened.
+/// reached), keeps what has to be kept, and says what happened. `follow`
+/// checks its issue for replies later (not for crash reports, whose issue
+/// gets a count comment).
 #[uniffi::export]
-pub fn report_answer(outgoing: OutgoingReport, status: u16, body: Vec<u8>) -> ReportOutcome {
+pub fn report_answer(outgoing: OutgoingReport, status: u16, body: Vec<u8>, follow: bool) -> ReportOutcome {
     use core::diag::send::{self, Answer, Sent};
     let dir = diag_dir();
     let answer = if status == 0 { Answer::Later } else { Answer::read(status, &body) };
     let outgoing: send::Outgoing = outgoing.into();
-    let follow = |issue: Option<u64>| {
+    let keep = |issue: Option<u64>| {
         send::clear_pending_if(&dir, &outgoing.rid);
+        if !follow {
+            return;
+        }
         send::remember(
             &dir,
             Sent { rid: outgoing.rid.clone(), issue, at: outgoing.at, comments: 0, closed: false },
@@ -5436,11 +5441,11 @@ pub fn report_answer(outgoing: OutgoingReport, status: u16, body: Vec<u8>) -> Re
     };
     match answer {
         Answer::Filed { issue } => {
-            follow(Some(issue));
+            keep(Some(issue));
             ReportOutcome::Filed { issue }
         }
         Answer::Queued => {
-            follow(None);
+            keep(None);
             ReportOutcome::Queued
         }
         Answer::Later => {
@@ -5506,6 +5511,100 @@ pub fn report_queued() -> Vec<String> {
         .filter(|s| s.issue.is_none())
         .map(|s| s.rid)
         .collect()
+}
+
+/// A sent report this phone follows for replies.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct FollowedReport {
+    pub rid: String,
+    pub issue: u64,
+    /// GitHub's public API address for it.
+    pub url: String,
+}
+
+/// Something new on a followed report.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum ReportNotice {
+    Replied { issue: u64 },
+    Closed { issue: u64 },
+}
+
+/// The crash on the crash card.
+static CARD: std::sync::Mutex<Option<core::diag::crash::CrashRecord>> = std::sync::Mutex::new(None);
+
+/// A crash the crash card offers to report.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct CrashCard {
+    pub sig: String,
+    /// The report area it points to (an `Area` id).
+    pub area: String,
+}
+
+/// The crash the crash card should offer for this `version`: once per
+/// crash per version, unless turned off.
+#[uniffi::export]
+pub fn crash_card(version: String) -> Option<CrashCard> {
+    let record = core::diag::crash::for_card(&diag_dir(), &version, now_secs())?;
+    let card = CrashCard {
+        sig: record.sig.clone(),
+        area: core::diag::report::Area::guess(Some(&record.location), None).id().to_owned(),
+    };
+    *CARD.lock().unwrap_or_else(|e| e.into_inner()) = Some(record);
+    Some(card)
+}
+
+/// The version that fixes the card's crash, from the known-crashes `list`
+/// (`known_crashes_url()`), when a newer one does.
+#[uniffi::export]
+pub fn crash_card_fixed_in(list: Vec<u8>) -> Option<String> {
+    let card = CARD.lock().unwrap_or_else(|e| e.into_inner()).clone()?;
+    core::diag::known::fixed_in(&list, &card.sig, &card.version)
+}
+
+/// Where the list of crashes already fixed is.
+#[uniffi::export]
+pub fn known_crashes_url() -> String {
+    core::diag::known::KNOWN_URL.to_owned()
+}
+
+/// The card was answered (sent, looked at, or put away): not again for it.
+#[uniffi::export]
+pub fn crash_card_done() {
+    if let Some(record) = CARD.lock().unwrap_or_else(|e| e.into_inner()).take() {
+        core::diag::crash::card_shown(&diag_dir(), &record);
+    }
+}
+
+/// "Don't ask about crashes".
+#[uniffi::export]
+pub fn crash_card_off() {
+    core::diag::crash::card_off(&diag_dir());
+    CARD.lock().unwrap_or_else(|e| e.into_inner()).take();
+}
+
+/// The sent reports to check for replies (at most 3, for 30 days).
+#[uniffi::export]
+pub fn report_followed() -> Vec<FollowedReport> {
+    core::diag::send::sent(&diag_dir(), now_secs())
+        .into_iter()
+        .filter_map(|s| {
+            s.issue.map(|issue| FollowedReport {
+                rid: s.rid,
+                issue,
+                url: core::diag::send::issue_api_url(issue),
+            })
+        })
+        .collect()
+}
+
+/// GitHub's answer about followed report `rid`: what's new, if anything.
+#[uniffi::export]
+pub fn report_issue_answer(rid: String, status: u16, body: Vec<u8>) -> Option<ReportNotice> {
+    use core::diag::send::{self, Notice};
+    send::check_issue(&diag_dir(), &rid, status, &body, now_secs()).map(|n| match n {
+        Notice::Replied { issue } => ReportNotice::Replied { issue },
+        Notice::Closed { issue } => ReportNotice::Closed { issue },
+    })
 }
 
 /// The service's answer about the queued report `rid`.

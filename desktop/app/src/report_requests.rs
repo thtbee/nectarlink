@@ -5,7 +5,7 @@
 //! minute passing sends nothing. A log this PC asked a phone for arrives
 //! here too, for the report being made.
 
-use nectarlink_core::{DeviceId, NodeEvent};
+use nectarlink_core::{DeviceId, NodeEvent, diag::send};
 
 use crate::{core_host, i18n::tr, win::toast};
 
@@ -52,8 +52,42 @@ fn ask(device: DeviceId) {
     });
 }
 
+/// Someone replied to a report this PC sent, or closed it.
+pub fn notice(notice: send::Notice) {
+    let (issue, title) = match notice {
+        send::Notice::Replied { issue } => (issue, tr!("ReportRequests", "There's a reply to your report")),
+        send::Notice::Closed { issue } => (issue, tr!("ReportRequests", "Your report was closed")),
+    };
+    toast::show(toast::Toast {
+        device: TOAST_GROUP.into(),
+        key: format!("issue:{issue}"),
+        title,
+        body: tr!("ReportRequests", "Report #%1. Open it to read it on GitHub.", issue),
+        attribution: "NectarLink".into(),
+        icon: None,
+        image: None,
+        actions: Vec::new(),
+        reply: None,
+        silent: true,
+        progress: None,
+        call: false,
+    });
+}
+
+/// A notice about a sent report was clicked: opens its issue.
+pub fn on_opened(key: &str) {
+    if let Some(issue) = key.strip_prefix("issue:").and_then(|n| n.parse::<u64>().ok())
+        && let Err(e) = crate::win::shell::open_url(&send::issue_url(issue))
+    {
+        tracing::warn!(error = %e, "can't open the report");
+    }
+}
+
 /// The user clicked Share or Don't share, or dismissed the notification.
 pub fn on_toast(key: &str, action: Option<&str>) {
+    if key.starts_with("issue:") {
+        return;
+    }
     let Ok(device) = key.parse::<DeviceId>() else { return };
     let share = action == Some(ACTION_SHARE);
     toast::remove(TOAST_GROUP, key);

@@ -1462,4 +1462,16 @@
     <string name="report_peer_busy">Vừa mới yêu cầu nhật ký của %1$s. Hãy thử lại sau một phút.</string>
     <string name="report_peer_offline">%1$s chưa kết nối, nên chỉ có thông tin đã chia sẻ khi ghép nối.</string>
     <string name="report_peer_old">%1$s cần cập nhật để thêm thông tin của nó.</string>
+    <string name="channel_report_replies">Phản hồi cho báo cáo của bạn</string>
+    <string name="report_reply_title">Có phản hồi cho báo cáo của bạn</string>
+    <string name="report_closed_title">Báo cáo của bạn đã được đóng</string>
+    <string name="report_notice_text">Báo cáo #%1$d. Nhấn để đọc trên GitHub.</string>
+    <string name="crash_card_sent">Cảm ơn, đã gửi báo cáo sự cố treo</string>
+    <string name="crash_card_title">NectarLink đã đóng bất ngờ</string>
+    <string name="crash_card_failed">Không gửi được báo cáo sự cố treo. Hãy dùng Xem trước để gửi theo cách khác.</string>
+    <string name="crash_card_body">Báo cáo sự cố treo giúp khắc phục lỗi. Báo cáo cho biết lỗi xảy ra ở đâu trong NectarLink và bạn dùng phiên bản nào, không có gì cá nhân.</string>
+    <string name="crash_card_look">Xem trước</string>
+    <string name="crash_card_off">Không hỏi về sự cố treo</string>
+    <string name="crash_card_fixed">Sự cố treo này đã được sửa trong NectarLink %1$s. Hãy cập nhật để nhận bản sửa.</string>
+    <string name="crash_card_update">Cập nhật</string>
 </resources>
