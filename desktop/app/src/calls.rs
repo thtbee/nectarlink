@@ -1042,7 +1042,9 @@ pub fn dial(device: DeviceId, number: String) {
         if s.device == Some(device) {
             sim_from(&s.sims, chosen_sim(device).as_deref())
         } else {
-            chosen_sim(device)
+            // A calling app (`app:...`) only for calls from the Calls page,
+            // where it shows: a number from elsewhere may not be on it.
+            chosen_sim(device).filter(|sim| !sim.starts_with("app:"))
         }
     });
     page_changed();

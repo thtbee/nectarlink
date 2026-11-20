@@ -274,140 +274,140 @@
         <translation>Khóa, cho ngủ, tắt và đánh thức PC</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="66"/>
-        <location filename="../qml/components/AgentsSection.qml" line="159"/>
+        <location filename="../qml/components/AgentsSection.qml" line="70"/>
+        <location filename="../qml/components/AgentsSection.qml" line="163"/>
         <source>Everyday</source>
         <translation>Hằng ngày</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="66"/>
-        <location filename="../qml/components/AgentsSection.qml" line="158"/>
+        <location filename="../qml/components/AgentsSection.qml" line="70"/>
+        <location filename="../qml/components/AgentsSection.qml" line="162"/>
         <source>Read only</source>
         <translation>Chỉ đọc</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="66"/>
+        <location filename="../qml/components/AgentsSection.qml" line="70"/>
         <source>Custom</source>
         <translation>Tùy chỉnh</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="70"/>
+        <location filename="../qml/components/AgentsSection.qml" line="74"/>
         <source>done</source>
         <translation>xong</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="71"/>
+        <location filename="../qml/components/AgentsSection.qml" line="75"/>
         <source>denied by you</source>
         <translation>bạn đã từ chối</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="72"/>
+        <location filename="../qml/components/AgentsSection.qml" line="76"/>
         <source>not approved in time</source>
         <translation>không được duyệt kịp</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="73"/>
+        <location filename="../qml/components/AgentsSection.qml" line="77"/>
         <source>waiting for you</source>
         <translation>đang chờ bạn</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="74"/>
+        <location filename="../qml/components/AgentsSection.qml" line="78"/>
         <source>not permitted</source>
         <translation>không được phép</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="75"/>
+        <location filename="../qml/components/AgentsSection.qml" line="79"/>
         <source>blocked, read-only</source>
         <translation>bị chặn, chỉ đọc</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="76"/>
+        <location filename="../qml/components/AgentsSection.qml" line="80"/>
         <source>off for that device</source>
         <translation>đang tắt cho thiết bị đó</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="77"/>
+        <location filename="../qml/components/AgentsSection.qml" line="81"/>
         <source>too many requests</source>
         <translation>quá nhiều yêu cầu</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="78"/>
+        <location filename="../qml/components/AgentsSection.qml" line="82"/>
         <source>failed</source>
         <translation>thất bại</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="89"/>
-        <location filename="../qml/components/AgentsSection.qml" line="94"/>
+        <location filename="../qml/components/AgentsSection.qml" line="93"/>
+        <location filename="../qml/components/AgentsSection.qml" line="98"/>
         <source>Let AI agents use NectarLink</source>
         <translation>Cho phép tác nhân AI dùng NectarLink</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="91"/>
+        <location filename="../qml/components/AgentsSection.qml" line="95"/>
         <source>On. Agents only get the permissions you give each one, and sensitive actions always ask you first.</source>
         <translation>Đang bật. Tác nhân chỉ có những quyền bạn cấp cho từng cái, và thao tác nhạy cảm luôn hỏi bạn trước.</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="92"/>
+        <location filename="../qml/components/AgentsSection.qml" line="96"/>
         <source>AI assistants on this PC can read and act through NectarLink, with your approval.</source>
         <translation>Trợ lý AI trên máy tính này có thể đọc và thao tác qua NectarLink, khi bạn cho phép.</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="177"/>
+        <location filename="../qml/components/AgentsSection.qml" line="181"/>
         <source>Create</source>
         <translation>Tạo</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="216"/>
+        <location filename="../qml/components/AgentsSection.qml" line="220"/>
         <source>Paste this into your agent. It sets itself up and checks that it works.</source>
         <translation>Dán nội dung này vào tác tử của bạn. Nó sẽ tự thiết lập và kiểm tra xem đã chạy chưa.</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="245"/>
+        <location filename="../qml/components/AgentsSection.qml" line="249"/>
         <source>Copy prompt</source>
         <translation>Sao chép lời nhắc</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="260"/>
+        <location filename="../qml/components/AgentsSection.qml" line="264"/>
         <source>Connected</source>
         <translation>Đã kết nối</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="260"/>
+        <location filename="../qml/components/AgentsSection.qml" line="264"/>
         <source>Waiting for the agent…</source>
         <translation>Đang chờ tác tử…</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="268"/>
+        <location filename="../qml/components/AgentsSection.qml" line="272"/>
         <source>Set up by hand</source>
         <translation>Thiết lập thủ công</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="277"/>
+        <location filename="../qml/components/AgentsSection.qml" line="281"/>
         <source>MCP</source>
         <translation>MCP</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="278"/>
+        <location filename="../qml/components/AgentsSection.qml" line="282"/>
         <source>Command line</source>
         <translation>Dòng lệnh</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="279"/>
+        <location filename="../qml/components/AgentsSection.qml" line="283"/>
         <source>HTTP</source>
         <translation>HTTP</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="290"/>
+        <location filename="../qml/components/AgentsSection.qml" line="294"/>
         <source>Run commands like these. The first lists everything the agent may do.</source>
         <translation>Chạy các lệnh như thế này. Lệnh đầu liệt kê mọi việc tác tử được làm.</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="292"/>
+        <location filename="../qml/components/AgentsSection.qml" line="296"/>
         <source>For your own scripts. Read the token from that file each time; never paste it anywhere.</source>
         <translation>Dành cho script của bạn. Mỗi lần hãy đọc token từ tệp đó; đừng dán nó vào đâu cả.</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="293"/>
+        <location filename="../qml/components/AgentsSection.qml" line="297"/>
         <source>Add this to the agent&apos;s MCP settings.</source>
         <translation>Thêm phần này vào cài đặt MCP của tác tử.</translation>
     </message>
@@ -416,44 +416,44 @@
         <translation type="vanished">Claude Code, Codex, Cursor và các trợ lý AI khác trên PC này có thể đọc và thao tác qua NectarLink, với sự cho phép của bạn.</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="104"/>
-        <location filename="../qml/components/AgentsSection.qml" line="107"/>
+        <location filename="../qml/components/AgentsSection.qml" line="108"/>
+        <location filename="../qml/components/AgentsSection.qml" line="111"/>
         <source>Read-only for every agent</source>
         <translation>Chỉ đọc cho mọi tác nhân</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="105"/>
+        <location filename="../qml/components/AgentsSection.qml" line="109"/>
         <source>Agents can look, but can&apos;t send, change or delete anything.</source>
         <translation>Tác nhân có thể xem nhưng không thể gửi, thay đổi hay xóa gì.</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="121"/>
+        <location filename="../qml/components/AgentsSection.qml" line="125"/>
         <source>Add an agent</source>
         <translation>Thêm tác nhân</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="127"/>
+        <location filename="../qml/components/AgentsSection.qml" line="131"/>
         <source>Works with any assistant that runs on this PC. Name it, choose what it may do, then paste one prompt into it.</source>
         <translation>Dùng được với mọi trợ lý chạy trên máy tính này. Đặt tên, chọn những gì nó được làm, rồi dán một lời nhắc.</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="139"/>
-        <location filename="../qml/components/AgentsSection.qml" line="179"/>
+        <location filename="../qml/components/AgentsSection.qml" line="143"/>
+        <location filename="../qml/components/AgentsSection.qml" line="183"/>
         <source>My agent</source>
         <translation>Tác tử của tôi</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="152"/>
+        <location filename="../qml/components/AgentsSection.qml" line="156"/>
         <source>Agent name</source>
         <translation>Tên tác tử</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="170"/>
+        <location filename="../qml/components/AgentsSection.qml" line="174"/>
         <source>Reads everything except the clipboard and one-time codes. Can send messages, files and notifications, control media, copy photos, open phone apps on this PC and change the phone&apos;s quick settings. Sending a text, replying, calling or deleting always asks you first.</source>
         <translation>Đọc mọi thứ trừ bộ nhớ tạm và mã dùng một lần. Có thể gửi tin nhắn, tệp và thông báo, điều khiển nội dung phát, sao chép ảnh, mở ứng dụng điện thoại trên PC này và thay đổi cài đặt nhanh của điện thoại. Gửi SMS, trả lời, gọi điện hay xóa luôn hỏi bạn trước.</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="171"/>
+        <location filename="../qml/components/AgentsSection.qml" line="175"/>
         <source>Reads devices, notifications, messages, calls, contacts, photos, files and media. Can&apos;t change anything. The clipboard and one-time codes stay private.</source>
         <translation>Đọc thiết bị, thông báo, tin nhắn, cuộc gọi, danh bạ, ảnh, tệp và nội dung phát. Không thể thay đổi gì. Bộ nhớ tạm và mã dùng một lần vẫn riêng tư.</translation>
     </message>
@@ -470,7 +470,7 @@
         <translation type="vanished">Thêm %1</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="209"/>
+        <location filename="../qml/components/AgentsSection.qml" line="213"/>
         <source>Connect %1</source>
         <translation>Kết nối %1</translation>
     </message>
@@ -503,99 +503,99 @@
         <translation type="vanished">Thêm phần này vào cài đặt MCP của ứng dụng:</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="314"/>
+        <location filename="../qml/components/AgentsSection.qml" line="318"/>
         <source>Copy</source>
         <translation>Sao chép</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="321"/>
+        <location filename="../qml/components/AgentsSection.qml" line="325"/>
         <source>Done</source>
         <translation>Xong</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="332"/>
+        <location filename="../qml/components/AgentsSection.qml" line="336"/>
         <source>Agents</source>
         <translation>Tác nhân</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="343"/>
+        <location filename="../qml/components/AgentsSection.qml" line="347"/>
         <source>paused</source>
         <translation>đã tạm dừng</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="345"/>
+        <location filename="../qml/components/AgentsSection.qml" line="349"/>
         <source>read-only</source>
         <translation>chỉ đọc</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="347"/>
+        <location filename="../qml/components/AgentsSection.qml" line="351"/>
         <source>last used %1</source>
         <translation>dùng lần cuối %1</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="348"/>
+        <location filename="../qml/components/AgentsSection.qml" line="352"/>
         <source>not connected yet</source>
         <translation>chưa kết nối</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="354"/>
+        <location filename="../qml/components/AgentsSection.qml" line="358"/>
         <source>Connect</source>
         <translation>Kết nối</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="360"/>
+        <location filename="../qml/components/AgentsSection.qml" line="364"/>
         <source>Permissions</source>
         <translation>Quyền</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="366"/>
+        <location filename="../qml/components/AgentsSection.qml" line="370"/>
         <source>Resume</source>
         <translation>Tiếp tục</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="366"/>
+        <location filename="../qml/components/AgentsSection.qml" line="370"/>
         <source>Pause</source>
         <translation>Tạm dừng</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="372"/>
+        <location filename="../qml/components/AgentsSection.qml" line="376"/>
         <source>Remove</source>
         <translation>Xóa</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="390"/>
+        <location filename="../qml/components/AgentsSection.qml" line="394"/>
         <source>Each area can only narrow what a device&apos;s own permissions allow. Sensitive actions still ask you every time.</source>
         <translation>Mỗi mục chỉ có thể thu hẹp những gì quyền của chính thiết bị cho phép. Các thao tác nhạy cảm vẫn luôn hỏi bạn mỗi lần.</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="412"/>
-        <location filename="../qml/components/AgentsSection.qml" line="413"/>
+        <location filename="../qml/components/AgentsSection.qml" line="416"/>
+        <location filename="../qml/components/AgentsSection.qml" line="417"/>
         <source>Off</source>
         <translation>Tắt</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="412"/>
-        <location filename="../qml/components/AgentsSection.qml" line="413"/>
+        <location filename="../qml/components/AgentsSection.qml" line="416"/>
+        <location filename="../qml/components/AgentsSection.qml" line="417"/>
         <source>Read</source>
         <translation>Đọc</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="412"/>
+        <location filename="../qml/components/AgentsSection.qml" line="416"/>
         <source>Read and act</source>
         <translation>Đọc và thao tác</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="433"/>
+        <location filename="../qml/components/AgentsSection.qml" line="437"/>
         <source>Activity</source>
         <translation>Hoạt động</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="439"/>
+        <location filename="../qml/components/AgentsSection.qml" line="443"/>
         <source>Clear</source>
         <translation>Xóa hết</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="446"/>
+        <location filename="../qml/components/AgentsSection.qml" line="450"/>
         <source>Nothing yet.</source>
         <translation>Chưa có gì.</translation>
     </message>
@@ -8633,6 +8633,11 @@ Nó cần gì
         <translation>Phím nóng và tự động hóa</translation>
     </message>
     <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="27"/>
+        <source>Assistants that use your devices</source>
+        <translation>Trợ lý dùng thiết bị của bạn</translation>
+    </message>
+    <message>
         <location filename="../qml/pages/SettingsPage.qml" line="28"/>
         <source>Storage &amp; Privacy</source>
         <translation>Lưu trữ và quyền riêng tư</translation>
@@ -9289,9 +9294,8 @@ Nó cần gì
         <translation>Tác nhân AI</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="27"/>
         <source>Claude Code, Codex, Cursor &amp; more</source>
-        <translation>Claude Code, Codex, Cursor và hơn nữa</translation>
+        <translation type="vanished">Claude Code, Codex, Cursor và hơn nữa</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3867"/>

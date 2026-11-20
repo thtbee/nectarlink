@@ -17,7 +17,6 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ProcessLifecycleOwner
 import app.nectarlink.android.R
-import app.nectarlink.android.companion.PcCompanion
 import app.nectarlink.core.CallSim
 
 /**
@@ -51,9 +50,13 @@ internal object AppDial {
             .map { CallSim(id = PREFIX + it.pkg, label = it.label, isDefault = false) }
     }
 
+    /** Whether the app [sim] (`app:<package>`) is one of these and installed. */
+    fun available(context: Context, sim: String): Boolean =
+        APPS.any { PREFIX + it.pkg == sim && installed(context, it.pkg) }
+
     /**
      * Starts a call to [number] in the app [sim] (`app:<package>`). False when
-     * the app isn't there or the number isn't one of its contacts.
+     * the app isn't there, or the number isn't one contact of it for sure.
      */
     fun dial(context: Context, number: String, sim: String): Boolean {
         val app = APPS.firstOrNull { PREFIX + it.pkg == sim } ?: return false
@@ -63,17 +66,16 @@ internal object AppDial {
             .setDataAndType(ContentUris.withAppendedId(ContactsContract.Data.CONTENT_URI, row.id), app.mime)
             .setPackage(app.pkg)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        // Android lets an app open another one from the background while it's on
-        // screen, or while it has a companion device (a PC set up as one).
-        if (inForeground() || PcCompanion.isAssociated(context)) {
-            if (runCatching { context.startActivity(intent) }.isSuccess) return true
-        }
+        // Opened right away only while NectarLink is on screen: from the
+        // background Android may block it without saying, and a locked phone
+        // would open the app behind the lock. Otherwise a tap starts it.
+        if (inForeground() && runCatching { context.startActivity(intent) }.isSuccess) return true
         return notify(context, app, row.name ?: number, intent)
     }
 
     internal data class Row(val id: Long, val name: String?)
 
-    /** The app's call row for [number]: matched on its last digits, which the app keeps in international form. */
+    /** The app's call row for [number], when exactly one of its numbers is that one ([pick]). */
     private fun findRow(context: Context, app: App, number: String): Row? {
         val wanted = digits(number)
         if (wanted.length < MIN_DIGITS) return null
@@ -85,14 +87,29 @@ internal object AppDial {
                 arrayOf(app.mime),
                 null,
             )?.use { cursor ->
-                while (cursor.moveToNext()) {
-                    if (sameNumber(cursor.getString(1).orEmpty(), wanted)) {
-                        return@use Row(cursor.getLong(0), cursor.getString(2))
+                val rows = buildList {
+                    while (cursor.moveToNext()) {
+                        add(Candidate(cursor.getLong(0), digits(cursor.getString(1).orEmpty().substringBefore('@')), cursor.getString(2)))
                     }
                 }
-                null
+                pick(rows, wanted)
             }
         }.onFailure { Log.w(TAG, "can't read ${app.label}'s contacts", it) }.getOrNull()
+    }
+
+    internal data class Candidate(val id: Long, val digits: String, val name: String?)
+
+    /**
+     * The row to call for [wanted]: the one with exactly those digits, or else
+     * the only number that ends the same way. Two different numbers that
+     * both could be it (the same national number in two countries) call
+     * nobody, rather than maybe the wrong person.
+     */
+    internal fun pick(rows: List<Candidate>, wanted: String): Row? {
+        rows.firstOrNull { it.digits == wanted }?.let { return Row(it.id, it.name) }
+        val matches = rows.filter { sameNumber(it.digits, wanted) }
+        if (matches.map { it.digits }.distinct().size != 1) return null
+        return matches.first().let { Row(it.id, it.name) }
     }
 
     /**
@@ -101,9 +118,10 @@ internal object AppDial {
      */
     internal fun sameNumber(rowId: String, wanted: String): Boolean {
         val have = digits(rowId.substringBefore('@'))
-        if (have.length < MIN_DIGITS) return false
+        if (have == wanted && have.length >= MIN_DIGITS) return true
+        // A local number has to be long enough to tell people apart.
         val n = minOf(have.length, wanted.length, COMPARED_DIGITS)
-        return n >= MIN_DIGITS && have.takeLast(n) == wanted.takeLast(n)
+        return n >= SUFFIX_DIGITS && have.takeLast(n) == wanted.takeLast(n)
     }
 
     internal fun digits(text: String) = text.filter { it in '0'..'9' }
@@ -147,6 +165,8 @@ internal object AppDial {
 
     /** Fewer digits than this aren't a phone number to match on. */
     private const val MIN_DIGITS = 7
+    /** Matching on the end of a number needs at least this much of it. */
+    private const val SUFFIX_DIGITS = 9
     /** The national part of a number: enough to tell contacts apart. */
     private const val COMPARED_DIGITS = 10
     private const val NOTIFICATION_ID = 0x0A11

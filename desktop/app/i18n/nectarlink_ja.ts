@@ -274,140 +274,140 @@
         <translation>PC のロック、スリープ、シャットダウン、起動</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="66"/>
-        <location filename="../qml/components/AgentsSection.qml" line="159"/>
+        <location filename="../qml/components/AgentsSection.qml" line="70"/>
+        <location filename="../qml/components/AgentsSection.qml" line="163"/>
         <source>Everyday</source>
         <translation>日常</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="66"/>
-        <location filename="../qml/components/AgentsSection.qml" line="158"/>
+        <location filename="../qml/components/AgentsSection.qml" line="70"/>
+        <location filename="../qml/components/AgentsSection.qml" line="162"/>
         <source>Read only</source>
         <translation>読み取りのみ</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="66"/>
+        <location filename="../qml/components/AgentsSection.qml" line="70"/>
         <source>Custom</source>
         <translation>カスタム</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="70"/>
+        <location filename="../qml/components/AgentsSection.qml" line="74"/>
         <source>done</source>
         <translation>完了</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="71"/>
+        <location filename="../qml/components/AgentsSection.qml" line="75"/>
         <source>denied by you</source>
         <translation>拒否しました</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="72"/>
+        <location filename="../qml/components/AgentsSection.qml" line="76"/>
         <source>not approved in time</source>
         <translation>時間内に許可されませんでした</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="73"/>
+        <location filename="../qml/components/AgentsSection.qml" line="77"/>
         <source>waiting for you</source>
         <translation>あなたの確認待ち</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="74"/>
+        <location filename="../qml/components/AgentsSection.qml" line="78"/>
         <source>not permitted</source>
         <translation>許可されていません</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="75"/>
+        <location filename="../qml/components/AgentsSection.qml" line="79"/>
         <source>blocked, read-only</source>
         <translation>ブロック (読み取りのみ)</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="76"/>
+        <location filename="../qml/components/AgentsSection.qml" line="80"/>
         <source>off for that device</source>
         <translation>そのデバイスではオフ</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="77"/>
+        <location filename="../qml/components/AgentsSection.qml" line="81"/>
         <source>too many requests</source>
         <translation>リクエストが多すぎます</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="78"/>
+        <location filename="../qml/components/AgentsSection.qml" line="82"/>
         <source>failed</source>
         <translation>失敗</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="89"/>
-        <location filename="../qml/components/AgentsSection.qml" line="94"/>
+        <location filename="../qml/components/AgentsSection.qml" line="93"/>
+        <location filename="../qml/components/AgentsSection.qml" line="98"/>
         <source>Let AI agents use NectarLink</source>
         <translation>AI エージェントに NectarLink の使用を許可</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="91"/>
+        <location filename="../qml/components/AgentsSection.qml" line="95"/>
         <source>On. Agents only get the permissions you give each one, and sensitive actions always ask you first.</source>
         <translation>オン。エージェントにはそれぞれに与えた権限だけがあり、重要な操作は必ず先にあなたに確認します。</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="92"/>
+        <location filename="../qml/components/AgentsSection.qml" line="96"/>
         <source>AI assistants on this PC can read and act through NectarLink, with your approval.</source>
         <translation>この PC の AI アシスタントが、あなたの承認のもと NectarLink を通じて読み取りや操作を行えます。</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="177"/>
+        <location filename="../qml/components/AgentsSection.qml" line="181"/>
         <source>Create</source>
         <translation>作成</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="216"/>
+        <location filename="../qml/components/AgentsSection.qml" line="220"/>
         <source>Paste this into your agent. It sets itself up and checks that it works.</source>
         <translation>これをエージェントに貼り付けてください。自分で設定し、動作を確認します。</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="245"/>
+        <location filename="../qml/components/AgentsSection.qml" line="249"/>
         <source>Copy prompt</source>
         <translation>プロンプトをコピー</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="260"/>
+        <location filename="../qml/components/AgentsSection.qml" line="264"/>
         <source>Connected</source>
         <translation>接続済み</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="260"/>
+        <location filename="../qml/components/AgentsSection.qml" line="264"/>
         <source>Waiting for the agent…</source>
         <translation>エージェントを待っています…</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="268"/>
+        <location filename="../qml/components/AgentsSection.qml" line="272"/>
         <source>Set up by hand</source>
         <translation>手動で設定</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="277"/>
+        <location filename="../qml/components/AgentsSection.qml" line="281"/>
         <source>MCP</source>
         <translation>MCP</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="278"/>
+        <location filename="../qml/components/AgentsSection.qml" line="282"/>
         <source>Command line</source>
         <translation>コマンドライン</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="279"/>
+        <location filename="../qml/components/AgentsSection.qml" line="283"/>
         <source>HTTP</source>
         <translation>HTTP</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="290"/>
+        <location filename="../qml/components/AgentsSection.qml" line="294"/>
         <source>Run commands like these. The first lists everything the agent may do.</source>
         <translation>次のようなコマンドを実行します。最初のコマンドでエージェントにできることが一覧表示されます。</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="292"/>
+        <location filename="../qml/components/AgentsSection.qml" line="296"/>
         <source>For your own scripts. Read the token from that file each time; never paste it anywhere.</source>
         <translation>独自のスクリプト向けです。トークンは毎回そのファイルから読み込み、どこにも貼り付けないでください。</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="293"/>
+        <location filename="../qml/components/AgentsSection.qml" line="297"/>
         <source>Add this to the agent&apos;s MCP settings.</source>
         <translation>これをエージェントの MCP 設定に追加します。</translation>
     </message>
@@ -416,44 +416,44 @@
         <translation type="vanished">この PC の Claude Code、Codex、Cursor などの AI アシスタントが、あなたの許可のもとで NectarLink を通して読み取りや操作を行えます。</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="104"/>
-        <location filename="../qml/components/AgentsSection.qml" line="107"/>
+        <location filename="../qml/components/AgentsSection.qml" line="108"/>
+        <location filename="../qml/components/AgentsSection.qml" line="111"/>
         <source>Read-only for every agent</source>
         <translation>すべてのエージェントを読み取りのみに</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="105"/>
+        <location filename="../qml/components/AgentsSection.qml" line="109"/>
         <source>Agents can look, but can&apos;t send, change or delete anything.</source>
         <translation>エージェントは見ることはできますが、送信・変更・削除はできません。</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="121"/>
+        <location filename="../qml/components/AgentsSection.qml" line="125"/>
         <source>Add an agent</source>
         <translation>エージェントを追加</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="127"/>
+        <location filename="../qml/components/AgentsSection.qml" line="131"/>
         <source>Works with any assistant that runs on this PC. Name it, choose what it may do, then paste one prompt into it.</source>
         <translation>この PC で動くどのアシスタントでも使えます。名前を付け、できることを選び、プロンプトを 1 つ貼り付けるだけです。</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="139"/>
-        <location filename="../qml/components/AgentsSection.qml" line="179"/>
+        <location filename="../qml/components/AgentsSection.qml" line="143"/>
+        <location filename="../qml/components/AgentsSection.qml" line="183"/>
         <source>My agent</source>
         <translation>マイエージェント</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="152"/>
+        <location filename="../qml/components/AgentsSection.qml" line="156"/>
         <source>Agent name</source>
         <translation>エージェント名</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="170"/>
+        <location filename="../qml/components/AgentsSection.qml" line="174"/>
         <source>Reads everything except the clipboard and one-time codes. Can send messages, files and notifications, control media, copy photos, open phone apps on this PC and change the phone&apos;s quick settings. Sending a text, replying, calling or deleting always asks you first.</source>
         <translation>クリップボードとワンタイムコード以外はすべて読み取ります。メッセージ・ファイル・通知の送信、メディアの操作、写真のコピー、スマートフォンのアプリをこの PC で開くこと、スマートフォンのクイック設定の変更ができます。SMS の送信、返信、発信、削除は必ず先に確認します。</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="171"/>
+        <location filename="../qml/components/AgentsSection.qml" line="175"/>
         <source>Reads devices, notifications, messages, calls, contacts, photos, files and media. Can&apos;t change anything. The clipboard and one-time codes stay private.</source>
         <translation>デバイス、通知、メッセージ、通話、連絡先、写真、ファイル、メディアを読み取ります。何も変更できません。クリップボードとワンタイムコードは非公開のままです。</translation>
     </message>
@@ -470,7 +470,7 @@
         <translation type="vanished">%1 を追加</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="209"/>
+        <location filename="../qml/components/AgentsSection.qml" line="213"/>
         <source>Connect %1</source>
         <translation>%1 を接続</translation>
     </message>
@@ -503,99 +503,99 @@
         <translation type="vanished">これをアプリの MCP 設定に追加してください:</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="314"/>
+        <location filename="../qml/components/AgentsSection.qml" line="318"/>
         <source>Copy</source>
         <translation>コピー</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="321"/>
+        <location filename="../qml/components/AgentsSection.qml" line="325"/>
         <source>Done</source>
         <translation>完了</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="332"/>
+        <location filename="../qml/components/AgentsSection.qml" line="336"/>
         <source>Agents</source>
         <translation>エージェント</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="343"/>
+        <location filename="../qml/components/AgentsSection.qml" line="347"/>
         <source>paused</source>
         <translation>一時停止中</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="345"/>
+        <location filename="../qml/components/AgentsSection.qml" line="349"/>
         <source>read-only</source>
         <translation>読み取りのみ</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="347"/>
+        <location filename="../qml/components/AgentsSection.qml" line="351"/>
         <source>last used %1</source>
         <translation>最終使用 %1</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="348"/>
+        <location filename="../qml/components/AgentsSection.qml" line="352"/>
         <source>not connected yet</source>
         <translation>まだ接続されていません</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="354"/>
+        <location filename="../qml/components/AgentsSection.qml" line="358"/>
         <source>Connect</source>
         <translation>接続</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="360"/>
+        <location filename="../qml/components/AgentsSection.qml" line="364"/>
         <source>Permissions</source>
         <translation>権限</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="366"/>
+        <location filename="../qml/components/AgentsSection.qml" line="370"/>
         <source>Resume</source>
         <translation>再開</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="366"/>
+        <location filename="../qml/components/AgentsSection.qml" line="370"/>
         <source>Pause</source>
         <translation>一時停止</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="372"/>
+        <location filename="../qml/components/AgentsSection.qml" line="376"/>
         <source>Remove</source>
         <translation>削除</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="390"/>
+        <location filename="../qml/components/AgentsSection.qml" line="394"/>
         <source>Each area can only narrow what a device&apos;s own permissions allow. Sensitive actions still ask you every time.</source>
         <translation>各項目は、デバイス自体の権限で許可されている範囲を狭めることしかできません。重要な操作は引き続き毎回確認します。</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="412"/>
-        <location filename="../qml/components/AgentsSection.qml" line="413"/>
+        <location filename="../qml/components/AgentsSection.qml" line="416"/>
+        <location filename="../qml/components/AgentsSection.qml" line="417"/>
         <source>Off</source>
         <translation>オフ</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="412"/>
-        <location filename="../qml/components/AgentsSection.qml" line="413"/>
+        <location filename="../qml/components/AgentsSection.qml" line="416"/>
+        <location filename="../qml/components/AgentsSection.qml" line="417"/>
         <source>Read</source>
         <translation>読み取り</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="412"/>
+        <location filename="../qml/components/AgentsSection.qml" line="416"/>
         <source>Read and act</source>
         <translation>読み取りと操作</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="433"/>
+        <location filename="../qml/components/AgentsSection.qml" line="437"/>
         <source>Activity</source>
         <translation>アクティビティ</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="439"/>
+        <location filename="../qml/components/AgentsSection.qml" line="443"/>
         <source>Clear</source>
         <translation>クリア</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="446"/>
+        <location filename="../qml/components/AgentsSection.qml" line="450"/>
         <source>Nothing yet.</source>
         <translation>まだありません。</translation>
     </message>
@@ -8624,6 +8624,11 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
         <translation>ホットキーと自動化</translation>
     </message>
     <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="27"/>
+        <source>Assistants that use your devices</source>
+        <translation>デバイスを使うアシスタント</translation>
+    </message>
+    <message>
         <location filename="../qml/pages/SettingsPage.qml" line="28"/>
         <source>Storage &amp; Privacy</source>
         <translation>ストレージとプライバシー</translation>
@@ -9272,9 +9277,8 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
         <translation>AI エージェント</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="27"/>
         <source>Claude Code, Codex, Cursor &amp; more</source>
-        <translation>Claude Code、Codex、Cursor など</translation>
+        <translation type="vanished">Claude Code、Codex、Cursor など</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3867"/>

@@ -5,7 +5,7 @@ import QtQuick
 // Every link the app itself opens, in one place and nowhere else: never in
 // a translation, a setting or anything that arrives over the network, so
 // nothing can repoint one. Open them by key with open(); a test pins each
-// address (src/links.rs).
+// address (src/app_links.rs).
 QtObject {
     id: links
 

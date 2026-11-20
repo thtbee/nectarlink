@@ -37,8 +37,10 @@ Column {
     property string byHand: ""
     // The agent whose permissions are open.
     property string editing: ""
-    // Whether the agent being connected has reached NectarLink yet.
-    readonly property bool shownConnected: clients.some(c => c.label === shownLabel && c.lastUsed > 0)
+    // When the agent being connected last reached NectarLink, as the card opened.
+    property real shownSince: 0
+    // Whether it has reached NectarLink since.
+    readonly property bool shownConnected: clients.some(c => c.label === shownLabel && c.lastUsed > shownSince)
 
     function accessOf(grants, scope) {
         if (grants.indexOf(scope + ":write") >= 0) return "write"
@@ -46,6 +48,8 @@ Column {
         return "off"
     }
     function showConnect(label, name) {
+        const known = clients.find(c => c.label === label)
+        shownSince = known ? known.lastUsed : 0
         shownLabel = label
         shownName = name
         byHand = ""

@@ -552,17 +552,6 @@ fun PcMirrorView(
 
     // Video looks its best at 1080p; the PC's desktop starts at 720p.
     var highQuality by rememberSaveable { mutableStateOf(watch != null) }
-    // Which of the PC's screens (#442); its main one until another is picked.
-    var displays by remember(pcId) { mutableStateOf<List<app.nectarlink.core.PcDisplay>>(emptyList()) }
-    var display by rememberSaveable(pcId) { mutableStateOf<Int?>(null) }
-    LaunchedEffect(pcId, watch) {
-        if (watch == null) displays = core.pcDisplays(pcId)
-    }
-    val screenIndex = displays.indexOfFirst { it.id.toInt() == display }.coerceAtLeast(0)
-    val showScreens = watch == null && displays.size > 1
-    val nextScreen = {
-        if (displays.size > 1) display = displays[(screenIndex + 1) % displays.size].id.toInt()
-    }
     var showKeyboardBar by rememberSaveable { mutableStateOf(false) }
     // Full screen only: the screen moves the pointer like a touchpad, for precision.
     var touchpadMode by rememberSaveable { mutableStateOf(false) }
@@ -575,6 +564,23 @@ fun PcMirrorView(
     var surface by remember { mutableStateOf<Surface?>(null) }
     var hasRenderedFrame by remember(pcId) { mutableStateOf(false) }
     var reconnectTick by remember { mutableIntStateOf(0) }
+    // Which of the PC's screens (#442); its main one until another is picked.
+    var displays by remember(pcId) { mutableStateOf<List<app.nectarlink.core.PcDisplay>>(emptyList()) }
+    var display by rememberSaveable(pcId) { mutableStateOf<Int?>(null) }
+    // Asked again once the picture arrives: before the PC allows this phone
+    // (or while the link is down) it lists none.
+    LaunchedEffect(pcId, watch, hasRenderedFrame) {
+        if (watch == null && displays.isEmpty()) displays = core.pcDisplays(pcId)
+    }
+    val screenIndex = displays.indexOfFirst { it.id.toInt() == display }.coerceAtLeast(0)
+    val showScreens = watch == null && displays.size > 1
+    val nextScreen = {
+        if (displays.size > 1) {
+            display = displays[(screenIndex + 1) % displays.size].id.toInt()
+            // Another screen can have another size: a fresh decoder, as for the quality.
+            reconnectTick++
+        }
+    }
     var requestTick by remember(pcId) { mutableIntStateOf(0) }
 
     // Full-screen overlay & auto-rotate state

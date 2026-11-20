@@ -70,7 +70,6 @@ object BankingPause {
 
     fun isPaused(context: Context): Boolean = prefs(context).getBoolean(PAUSED, false)
 
-    /** The banking apps the user chose, by package. */
     /**
      * Waits until the chosen apps change. With none chosen there's nothing to
      * watch for, so the service waits here instead of checking every 15 s.
@@ -83,12 +82,15 @@ object BankingPause {
         val prefs = prefs(context)
         prefs.registerOnSharedPreferenceChangeListener(listener)
         try {
+            // Apps chosen just before the listener was there: no need to wait.
+            if (apps(context).isNotEmpty()) return
             changed.receive()
         } finally {
             prefs.unregisterOnSharedPreferenceChangeListener(listener)
         }
     }
 
+    /** The banking apps the user chose, by package. */
     fun apps(context: Context): Set<String> = prefs(context).getStringSet(APPS, emptySet()).orEmpty().toSet()
 
     fun setApps(context: Context, apps: Set<String>) {

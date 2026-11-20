@@ -63,6 +63,9 @@ mod imp {
         /// Play on phone: the phone watches a player, and its input is ignored.
         watching: bool,
         video_ready: bool,
+        /// The screen shown, when it isn't the main one (#442): taps land there.
+        #[cfg(windows)]
+        area: Option<RECT>,
         #[cfg(target_os = "linux")]
         input_portal: Option<Arc<win::input::RemoteDesktopPortal>>,
     }
@@ -162,6 +165,8 @@ mod imp {
                 force_keyframe: Arc::clone(&force_keyframe),
                 watching: options.watch.is_some(),
                 video_ready: false,
+                #[cfg(windows)]
+                area: None,
                 #[cfg(target_os = "linux")]
                 input_portal: None,
             })
@@ -265,8 +270,10 @@ mod imp {
             {
                 input_portal = active.input_portal.clone();
             }
+            // Taps go to the screen this session shows, whatever another
+            // session set before it.
             #[cfg(windows)]
-            let _ = active;
+            win::input::set_absolute_area(active.area);
         }
         if !remote_input_allowed(*peer) {
             return;
@@ -2273,18 +2280,32 @@ mod imp {
         };
 
         // The screen the phone picked (#442), when it isn't the main one: its
-        // taps land there too, until this sharing ends.
+        // taps land there too, until this sharing ends. Looked up again now
+        // and then, as screens come, go and change size.
         #[cfg(windows)]
-        let screen_area = options
-            .display
-            .filter(|_| options.watch.is_none())
-            .and_then(win::displays::by_id)
-            .filter(|d| !d.primary)
-            .map(|d| d.rect);
+        let shown_area = || {
+            options
+                .display
+                .filter(|_| options.watch.is_none())
+                .and_then(win::displays::by_id)
+                .filter(|d| !d.primary)
+                .map(|d| d.rect)
+        };
+        #[cfg(windows)]
+        let set_area = |area: Option<RECT>| {
+            let mut active = ACTIVE.lock().unwrap_or_else(|e| e.into_inner());
+            if let Some(active) = active.as_mut().filter(|s| Arc::ptr_eq(&s.stop, &stop)) {
+                active.area = area;
+            }
+        };
+        #[cfg(windows)]
+        let mut screen_area = shown_area();
+        #[cfg(windows)]
+        set_area(screen_area);
+        #[cfg(windows)]
+        let mut screens_checked = Instant::now();
         #[cfg(target_os = "linux")]
         let screen_area: Option<()> = None;
-        #[cfg(windows)]
-        win::input::set_absolute_area(screen_area);
 
         // Give the phone's PcMirrorView TextureView and MediaCodec a brief moment to
         // mount before sending the initial MirrorConfig and IDR keyframe.
@@ -2339,6 +2360,19 @@ mod imp {
         let mut last_video = Instant::now();
         while !stop.load(Ordering::Relaxed) && !sender.is_closed() {
             let tick_start = Instant::now();
+
+            #[cfg(windows)]
+            if options.display.is_some() && screens_checked.elapsed() >= Duration::from_secs(2) {
+                screens_checked = Instant::now();
+                let now = shown_area();
+                if now != screen_area {
+                    // Moved, resized or gone (then the main screen): a new stream config.
+                    screen_area = now;
+                    set_area(screen_area);
+                    stream_dims = None;
+                    encoder = None;
+                }
+            }
 
             let place = watched.as_ref().and_then(crate::play_on_phone::Watched::place);
             if watched.is_some() && place.is_none() && started.elapsed() < FIND_WINDOW {

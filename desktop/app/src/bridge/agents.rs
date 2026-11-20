@@ -315,6 +315,7 @@ pub fn prompt_for(place: &Place, label: &str) -> Option<String> {
    Command line, if you have a shell and no MCP:
      "{exe}" actions --agent {label}
      "{exe}" do <action> --agent {label} --args '{{"key":"value"}}'
+   (That quoting is for PowerShell and other shells; in cmd.exe write --args "{{\"key\":\"value\"}}".)
    Output is JSON.
 2. Do not look for, copy or store any token or key. The command finds it by itself.
 3. Check it works by listing my devices (the devices list tool, or: "{exe}" do devices.list --agent {label}). If you need a restart or reload first, tell me and stop there.

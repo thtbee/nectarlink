@@ -274,140 +274,140 @@
         <translation>Bloquear, suspender, desligar e despertar PCs</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="66"/>
-        <location filename="../qml/components/AgentsSection.qml" line="159"/>
+        <location filename="../qml/components/AgentsSection.qml" line="70"/>
+        <location filename="../qml/components/AgentsSection.qml" line="163"/>
         <source>Everyday</source>
         <translation>Dia a dia</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="66"/>
-        <location filename="../qml/components/AgentsSection.qml" line="158"/>
+        <location filename="../qml/components/AgentsSection.qml" line="70"/>
+        <location filename="../qml/components/AgentsSection.qml" line="162"/>
         <source>Read only</source>
         <translation>Somente leitura</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="66"/>
+        <location filename="../qml/components/AgentsSection.qml" line="70"/>
         <source>Custom</source>
         <translation>Personalizado</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="70"/>
+        <location filename="../qml/components/AgentsSection.qml" line="74"/>
         <source>done</source>
         <translation>feito</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="71"/>
+        <location filename="../qml/components/AgentsSection.qml" line="75"/>
         <source>denied by you</source>
         <translation>negado por você</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="72"/>
+        <location filename="../qml/components/AgentsSection.qml" line="76"/>
         <source>not approved in time</source>
         <translation>não aprovado a tempo</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="73"/>
+        <location filename="../qml/components/AgentsSection.qml" line="77"/>
         <source>waiting for you</source>
         <translation>esperando você</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="74"/>
+        <location filename="../qml/components/AgentsSection.qml" line="78"/>
         <source>not permitted</source>
         <translation>sem permissão</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="75"/>
+        <location filename="../qml/components/AgentsSection.qml" line="79"/>
         <source>blocked, read-only</source>
         <translation>bloqueado, somente leitura</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="76"/>
+        <location filename="../qml/components/AgentsSection.qml" line="80"/>
         <source>off for that device</source>
         <translation>desativado para esse dispositivo</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="77"/>
+        <location filename="../qml/components/AgentsSection.qml" line="81"/>
         <source>too many requests</source>
         <translation>pedidos demais</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="78"/>
+        <location filename="../qml/components/AgentsSection.qml" line="82"/>
         <source>failed</source>
         <translation>falhou</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="89"/>
-        <location filename="../qml/components/AgentsSection.qml" line="94"/>
+        <location filename="../qml/components/AgentsSection.qml" line="93"/>
+        <location filename="../qml/components/AgentsSection.qml" line="98"/>
         <source>Let AI agents use NectarLink</source>
         <translation>Deixar agentes de IA usarem o NectarLink</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="91"/>
+        <location filename="../qml/components/AgentsSection.qml" line="95"/>
         <source>On. Agents only get the permissions you give each one, and sensitive actions always ask you first.</source>
         <translation>Ativado. Os agentes só têm as permissões que você dá a cada um, e ações sensíveis sempre perguntam antes.</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="92"/>
+        <location filename="../qml/components/AgentsSection.qml" line="96"/>
         <source>AI assistants on this PC can read and act through NectarLink, with your approval.</source>
         <translation>Assistentes de IA neste PC podem ler e agir pelo NectarLink, com a sua aprovação.</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="177"/>
+        <location filename="../qml/components/AgentsSection.qml" line="181"/>
         <source>Create</source>
         <translation>Criar</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="216"/>
+        <location filename="../qml/components/AgentsSection.qml" line="220"/>
         <source>Paste this into your agent. It sets itself up and checks that it works.</source>
         <translation>Cole isto no seu agente. Ele se configura sozinho e confere se funciona.</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="245"/>
+        <location filename="../qml/components/AgentsSection.qml" line="249"/>
         <source>Copy prompt</source>
         <translation>Copiar prompt</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="260"/>
+        <location filename="../qml/components/AgentsSection.qml" line="264"/>
         <source>Connected</source>
         <translation>Conectado</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="260"/>
+        <location filename="../qml/components/AgentsSection.qml" line="264"/>
         <source>Waiting for the agent…</source>
         <translation>Esperando o agente…</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="268"/>
+        <location filename="../qml/components/AgentsSection.qml" line="272"/>
         <source>Set up by hand</source>
         <translation>Configurar manualmente</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="277"/>
+        <location filename="../qml/components/AgentsSection.qml" line="281"/>
         <source>MCP</source>
         <translation>MCP</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="278"/>
+        <location filename="../qml/components/AgentsSection.qml" line="282"/>
         <source>Command line</source>
         <translation>Linha de comando</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="279"/>
+        <location filename="../qml/components/AgentsSection.qml" line="283"/>
         <source>HTTP</source>
         <translation>HTTP</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="290"/>
+        <location filename="../qml/components/AgentsSection.qml" line="294"/>
         <source>Run commands like these. The first lists everything the agent may do.</source>
         <translation>Rode comandos como estes. O primeiro lista tudo o que o agente pode fazer.</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="292"/>
+        <location filename="../qml/components/AgentsSection.qml" line="296"/>
         <source>For your own scripts. Read the token from that file each time; never paste it anywhere.</source>
         <translation>Para seus próprios scripts. Leia o token desse arquivo a cada vez; nunca o cole em lugar nenhum.</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="293"/>
+        <location filename="../qml/components/AgentsSection.qml" line="297"/>
         <source>Add this to the agent&apos;s MCP settings.</source>
         <translation>Adicione isto às configurações MCP do agente.</translation>
     </message>
@@ -416,44 +416,44 @@
         <translation type="vanished">Claude Code, Codex, Cursor e outros assistentes de IA neste PC podem ler e agir pelo NectarLink, com a sua aprovação.</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="104"/>
-        <location filename="../qml/components/AgentsSection.qml" line="107"/>
+        <location filename="../qml/components/AgentsSection.qml" line="108"/>
+        <location filename="../qml/components/AgentsSection.qml" line="111"/>
         <source>Read-only for every agent</source>
         <translation>Somente leitura para todos os agentes</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="105"/>
+        <location filename="../qml/components/AgentsSection.qml" line="109"/>
         <source>Agents can look, but can&apos;t send, change or delete anything.</source>
         <translation>Os agentes podem olhar, mas não podem enviar, mudar nem apagar nada.</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="121"/>
+        <location filename="../qml/components/AgentsSection.qml" line="125"/>
         <source>Add an agent</source>
         <translation>Adicionar um agente</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="127"/>
+        <location filename="../qml/components/AgentsSection.qml" line="131"/>
         <source>Works with any assistant that runs on this PC. Name it, choose what it may do, then paste one prompt into it.</source>
         <translation>Funciona com qualquer assistente neste PC. Dê um nome, escolha o que ele pode fazer e cole um único prompt.</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="139"/>
-        <location filename="../qml/components/AgentsSection.qml" line="179"/>
+        <location filename="../qml/components/AgentsSection.qml" line="143"/>
+        <location filename="../qml/components/AgentsSection.qml" line="183"/>
         <source>My agent</source>
         <translation>Meu agente</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="152"/>
+        <location filename="../qml/components/AgentsSection.qml" line="156"/>
         <source>Agent name</source>
         <translation>Nome do agente</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="170"/>
+        <location filename="../qml/components/AgentsSection.qml" line="174"/>
         <source>Reads everything except the clipboard and one-time codes. Can send messages, files and notifications, control media, copy photos, open phone apps on this PC and change the phone&apos;s quick settings. Sending a text, replying, calling or deleting always asks you first.</source>
         <translation>Lê tudo, menos a área de transferência e os códigos de uso único. Pode enviar mensagens, arquivos e notificações, controlar mídia, copiar fotos, abrir apps do celular neste PC e mudar as configurações rápidas do celular. Enviar um SMS, responder, ligar ou apagar sempre pergunta antes.</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="171"/>
+        <location filename="../qml/components/AgentsSection.qml" line="175"/>
         <source>Reads devices, notifications, messages, calls, contacts, photos, files and media. Can&apos;t change anything. The clipboard and one-time codes stay private.</source>
         <translation>Lê dispositivos, notificações, mensagens, chamadas, contatos, fotos, arquivos e mídia. Não pode mudar nada. A área de transferência e os códigos de uso único continuam privados.</translation>
     </message>
@@ -470,7 +470,7 @@
         <translation type="vanished">Adicionar %1</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="209"/>
+        <location filename="../qml/components/AgentsSection.qml" line="213"/>
         <source>Connect %1</source>
         <translation>Conectar %1</translation>
     </message>
@@ -503,99 +503,99 @@
         <translation type="vanished">Adicione isto às configurações de MCP do app:</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="314"/>
+        <location filename="../qml/components/AgentsSection.qml" line="318"/>
         <source>Copy</source>
         <translation>Copiar</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="321"/>
+        <location filename="../qml/components/AgentsSection.qml" line="325"/>
         <source>Done</source>
         <translation>Pronto</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="332"/>
+        <location filename="../qml/components/AgentsSection.qml" line="336"/>
         <source>Agents</source>
         <translation>Agentes</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="343"/>
+        <location filename="../qml/components/AgentsSection.qml" line="347"/>
         <source>paused</source>
         <translation>pausado</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="345"/>
+        <location filename="../qml/components/AgentsSection.qml" line="349"/>
         <source>read-only</source>
         <translation>somente leitura</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="347"/>
+        <location filename="../qml/components/AgentsSection.qml" line="351"/>
         <source>last used %1</source>
         <translation>usado por último %1</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="348"/>
+        <location filename="../qml/components/AgentsSection.qml" line="352"/>
         <source>not connected yet</source>
         <translation>ainda não conectado</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="354"/>
+        <location filename="../qml/components/AgentsSection.qml" line="358"/>
         <source>Connect</source>
         <translation>Conectar</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="360"/>
+        <location filename="../qml/components/AgentsSection.qml" line="364"/>
         <source>Permissions</source>
         <translation>Permissões</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="366"/>
+        <location filename="../qml/components/AgentsSection.qml" line="370"/>
         <source>Resume</source>
         <translation>Retomar</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="366"/>
+        <location filename="../qml/components/AgentsSection.qml" line="370"/>
         <source>Pause</source>
         <translation>Pausar</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="372"/>
+        <location filename="../qml/components/AgentsSection.qml" line="376"/>
         <source>Remove</source>
         <translation>Remover</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="390"/>
+        <location filename="../qml/components/AgentsSection.qml" line="394"/>
         <source>Each area can only narrow what a device&apos;s own permissions allow. Sensitive actions still ask you every time.</source>
         <translation>Cada área só pode restringir o que as permissões do próprio dispositivo já permitem. Ações sensíveis continuam perguntando toda vez.</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="412"/>
-        <location filename="../qml/components/AgentsSection.qml" line="413"/>
+        <location filename="../qml/components/AgentsSection.qml" line="416"/>
+        <location filename="../qml/components/AgentsSection.qml" line="417"/>
         <source>Off</source>
         <translation>Desativado</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="412"/>
-        <location filename="../qml/components/AgentsSection.qml" line="413"/>
+        <location filename="../qml/components/AgentsSection.qml" line="416"/>
+        <location filename="../qml/components/AgentsSection.qml" line="417"/>
         <source>Read</source>
         <translation>Ler</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="412"/>
+        <location filename="../qml/components/AgentsSection.qml" line="416"/>
         <source>Read and act</source>
         <translation>Ler e agir</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="433"/>
+        <location filename="../qml/components/AgentsSection.qml" line="437"/>
         <source>Activity</source>
         <translation>Atividade</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="439"/>
+        <location filename="../qml/components/AgentsSection.qml" line="443"/>
         <source>Clear</source>
         <translation>Limpar</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="446"/>
+        <location filename="../qml/components/AgentsSection.qml" line="450"/>
         <source>Nothing yet.</source>
         <translation>Nada ainda.</translation>
     </message>
@@ -9371,9 +9371,8 @@ O que precisa
         <translation>Agentes de IA</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="27"/>
         <source>Claude Code, Codex, Cursor &amp; more</source>
-        <translation>Claude Code, Codex, Cursor e mais</translation>
+        <translation type="vanished">Claude Code, Codex, Cursor e mais</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="30"/>
@@ -10263,6 +10262,11 @@ O que precisa
         <location filename="../qml/pages/SettingsPage.qml" line="3572"/>
         <source>Iroh relay servers</source>
         <translation>Servidores de retransmissão do iroh</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="27"/>
+        <source>Assistants that use your devices</source>
+        <translation>Assistentes que usam seus dispositivos</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3249"/>
