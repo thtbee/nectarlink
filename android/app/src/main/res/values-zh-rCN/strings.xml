@@ -1399,8 +1399,8 @@
     <string name="community_title">社区</string>
     <string name="community_discord_title">Discord</string>
     <string name="community_discord_body">我们的服务器。提问、分享想法，和大家一起试用新版本。</string>
-    <string name="community_x_title">X</string>
-    <string name="community_x_body">来自 NectarLink 作者 Bee 的消息。</string>
+    <string name="community_x_title">𝕏</string>
+    <string name="community_x_body">关注我。我会在那里发布 NectarLink 接下来的内容和我做的其他东西。</string>
     <string name="community_github_title">GitHub</string>
     <string name="community_github_body">源代码、问题和版本发布。</string>
     <string name="community_invite_title">来 Discord 聊聊</string>

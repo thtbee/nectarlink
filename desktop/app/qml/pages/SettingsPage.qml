@@ -3823,7 +3823,8 @@ Item {
                         width: parent.width
                         ListRow {
                             width: parent.width
-                            iconPath: Icons.messages
+                            iconPath: Icons.brandDiscord
+                            iconFilled: true
                             title: qsTr("Discord")
                             description: qsTr("Our server. Ask questions, share ideas and try new builds with others.")
                             Button {
@@ -3837,9 +3838,10 @@ Item {
                         Divider { width: parent.width }
                         ListRow {
                             width: parent.width
-                            iconPath: Icons.megaphone
-                            title: qsTr("X")
-                            description: qsTr("News from Bee, who makes NectarLink.")
+                            iconPath: Icons.brandX
+                            iconFilled: true
+                            title: "𝕏"
+                            description: qsTr("Follow me. I post what's coming to NectarLink and other things I make.")
                             Button {
                                 variant: "tonal"
                                 size: "sm"
@@ -3850,7 +3852,8 @@ Item {
                         Divider { width: parent.width }
                         ListRow {
                             width: parent.width
-                            iconPath: Icons.code
+                            iconPath: Icons.brandGitHub
+                            iconFilled: true
                             title: qsTr("GitHub")
                             description: qsTr("Source code, issues and releases.")
                             Button {

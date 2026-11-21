@@ -7,6 +7,8 @@ import app.nectarlink
 Item {
     id: row
     property string iconPath
+    // A solid icon (a brand mark) instead of a stroke one.
+    property bool iconFilled: false
     property string title
     property string description
     property bool stackBelow: false
@@ -24,6 +26,7 @@ Item {
         anchors.left: parent.left
         anchors.verticalCenter: row.stackTrailing ? texts.verticalCenter : parent.verticalCenter
         path: row.iconPath
+        filled: row.iconFilled
         color: Theme.surfaceContentVariant
     }
     Column {

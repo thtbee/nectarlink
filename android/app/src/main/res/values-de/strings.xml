@@ -1541,8 +1541,8 @@
     <string name="community_title">Community</string>
     <string name="community_discord_title">Discord</string>
     <string name="community_discord_body">Unser Server. Stell Fragen, teile Ideen und probiere neue Builds mit anderen aus.</string>
-    <string name="community_x_title">X</string>
-    <string name="community_x_body">Neuigkeiten von Bee, der NectarLink macht.</string>
+    <string name="community_x_title">𝕏</string>
+    <string name="community_x_body">Folge mir. Ich zeige dort, was als Nächstes in NectarLink kommt, und andere Dinge, die ich mache.</string>
     <string name="community_github_title">GitHub</string>
     <string name="community_github_body">Quellcode, Issues und Releases.</string>
     <string name="community_invite_title">Komm auf Discord vorbei</string>

@@ -1469,8 +1469,8 @@
     <string name="community_title">Cộng đồng</string>
     <string name="community_discord_title">Discord</string>
     <string name="community_discord_body">Máy chủ của chúng tôi. Đặt câu hỏi, chia sẻ ý tưởng và thử bản dựng mới cùng mọi người.</string>
-    <string name="community_x_title">X</string>
-    <string name="community_x_body">Tin tức từ Bee, người làm NectarLink.</string>
+    <string name="community_x_title">𝕏</string>
+    <string name="community_x_body">Theo dõi mình nhé. Mình đăng những gì sắp có trên NectarLink và những thứ khác mình làm.</string>
     <string name="community_github_title">GitHub</string>
     <string name="community_github_body">Mã nguồn, issue và các bản phát hành.</string>
     <string name="community_invite_title">Cùng trò chuyện trên Discord</string>

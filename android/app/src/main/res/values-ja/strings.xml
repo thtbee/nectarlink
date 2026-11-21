@@ -1531,8 +1531,8 @@
     <string name="community_title">コミュニティ</string>
     <string name="community_discord_title">Discord</string>
     <string name="community_discord_body">私たちのサーバーです。質問やアイデアの共有、新しいビルドのお試しをみんなで。</string>
-    <string name="community_x_title">X</string>
-    <string name="community_x_body">NectarLink の作者 Bee からのお知らせ。</string>
+    <string name="community_x_title">𝕏</string>
+    <string name="community_x_body">フォローしてください。NectarLink の次の機能や、ほかに作っているものを投稿しています。</string>
     <string name="community_github_title">GitHub</string>
     <string name="community_github_body">ソースコード、Issue、リリース。</string>
     <string name="community_invite_title">Discord で話しましょう</string>

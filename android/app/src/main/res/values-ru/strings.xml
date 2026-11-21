@@ -1413,8 +1413,8 @@
     <string name="community_title">Сообщество</string>
     <string name="community_discord_title">Discord</string>
     <string name="community_discord_body">Наш сервер. Задавайте вопросы, делитесь идеями и пробуйте новые сборки вместе с другими.</string>
-    <string name="community_x_title">X</string>
-    <string name="community_x_body">Новости от Bee, автора NectarLink.</string>
+    <string name="community_x_title">𝕏</string>
+    <string name="community_x_body">Подписывайтесь. Я пишу о том, что скоро появится в NectarLink, и о других своих проектах.</string>
     <string name="community_github_title">GitHub</string>
     <string name="community_github_body">Исходный код, задачи и выпуски.</string>
     <string name="community_invite_title">Заходите в Discord</string>

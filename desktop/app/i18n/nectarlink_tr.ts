@@ -274,140 +274,140 @@
         <translation>Bilgisayarları kilitleme, uyutma, kapatma ve uyandırma</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="70"/>
-        <location filename="../qml/components/AgentsSection.qml" line="163"/>
+        <location filename="../qml/components/AgentsSection.qml" line="82"/>
+        <location filename="../qml/components/AgentsSection.qml" line="175"/>
         <source>Everyday</source>
         <translation>Günlük</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="70"/>
-        <location filename="../qml/components/AgentsSection.qml" line="162"/>
+        <location filename="../qml/components/AgentsSection.qml" line="82"/>
+        <location filename="../qml/components/AgentsSection.qml" line="174"/>
         <source>Read only</source>
         <translation>Salt okunur</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="70"/>
+        <location filename="../qml/components/AgentsSection.qml" line="82"/>
         <source>Custom</source>
         <translation>Özel</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="74"/>
+        <location filename="../qml/components/AgentsSection.qml" line="86"/>
         <source>done</source>
         <translation>tamam</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="75"/>
+        <location filename="../qml/components/AgentsSection.qml" line="87"/>
         <source>denied by you</source>
         <translation>sen reddettin</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="76"/>
+        <location filename="../qml/components/AgentsSection.qml" line="88"/>
         <source>not approved in time</source>
         <translation>zamanında onaylanmadı</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="77"/>
+        <location filename="../qml/components/AgentsSection.qml" line="89"/>
         <source>waiting for you</source>
         <translation>seni bekliyor</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="78"/>
+        <location filename="../qml/components/AgentsSection.qml" line="90"/>
         <source>not permitted</source>
         <translation>izin yok</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="79"/>
+        <location filename="../qml/components/AgentsSection.qml" line="91"/>
         <source>blocked, read-only</source>
         <translation>engellendi, salt okunur</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="80"/>
+        <location filename="../qml/components/AgentsSection.qml" line="92"/>
         <source>off for that device</source>
         <translation>o cihaz için kapalı</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="81"/>
+        <location filename="../qml/components/AgentsSection.qml" line="93"/>
         <source>too many requests</source>
         <translation>çok fazla istek</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="82"/>
+        <location filename="../qml/components/AgentsSection.qml" line="94"/>
         <source>failed</source>
         <translation>başarısız</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="93"/>
-        <location filename="../qml/components/AgentsSection.qml" line="98"/>
+        <location filename="../qml/components/AgentsSection.qml" line="105"/>
+        <location filename="../qml/components/AgentsSection.qml" line="110"/>
         <source>Let AI agents use NectarLink</source>
         <translation>Yapay zekâ ajanları NectarLink&apos;i kullanabilsin</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="95"/>
+        <location filename="../qml/components/AgentsSection.qml" line="107"/>
         <source>On. Agents only get the permissions you give each one, and sensitive actions always ask you first.</source>
         <translation>Açık. Ajanlar sadece her birine verdiğin izinlere sahip, hassas işlemler her zaman önce sana sorar.</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="96"/>
+        <location filename="../qml/components/AgentsSection.qml" line="108"/>
         <source>AI assistants on this PC can read and act through NectarLink, with your approval.</source>
         <translation>Bu bilgisayardaki yapay zekâ asistanları, onayınla NectarLink üzerinden okuyup işlem yapabilir.</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="181"/>
+        <location filename="../qml/components/AgentsSection.qml" line="193"/>
         <source>Create</source>
         <translation>Oluştur</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="220"/>
+        <location filename="../qml/components/AgentsSection.qml" line="233"/>
         <source>Paste this into your agent. It sets itself up and checks that it works.</source>
         <translation>Bunu ajanına yapıştır. Kendini kurar ve çalıştığını kontrol eder.</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="249"/>
+        <location filename="../qml/components/AgentsSection.qml" line="262"/>
         <source>Copy prompt</source>
         <translation>İstemi kopyala</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="264"/>
+        <location filename="../qml/components/AgentsSection.qml" line="277"/>
         <source>Connected</source>
         <translation>Bağlandı</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="264"/>
+        <location filename="../qml/components/AgentsSection.qml" line="277"/>
         <source>Waiting for the agent…</source>
         <translation>Ajan bekleniyor…</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="272"/>
+        <location filename="../qml/components/AgentsSection.qml" line="285"/>
         <source>Set up by hand</source>
         <translation>Elle kur</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="281"/>
+        <location filename="../qml/components/AgentsSection.qml" line="294"/>
         <source>MCP</source>
         <translation>MCP</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="282"/>
+        <location filename="../qml/components/AgentsSection.qml" line="295"/>
         <source>Command line</source>
         <translation>Komut satırı</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="283"/>
+        <location filename="../qml/components/AgentsSection.qml" line="296"/>
         <source>HTTP</source>
         <translation>HTTP</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="294"/>
+        <location filename="../qml/components/AgentsSection.qml" line="307"/>
         <source>Run commands like these. The first lists everything the agent may do.</source>
         <translation>Bunlar gibi komutlar çalıştır. İlki ajanın yapabileceği her şeyi listeler.</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="296"/>
+        <location filename="../qml/components/AgentsSection.qml" line="309"/>
         <source>For your own scripts. Read the token from that file each time; never paste it anywhere.</source>
         <translation>Kendi betiklerin için. Belirteci her seferinde o dosyadan oku; hiçbir yere yapıştırma.</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="297"/>
+        <location filename="../qml/components/AgentsSection.qml" line="310"/>
         <source>Add this to the agent&apos;s MCP settings.</source>
         <translation>Bunu ajanın MCP ayarlarına ekle.</translation>
     </message>
@@ -416,44 +416,44 @@
         <translation type="vanished">Bu bilgisayardaki Claude Code, Codex, Cursor ve diğer yapay zekâ asistanları, senin onayınla NectarLink üzerinden okuyup işlem yapabilir.</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="108"/>
-        <location filename="../qml/components/AgentsSection.qml" line="111"/>
+        <location filename="../qml/components/AgentsSection.qml" line="120"/>
+        <location filename="../qml/components/AgentsSection.qml" line="123"/>
         <source>Read-only for every agent</source>
         <translation>Tüm ajanlar için salt okunur</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="109"/>
+        <location filename="../qml/components/AgentsSection.qml" line="121"/>
         <source>Agents can look, but can&apos;t send, change or delete anything.</source>
         <translation>Ajanlar bakabilir ama hiçbir şey gönderemez, değiştiremez ya da silemez.</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="125"/>
+        <location filename="../qml/components/AgentsSection.qml" line="137"/>
         <source>Add an agent</source>
         <translation>Ajan ekle</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="131"/>
+        <location filename="../qml/components/AgentsSection.qml" line="143"/>
         <source>Works with any assistant that runs on this PC. Name it, choose what it may do, then paste one prompt into it.</source>
         <translation>Bu bilgisayarda çalışan her asistanla olur. Bir ad ver, neler yapabileceğini seç, sonra tek bir istem yapıştır.</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="143"/>
-        <location filename="../qml/components/AgentsSection.qml" line="183"/>
+        <location filename="../qml/components/AgentsSection.qml" line="155"/>
+        <location filename="../qml/components/AgentsSection.qml" line="195"/>
         <source>My agent</source>
         <translation>Ajanım</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="156"/>
+        <location filename="../qml/components/AgentsSection.qml" line="168"/>
         <source>Agent name</source>
         <translation>Ajan adı</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="174"/>
+        <location filename="../qml/components/AgentsSection.qml" line="186"/>
         <source>Reads everything except the clipboard and one-time codes. Can send messages, files and notifications, control media, copy photos, open phone apps on this PC and change the phone&apos;s quick settings. Sending a text, replying, calling or deleting always asks you first.</source>
         <translation>Pano ve tek kullanımlık kodlar dışında her şeyi okur. Mesaj, dosya ve bildirim gönderebilir, medyayı yönetebilir, fotoğraf kopyalayabilir, telefon uygulamalarını bu bilgisayarda açabilir ve telefonun hızlı ayarlarını değiştirebilir. SMS göndermek, yanıt vermek, arama yapmak veya silmek için her zaman önce sana sorar.</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="175"/>
+        <location filename="../qml/components/AgentsSection.qml" line="187"/>
         <source>Reads devices, notifications, messages, calls, contacts, photos, files and media. Can&apos;t change anything. The clipboard and one-time codes stay private.</source>
         <translation>Cihazları, bildirimleri, mesajları, aramaları, kişileri, fotoğrafları, dosyaları ve medyayı okur. Hiçbir şeyi değiştiremez. Pano ve tek kullanımlık kodlar gizli kalır.</translation>
     </message>
@@ -470,7 +470,7 @@
         <translation type="vanished">%1 ekle</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="213"/>
+        <location filename="../qml/components/AgentsSection.qml" line="226"/>
         <source>Connect %1</source>
         <translation>%1 bağla</translation>
     </message>
@@ -503,99 +503,99 @@
         <translation type="vanished">Bunu uygulamanın MCP ayarlarına ekle:</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="318"/>
+        <location filename="../qml/components/AgentsSection.qml" line="331"/>
         <source>Copy</source>
         <translation>Kopyala</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="325"/>
+        <location filename="../qml/components/AgentsSection.qml" line="338"/>
         <source>Done</source>
         <translation>Tamam</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="336"/>
+        <location filename="../qml/components/AgentsSection.qml" line="349"/>
         <source>Agents</source>
         <translation>Ajanlar</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="347"/>
+        <location filename="../qml/components/AgentsSection.qml" line="360"/>
         <source>paused</source>
         <translation>duraklatıldı</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="349"/>
+        <location filename="../qml/components/AgentsSection.qml" line="362"/>
         <source>read-only</source>
         <translation>salt okunur</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="351"/>
+        <location filename="../qml/components/AgentsSection.qml" line="364"/>
         <source>last used %1</source>
         <translation>son kullanım %1</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="352"/>
+        <location filename="../qml/components/AgentsSection.qml" line="365"/>
         <source>not connected yet</source>
         <translation>henüz bağlanmadı</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="358"/>
+        <location filename="../qml/components/AgentsSection.qml" line="371"/>
         <source>Connect</source>
         <translation>Bağla</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="364"/>
+        <location filename="../qml/components/AgentsSection.qml" line="377"/>
         <source>Permissions</source>
         <translation>İzinler</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="370"/>
+        <location filename="../qml/components/AgentsSection.qml" line="383"/>
         <source>Resume</source>
         <translation>Devam ettir</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="370"/>
+        <location filename="../qml/components/AgentsSection.qml" line="383"/>
         <source>Pause</source>
         <translation>Duraklat</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="376"/>
+        <location filename="../qml/components/AgentsSection.qml" line="389"/>
         <source>Remove</source>
         <translation>Kaldır</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="394"/>
+        <location filename="../qml/components/AgentsSection.qml" line="407"/>
         <source>Each area can only narrow what a device&apos;s own permissions allow. Sensitive actions still ask you every time.</source>
         <translation>Her alan, bir cihazın kendi izinlerinin verdiğini yalnızca daraltabilir. Hassas işlemler yine her seferinde sana sorar.</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="416"/>
-        <location filename="../qml/components/AgentsSection.qml" line="417"/>
+        <location filename="../qml/components/AgentsSection.qml" line="429"/>
+        <location filename="../qml/components/AgentsSection.qml" line="430"/>
         <source>Off</source>
         <translation>Kapalı</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="416"/>
-        <location filename="../qml/components/AgentsSection.qml" line="417"/>
+        <location filename="../qml/components/AgentsSection.qml" line="429"/>
+        <location filename="../qml/components/AgentsSection.qml" line="430"/>
         <source>Read</source>
         <translation>Okuma</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="416"/>
+        <location filename="../qml/components/AgentsSection.qml" line="429"/>
         <source>Read and act</source>
         <translation>Okuma ve işlem</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="437"/>
+        <location filename="../qml/components/AgentsSection.qml" line="450"/>
         <source>Activity</source>
         <translation>Etkinlik</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="443"/>
+        <location filename="../qml/components/AgentsSection.qml" line="456"/>
         <source>Clear</source>
         <translation>Temizle</translation>
     </message>
     <message>
-        <location filename="../qml/components/AgentsSection.qml" line="450"/>
+        <location filename="../qml/components/AgentsSection.qml" line="463"/>
         <source>Nothing yet.</source>
         <translation>Henüz bir şey yok.</translation>
     </message>
@@ -8703,7 +8703,7 @@ Neler gerekir
         <translation>Doktor, Wake-on-LAN, API ve sürüm</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3867"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3870"/>
         <source>Support NectarLink</source>
         <translation>NectarLink&apos;i destekle</translation>
     </message>
@@ -9102,7 +9102,7 @@ Neler gerekir
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="971"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4185"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4188"/>
         <source>Language</source>
         <translation>Dil</translation>
     </message>
@@ -9297,7 +9297,7 @@ Neler gerekir
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1507"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4291"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4294"/>
         <source>Unpair</source>
         <translation>Eşleştirmeyi kaldır</translation>
     </message>
@@ -9345,9 +9345,9 @@ Neler gerekir
         <location filename="../qml/pages/SettingsPage.qml" line="3724"/>
         <location filename="../qml/pages/SettingsPage.qml" line="3791"/>
         <location filename="../qml/pages/SettingsPage.qml" line="3804"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3833"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3846"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3859"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3834"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3848"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3862"/>
         <source>Open</source>
         <translation>Aç</translation>
     </message>
@@ -10070,7 +10070,7 @@ Neler gerekir
         <location filename="../qml/pages/SettingsPage.qml" line="3381"/>
         <location filename="../qml/pages/SettingsPage.qml" line="3412"/>
         <location filename="../qml/pages/SettingsPage.qml" line="3449"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4336"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4339"/>
         <source>Clear</source>
         <translation>Temizle</translation>
     </message>
@@ -10302,7 +10302,7 @@ Neler gerekir
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3555"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4076"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4079"/>
         <source>Network interface</source>
         <translation>Ağ arayüzü</translation>
     </message>
@@ -10314,17 +10314,17 @@ Neler gerekir
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="2143"/>
         <location filename="../qml/pages/SettingsPage.qml" line="3560"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4083"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4086"/>
         <source>System default</source>
         <translation>Sistem varsayılanı</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4082"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4085"/>
         <source>%1 · Direct (without a VPN)</source>
         <translation>%1 · Doğrudan (VPN olmadan)</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4106"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4109"/>
         <source>Could not use this network interface.</source>
         <translation>Bu ağ arayüzü kullanılamadı.</translation>
     </message>
@@ -10472,159 +10472,157 @@ Neler gerekir
         <translation>Her özelliğin neye ihtiyaç duyduğu ve nerede bulunduğu.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3827"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3828"/>
         <source>Discord</source>
         <translation>Discord</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3828"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3829"/>
         <source>Our server. Ask questions, share ideas and try new builds with others.</source>
         <translation>Sunucumuz. Soru sor, fikirlerini paylaş ve yeni sürümleri başkalarıyla dene.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3841"/>
         <source>X</source>
-        <translation>X</translation>
+        <translation type="vanished">X</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3842"/>
         <source>News from Bee, who makes NectarLink.</source>
-        <translation>NectarLink’i yapan Bee’den haberler.</translation>
+        <translation type="vanished">NectarLink’i yapan Bee’den haberler.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3854"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3857"/>
         <source>GitHub</source>
         <translation>GitHub</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3855"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3858"/>
         <source>Source code, issues and releases.</source>
         <translation>Kaynak kodu, sorunlar ve sürümler.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3868"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3871"/>
         <source>NectarLink is free and open source. If it makes your days a little easier, you can help keep it going. Thank you!</source>
         <translation>NectarLink ücretsiz ve açık kaynaklıdır. Günlerini biraz kolaylaştırıyorsa devam etmesine yardım edebilirsin. Teşekkürler!</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3873"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3876"/>
         <source>Support</source>
         <translation>Destekle</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3946"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3949"/>
         <source>Sync a folder</source>
         <translation>Klasör eşitle</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3955"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3986"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3958"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3989"/>
         <source>Folder on the phone</source>
         <translation>Telefondaki klasör</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3991"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3994"/>
         <source>Folder on this PC</source>
         <translation>Bu bilgisayardaki klasör</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4006"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4009"/>
         <source>Choose…</source>
         <translation>Seç…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4016"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4019"/>
         <source>Phone to PC</source>
         <translation>Telefondan bilgisayara</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4017"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4020"/>
         <source>PC to phone</source>
         <translation>PC&apos;den telefona</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4018"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4021"/>
         <source>Both ways</source>
         <translation>Her iki yönde</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4029"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4032"/>
         <source>New and changed files on the PC are copied to the phone. Nothing on the phone comes to the PC, and nothing is deleted.</source>
         <translation>PC&apos;deki yeni ve değişen dosyalar telefona kopyalanır. Telefondan PC&apos;ye hiçbir şey gelmez ve hiçbir şey silinmez.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4031"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4034"/>
         <source>Changes on either side are copied to the other. When a file changed on both, both versions are kept.</source>
         <translation>Bir taraftaki değişiklikler diğerine kopyalanır. Bir dosya iki tarafta da değiştiyse iki sürüm de saklanır.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4032"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4035"/>
         <source>New and changed files on the phone are copied to the PC. Nothing on the PC goes to the phone.</source>
         <translation>Telefondaki yeni ve değişen dosyalar bilgisayara kopyalanır. Bilgisayardan telefona hiçbir şey gitmez.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4038"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4043"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4041"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4046"/>
         <source>Also remove from the PC</source>
         <translation>PC&apos;den de kaldır</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4038"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4043"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4041"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4046"/>
         <source>Also remove deleted files</source>
         <translation>Silinen dosyaları da kaldır</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4040"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4043"/>
         <source>A synced file you delete on one side leaves the other. On the PC it goes to the Recycle Bin. On the phone, photos and videos go to its trash where Android has one, and other files are gone for good.</source>
         <translation>Bir tarafta sildiğin eşitlenmiş dosya diğer taraftan da kalkar. PC&apos;de Geri Dönüşüm Kutusu&apos;na gider. Telefonda fotoğraf ve videolar, Android&apos;de varsa çöp kutusuna gider; diğer dosyalar kalıcı olarak silinir.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4041"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4044"/>
         <source>A synced file you delete on the phone goes to the PC&apos;s Recycle Bin.</source>
         <translation>Telefonda sildiğin eşitlenmiş dosya PC&apos;nin Geri Dönüşüm Kutusu&apos;na gider.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4054"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4057"/>
         <source>Add</source>
         <translation>Ekle</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4123"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4126"/>
         <source>Phone&apos;s hotspot network</source>
         <translation>Telefonun hotspot ağı</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4131"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4134"/>
         <source>Wi-Fi networks this PC has joined before. Your system keeps their passwords; NectarLink never sees them.</source>
         <translation>Bu bilgisayarın daha önce katıldığı Wi-Fi ağları. Parolalarını sisteminiz saklar; NectarLink bunları asla görmez.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4132"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4135"/>
         <source>This PC hasn&apos;t saved any Wi-Fi networks yet. Join the phone&apos;s hotspot once from your system Wi-Fi list first.</source>
         <translation>Bu bilgisayar henüz hiç Wi-Fi ağı kaydetmedi. Önce telefonun hotspot&apos;una bir kez sisteminizin Wi-Fi listesinden katılın.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4134"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4137"/>
         <source>Wi-Fi networks this PC has joined before. Windows keeps their passwords; NectarLink never sees them.</source>
         <translation>Bu bilgisayarın daha önce katıldığı Wi-Fi ağları. Parolalarını Windows saklar; NectarLink bunları asla görmez.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4135"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4138"/>
         <source>This PC hasn&apos;t saved any Wi-Fi networks yet. Join the phone&apos;s hotspot once from Windows&apos; Wi-Fi list first.</source>
         <translation>Bu bilgisayar henüz hiç Wi-Fi ağı kaydetmedi. Önce telefonun hotspot&apos;una bir kez Windows&apos;un Wi-Fi listesinden katılın.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4165"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4168"/>
         <source>Don&apos;t join</source>
         <translation>Katılma</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4108"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4174"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4202"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4237"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4265"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4111"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4177"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4205"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4240"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4268"/>
         <source>Close</source>
         <translation>Kapat</translation>
     </message>
@@ -10634,25 +10632,25 @@ Neler gerekir
         <translation>Son güncellemenden bu yana neler değişti.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4248"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4251"/>
         <source>Play the phone&apos;s microphone into</source>
         <translation>Telefonun mikrofonunu şu çıkışa çal</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4278"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4281"/>
         <source>Unpair %1?</source>
         <translation>%1 eşleştirmesi kaldırılsın mı?</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4284"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4287"/>
         <source>Both devices forget each other. You can pair them again any time.</source>
         <translation>İki cihaz da birbirini unutur. İstediğiniz zaman yeniden eşleştirebilirsiniz.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4052"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4289"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4333"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4369"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4055"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4292"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4336"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4372"/>
         <source>Cancel</source>
         <translation>İptal</translation>
     </message>
@@ -10716,32 +10714,37 @@ Neler gerekir
         <translation>Nightly</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3952"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3844"/>
+        <source>Follow me. I post what&apos;s coming to NectarLink and other things I make.</source>
+        <translation>Beni takip et. NectarLink'e gelecekleri ve yaptığım diğer şeyleri orada paylaşıyorum.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3955"/>
         <source>The phone asks once to let this PC in. NectarLink there also needs All files access, or this folder under Selected folders only.</source>
         <translation>Telefon, bu bilgisayara izin vermek için bir kez sorar. Oradaki NectarLink ayrıca Tüm dosyalara erişim iznine ya da bu klasörün Yalnızca seçili klasörler altında olmasına ihtiyaç duyar.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4213"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4216"/>
         <source>Talk on calls through</source>
         <translation>Aramalarda şununla konuş</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4232"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4235"/>
         <source>No microphone found on this PC.</source>
         <translation>Bu bilgisayarda mikrofon bulunamadı.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4355"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4358"/>
         <source>Clear all local history &amp; caches?</source>
         <translation>Tüm yerel geçmiş ve önbellekler temizlensin mi?</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4364"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4367"/>
         <source>Deletes clipboard history, Timeline, notification history, cached messages, photo thumbnails and transfer history on this PC. Paired devices, settings and downloaded files are kept.</source>
         <translation>Bu bilgisayardaki pano geçmişini, Zaman Çizelgesi&apos;ni, bildirim geçmişini, önbellekteki mesajları, fotoğraf küçük resimlerini ve aktarım geçmişini siler. Eşleştirilmiş cihazlar, ayarlar ve indirilen dosyalar korunur.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4372"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4375"/>
         <source>Clear everything</source>
         <translation>Her şeyi temizle</translation>
     </message>
@@ -12506,23 +12509,23 @@ Neler gerekir
         <translation>ve %1 tane daha</translation>
     </message>
     <message>
-        <location filename="../qml/components/WhatsNewPanel.qml" line="98"/>
-        <location filename="../qml/components/WhatsNewPanel.qml" line="118"/>
+        <location filename="../qml/components/WhatsNewPanel.qml" line="102"/>
+        <location filename="../qml/components/WhatsNewPanel.qml" line="122"/>
         <source>What&apos;s new</source>
         <translation>Yenilikler</translation>
     </message>
     <message>
-        <location filename="../qml/components/WhatsNewPanel.qml" line="137"/>
+        <location filename="../qml/components/WhatsNewPanel.qml" line="141"/>
         <source>Close</source>
         <translation>Kapat</translation>
     </message>
     <message>
-        <location filename="../qml/components/WhatsNewPanel.qml" line="206"/>
+        <location filename="../qml/components/WhatsNewPanel.qml" line="210"/>
         <source>Nothing to list for this build.</source>
         <translation>Bu derleme için gösterilecek bir şey yok.</translation>
     </message>
     <message>
-        <location filename="../qml/components/WhatsNewPanel.qml" line="227"/>
+        <location filename="../qml/components/WhatsNewPanel.qml" line="231"/>
         <source>Release notes on GitHub</source>
         <translation>GitHub&apos;da sürüm notları</translation>
     </message>
