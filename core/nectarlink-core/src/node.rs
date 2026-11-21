@@ -1278,6 +1278,7 @@ impl Shared {
     /// Removes a paired device locally (after we or the peer unpaired).
     pub async fn forget_peer(self: &Arc<Self>, peer: &DeviceId) -> Result<()> {
         let peer_name = self.peer_name(peer);
+        let linux_cleanup = self.linux_unlock_activity.begin_cleanup(*peer);
         // Keys a phone kept to unlock that PC (ADR 0009). The PC's sealed
         // passwords go with the device's row.
         {
@@ -1321,9 +1322,13 @@ impl Shared {
         if let Some(session) = lock(&self.sessions).remove(peer) {
             session.close(CLOSE_NORMAL, b"unpaired");
         }
-        self.linux_unlock_activity.remove(peer);
+        self.linux_unlock_activity.clear_failures(peer);
         let (platform, pc) = (self.platform.clone(), *peer);
-        let _ = tokio::task::spawn_blocking(move || platform.linux_unlock_forget(&pc, None)).await;
+        let _ = tokio::task::spawn_blocking(move || {
+            let _cleanup = linux_cleanup;
+            platform.linux_unlock_forget(&pc, None);
+        })
+        .await;
         lock(&self.links).remove(peer);
         lock(&self.lan_seen).remove(peer);
         lock(&self.dial_failures).remove(peer);
@@ -2537,6 +2542,8 @@ impl Node {
         if !self.shared.store.is_paired(&peer)? {
             return Err(Error::NotPaired);
         }
+        let linux_cleanup = (toggle == crate::unlock::TOGGLE && !enabled)
+            .then(|| self.shared.linux_unlock_activity.begin_cleanup(peer));
         self.shared.store.set_toggle(&peer, toggle, enabled)?;
         self.shared.refresh_capabilities(&peer);
         if toggle == notifications::TOGGLE {
@@ -2560,15 +2567,16 @@ impl Node {
                 shared.send_deck(&session).await;
             });
         }
-        if toggle == crate::unlock::TOGGLE && !enabled {
-            self.shared.linux_unlock_activity.revoke(&peer);
+        if let Some(linux_cleanup) = linux_cleanup {
             // Off on either side ends it: this side drops what it kept (the
             // sealed password on a PC, the keys on a phone), and tells the other.
             let shared = self.shared.clone();
             self.shared.runtime.spawn(async move {
                 let _ = crate::unlock::forget(&shared, &peer, None).await;
                 let platform = shared.platform.clone();
+                let cleanup = linux_cleanup.clone();
                 let _ = tokio::task::spawn_blocking(move || {
+                    let _cleanup = cleanup;
                     platform.unlock_forget(&peer, None);
                     platform.linux_unlock_forget(&peer, None);
                 })
@@ -2578,6 +2586,7 @@ impl Node {
                 {
                     let _ = crate::linux_unlock::forget(&session, None).await;
                 }
+                drop(linux_cleanup);
             });
         }
         if toggle == crate::storage::TOGGLE {
@@ -3949,11 +3958,11 @@ impl Node {
 
     /// Requests deletion of the phone's key. The PAM trust record is managed separately.
     pub async fn linux_unlock_forget(&self, phone: DeviceId, uid: u32) -> Result<()> {
-        self.shared.linux_unlock_activity.revoke(&phone);
         let session = self.connected(&phone)?;
         if !self.shared.we_offer(crate::linux_unlock::PC) {
             return Err(Error::Unsupported);
         }
+        let _cleanup = self.shared.linux_unlock_activity.begin_cleanup(phone);
         crate::linux_unlock::forget(&session, Some(uid)).await
     }
 

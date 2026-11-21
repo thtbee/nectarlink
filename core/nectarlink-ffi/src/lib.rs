@@ -2922,12 +2922,7 @@ pub trait Platform: Send + Sync {
         uid: u32,
     ) -> Result<Vec<u8>, UnlockRefusal>;
     /// Prompt using the confirmed enrollment, then return a DER ECDSA signature.
-    fn linux_unlock_sign(
-        &self,
-        pc: String,
-        uid: u32,
-        transcript: Vec<u8>,
-    ) -> Result<Vec<u8>, UnlockRefusal>;
+    fn linux_unlock_sign(&self, pc: String, uid: u32, transcript: Vec<u8>) -> Result<Vec<u8>, UnlockRefusal>;
     /// Forget one Linux account or all Linux unlock keys for this paired PC.
     fn linux_unlock_forget(&self, pc: String, uid: Option<u32>);
     /// A PC asked to list a folder in this phone's storage (`""` is root).
@@ -3423,12 +3418,7 @@ impl core::Platform for PlatformAdapter {
         pc: &core::DeviceId,
         ask: &core::linux_unlock::Ask,
     ) -> Result<Vec<u8>, core::unlock::KeyRefusal> {
-        Ok(self.0.linux_unlock_enroll(
-            pc.to_string(),
-            ask.pc_name.clone(),
-            ask.user_name.clone(),
-            ask.uid,
-        )?)
+        Ok(self.0.linux_unlock_enroll(pc.to_string(), ask.pc_name.clone(), ask.user_name.clone(), ask.uid)?)
     }
     fn linux_unlock_sign(
         &self,

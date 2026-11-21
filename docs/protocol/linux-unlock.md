@@ -26,6 +26,8 @@ authenticated PC and its own identity before opening a prompt. The signing
 request carries no display labels. The phone keeps one Linux biometric prompt
 active at a time and backs off after repeated refusals or timeouts. Both sides
 recheck consent, pairing, capabilities, and path after a successful response.
+They discard a pending attempt if the connection leaves the selected local
+path for a nonlocal route or loses its path event history.
 Turning the feature off or unpairing clears the phone's keys when the phone
 receives the change. Administrator removal revokes the local PAM enrollment
 even when the phone is offline.

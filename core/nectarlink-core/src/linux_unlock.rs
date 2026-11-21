@@ -10,6 +10,11 @@ use std::{
     time::{Duration, Instant},
 };
 
+use iroh::{
+    TransportAddr,
+    endpoint::{PathEvent, PathEventStream},
+};
+use n0_future::StreamExt;
 use nectarlink_protocol::{
     DeviceId, Envelope, ErrorCode, LinuxUnlockChallenge,
     messages::{
@@ -55,33 +60,72 @@ impl ActivePrompt {
 }
 
 #[derive(Default)]
+struct ActivityState {
+    active: Weak<ActivePrompt>,
+    cleanup: HashMap<DeviceId, Weak<()>>,
+}
+
+#[derive(Default)]
 pub(crate) struct Activity {
-    active: Mutex<Weak<ActivePrompt>>,
+    state: Mutex<ActivityState>,
     failures: Mutex<HashMap<DeviceId, Requests>>,
 }
 
 impl Activity {
     fn try_begin(&self, peer: DeviceId) -> Option<Arc<ActivePrompt>> {
-        let mut slot = self.active.lock().unwrap_or_else(|e| e.into_inner());
-        if slot.strong_count() != 0 {
+        let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        if state.active.strong_count() != 0
+            || state.cleanup.get(&peer).is_some_and(|cleanup| cleanup.strong_count() != 0)
+        {
             return None;
         }
         let current = Arc::new(ActivePrompt { peer, revoked: AtomicBool::new(false) });
-        *slot = Arc::downgrade(&current);
+        state.active = Arc::downgrade(&current);
         Some(current)
     }
 
-    pub(crate) fn revoke(&self, peer: &DeviceId) {
-        if let Some(active) = self.active.lock().unwrap_or_else(|e| e.into_inner()).upgrade()
-            && &active.peer == peer
+    /// End an in-flight request and keep new requests out until all old key deletions finish.
+    pub(crate) fn begin_cleanup(&self, peer: DeviceId) -> Arc<()> {
+        let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(active) = state.active.upgrade()
+            && active.peer == peer
         {
             active.revoked.store(true, Ordering::Release);
         }
+        state.cleanup.retain(|_, cleanup| cleanup.strong_count() != 0);
+        if let Some(cleanup) = state.cleanup.get(&peer).and_then(Weak::upgrade) {
+            return cleanup;
+        }
+        let cleanup = Arc::new(());
+        state.cleanup.insert(peer, Arc::downgrade(&cleanup));
+        cleanup
     }
 
-    pub(crate) fn remove(&self, peer: &DeviceId) {
-        self.revoke(peer);
+    pub(crate) fn clear_failures(&self, peer: &DeviceId) {
         self.failures.lock().unwrap_or_else(|e| e.into_inner()).remove(peer);
+    }
+}
+
+fn has_local_path(shared: &Shared, session: &Session) -> bool {
+    session
+        .selected_ip_path()
+        .is_some_and(|(addr, usb)| usb || shared.is_unlock_local_ip(&session.peer, addr.ip()))
+}
+
+async fn local_path_lost(shared: &Shared, session: &Session, mut events: PathEventStream) {
+    while let Some(event) = events.next().await {
+        match event {
+            PathEvent::Selected { remote_addr, .. } => {
+                if !matches!(remote_addr, TransportAddr::Ip(addr)
+                    if session.is_usb_addr(&addr) || shared.is_unlock_local_ip(&session.peer, addr.ip()))
+                {
+                    return;
+                }
+            }
+            PathEvent::Closed { .. } if !has_local_path(shared, session) => return,
+            PathEvent::Lagged { .. } => return,
+            _ => {}
+        }
     }
 }
 
@@ -95,11 +139,7 @@ fn check(shared: &Shared, session: &Session, local_cap: &str, peer_cap: &str) ->
     if !shared.we_offer(local_cap) || !shared.offers(&session.peer, peer_cap)? {
         return Err(Error::Unsupported);
     }
-    if !shared.toggle_on(&session.peer, unlock::TOGGLE)
-        || !session
-            .selected_ip_path()
-            .is_some_and(|(addr, usb)| usb || shared.is_unlock_local_ip(&session.peer, addr.ip()))
-    {
+    if !shared.toggle_on(&session.peer, unlock::TOGGLE) || !has_local_path(shared, session) {
         return Err(Error::Denied);
     }
     Ok(())
@@ -115,6 +155,7 @@ async fn prompt(
     let current = prompts
         .try_begin(session.peer)
         .ok_or_else(|| Envelope::error(ErrorCode::Busy, "phone unlock prompt in progress"))?;
+    let paths = session.path_events();
     check(shared, session, KEY, PC).map_err(gate_reply)?;
     if prompts
         .failures
@@ -128,16 +169,26 @@ async fn prompt(
 
     // The platform owns the slot until it finishes, including after a timeout.
     let platform_current = current.clone();
-    let answer = tokio::time::timeout(
-        timeout,
-        tokio::task::spawn_blocking(move || {
-            if platform_current.is_revoked() {
-                return Err(KeyRefusal::Declined);
-            }
-            run(&platform_current)
-        }),
-    )
-    .await;
+    let platform_answer = async {
+        tokio::time::timeout(
+            timeout,
+            tokio::task::spawn_blocking(move || {
+                if platform_current.is_revoked() {
+                    return Err(KeyRefusal::Declined);
+                }
+                run(&platform_current)
+            }),
+        )
+        .await
+    };
+    let answer = tokio::select! {
+        biased;
+        _ = local_path_lost(shared, session, paths) => {
+            current.revoked.store(true, Ordering::Release);
+            return Err(gate_reply(Error::Denied));
+        }
+        answer = platform_answer => answer,
+    };
     if current.is_revoked() {
         return Err(gate_reply(Error::Denied));
     }
@@ -176,10 +227,13 @@ async fn respond(shared: &Shared, session: &Session, env: &Envelope) -> Result<E
             Ok(LinuxUnlockForget::All) => None,
             Err(_) => return Err(Envelope::error(ErrorCode::BadMessage, "invalid Linux key removal")),
         };
-        shared.linux_unlock_activity.revoke(&peer);
-        tokio::task::spawn_blocking(move || platform.linux_unlock_forget(&peer, uid))
-            .await
-            .map_err(|_| Envelope::error(ErrorCode::Internal, "Linux key removal failed"))?;
+        let cleanup = shared.linux_unlock_activity.begin_cleanup(peer);
+        tokio::task::spawn_blocking(move || {
+            let _cleanup = cleanup;
+            platform.linux_unlock_forget(&peer, uid);
+        })
+        .await
+        .map_err(|_| Envelope::error(ErrorCode::Internal, "Linux key removal failed"))?;
         return Ok(Envelope::empty(types::OK));
     }
 
@@ -250,8 +304,13 @@ pub(crate) async fn handle(shared: &Shared, session: &Session, env: &Envelope) -
 
 async fn request(shared: &Shared, session: &Session, env: Envelope, timeout: Duration) -> Result<Envelope> {
     let current = shared.linux_unlock_activity.try_begin(session.peer).ok_or(Error::Denied)?;
+    let paths = session.path_events();
     check(shared, session, PC, KEY)?;
-    let reply = session.request(env, timeout).await?;
+    let reply = tokio::select! {
+        biased;
+        _ = local_path_lost(shared, session, paths) => return Err(Error::Denied),
+        reply = session.request(env, timeout) => reply?,
+    };
     if current.is_revoked() {
         return Err(Error::Denied);
     }

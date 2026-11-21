@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# SPDX-License-Identifier: MPL-2.0
+# SPDX-License-Identifier: GPL-3.0-or-later
 """Run as root in a disposable Linux-PAM container with Python 3 and OpenSSL.
 
     python3 pam_session.py /absolute/path/to/libpam_nectarlink_phone_unlock.so

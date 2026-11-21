@@ -71,6 +71,7 @@ struct RecordingPlatform {
     linux_unlock_asks: Mutex<Vec<nectarlink_core::linux_unlock::Ask>>,
     linux_unlock_keys: Mutex<std::collections::HashMap<(nectarlink_core::DeviceId, u32), Vec<u8>>>,
     linux_signing_pause: Mutex<Option<LinuxSigningPause>>,
+    linux_forget_pause: Mutex<Option<LinuxSigningPause>>,
     phone_toggles: Mutex<Vec<(String, nectarlink_core::PhoneToggleValue)>>,
     deck_presses: Mutex<Vec<String>>,
     pc_audio_changes: Mutex<Vec<(Option<u8>, Option<bool>)>>,
@@ -663,6 +664,11 @@ impl Platform for RecordingPlatform {
     }
 
     fn linux_unlock_forget(&self, pc: &nectarlink_core::DeviceId, uid: Option<u32>) {
+        let pause = self.linux_forget_pause.lock().unwrap().take();
+        if let Some((started, resume)) = pause {
+            started.send(()).unwrap();
+            resume.recv_timeout(WAIT).unwrap();
+        }
         self.linux_unlock_keys.lock().unwrap().retain(|(enrolled_pc, enrolled_uid), _| {
             enrolled_pc != pc || uid.is_some_and(|u| u != *enrolled_uid)
         });
@@ -3772,6 +3778,7 @@ async fn linux_unlock_round_trip_binds_the_paired_devices_and_account() {
 
     let enroll = || pc.node.linux_unlock_enroll(phone_id, challenge.uid, "bee");
     assert!(matches!(enroll().await, Err(Error::Denied)));
+    assert!(matches!(pc.node.linux_unlock_sign(challenge).await, Err(Error::Denied)));
     pc.node.set_device_toggle(phone_id, "unlock", true).unwrap();
     assert!(matches!(enroll().await, Err(Error::Denied)));
     assert!(phone.platform.linux_unlock_asks.lock().unwrap().is_empty());
@@ -3841,10 +3848,44 @@ async fn linux_unlock_round_trip_binds_the_paired_devices_and_account() {
     });
     assert!(matches!(pending, Err(Error::Denied)));
     assert!(matches!(pc.node.linux_unlock_sign(challenge).await, Err(Error::NotFound)));
-    phone.node.set_device_toggle(pc_id, "unlock", false).unwrap();
-    assert!(matches!(pc.node.linux_unlock_sign(challenge).await, Err(Error::Denied)));
 
-    phone.node.set_reconnect(pc_id, false).unwrap();
+    enroll().await.unwrap();
+    let (started, wait_started) = tokio::sync::oneshot::channel();
+    let (resume, wait_resume) = std::sync::mpsc::channel();
+    *phone.platform.linux_forget_pause.lock().unwrap() = Some((started, wait_resume));
+    phone.node.set_device_toggle(pc_id, "unlock", false).unwrap();
+    with_timeout("old phone key cleanup started", wait_started).await.unwrap();
+    phone.node.set_device_toggle(pc_id, "unlock", true).unwrap();
+    let while_revoking = enroll().await;
+    resume.send(()).unwrap();
+    assert!(matches!(while_revoking, Err(Error::Denied)));
+    let new_key = with_timeout("enrollment after old key cleanup", async {
+        loop {
+            match enroll().await {
+                Err(Error::Denied) => tokio::time::sleep(Duration::from_millis(25)).await,
+                result => break result.unwrap(),
+            }
+        }
+    })
+    .await;
+    let signature = pc.node.linux_unlock_sign(challenge).await.unwrap();
+    UnparsedPublicKey::new(&ECDSA_P256_SHA256_ASN1, new_key)
+        .verify(&challenge.signing_bytes(), &signature)
+        .unwrap();
+
+    let (started, wait_started) = tokio::sync::oneshot::channel();
+    let (resume, wait_resume) = std::sync::mpsc::channel();
+    *phone.platform.linux_signing_pause.lock().unwrap() = Some((started, wait_resume));
+    let (pending, ()) = tokio::join!(
+        tokio::time::timeout(Duration::from_secs(3), pc.node.linux_unlock_sign(challenge)),
+        async {
+            with_timeout("phone started signing before disconnect", wait_started).await.unwrap();
+            phone.node.set_reconnect(pc_id, false).unwrap();
+        }
+    );
+    let _ = resume.send(());
+    assert!(matches!(pending, Ok(Err(Error::Denied | Error::Offline))));
+
     wait_for(&mut pc, "offline phone", |e| match e {
         NodeEvent::LinkChanged { device, link: LinkState::Offline { .. } } if *device == phone_id => Some(()),
         _ => None,

@@ -1830,15 +1830,13 @@ impl qobject::AppController {
         let mut list = QList::default();
         let (Some(id), Some(node)) = (super::parse_device(device), core_host::node()) else { return list };
         #[cfg(target_os = "linux")]
-        let unlock_supported = crate::win::phone_unlock::available()
-            && node.peer_offers(id, nectarlink_core::linux_unlock::KEY);
+        let unlock_supported =
+            crate::win::phone_unlock::available() && node.peer_offers(id, nectarlink_core::linux_unlock::KEY);
         #[cfg(not(target_os = "linux"))]
         let unlock_supported = cfg!(windows) && node.peer_offers(id, nectarlink_core::unlock::KEY);
         for (name, on) in node.device_toggles(id).unwrap_or_default() {
             // Clipboard receive is controlled from the phone (#453).
-            if name == "clipboard_receive"
-                || (name == nectarlink_core::unlock::TOGGLE && !unlock_supported)
-            {
+            if name == "clipboard_receive" || (name == nectarlink_core::unlock::TOGGLE && !unlock_supported) {
                 continue;
             }
             let mut item = QHash::<QHashPair_QString_QVariant>::default();

@@ -21,6 +21,8 @@ sudo install -m 0644 desktop/pam-unlock/nectarlink-phone-lock /etc/pam.d/
 
 On SELinux systems, restore the distribution's default file contexts for the installed module and configuration. The dedicated service is for a local locker running as the account it unlocks.
 
+The desktop listens in the session's `XDG_RUNTIME_DIR`. The PAM service defaults to `/run/user/<uid>`. If your session uses a different directory, add `runtime_dir=/absolute/path` to the module line in the dedicated PAM service so both use the same directory. The directory must be owned by the account being unlocked and have mode `0700`. PAM requires each parent directory to be owned by root and writable only by root. Symbolic links are rejected throughout the path.
+
 ## Enroll a phone
 
 1. Restart the desktop app after installing the PAM service. Pair the phone. Enable **Unlock this PC with the phone** in the desktop's device settings and **Unlock this PC with your fingerprint** on Android. Allow NectarLink notifications on Android so you can open an unlock prompt when the app is in the background.
@@ -32,7 +34,7 @@ The system stores one enrollment per Linux UID. To replace it, repeat enrollment
 
 ## Connect your screen locker
 
-Start a dedicated PAM transaction for `nectarlink-phone-lock` when the user explicitly requests phone unlock. Keep the password action available during the request. Cancel the PAM transaction when the password path starts or the lock session ends. Apply a result only to the active request of the current lock session, and unlock only on `PAM_SUCCESS`. After cancellation, the old phone prompt may stay visible until it expires, up to 30 seconds.
+Start a dedicated PAM transaction for `nectarlink-phone-lock` when the user explicitly requests phone unlock. Keep the password action available during the request. Cancel the PAM transaction when the password path starts or the lock session ends. Apply a result only to the active request of the current lock session, and unlock only on `PAM_SUCCESS`. After cancellation, the phone may still show the old prompt. Dismiss it or let it expire, up to 30 seconds, before retrying phone unlock.
 
 For Quickshell, copy [PhoneUnlock.qml](examples/PhoneUnlock.qml) into your locker configuration. Bind its `locked` property to the secure lock state, call `start()` from an accessible control and `cancel()` when the user cancels or starts typing a password, and connect `authenticated` to the locker's existing unlock handler.
 

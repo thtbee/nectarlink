@@ -1,7 +1,7 @@
 [package]
 name = "nectarlink-pam-unlock"
 description = "Linux-PAM verifier and enrollment tool for NectarLink phone unlock"
-license = "MPL-2.0"
+license = "GPL-3.0-or-later"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

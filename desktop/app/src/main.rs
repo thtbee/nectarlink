@@ -344,7 +344,8 @@ fn parse_options_from<I: IntoIterator<Item = std::ffi::OsString>>(iter: I) -> Op
                 in_share = false;
                 let phone = args.next().and_then(|arg| arg.to_str()?.parse().ok());
                 options.linux_unlock_request = Some(
-                    phone.map(|phone| win::phone_unlock::Request::Enroll { phone })
+                    phone
+                        .map(|phone| win::phone_unlock::Request::Enroll { phone })
                         .ok_or("usage: nectarlink-desktop --linux-unlock-enroll <device-id>"),
                 );
             }

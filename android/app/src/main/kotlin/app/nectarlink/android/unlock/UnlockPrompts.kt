@@ -22,6 +22,9 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import app.nectarlink.android.R
 import java.security.Signature
 import java.util.concurrent.CompletableFuture
@@ -30,6 +33,9 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import javax.crypto.Cipher
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.future.asDeferred
+import kotlinx.coroutines.launch
 
 /**
  * Asks the phone's owner to use a PC's unlock key (ADR 0009): a high-priority notification
@@ -142,14 +148,27 @@ object UnlockPrompts {
     }
 }
 
+internal class EnrollmentComparison : ViewModel() {
+    data class Presentation(val pcName: String, val userName: String, val fingerprint: Deferred<String?>)
+
+    var presentation: Presentation? = null
+}
+
 /** Shows the biometric prompt for one [UnlockPrompts] request, then closes. */
 class UnlockPromptActivity : FragmentActivity() {
     companion object {
         const val EXTRA_ID = "unlock_request"
     }
 
+    private val comparison by lazy { ViewModelProvider(this)[EnrollmentComparison::class.java] }
+    private var fingerprintDialog: AlertDialog? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        comparison.presentation?.let {
+            showEnrollmentFingerprint(it)
+            return
+        }
         val request = UnlockPrompts.pending(intent.getIntExtra(EXTRA_ID, -1))
         // Gone (answered, timed out) or already on screen from the other way in.
         if (request == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
@@ -209,28 +228,43 @@ class UnlockPromptActivity : FragmentActivity() {
 
     private fun done(request: UnlockPrompts.Pending, crypto: BiometricPrompt.CryptoObject?) {
         if (!request.result.complete(crypto)) return
-        if (crypto?.signature != null && request.confirmed != null) {
-            request.confirmed.thenAccept { fingerprint ->
-                runOnUiThread {
-                    if (isFinishing || isDestroyed) return@runOnUiThread
-                    if (fingerprint == null) finish()
-                    else showEnrollmentFingerprint(request, fingerprint)
-                }
-            }
+        val confirmed = request.confirmed
+        if (crypto?.signature != null && confirmed != null) {
+            // A recreated activity can resume waiting without canceling the phone's confirmation.
+            val presentation = EnrollmentComparison.Presentation(
+                request.pcName, request.userName, confirmed.asDeferred(),
+            )
+            comparison.presentation = presentation
+            showEnrollmentFingerprint(presentation)
         } else {
             finish()
         }
     }
 
-    private fun showEnrollmentFingerprint(request: UnlockPrompts.Pending, fingerprint: String) {
-        AlertDialog.Builder(this)
-            .setTitle(R.string.linux_unlock_key_fingerprint)
-            .setMessage(
-                getString(R.string.linux_unlock_confirm_fingerprint, request.pcName, request.userName, fingerprint),
+    private fun showEnrollmentFingerprint(presentation: EnrollmentComparison.Presentation) {
+        lifecycleScope.launch {
+            val fingerprint = presentation.fingerprint.await()
+            if (isFinishing || isDestroyed) return@launch
+            if (fingerprint == null) {
+                finish()
+                return@launch
+            }
+            val message = getString(
+                R.string.linux_unlock_confirm_fingerprint, presentation.pcName, presentation.userName, fingerprint,
             )
-            .setPositiveButton(android.R.string.ok, null)
-            .setOnDismissListener { finish() }
-            .show()
-            .findViewById<TextView>(android.R.id.message)?.setTextIsSelectable(true)
+            fingerprintDialog = AlertDialog.Builder(this@UnlockPromptActivity)
+                .setTitle(R.string.linux_unlock_key_fingerprint)
+                .setMessage(message)
+                .setPositiveButton(android.R.string.ok, null)
+                .setOnDismissListener { finish() }
+                .show()
+            fingerprintDialog?.findViewById<TextView>(android.R.id.message)?.setTextIsSelectable(true)
+        }
+    }
+
+    override fun onDestroy() {
+        fingerprintDialog?.setOnDismissListener(null)
+        fingerprintDialog?.dismiss()
+        super.onDestroy()
     }
 }

@@ -288,7 +288,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends -o Dir::Cache::Archives="$HOME/apt-archives" \
             libgl1-mesa-dev libxkbcommon-dev libvulkan-dev libx11-dev \
-            ffmpeg libavcodec-dev libavutil-dev libopenh264-dev qt6-l10n-tools
+            ffmpeg libavcodec-dev libavutil-dev libopenh264-dev qt6-l10n-tools libpam0g-dev
           # Drop what the mirror no longer has, so the cache doesn't grow.
           sudo apt-get autoclean -o Dir::Cache::Archives="$HOME/apt-archives"
           sudo chown -R "$USER" ~/apt-archives
@@ -302,9 +302,17 @@ jobs:
           cache: true
           aqtsource: git+https://github.com/miurahr/aqtinstall.git@5a49f2b391ae8ee1d3c0dd87f8b33c1d49a4deb7
       - name: Clippy
-        run: cargo clippy --locked -p nectarlink-desktop -p nectarlink-vcam -p nectarlink-credprov -p s1-qt-rust --all-targets -- -D warnings
+        run: cargo clippy --locked -p nectarlink-desktop -p nectarlink-vcam -p nectarlink-credprov -p s1-qt-rust -p nectarlink-pam-unlock --all-targets -- -D warnings
       - name: Tests
-        run: cargo test --locked -p nectarlink-desktop -p nectarlink-vcam -p nectarlink-credprov
+        run: cargo test --locked -p nectarlink-desktop -p nectarlink-vcam -p nectarlink-credprov -p nectarlink-pam-unlock
+      - name: PAM authentication smoke test
+        run: |
+          cargo build --locked -p nectarlink-pam-unlock
+          smoke_dir=$(mktemp -d)
+          trap 'rm -r -- "$smoke_dir"' EXIT
+          chmod 0755 "$smoke_dir"
+          cp desktop/pam-unlock/tests/pam_session.py target/debug/libpam_nectarlink_phone_unlock.so "$smoke_dir/"
+          sudo python3 "$smoke_dir/pam_session.py" "$smoke_dir/libpam_nectarlink_phone_unlock.so"
       - name: Video adapter fallback
         run: bash desktop/app/tests/linux_video_dispatch_test.sh
       - name: Check without the optional FFmpeg backend

@@ -11,7 +11,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use iroh::endpoint::{Connection, RecvStream, SendStream, VarInt};
+use iroh::endpoint::{Connection, PathEventStream, RecvStream, SendStream, VarInt};
 use nectarlink_protocol::{
     DeviceId, Envelope, ErrorCode, MIN_PROTOCOL_VERSION, PROTOCOL_VERSION, ProtocolError, messages::*,
     negotiate_version, read_frame, write_frame,
@@ -335,7 +335,7 @@ impl Session {
         self.last_rx_ms.load(Ordering::Relaxed) > since_ms
     }
 
-    fn is_usb_addr(&self, addr: &std::net::SocketAddr) -> bool {
+    pub(crate) fn is_usb_addr(&self, addr: &std::net::SocketAddr) -> bool {
         addr.ip().to_canonical().is_loopback()
             && self.usb_bridge_ports.lock().unwrap_or_else(|e| e.into_inner()).get(&addr.port())
                 == Some(&self.peer)
@@ -407,6 +407,10 @@ impl Session {
         let selected = paths.iter().find(|p| p.is_selected())?;
         let addr = direct_ip_addr(selected.remote_addr())?;
         Some((addr, self.is_usb_addr(&addr)))
+    }
+
+    pub(crate) fn path_events(&self) -> PathEventStream {
+        self.conn.path_events()
     }
 
     /// The peer's direct IP addresses currently in use, for reconnecting later.
