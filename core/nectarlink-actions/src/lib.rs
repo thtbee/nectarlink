@@ -18,11 +18,13 @@ pub mod more;
 pub mod paths;
 pub mod ratelimit;
 pub mod registry;
-pub mod setup;
 pub mod store;
 pub mod untrusted;
 
 pub use def::{Access, ActionDef, ConfirmRule, Grant, Risk, Scope, Toolset};
+
+/// The name NectarLink goes by in an agent's MCP settings.
+pub const SERVER: &str = "nectarlink";
 pub use error::{ActionError, Code};
 pub use gateway::{Caller, Ctx, Gateway, Switches};
 pub use host::{ActionHost, ConfirmRequest, Decision};

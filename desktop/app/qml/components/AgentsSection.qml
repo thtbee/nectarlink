@@ -10,18 +10,6 @@ Column {
 
     readonly property var clients: { try { return JSON.parse(Agents.clients) } catch (e) { return [] } }
     readonly property var activity: { try { return JSON.parse(Agents.activity) } catch (e) { return [] } }
-    readonly property var clientKinds: [
-        { value: "claude-code", label: "Claude Code" },
-        { value: "claude-desktop", label: "Claude Desktop" },
-        { value: "codex", label: "Codex" },
-        { value: "cursor", label: "Cursor" },
-        { value: "vscode", label: "VS Code" },
-        { value: "windsurf", label: "Windsurf" },
-        { value: "gemini", label: "Gemini CLI" },
-        { value: "antigravity", label: "Antigravity" },
-        { value: "zed", label: "Zed" },
-        { value: "cli", label: qsTr("Script or CLI") }
-    ]
     // What an agent may be allowed, area by area. `write: false` areas can only be read.
     readonly property var scopes: [
         { id: "devices", label: qsTr("Devices"), write: true },
@@ -40,39 +28,54 @@ Column {
         { id: "deck", label: qsTr("Deck"), write: true },
         { id: "pc_actions", label: qsTr("Lock, sleep, shut down and wake PCs"), write: true }
     ]
-    property string newKind: "claude-code"
     property string newPreset: "read_only"
     property string addError: ""
+    // The agent being connected: its label and its name.
     property string shownLabel: ""
-    property string shownKind: ""
+    property string shownName: ""
+    // How to set it up by hand: "mcp", "cli" or "http"; "" while that's closed.
+    property string byHand: ""
     // The agent whose permissions are open.
     property string editing: ""
-    readonly property bool canSetUp: shownKind.length > 0 && Agents.canSetUp(shownKind)
-    readonly property var setupStatus: { try { return Agents.setupStatus.length > 0 ? JSON.parse(Agents.setupStatus) : null } catch (e) { return null } }
-    property bool settingUp: false
-    onSetupStatusChanged: if (setupStatus !== null) settingUp = false
+    // When the agent being connected last reached NectarLink, as the card opened.
+    property real shownSince: 0
+    // Whether it has reached NectarLink since.
+    readonly property bool shownConnected: clients.some(c => c.label === shownLabel && c.lastUsed > shownSince)
 
     function accessOf(grants, scope) {
         if (grants.indexOf(scope + ":write") >= 0) return "write"
         if (grants.indexOf(scope + ":read") >= 0) return "read"
         return "off"
     }
-    function showConnect(label, kind) {
-        Agents.clearSetupStatus()
-        settingUp = false
+    function showConnect(label, name) {
+        const known = clients.find(c => c.label === label)
+        shownSince = known ? known.lastUsed : 0
         shownLabel = label
-        shownKind = kind
+        shownName = name
+        byHand = ""
+        Qt.callLater(revealConnect)
     }
-
-    function kindName(kind) {
-        for (let i = 0; i < clientKinds.length; i++)
-            if (clientKinds[i].value === kind) return clientKinds[i].label
-        return kind
+    // Scrolls the page up to the connect card, which sits above the list of
+    // agents (Connect is usually pressed with the card out of view).
+    function revealConnect() {
+        let flick = section.parent
+        while (flick && !(flick.contentItem && flick.contentY !== undefined))
+            flick = flick.parent
+        if (!flick || !connectCard.visible)
+            return
+        const y = connectCard.mapToItem(flick.contentItem, 0, 0).y - Theme.gutter
+        flick.contentY = Math.max(0, Math.min(y, flick.contentHeight - flick.height))
     }
-    function freeLabel(kind) {
-        let label = kind, n = 2
+    // A name as an agent's label: lowercase letters, digits and hyphens.
+    function slug(name) {
+        const s = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40)
+        return s.length > 0 ? s : "agent"
+    }
+    function freeLabel(name) {
+        const base = slug(name)
+        let label = base, n = 2
         const taken = (l) => clients.some(c => c.label === l)
-        while (taken(label)) label = kind + "-" + (n++)
+        while (taken(label)) label = base + "-" + (n++)
         return label
     }
     function presetName(p) {
@@ -102,7 +105,7 @@ Column {
                 title: qsTr("Let AI agents use NectarLink")
                 description: Preferences.agentAccessEnabled
                     ? qsTr("On. Agents only get the permissions you give each one, and sensitive actions always ask you first.")
-                    : qsTr("Claude Code, Codex, Cursor and other AI assistants on this PC can read and act through NectarLink, with your approval.")
+                    : qsTr("AI assistants on this PC can read and act through NectarLink, with your approval.")
                 Toggle {
                     label: qsTr("Let AI agents use NectarLink")
                     checked: Preferences.agentAccessEnabled
@@ -132,18 +135,38 @@ Column {
             width: parent.width
             spacing: 12
             Txt { text: qsTr("Add an agent"); role: "title" }
-            Flow {
+            Txt {
                 width: parent.width
-                spacing: 6
-                Repeater {
-                    model: section.clientKinds
-                    Chip {
-                        required property var modelData
-                        interactive: true
-                        text: modelData.label
-                        selected: section.newKind === modelData.value
-                        onClicked: section.newKind = modelData.value
-                    }
+                role: "bodySmall"
+                muted: true
+                wrapMode: Text.WordWrap
+                text: qsTr("Works with any assistant that runs on this PC. Name it, choose what it may do, then paste one prompt into it.")
+            }
+            Rectangle {
+                width: Math.min(parent.width, 360)
+                height: 40
+                radius: Theme.radiusMd
+                color: Theme.surfaceContainerHighest
+                border.width: agentName.activeFocus ? 2 : 1
+                border.color: agentName.activeFocus ? Theme.primary : Theme.outlineVariant
+                Txt {
+                    anchors.fill: parent
+                    anchors.margins: 10
+                    text: qsTr("My agent")
+                    muted: true
+                    visible: agentName.text.length === 0
+                }
+                TextInput {
+                    id: agentName
+                    anchors.fill: parent
+                    anchors.margins: 10
+                    color: Theme.surfaceContent
+                    font.pixelSize: 14
+                    maximumLength: 60
+                    selectByMouse: true
+                    clip: true
+                    Accessible.name: qsTr("Agent name")
+                    onAccepted: createButton.clicked()
                 }
             }
             Segmented {
@@ -166,12 +189,16 @@ Column {
             Row {
                 spacing: 10
                 Button {
-                    text: qsTr("Add %1").arg(section.kindName(section.newKind))
+                    id: createButton
+                    text: qsTr("Create")
                     onClicked: {
-                        const label = section.freeLabel(section.newKind)
-                        section.addError = Agents.addAgent(label, section.kindName(section.newKind), section.newKind === "cli" ? "cli" : "mcp-stdio", section.newPreset)
-                        if (section.addError.length === 0)
-                            section.showConnect(label, section.newKind)
+                        const name = agentName.text.trim().length > 0 ? agentName.text.trim() : qsTr("My agent")
+                        const label = section.freeLabel(name)
+                        section.addError = Agents.addAgent(label, name, "mcp-stdio", section.newPreset)
+                        if (section.addError.length === 0) {
+                            agentName.text = ""
+                            section.showConnect(label, name)
+                        }
                     }
                 }
                 Txt {
@@ -185,6 +212,7 @@ Column {
     }
 
     Card {
+        id: connectCard
         width: parent.width
         visible: Preferences.agentAccessEnabled && section.shownLabel.length > 0
         Column {
@@ -194,79 +222,121 @@ Column {
                 width: parent.width
                 role: "title"
                 wrapMode: Text.WordWrap
-                text: qsTr("Connect %1").arg(section.kindName(section.shownKind))
-            }
-            Row {
-                visible: section.canSetUp
-                spacing: 10
-                Button {
-                    text: qsTr("Add to %1").arg(section.kindName(section.shownKind))
-                    enabled: !section.settingUp
-                    onClicked: {
-                        section.settingUp = true
-                        Agents.setUp(section.shownLabel, section.shownKind)
-                    }
-                }
-                Spinner {
-                    anchors.verticalCenter: parent.verticalCenter
-                    visible: section.settingUp
-                }
-            }
-            Txt {
-                readonly property var status: section.setupStatus !== null && section.setupStatus.kind === section.shownKind ? section.setupStatus : null
-                width: parent.width
-                wrapMode: Text.WordWrap
                 textFormat: Text.PlainText
-                visible: status !== null
-                color: status !== null && !status.ok ? Theme.error : Theme.surfaceContent
-                text: status === null ? ""
-                      : status.ok ? qsTr("Done. Restart %1 so it picks up NectarLink.").arg(section.kindName(section.shownKind))
-                      : status.message
+                text: qsTr("Connect %1").arg(section.shownName)
             }
             Txt {
                 width: parent.width
                 role: "bodySmall"
                 muted: true
                 wrapMode: Text.WordWrap
-                text: section.canSetUp ? qsTr("Or add it yourself:")
-                      : section.shownKind === "claude-code" || section.shownKind === "gemini"
-                      ? qsTr("Run this in a terminal:")
-                      : section.shownKind === "codex" ? qsTr("Add this to ~/.codex/config.toml:")
-                      : section.shownKind === "cli" ? qsTr("Run commands like this one. `nectarlink-agent actions` lists the rest.")
-                      : qsTr("Add this to the app's MCP settings:")
+                text: qsTr("Paste this into your agent. It sets itself up and checks that it works.")
             }
             Rectangle {
                 width: parent.width
-                height: snippetText.implicitHeight + 20
+                height: Math.min(promptText.implicitHeight + 20, 200)
                 radius: Theme.radiusSm
                 color: Theme.surfaceContainerHigh
-                Txt {
-                    id: snippetText
+                Flickable {
+                    id: promptFlick
                     anchors.fill: parent
                     anchors.margins: 10
-                    role: "code"
-                    wrapMode: Text.WrapAnywhere
-                    textFormat: Text.PlainText
-                    text: section.shownLabel.length > 0 ? Agents.snippet(section.shownLabel, section.shownKind) : ""
+                    contentHeight: promptText.implicitHeight
+                    clip: true
+                    boundsBehavior: Flickable.StopAtBounds
+                    interactive: contentHeight > height
+                    Txt {
+                        id: promptText
+                        width: promptFlick.width
+                        role: "code"
+                        wrapMode: Text.WordWrap
+                        textFormat: Text.PlainText
+                        text: section.shownLabel.length > 0 ? Agents.prompt(section.shownLabel) : ""
+                    }
                 }
+                ScrollRail { flick: promptFlick; inset: 2 }
             }
             Row {
+                spacing: 12
+                Button {
+                    text: qsTr("Copy prompt")
+                    iconPath: Icons.copy
+                    onClicked: AppController.copyText(promptText.text)
+                }
+                Row {
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 6
+                    StatusDot {
+                        anchors.verticalCenter: parent.verticalCenter
+                        online: section.shownConnected
+                    }
+                    Txt {
+                        anchors.verticalCenter: parent.verticalCenter
+                        role: "bodySmall"
+                        muted: !section.shownConnected
+                        text: section.shownConnected ? qsTr("Connected") : qsTr("Waiting for the agent…")
+                    }
+                }
+            }
+            Button {
+                variant: "text"
+                size: "sm"
+                iconPath: section.byHand.length > 0 ? Icons.chevronUp : Icons.chevronDown
+                text: qsTr("Set up by hand")
+                onClicked: section.byHand = section.byHand.length > 0 ? "" : "mcp"
+            }
+            Column {
+                width: parent.width
                 spacing: 8
+                visible: section.byHand.length > 0
+                Segmented {
+                    options: [
+                        { value: "mcp", label: qsTr("MCP") },
+                        { value: "cli", label: qsTr("Command line") },
+                        { value: "http", label: qsTr("HTTP") }
+                    ]
+                    value: section.byHand
+                    onPicked: (value) => section.byHand = value
+                }
+                Txt {
+                    width: parent.width
+                    role: "bodySmall"
+                    muted: true
+                    wrapMode: Text.WordWrap
+                    text: section.byHand === "cli"
+                          ? qsTr("Run commands like these. The first lists everything the agent may do.")
+                          : section.byHand === "http"
+                          ? qsTr("For your own scripts. Read the token from that file each time; never paste it anywhere.")
+                          : qsTr("Add this to the agent's MCP settings.")
+                }
+                Rectangle {
+                    width: parent.width
+                    height: snippetText.implicitHeight + 20
+                    radius: Theme.radiusSm
+                    color: Theme.surfaceContainerHigh
+                    Txt {
+                        id: snippetText
+                        anchors.fill: parent
+                        anchors.margins: 10
+                        role: "code"
+                        wrapMode: Text.WrapAnywhere
+                        textFormat: Text.PlainText
+                        text: section.shownLabel.length > 0 && section.byHand.length > 0
+                              ? Agents.snippet(section.shownLabel, section.byHand) : ""
+                    }
+                }
                 Button {
                     variant: "tonal"
                     size: "sm"
                     text: qsTr("Copy")
                     onClicked: AppController.copyText(snippetText.text)
                 }
-                Button {
-                    variant: "text"
-                    size: "sm"
-                    text: qsTr("Done")
-                    onClicked: {
-                        section.shownLabel = ""
-                        Agents.clearSetupStatus()
-                    }
-                }
+            }
+            Button {
+                variant: "text"
+                size: "sm"
+                text: qsTr("Done")
+                onClicked: section.shownLabel = ""
             }
         }
     }
@@ -299,7 +369,7 @@ Column {
                                 variant: "text"
                                 size: "sm"
                                 text: qsTr("Connect")
-                                onClicked: section.showConnect(modelData.label, modelData.label.replace(/-[0-9]+$/, ""))
+                                onClicked: section.showConnect(modelData.label, modelData.name)
                             }
                             Button {
                                 variant: "text"

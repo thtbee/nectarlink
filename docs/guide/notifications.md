@@ -71,6 +71,7 @@ If you step away from your desk and want your PC's alerts (such as calendar remi
 All notification settings live in **Settings › Notifications** (and **Settings › General** / **Settings › Storage & Privacy**) on the PC:
 
 - **Follow phone Do not disturb** (`Settings › Notifications`, default: **Off**): When turned on, your PC silences popup toasts whenever your phone is in Do Not Disturb mode. Notifications still arrive quietly in the NectarLink feed so you can read them when you want.
+- **Keep pop-ups paused after a restart** (`Settings › Notifications`, default: **Off**): **Pause pop-ups** on Home normally lasts until NectarLink quits. With this on, it stays paused through restarts until you press **Resume pop-ups**.
 - **Notification profile on Home**: From the Phone Controls card on PC Home, you can switch your phone's notification profile between **All**, **Priority only** (Do Not Disturb), and **Silent**.
 - **Forward PC notifications** (`Settings › Notifications`, default: **Off**): Mirrors Windows desktop notifications to your connected phone.
 - **Quiet hours** (`Settings › Notifications`): Opens Windows **System › Notifications** settings so you can configure automatic Focus / Do Not Disturb schedules on Windows 11.

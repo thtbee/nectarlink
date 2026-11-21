@@ -24,10 +24,10 @@ Item {
         { id: "notifications", title: qsTr("Notifications"), icon: Icons.bell, subtitle: qsTr("Do not disturb & app rules") },
         { id: "files_sync", title: qsTr("Files & Sync"), icon: Icons.folder, subtitle: qsTr("Folder sync, storage & recordings") },
         { id: "shortcuts", title: qsTr("Shortcuts & Rules"), icon: Icons.bolt, subtitle: qsTr("Hotkeys & automations") },
-        { id: "agents", title: qsTr("AI agents"), icon: Icons.terminal, subtitle: qsTr("Claude Code, Codex, Cursor & more") },
+        { id: "agents", title: qsTr("AI agents"), icon: Icons.terminal, subtitle: qsTr("Assistants that use your devices") },
         { id: "storage", title: qsTr("Storage & Privacy"), icon: Icons.clipboardList, subtitle: qsTr("History, caches & retention") },
         { id: "connection", title: qsTr("Connection & About"), icon: Icons.wifi, subtitle: qsTr("Doctor, Wake-on-LAN, API & version") },
-        { id: "support", title: qsTr("Support NectarLink"), icon: Icons.heart, subtitle: qsTr("Help keep it going") }
+        { id: "support", title: qsTr("Community"), icon: Icons.heart, subtitle: qsTr("Discord, news and support") }
     ]
 
     // The languages the app speaks besides the system's ({ code, name }).
@@ -1347,6 +1347,20 @@ Item {
 
                         Divider { width: parent.width }
 
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.eyeOff
+                            title: qsTr("Toolbar in mirroring and app windows")
+                            description: qsTr("Shows when the pointer is near the top of the window. Off, Ctrl+Shift+T in a window shows it again.")
+                            Toggle {
+                                label: qsTr("Toolbar in mirroring and app windows")
+                                checked: !Preferences.hideMirrorToolbar
+                                onToggled: (on) => Preferences.hideMirrorToolbar = !on
+                            }
+                        }
+
+                        Divider { width: parent.width }
+
                         // Row 3: Sync clipboard
                         ListRow {
                             width: parent.width
@@ -1939,23 +1953,47 @@ Item {
 
                 Card {
                     width: parent.width
-                    ListRow {
+                    Column {
                         width: parent.width
-                        iconPath: Icons.screenOff
-                        title: qsTr("Mirror quality")
-                        description: Preferences.mirrorQuality === "sharper"
-                            ? qsTr("The phone's full resolution. Uses more of its battery, and needs good Wi-Fi or USB and a GPU on this PC.")
-                            : Preferences.mirrorQuality === "smoother"
-                            ? qsTr("A softer picture that holds up better on weak Wi-Fi.")
-                            : qsTr("For the phone's screen and app windows, from the next time you open them.")
-                        Segmented {
-                            options: [
-                                { value: "balanced", label: qsTr("Balanced") },
-                                { value: "sharper", label: qsTr("Sharper") },
-                                { value: "smoother", label: qsTr("Smoother") }
-                            ]
-                            value: Preferences.mirrorQuality
-                            onPicked: (value) => Preferences.mirrorQuality = value
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.screenOff
+                            title: qsTr("Mirror quality")
+                            description: Preferences.mirrorQuality === "sharper"
+                                ? qsTr("The phone's full resolution. Uses more of its battery, and needs good Wi-Fi or USB and a GPU on this PC.")
+                                : Preferences.mirrorQuality === "smoother"
+                                ? qsTr("A softer picture that holds up better on weak Wi-Fi.")
+                                : qsTr("For the phone's screen and app windows, from the next time you open them.")
+                            Segmented {
+                                options: [
+                                    { value: "balanced", label: qsTr("Balanced") },
+                                    { value: "sharper", label: qsTr("Sharper") },
+                                    { value: "smoother", label: qsTr("Smoother") }
+                                ]
+                                value: Preferences.mirrorQuality
+                                onPicked: (value) => Preferences.mirrorQuality = value
+                            }
+                        }
+                        Divider { width: parent.width }
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.bolt
+                            title: qsTr("Frame rate")
+                            description: Preferences.mirrorFps > 60
+                                ? qsTr("Smoother motion where the phone's screen refreshes that fast. Uses more battery, Wi-Fi and PC.")
+                                : Preferences.mirrorFps < 60
+                                ? qsTr("Half the frames: easier on the phone's battery and weak Wi-Fi.")
+                                : qsTr("For the phone's screen and app windows, from the next time you open them.")
+                            Segmented {
+                                options: [
+                                    { value: "30", label: "30" },
+                                    { value: "60", label: "60" },
+                                    { value: "90", label: "90" },
+                                    { value: "120", label: "120" }
+                                ]
+                                value: String(Preferences.mirrorFps)
+                                onPicked: (value) => Preferences.mirrorFps = parseInt(value)
+                            }
                         }
                     }
                 }
@@ -2390,6 +2428,18 @@ Item {
                                 label: qsTr("Don't receive while this PC is locked")
                                 checked: Preferences.holdWhenLocked
                                 onToggled: (on) => Preferences.holdWhenLocked = on
+                            }
+                        }
+                        Divider { width: parent.width }
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.pause
+                            title: qsTr("Keep pop-ups paused after a restart")
+                            description: qsTr("Pause pop-ups on Home stays on until you resume them, even when NectarLink or the PC restarts.")
+                            Toggle {
+                                label: qsTr("Keep pop-ups paused after a restart")
+                                checked: Preferences.keepPopupsPaused
+                                onToggled: (on) => Preferences.keepPopupsPaused = on
                             }
                         }
                         Divider { width: parent.width }
@@ -3914,6 +3964,19 @@ Item {
                                 }
                             }
                         }
+                        Divider { width: parent.width }
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.whatsNew
+                            title: qsTr("What's new")
+                            description: qsTr("What changed since your last update.")
+                            Button {
+                                text: qsTr("Open")
+                                variant: "tonal"
+                                size: "sm"
+                                onClicked: AppController.openWhatsNew()
+                            }
+                        }
                         Divider { width: parent.width; visible: AppController.canUpdate }
                         ListRow {
                             width: parent.width
@@ -4000,7 +4063,7 @@ Item {
             }
 
             // ================================================================
-            // 10. SUPPORT
+            // 10. COMMUNITY (id "support", as links to it already say)
             // ================================================================
             Column {
                 visible: page.currentSection === "support"
@@ -4009,17 +4072,63 @@ Item {
 
                 Card {
                     width: parent.width
-                    ListRow {
+                    Column {
                         width: parent.width
-                        iconPath: Icons.heart
-                        title: qsTr("Support NectarLink")
-                        description: qsTr("NectarLink is free and open source. If it makes your days a little easier, you can help keep it going. Thank you!")
-                        Button {
-                            objectName: "supportButton"
-                            variant: "tonal"
-                            size: "sm"
-                            text: qsTr("Support")
-                            onClicked: Qt.openUrlExternally("https://buymeacoffee.com/thtbee_")
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.brandDiscord
+                            iconFilled: true
+                            title: qsTr("Discord")
+                            description: qsTr("Our server. Ask questions, share ideas and try new builds with others.")
+                            Button {
+                                objectName: "discordButton"
+                                variant: "tonal"
+                                size: "sm"
+                                text: qsTr("Open")
+                                onClicked: Links.open("discord")
+                            }
+                        }
+                        Divider { width: parent.width }
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.brandX
+                            iconFilled: true
+                            title: "𝕏"
+                            description: qsTr("Follow me. I post what's coming to NectarLink and other things I make.")
+                            Button {
+                                variant: "tonal"
+                                size: "sm"
+                                text: qsTr("Open")
+                                onClicked: Links.open("x")
+                            }
+                        }
+                        Divider { width: parent.width }
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.brandGitHub
+                            iconFilled: true
+                            title: qsTr("GitHub")
+                            description: qsTr("Source code, issues and releases.")
+                            Button {
+                                variant: "tonal"
+                                size: "sm"
+                                text: qsTr("Open")
+                                onClicked: Links.open("repo")
+                            }
+                        }
+                        Divider { width: parent.width }
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.heart
+                            title: qsTr("Support NectarLink")
+                            description: qsTr("NectarLink is free and open source. If it makes your days a little easier, you can help keep it going. Thank you!")
+                            Button {
+                                objectName: "supportButton"
+                                variant: "tonal"
+                                size: "sm"
+                                text: qsTr("Support")
+                                onClicked: Links.open("donate")
+                            }
                         }
                     }
                 }

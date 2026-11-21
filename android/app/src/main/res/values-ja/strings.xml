@@ -166,6 +166,8 @@
     <string name="transfer_resume">再開</string>
     <string name="transfer_paused_progress">一時停止中 · %1$s / %2$s</string>
     <string name="transfer_received_from">%1$s から · Download/Nectarlink 内</string>
+    <string name="transfer_app_received_from">%1$s から · タップしてインストール</string>
+    <string name="transfer_install">インストール</string>
     <string name="transfer_sent_to">%1$s に送信済み</string>
     <string name="transfer_cancelled">キャンセル済み</string>
     <string name="transfer_denied">%1$s はこのスマートフォンからのファイルを受け付けません。</string>
@@ -340,6 +342,20 @@
     </plurals>
     <string name="notification_waiting">PCを待機中</string>
     <string name="notification_waiting_network">PC に接続するため Wi-Fi を待っています</string>
+    <string name="reconnect_known_only_title">PC が見つかったネットワークのみ</string>
+    <string name="reconnect_known_only_body">以前 PC に接続できた Wi-Fi でのみ、自動で PC を探します。それ以外のネットワークでも、PC からスマートフォンには接続できます。</string>
+    <plurals name="reconnect_known_count">
+        <item quantity="other">これまで %1$d 件のネットワーク</item>
+    </plurals>
+    <string name="reconnect_forget">消去</string>
+    <string name="reconnect_give_up_title">探すのをやめるまでの時間</string>
+    <string name="reconnect_give_up_body">この時間 PC に接続できないと、ネットワークが変わるか NectarLink を開くまで探すのをやめます。</string>
+    <string name="reconnect_give_up_never">やめない</string>
+    <string name="reconnect_give_up_15_min">15 分</string>
+    <string name="reconnect_give_up_1_hour">1 時間</string>
+    <string name="reconnect_give_up_4_hours">4 時間</string>
+    <string name="notification_stopped_looking">PC を探すのをやめました。NectarLink を開くと再び探します</string>
+    <string name="notification_unknown_network">このネットワークでは PC を探していません</string>
     <string name="notification_not_paired">まだPCとペアリングされていません</string>
     <plurals name="transfer_files">
         <item quantity="other">%1$d 個のファイル</item>
@@ -1426,6 +1442,22 @@
     <string name="settings_guide_card_body">すべての機能を閲覧したり、リアルタイムの要件を確認したり、あるいは直接操作画面へ進んだりできます。</string>
     <string name="settings_walkthrough_body">権限、ペアリング、パワーレベルに関するセットアップガイドを再表示します。</string>
     <string name="desk_exit">デスクモードを終了</string>
+    <string name="desk_customize">カスタマイズ</string>
+    <string name="desk_background">背景</string>
+    <string name="desk_background_black">ブラック</string>
+    <string name="desk_background_graphite">グラファイト</string>
+    <string name="desk_background_accent">アクセント</string>
+    <string name="desk_font">時計のフォント</string>
+    <string name="desk_font_mono">等幅</string>
+    <string name="desk_font_sans">ゴシック</string>
+    <string name="desk_font_serif">明朝</string>
+    <string name="desk_show">表示</string>
+    <string name="desk_show_seconds">秒</string>
+    <string name="desk_show_date">日付</string>
+    <string name="desk_show_media">PC のメディアと音量</string>
+    <string name="desk_show_battery">バッテリー</string>
+    <string name="desk_battery_phone">スマートフォン %1$d%%</string>
+    <string name="desk_battery_pc">%1$s %2$d%%</string>
     <string name="desk_media_playing">PCメディア · 再生中</string>
     <string name="desk_media_audio">PCメディア＆オーディオ</string>
     <string name="desk_pc_screen">PC画面</string>
@@ -1497,6 +1529,34 @@
     <string name="relay_region_europe">ヨーロッパ</string>
     <string name="relay_region_asia_pacific">アジア太平洋地域</string>
     <string name="relay_region_custom">カスタム</string>
+    <!-- What's new (#461) -->
+    <string name="whats_new_dot">新しい変更</string>
+    <string name="whats_new_group_new">新機能</string>
+    <string name="whats_new_group_changed">変更</string>
+    <string name="whats_new_group_fixed">修正</string>
+    <string name="whats_new_in_this_version">このバージョン</string>
+    <string name="whats_new_more">ほか %1$d 件</string>
+    <string name="whats_new_empty">このビルドで表示する項目はありません。</string>
+    <string name="whats_new_release_notes">GitHub のリリースノート</string>
+    <!-- Calls through WhatsApp from the PC (#434) -->
+    <string name="app_call_channel">PC からの通話</string>
+    <string name="app_call_title">%2$s で %1$s に発信</string>
+    <string name="app_call_text">タップして通話を開始します。</string>
+    <!-- Which of the PC's screens to view (#442) -->
+    <string name="pc_mirror_screen">画面 %1$d</string>
+    <string name="pc_mirror_screen_desc">%2$d 台中 %1$d 台目の画面を表示中。タップで次の画面へ。</string>
+    <!-- Community: Discord, X, GitHub and support -->
+    <string name="community_title">コミュニティ</string>
+    <string name="community_discord_title">Discord</string>
+    <string name="community_discord_body">私たちのサーバーです。質問やアイデアの共有、新しいビルドのお試しをみんなで。</string>
+    <string name="community_x_title">𝕏</string>
+    <string name="community_x_body">フォローしてください。NectarLink の次の機能や、ほかに作っているものを投稿しています。</string>
+    <string name="community_github_title">GitHub</string>
+    <string name="community_github_body">ソースコード、Issue、リリース。</string>
+    <string name="community_invite_title">Discord で話しましょう</string>
+    <string name="community_invite_text">質問、アイデア、先行ビルド。NectarLink を作る人、使う人と一緒に。</string>
+    <string name="community_invite_join">Discord に参加</string>
+    <string name="community_invite_later">今はしない</string>
 </resources>
 
 

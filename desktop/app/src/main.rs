@@ -9,6 +9,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod agents;
+#[cfg(test)]
+mod app_links;
 mod app_shortcuts;
 mod automations;
 mod battery;
@@ -153,6 +155,18 @@ impl Platform for DesktopPlatform {
         }
         pc_mirror::start(*peer, options.clone());
         Ok(())
+    }
+    #[cfg(windows)]
+    fn mirror_displays(&self) -> Vec<nectarlink_core::MirrorDisplay> {
+        win::displays::list()
+            .into_iter()
+            .map(|d| nectarlink_core::MirrorDisplay {
+                id: d.id,
+                width: d.width(),
+                height: d.height(),
+                primary: d.primary,
+            })
+            .collect()
     }
     fn mirror_stop_requested(&self, peer: &nectarlink_core::DeviceId, session: u32) {
         if session == nectarlink_core::MIRROR_SCREEN {
@@ -762,6 +776,8 @@ fn main() -> ExitCode {
     clipboard::set_history_enabled(settings.clipboard_history);
     clipboard::set_suggest_actions(settings.suggest_clipboard_actions);
     notifications::set_auto_copy_otp(settings.auto_copy_otp);
+    // Paused pop-ups stay paused after a restart, if the user chose that (#442).
+    notifications::set_paused(settings.keep_popups_paused && settings.popups_paused);
     notifications::set_sync_dnd(settings.sync_dnd);
     notifications::set_hold_when_locked(settings.hold_when_locked);
     notifications::start_lock_watch();
@@ -786,9 +802,14 @@ fn main() -> ExitCode {
         &settings.shelf_hotkey,
     );
     let updated_from = updater::note_running_version(&data_dir);
+    nectarlink_core::whats_new::note_start(&data_dir, updated_from.is_some());
     if updated_from.is_some() {
         let mut saved = settings::Settings::load(&data_dir);
-        if saved.ask_for_star_after_update()
+        let now =
+            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs());
+        let star = saved.ask_for_star_after_update();
+        let join = saved.ask_to_join_after_update(now);
+        if (star || join)
             && let Err(e) = saved.save(&data_dir)
         {
             tracing::warn!(error = %e, "can't save settings");

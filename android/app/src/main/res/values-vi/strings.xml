@@ -166,6 +166,8 @@
 <string name="transfer_resume">Tiếp tục</string>
 <string name="transfer_paused_progress">Đã tạm dừng · %1$s / %2$s</string>
 <string name="transfer_received_from">Từ %1$s · trong Download/Nectarlink</string>
+<string name="transfer_app_received_from">Từ %1$s · nhấn để cài đặt</string>
+<string name="transfer_install">Cài đặt</string>
 <string name="transfer_sent_to">Đã gửi tới %1$s</string>
 <string name="transfer_cancelled">Đã hủy</string>
 <string name="transfer_denied">%1$s không chấp nhận tệp từ điện thoại này.</string>
@@ -340,6 +342,20 @@
     </plurals>
 <string name="notification_waiting">Đang chờ PC của bạn</string>
 <string name="notification_waiting_network">Đang chờ Wi-Fi để kết nối với PC</string>
+<string name="reconnect_known_only_title">Chỉ trên mạng đã từng thấy PC</string>
+<string name="reconnect_known_only_body">Chỉ tự tìm PC trên các mạng Wi-Fi đã từng kết nối được với một PC. Ở mạng khác, PC vẫn có thể kết nối tới điện thoại.</string>
+<plurals name="reconnect_known_count">
+    <item quantity="other">Đến nay có %1$d mạng</item>
+</plurals>
+<string name="reconnect_forget">Quên các mạng này</string>
+<string name="reconnect_give_up_title">Ngừng tìm sau</string>
+<string name="reconnect_give_up_body">Nếu không kết nối được PC nào trong khoảng thời gian này, điện thoại sẽ ngừng tìm cho đến khi đổi mạng hoặc bạn mở NectarLink.</string>
+<string name="reconnect_give_up_never">Không bao giờ</string>
+<string name="reconnect_give_up_15_min">15 phút</string>
+<string name="reconnect_give_up_1_hour">1 giờ</string>
+<string name="reconnect_give_up_4_hours">4 giờ</string>
+<string name="notification_stopped_looking">Đã ngừng tìm PC. Mở NectarLink để tìm lại</string>
+<string name="notification_unknown_network">Không tìm PC trên mạng này</string>
 <string name="notification_not_paired">Chưa ghép nối với PC nào</string>
 <plurals name="transfer_files">
         <item quantity="one">%1$d tệp</item>
@@ -1364,6 +1380,22 @@
 <string name="settings_guide_card_body">Duyệt mọi tính năng, kiểm tra yêu cầu trực tiếp hoặc chuyển thẳng đến các điều khiển của tính năng đó.</string>
 <string name="settings_walkthrough_body">Mở lại hướng dẫn thiết lập dành cho quyền, ghép nối và mức nguồn.</string>
 <string name="desk_exit">Thoát Chế độ Bàn làm việc</string>
+<string name="desk_customize">Tùy chỉnh</string>
+<string name="desk_background">Nền</string>
+<string name="desk_background_black">Đen</string>
+<string name="desk_background_graphite">Than chì</string>
+<string name="desk_background_accent">Màu nhấn</string>
+<string name="desk_font">Phông chữ đồng hồ</string>
+<string name="desk_font_mono">Đơn cách</string>
+<string name="desk_font_sans">Không chân</string>
+<string name="desk_font_serif">Có chân</string>
+<string name="desk_show">Hiển thị</string>
+<string name="desk_show_seconds">Giây</string>
+<string name="desk_show_date">Ngày</string>
+<string name="desk_show_media">Phương tiện và âm lượng PC</string>
+<string name="desk_show_battery">Pin</string>
+<string name="desk_battery_phone">Điện thoại %1$d%%</string>
+<string name="desk_battery_pc">%1$s %2$d%%</string>
 <string name="desk_media_playing">PC Media · Đang phát</string>
 <string name="desk_media_audio">PC Media &amp; Âm thanh</string>
 <string name="desk_pc_screen">Màn hình PC</string>
@@ -1435,4 +1467,32 @@
 <string name="relay_region_europe">Châu Âu</string>
 <string name="relay_region_asia_pacific">Châu Á – Thái Bình Dương</string>
 <string name="relay_region_custom">Tùy chỉnh</string>
+    <!-- What's new (#461) -->
+    <string name="whats_new_dot">Thay đổi mới</string>
+    <string name="whats_new_group_new">Mới</string>
+    <string name="whats_new_group_changed">Đã thay đổi</string>
+    <string name="whats_new_group_fixed">Đã sửa</string>
+    <string name="whats_new_in_this_version">Trong phiên bản này</string>
+    <string name="whats_new_more">và %1$d mục khác</string>
+    <string name="whats_new_empty">Không có gì để hiển thị cho bản dựng này.</string>
+    <string name="whats_new_release_notes">Ghi chú phát hành trên GitHub</string>
+    <!-- Calls through WhatsApp from the PC (#434) -->
+    <string name="app_call_channel">Cuộc gọi từ máy tính</string>
+    <string name="app_call_title">Gọi %1$s qua %2$s</string>
+    <string name="app_call_text">Nhấn để bắt đầu cuộc gọi.</string>
+    <!-- Which of the PC's screens to view (#442) -->
+    <string name="pc_mirror_screen">Màn hình %1$d</string>
+    <string name="pc_mirror_screen_desc">Đang hiện màn hình %1$d trên %2$d. Nhấn để chuyển sang màn hình tiếp theo.</string>
+    <!-- Community: Discord, X, GitHub and support -->
+    <string name="community_title">Cộng đồng</string>
+    <string name="community_discord_title">Discord</string>
+    <string name="community_discord_body">Máy chủ của chúng tôi. Đặt câu hỏi, chia sẻ ý tưởng và thử bản dựng mới cùng mọi người.</string>
+    <string name="community_x_title">𝕏</string>
+    <string name="community_x_body">Theo dõi mình nhé. Mình đăng những gì sắp có trên NectarLink và những thứ khác mình làm.</string>
+    <string name="community_github_title">GitHub</string>
+    <string name="community_github_body">Mã nguồn, issue và các bản phát hành.</string>
+    <string name="community_invite_title">Cùng trò chuyện trên Discord</string>
+    <string name="community_invite_text">Câu hỏi, ý tưởng và bản dựng sớm, cùng những người làm và dùng NectarLink.</string>
+    <string name="community_invite_join">Tham gia Discord</string>
+    <string name="community_invite_later">Để sau</string>
 </resources>

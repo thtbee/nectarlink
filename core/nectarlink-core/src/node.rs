@@ -67,7 +67,7 @@ const EVENT_CAPACITY: usize = 2048;
 /// idle path every 5 s and drops one silent for 15 s), so a device that
 /// drops off shows as offline within ~15 s. Shorter kept the phone's Wi-Fi
 /// and CPU from ever sleeping on a connected phone.
-const KEEP_ALIVE_INTERVAL: Duration = Duration::from_secs(5);
+pub(crate) const KEEP_ALIVE_INTERVAL: Duration = Duration::from_secs(5);
 const IDLE_TIMEOUT: Duration = Duration::from_secs(15);
 /// How often this device asks the LAN who's there (mDNS). Answers to others'
 /// queries go out at once either way, so only a device showing a nearby list
@@ -2475,6 +2475,13 @@ impl Node {
         }
     }
 
+    /// How many heartbeat pings this device sent `peer` on the current
+    /// session (tests: a quiet healthy link sends none after the first).
+    #[doc(hidden)]
+    pub fn heartbeat_pings(&self, peer: &DeviceId) -> u64 {
+        self.connected(peer).map_or(0, |s| s.heartbeat_pings.load(std::sync::atomic::Ordering::Relaxed))
+    }
+
     fn connected(&self, peer: &DeviceId) -> Result<Arc<Session>> {
         if !self.shared.store.is_paired(peer)? {
             return Err(Error::NotPaired);
@@ -3360,6 +3367,13 @@ impl Node {
     pub async fn mirror_notice(&self, peer: DeviceId, mirroring: u32, code: &str) -> Result<()> {
         let session = self.connected(&peer)?;
         crate::mirror::notice(&session, mirroring, code).await
+    }
+
+    /// A PC's screens, to pick the one to view (`MirrorStart::display`);
+    /// empty from a PC that only shares its main one.
+    pub async fn mirror_displays(&self, peer: DeviceId) -> Result<Vec<crate::MirrorDisplay>> {
+        let session = self.connected(&peer)?;
+        crate::mirror::displays(&self.shared, &session).await
     }
 
     /// The apps a phone can open in windows of their own (Elevated), by name.

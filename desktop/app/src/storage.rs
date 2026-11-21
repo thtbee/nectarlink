@@ -177,6 +177,9 @@ mod imp {
     /// Phones whose folder couldn't be registered, and when to try again.
     #[cfg(windows)]
     static FAILED: Mutex<Option<HashMap<DeviceId, RetryLater>>> = Mutex::new(None);
+    /// Phones turned off whose folder was already cleared (by folder name).
+    #[cfg(windows)]
+    static CLEARED: Mutex<Option<HashMap<DeviceId, String>>> = Mutex::new(None);
 
     #[cfg(windows)]
     fn intern_device_id(device: DeviceId) -> *const c_void {
@@ -566,9 +569,16 @@ mod imp {
 
     #[cfg(windows)]
     fn reconcile(desired: &[(DeviceId, String, String, bool)], disabled: &[(DeviceId, String)]) {
-        // Unregister any disabled devices that belong to this instance.
+        // Unregister any disabled devices that belong to this instance. Once
+        // cleared, a phone that stays off isn't unregistered and walked again
+        // on every pass: each one did a Windows call and a folder walk.
         for (id, folder) in disabled {
-            remove_device_root(*id, Some(folder));
+            let active = get_active_root(id).is_some();
+            let cleared = lock(&CLEARED).get_or_insert_with(HashMap::new).get(id) == Some(folder);
+            if active || !cleared {
+                remove_device_root(*id, Some(folder));
+                lock(&CLEARED).get_or_insert_with(HashMap::new).insert(*id, folder.clone());
+            }
             // Turned off: turning it on again tries right away.
             lock(&FAILED).get_or_insert_with(HashMap::new).remove(id);
         }
@@ -613,6 +623,8 @@ mod imp {
             match register_and_connect(*id, name, folder, *online) {
                 Ok(()) => {
                     lock(&FAILED).get_or_insert_with(HashMap::new).remove(id);
+                    // Registered again: turning it off later clears it again.
+                    lock(&CLEARED).get_or_insert_with(HashMap::new).remove(id);
                 }
                 Err(e) => {
                     let mut failed = lock(&FAILED);

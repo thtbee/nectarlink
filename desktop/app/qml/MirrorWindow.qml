@@ -41,6 +41,8 @@ Window {
     // An app window whose display follows its size (see Mirror.setFlexible);
     // otherwise the display keeps the phone's resolution and the window its shape.
     readonly property bool flexible: info.app === true && info.flexible !== false
+    // Light and dark swapped in the picture, for apps with no dark mode.
+    readonly property bool dark: info.dark === true
     // A flexible window between its size changing and the phone's picture
     // of the new size: frost covers it (see `frost`), and the phone is told
     // the size once, when the edge is let go.
@@ -361,9 +363,22 @@ Window {
         keepShape: win.info.app === true && !win.flexible
         fillsNearShape: win.info.app === true
         windowIcon: win.info.icon || ""
+        layer.enabled: win.dark
+        layer.effect: ShaderEffect {
+            fragmentShader: "qrc:/shaders/darken.frag.qsb"
+        }
         windowAppId: win.info.app && (win.info.pkg || "").length > 0
             ? "Nectarlink.App." + (win.info.device || "").slice(0, 8) + "." + win.info.pkg
             : ""
+        // Pinned to the taskbar, it opens this app again (#465).
+        windowRelaunch: {
+            if (!win.info.app || (win.info.pkg || "").length === 0) return ""
+            const relaunch = Mirror.relaunch(win.info.device || "", win.info.pkg)
+            if (relaunch.length === 0) return ""
+            const r = JSON.parse(relaunch)
+            r.name = (win.info.title || win.info.pkg).replace(/^@+/, "")
+            return JSON.stringify(r)
+        }
         focus: true
         acceptsText: win.phase === "showing" && win.canControl
         // The emoji panel (Win+.) and input methods give finished text here
@@ -520,6 +535,11 @@ Window {
                 event.accepted = true
                 return
             }
+            if ((event.modifiers & Qt.ControlModifier) && (event.modifiers & Qt.ShiftModifier) && event.key === Qt.Key_T) {
+                win.setToolbarHidden(!Preferences.hideMirrorToolbar)
+                event.accepted = true
+                return
+            }
             if (!win.canControl)
                 return
             if (Preferences.enterSends && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
@@ -633,6 +653,10 @@ Window {
             stream: win.mirrorKey
             frosted: true
             frozen: win.frosted
+            layer.enabled: win.dark
+            layer.effect: ShaderEffect {
+                fragmentShader: "qrc:/shaders/darken.frag.qsb"
+            }
         }
         RoundedImage {
             anchors.centerIn: parent
@@ -649,6 +673,22 @@ Window {
             width: 28
             height: 28
         }
+    }
+
+    // Hiding the toolbar (D475) is for every window, and says how to get it back.
+    property string localNotice: ""
+    function setToolbarHidden(hidden) {
+        Preferences.hideMirrorToolbar = hidden
+        localNotice = hidden ? qsTr("Toolbar hidden. Ctrl+Shift+T shows it again.") : ""
+        if (hidden)
+            localNoticeTimer.restart()
+        else
+            toolbarWakeTimer.restart()
+    }
+    Timer {
+        id: localNoticeTimer
+        interval: 3000
+        onTriggered: win.localNotice = ""
     }
 
     // Floating mirror toolbar: screenshots, MP4 recording, stay awake, screen off, and audio mute.
@@ -673,10 +713,10 @@ Window {
         height: 40
         radius: 20
         color: Qt.rgba(0, 0, 0, 0.68)
-        visible: win.phase === "showing" && video.frameSize.width > 0
+        visible: win.phase === "showing" && video.frameSize.width > 0 && !Preferences.hideMirrorToolbar
         readonly property bool toolbarHasFocus: flexibleBtn.activeFocus || lockBtn.activeFocus || copyShotBtn.activeFocus || saveShotBtn.activeFocus
             || recordBtn.activeFocus || stayAwakeBtn.activeFocus || screenOffBtn.activeFocus || rotateBtn.activeFocus || soundBtn.activeFocus
-            || backBtn.activeFocus || homeBtn.activeFocus || recentsBtn.activeFocus
+            || backBtn.activeFocus || homeBtn.activeFocus || recentsBtn.activeFocus || hideToolbarBtn.activeFocus
         // Only while it's wanted: it sits over the app's own top bar (#340).
         // Recording and a dark phone screen show in the window's title instead.
         opacity: topZoneHover.hovered || toolbarHover.hovered || navHover.hovered || toolbarWakeTimer.running
@@ -720,6 +760,13 @@ Window {
                 size: 12
                 color: "white"
                 text: win.formatDuration(win.recordingElapsedSecs)
+            }
+            IconButton {
+                id: darkBtn
+                iconPath: Icons.moon
+                iconColor: win.dark ? Theme.primary : "white"
+                label: win.dark ? qsTr("Show the picture as it is") : qsTr("Dark picture: swap light and dark")
+                onClicked: Mirror.setDark(win.mirrorKey, !win.dark)
             }
             IconButton {
                 id: flexibleBtn
@@ -782,6 +829,13 @@ Window {
                 iconColor: "white"
                 label: Mirror.muted ? qsTr("Play the phone's sound here") : qsTr("Play the sound on the phone")
                 onClicked: Mirror.toggleSound()
+            }
+            IconButton {
+                id: hideToolbarBtn
+                iconPath: Icons.eyeOff
+                iconColor: "white"
+                label: qsTr("Hide the toolbar (Ctrl+Shift+T)")
+                onClicked: win.setToolbarHidden(true)
             }
         }
     }
@@ -866,7 +920,7 @@ Window {
         id: noticePill
         readonly property string pillText: mirrorDropArea.containsDrag
             ? qsTr("Release to send files to %1").arg(win.deviceName.length > 0 ? win.deviceName : qsTr("phone"))
-            : (win.info.notice || "")
+            : (win.localNotice || win.info.notice || "")
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: hintBanner.visible ? hintBanner.top : parent.bottom
         anchors.bottomMargin: hintBanner.visible ? 8 : 16

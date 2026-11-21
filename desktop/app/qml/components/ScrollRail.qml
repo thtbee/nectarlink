@@ -11,6 +11,9 @@ Item {
     required property Flickable flick
     // Kept off the window's edge, where Windows' resize border takes the mouse.
     property real inset: 6
+    // Where the view is, such as the date of the photos at the top: shown
+    // beside the thumb while it's held or hovered (#442).
+    property string label: ""
 
     readonly property real ratio: flick ? Math.min(1, flick.visibleArea.heightRatio) : 1
     readonly property bool hot: area.containsMouse || area.pressed
@@ -54,6 +57,30 @@ Item {
         Behavior on width {
             enabled: !Theme.reduceMotion
             NumberAnimation { duration: 120 }
+        }
+    }
+
+    Rectangle {
+        id: bubble
+        visible: rail.label.length > 0
+        anchors.right: thumb.left
+        anchors.rightMargin: 10
+        y: Math.max(0, Math.min(rail.height - height, thumb.y + thumb.height / 2 - height / 2))
+        width: bubbleText.implicitWidth + 24
+        height: 32
+        radius: Theme.pill(height)
+        color: Theme.primaryContainer
+        opacity: rail.hot ? 1 : 0
+        Behavior on opacity {
+            enabled: !Theme.reduceMotion
+            NumberAnimation { duration: 140 }
+        }
+        Txt {
+            id: bubbleText
+            anchors.centerIn: parent
+            text: rail.label
+            role: "label"
+            color: Theme.primaryContainerContent
         }
     }
 

@@ -33,7 +33,7 @@ $module = Join-Path $imports 'app\nectarlink'
 if (Test-Path $imports) { Remove-Item -Recurse -Force $imports }
 New-Item -ItemType Directory -Force $module | Out-Null
 
-$singletons = @('Theme', 'Tokens', 'Icons')
+$singletons = @('Theme', 'Tokens', 'Icons', 'Links')
 foreach ($name in $singletons) { Copy-Item (Join-Path $qml "$name.qml") $module }
 $components = Get-ChildItem (Join-Path $qml 'components') -Filter *.qml
 $components | Copy-Item -Destination $module

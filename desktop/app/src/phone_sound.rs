@@ -204,6 +204,7 @@ fn start(device: DeviceId, name: String, quiet: bool) {
             screen_off: false,
             watch: None,
             sound_only: true,
+            display: None,
         };
         if let Err(e) = node.mirror_start(device, options).await {
             *remote = None;

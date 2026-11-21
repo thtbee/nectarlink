@@ -167,6 +167,8 @@
     <string name="transfer_resume">Sürdür</string>
     <string name="transfer_paused_progress">Duraklatıldı · %1$s / %2$s</string>
     <string name="transfer_received_from">Kaynak: %1$s · Download/Nectarlink klasöründe</string>
+    <string name="transfer_app_received_from">%1$s kaynağından · yüklemek için dokun</string>
+    <string name="transfer_install">Yükle</string>
     <string name="transfer_sent_to">%1$s cihazına gönderildi</string>
     <string name="transfer_cancelled">İptal edildi</string>
     <string name="transfer_denied">%1$s bu telefondan dosya kabul etmiyor.</string>
@@ -342,6 +344,21 @@
     </plurals>
     <string name="notification_waiting">Bilgisayarınız bekleniyor</string>
     <string name="notification_waiting_network">Bilgisayarına ulaşmak için Wi-Fi bekleniyor</string>
+    <string name="reconnect_known_only_title">Yalnızca bilgisayar bulunan ağlarda</string>
+    <string name="reconnect_known_only_body">Bilgisayarlarını yalnızca daha önce birine ulaştığı Wi-Fi ağlarında kendiliğinden arar. Diğer ağlarda bilgisayar telefona yine ulaşabilir.</string>
+    <plurals name="reconnect_known_count">
+        <item quantity="one">Şimdiye kadar %1$d ağ</item>
+        <item quantity="other">Şimdiye kadar %1$d ağ</item>
+    </plurals>
+    <string name="reconnect_forget">Unut</string>
+    <string name="reconnect_give_up_title">Aramayı şu süreden sonra bırak</string>
+    <string name="reconnect_give_up_body">Bu süre boyunca hiçbir bilgisayara ulaşılamazsa telefon, ağ değişene ya da NectarLink\'i açana kadar aramayı bırakır.</string>
+    <string name="reconnect_give_up_never">Asla</string>
+    <string name="reconnect_give_up_15_min">15 dk</string>
+    <string name="reconnect_give_up_1_hour">1 saat</string>
+    <string name="reconnect_give_up_4_hours">4 saat</string>
+    <string name="notification_stopped_looking">Bilgisayarını arama durdu. Yeniden aramak için NectarLink\'i aç</string>
+    <string name="notification_unknown_network">Bu ağda bilgisayarın aranmıyor</string>
     <string name="notification_not_paired">Henüz bir bilgisayarla eşleştirilmedi</string>
     <plurals name="transfer_files">
         <item quantity="one">%1$d dosya</item>
@@ -1432,6 +1449,22 @@
     <string name="settings_guide_card_body">Tüm özelliklere göz atın, gereksinimleri canlı olarak kontrol edin veya doğrudan kontrollerine gidin.</string>
     <string name="settings_walkthrough_body">İzinler, eşleştirme ve yetki düzeyleri için kurulum rehberini yeniden açın.</string>
     <string name="desk_exit">Masa Modundan çık</string>
+    <string name="desk_customize">Özelleştir</string>
+    <string name="desk_background">Arka plan</string>
+    <string name="desk_background_black">Siyah</string>
+    <string name="desk_background_graphite">Grafit</string>
+    <string name="desk_background_accent">Vurgu</string>
+    <string name="desk_font">Saat yazı tipi</string>
+    <string name="desk_font_mono">Mono</string>
+    <string name="desk_font_sans">Sans</string>
+    <string name="desk_font_serif">Serif</string>
+    <string name="desk_show">Göster</string>
+    <string name="desk_show_seconds">Saniye</string>
+    <string name="desk_show_date">Tarih</string>
+    <string name="desk_show_media">Bilgisayar medyası ve sesi</string>
+    <string name="desk_show_battery">Pil</string>
+    <string name="desk_battery_phone">Telefon %%%1$d</string>
+    <string name="desk_battery_pc">%1$s %%%2$d</string>
     <string name="desk_media_playing">Bilgisayar medyası · Çalıyor</string>
     <string name="desk_media_audio">Bilgisayar medyası ve sesi</string>
     <string name="desk_pc_screen">Bilgisayar ekranı</string>
@@ -1505,6 +1538,34 @@
     <string name="relay_region_europe">Avrupa</string>
     <string name="relay_region_asia_pacific">Asya-Pasifik</string>
     <string name="relay_region_custom">Özel sunucular</string>
+    <!-- What's new (#461) -->
+    <string name="whats_new_dot">Yeni değişiklikler</string>
+    <string name="whats_new_group_new">Yeni</string>
+    <string name="whats_new_group_changed">Değişti</string>
+    <string name="whats_new_group_fixed">Düzeltildi</string>
+    <string name="whats_new_in_this_version">Bu sürümde</string>
+    <string name="whats_new_more">ve %1$d tane daha</string>
+    <string name="whats_new_empty">Bu derleme için gösterilecek bir şey yok.</string>
+    <string name="whats_new_release_notes">GitHub’da sürüm notları</string>
+    <!-- Calls through WhatsApp from the PC (#434) -->
+    <string name="app_call_channel">Bilgisayardan aramalar</string>
+    <string name="app_call_title">%1$s kişisini %2$s ile ara</string>
+    <string name="app_call_text">Aramayı başlatmak için dokun.</string>
+    <!-- Which of the PC's screens to view (#442) -->
+    <string name="pc_mirror_screen">Ekran %1$d</string>
+    <string name="pc_mirror_screen_desc">%2$d ekrandan %1$d. gösteriliyor. Sonraki için dokun.</string>
+    <!-- Community: Discord, X, GitHub and support -->
+    <string name="community_title">Topluluk</string>
+    <string name="community_discord_title">Discord</string>
+    <string name="community_discord_body">Sunucumuz. Soru sor, fikirlerini paylaş ve yeni sürümleri başkalarıyla dene.</string>
+    <string name="community_x_title">𝕏</string>
+    <string name="community_x_body">Beni takip et. NectarLink\'e gelecekleri ve yaptığım diğer şeyleri orada paylaşıyorum.</string>
+    <string name="community_github_title">GitHub</string>
+    <string name="community_github_body">Kaynak kodu, sorunlar ve sürümler.</string>
+    <string name="community_invite_title">Discord’da sohbete gel</string>
+    <string name="community_invite_text">NectarLink’i yapan ve kullananlarla sorular, fikirler ve erken sürümler.</string>
+    <string name="community_invite_join">Discord’a katıl</string>
+    <string name="community_invite_later">Şimdi değil</string>
 </resources>
 
 
