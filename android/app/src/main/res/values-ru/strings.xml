@@ -674,6 +674,10 @@
     <string name="settings_seed_ocean">Океан</string>
     <string name="settings_seed_sage">Шалфей</string>
     <string name="settings_seed_black">Чёрный</string>
+    <string name="settings_home_card_color">Цвет карточки на главном экране</string>
+    <string name="settings_home_card_color_default">Как в теме</string>
+    <string name="settings_home_card_color_custom">Свой цвет</string>
+    <string name="settings_home_card_color_hex">Цвет в формате HEX</string>
     <string name="settings_amoled">Чёрный (AMOLED)</string>
     <string name="settings_amoled_hint">Абсолютно чёрные (#000000) тёмные поверхности для OLED-экранов.</string>
     <string name="deck_tile_with_badge">%1$s, %2$s</string>

@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.core.content.edit
 import app.nectarlink.android.ui.theme.Appearance
 import app.nectarlink.android.ui.theme.Tokens
+import app.nectarlink.android.ui.theme.normalizeHomeCardHex
 import app.nectarlink.android.ui.walkthrough.WalkthroughPersistence
 import app.nectarlink.android.ui.walkthrough.WalkthroughStep
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -118,6 +119,7 @@ class Preferences(context: Context) {
             dynamicColor = prefs.getBoolean(DYNAMIC, defaults.dynamicColor),
             amoled = prefs.getBoolean(AMOLED, defaults.amoled),
             combMotion = prefs.getBoolean(COMB_MOTION, defaults.combMotion),
+            homeCardSeed = prefs.getString(HOME_CARD_SEED, defaults.homeCardSeed),
         )
     }
 
@@ -142,6 +144,7 @@ class Preferences(context: Context) {
             putBoolean(DYNAMIC, next.dynamicColor)
             putBoolean(AMOLED, next.amoled)
             putBoolean(COMB_MOTION, next.combMotion)
+            putString(HOME_CARD_SEED, next.homeCardSeed)
         }
         _appearance.value = next
     }
@@ -213,6 +216,7 @@ class Preferences(context: Context) {
         private const val DYNAMIC = "dynamic_color"
         private const val AMOLED = "amoled_black"
         private const val COMB_MOTION = "comb_motion"
+        private const val HOME_CARD_SEED = "home_card_seed"
         private const val HIVE_INVITE_ANSWERED = "hive_invite_answered_version"
         private const val COMMUNITY_VERSION = "community_invite_version"
         private const val COMMUNITY_ARMED = "community_invite_armed"
@@ -243,6 +247,7 @@ class Preferences(context: Context) {
             dynamicColor: Boolean = true,
             amoled: Boolean = false,
             combMotion: Boolean = true,
+            homeCardSeed: String? = null,
         ): Appearance {
             val defaults = Appearance()
             val safeTheme = theme?.takeIf { it in VALID_THEMES } ?: defaults.theme
@@ -255,6 +260,7 @@ class Preferences(context: Context) {
                 dynamicColor = dynamicColor,
                 amoled = amoled,
                 combMotion = combMotion,
+                homeCardSeed = homeCardSeed?.takeIf { it in Tokens.bloomSeeds } ?: normalizeHomeCardHex(homeCardSeed),
             )
         }
 
@@ -266,6 +272,7 @@ class Preferences(context: Context) {
                 dynamicColor = appearance.dynamicColor,
                 amoled = appearance.amoled,
                 combMotion = appearance.combMotion,
+                homeCardSeed = appearance.homeCardSeed,
             )
 
         fun isSuggestClipboardActionsEnabled(context: Context): Boolean =

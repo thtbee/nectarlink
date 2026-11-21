@@ -696,6 +696,10 @@
     <string name="settings_seed_ocean">Ozean</string>
     <string name="settings_seed_sage">Salbei</string>
     <string name="settings_seed_black">Schwarz</string>
+    <string name="settings_home_card_color">Farbe der Startseitenkarte</string>
+    <string name="settings_home_card_color_default">Wie App-Design</string>
+    <string name="settings_home_card_color_custom">Eigene Farbe</string>
+    <string name="settings_home_card_color_hex">Hex-Farbe</string>
     <string name="settings_amoled">Reines Schwarz (AMOLED)</string>
     <string name="settings_amoled_hint">Echte dunkle Oberflächen in #000000 für OLED-Bildschirme.</string>
 

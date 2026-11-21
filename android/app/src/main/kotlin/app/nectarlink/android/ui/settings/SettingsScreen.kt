@@ -10,7 +10,9 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -27,12 +29,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -49,6 +54,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,6 +70,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
@@ -98,6 +105,8 @@ import app.nectarlink.android.ui.theme.Tokens
 import app.nectarlink.android.ui.theme.glassModalBlur
 import app.nectarlink.android.ui.theme.glassModalContainerColor
 import app.nectarlink.android.ui.theme.liquidGlassCard
+import app.nectarlink.android.ui.theme.homeCardPalette
+import app.nectarlink.android.ui.theme.normalizeHomeCardHex
 import kotlinx.coroutines.delay
 
 @Composable
@@ -286,6 +295,10 @@ fun SettingsScreen(
                         ),
                         appearance.mode,
                     ) { value -> onAppearance { it.copy(mode = value) } }
+                    SettingRowDivider()
+                    HomeCardColorSetting(appearance) { seed ->
+                        onAppearance { it.copy(homeCardSeed = seed) }
+                    }
                     if (AppLanguage.supported) {
                         // System and English, plus the language picked from the list (or More).
                         val context = LocalContext.current
@@ -399,16 +412,7 @@ fun SettingsScreen(
                             ) {
                                 Tokens.bloomSeeds.forEach { (name, seed) ->
                                     val isSelected = (!appearance.dynamicColor || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) && appearance.seed == name
-                                    val seedLabel = stringResource(
-                                        when (name) {
-                                            "honey" -> R.string.settings_seed_honey
-                                            "lavender" -> R.string.settings_seed_lavender
-                                            "ocean" -> R.string.settings_seed_ocean
-                                            "sage" -> R.string.settings_seed_sage
-                                            "black" -> R.string.settings_seed_black
-                                            else -> R.string.settings_seed_honey
-                                        },
-                                    )
+                                    val seedLabel = stringResource(bloomSeedLabel(name))
                                     val isBlackSeed = name == "black"
                                     val borderColor = when {
                                         isSelected -> MaterialTheme.colorScheme.onSurface
@@ -1963,6 +1967,126 @@ private fun Section(
         ) {
             content()
         }
+    }
+}
+
+private fun bloomSeedLabel(seed: String?) = when (seed) {
+    null -> R.string.settings_home_card_color_default
+    "black" -> R.string.settings_seed_black
+    "lavender" -> R.string.settings_seed_lavender
+    "ocean" -> R.string.settings_seed_ocean
+    "sage" -> R.string.settings_seed_sage
+    else -> R.string.settings_seed_honey
+}
+
+@Composable
+private fun HomeCardColorSetting(appearance: Appearance, onSelect: (String?) -> Unit) {
+    val seed = appearance.homeCardSeed
+    var expanded by remember { mutableStateOf(false) }
+    var editingCustomColor by rememberSaveable { mutableStateOf(false) }
+    val title = stringResource(R.string.settings_home_card_color)
+    val customHex = normalizeHomeCardHex(seed)
+    val current = customHex ?: stringResource(bloomSeedLabel(seed))
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(title, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
+        Box {
+            OutlinedButton(
+                onClick = { expanded = true },
+                modifier = Modifier.semantics {
+                    contentDescription = title
+                    stateDescription = current
+                },
+            ) {
+                Text(current)
+            }
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                (listOf(null) + Tokens.bloomSeeds.keys).forEach { option ->
+                    val color = Tokens.bloomSeeds[option]?.color ?: MaterialTheme.colorScheme.primaryContainer
+                    DropdownMenuItem(
+                        text = { Text(stringResource(bloomSeedLabel(option))) },
+                        leadingIcon = {
+                            Surface(
+                                modifier = Modifier.size(18.dp),
+                                shape = CircleShape,
+                                color = color,
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                            ) {}
+                        },
+                        trailingIcon = { RadioButton(selected = option == seed, onClick = null) },
+                        modifier = Modifier.semantics { selected = option == seed },
+                        onClick = {
+                            onSelect(option)
+                            expanded = false
+                        },
+                    )
+                }
+                HorizontalDivider()
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.settings_home_card_color_custom)) },
+                    trailingIcon = { RadioButton(selected = customHex != null, onClick = null) },
+                    modifier = Modifier.semantics { selected = customHex != null },
+                    onClick = {
+                        expanded = false
+                        editingCustomColor = true
+                    },
+                )
+            }
+        }
+    }
+
+    if (editingCustomColor) {
+        var input by rememberSaveable(customHex) { mutableStateOf(customHex.orEmpty()) }
+        val hex = normalizeHomeCardHex(input)
+        val dark = when (appearance.mode) {
+            "light" -> false
+            "dark" -> true
+            else -> isSystemInDarkTheme()
+        }
+        val preview = remember(hex, dark) { homeCardPalette(hex, dark) }
+        AlertDialog(
+            onDismissRequest = { editingCustomColor = false },
+            title = { Text(stringResource(R.string.settings_home_card_color_custom)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(
+                        value = input,
+                        onValueChange = { input = it },
+                        label = { Text(stringResource(R.string.settings_home_card_color_hex)) },
+                        placeholder = { Text("#7C3AED") },
+                        supportingText = { Text("#RRGGBB") },
+                        singleLine = true,
+                        isError = input.isNotBlank() && hex == null,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    if (preview != null) {
+                        Surface(
+                            color = preview.primaryContainer,
+                            contentColor = preview.onPrimaryContainer,
+                            shape = MaterialTheme.shapes.medium,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(title, modifier = Modifier.padding(16.dp))
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = hex != null,
+                    onClick = {
+                        onSelect(hex)
+                        editingCustomColor = false
+                    },
+                ) { Text(stringResource(R.string.action_done)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { editingCustomColor = false }) { Text(stringResource(R.string.action_cancel)) }
+            },
+        )
     }
 }
 

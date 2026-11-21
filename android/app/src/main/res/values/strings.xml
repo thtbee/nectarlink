@@ -698,6 +698,10 @@
     <string name="settings_seed_ocean">Ocean</string>
     <string name="settings_seed_sage">Sage</string>
     <string name="settings_seed_black">Black</string>
+    <string name="settings_home_card_color">Home card color</string>
+    <string name="settings_home_card_color_default">Follow theme</string>
+    <string name="settings_home_card_color_custom">Custom color</string>
+    <string name="settings_home_card_color_hex">Hex color</string>
     <string name="settings_amoled">Pure black (AMOLED)</string>
     <string name="settings_amoled_hint">True #000000 dark surfaces for OLED screens.</string>
 
