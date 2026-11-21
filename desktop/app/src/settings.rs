@@ -734,6 +734,10 @@ pub struct Settings {
     /// TCP port on `127.0.0.1` for the localhost automation API.
     #[serde(default = "default_local_api_port", alias = "local_api_port")]
     pub local_api_port: u16,
+    /// Whether the local API may also hand out the phone's notifications and
+    /// conversations (`GET /v1/notifications`, `GET /v1/messages`); off by default.
+    #[serde(default, alias = "local_api_private")]
+    pub local_api_private: bool,
     /// Whether AI agents may use NectarLink through MCP, the CLI or the v2
     /// API (off by default; see `crate::agents`).
     pub agent_access_enabled: bool,
@@ -973,6 +977,7 @@ impl Default for Settings {
             shelf_hotkey: "Ctrl+Alt+S".into(),
             local_api_enabled: false,
             local_api_port: default_local_api_port(),
+            local_api_private: false,
             agent_access_enabled: false,
             agent_read_only: false,
             clipboard_auto_copy_received_files: true,
@@ -1268,6 +1273,7 @@ mod tests {
         assert_eq!(def.command_palette_hotkey, "Ctrl+Alt+Space");
         assert_eq!(def.shelf_hotkey, "Ctrl+Alt+S");
         assert!(!def.local_api_enabled);
+        assert!(!def.local_api_private);
         assert_eq!(def.local_api_port, 53320);
         def.apply_runtime();
         assert!(flow_follow_clipboard());
@@ -1329,6 +1335,7 @@ mod tests {
             shelf_hotkey: "Ctrl+Alt+E".into(),
             local_api_enabled: true,
             local_api_port: 54321,
+            local_api_private: true,
             agent_access_enabled: true,
             agent_read_only: true,
             clipboard_auto_copy_received_files: false,

@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-3.0-or-later
-# Sets the workspace's version (a nightly's, say 0.1.5-nightly.7) in
+# Sets the workspace's version (a nightly's, say 0.1.5-nightly.7, or a
+# canary's, the last nightly's with +canary.<commit>) in
 # Cargo.toml: the [workspace.package] version and our own crates' entries in
 # [workspace.dependencies], which must match it. Nothing else changes.
 set -euo pipefail
 
 new="${1:?usage: set-version.sh <version>}"
-if ! [[ "${new}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-nightly\.[0-9]+)?$ ]]; then
-    echo "error: ${new} is neither a release nor a nightly version" >&2
+if ! [[ "${new}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-nightly\.[0-9]+(\+canary\.[0-9a-f]{7,40})?)?$ ]]; then
+    echo "error: ${new} is neither a release, a nightly nor a canary version" >&2
     exit 1
 fi
 manifest="$(dirname "$0")/../../Cargo.toml"

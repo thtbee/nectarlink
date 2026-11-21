@@ -103,6 +103,12 @@ change things that need a step from you, and its notes say so.
   replying, calling, deleting or shutting down always waits for your OK in NectarLink, and
   every agent's activity is listed there
   ([docs](https://github.com/thtbee/nectarlink/blob/main/docs/guide/ai-agents.md)).
+- **Notifications and messages in the local API.** With **Notifications and messages** on
+  under **Settings › Local automation API** (off by default), `GET /v1/notifications` and
+  `GET /v1/messages` give tools the phone's notifications and conversations with their unread
+  counts, so a Start menu panel or a Stream Deck button can show them. Apps hidden in
+  NectarLink stay hidden. Thanks to [@windcom-acd](https://github.com/windcom-acd)
+  ([#441](https://github.com/thtbee/nectarlink/issues/441)).
 - **Share and accept the clipboard separately, per device.** In the phone's Settings, under
   each paired device: **Share my clipboard with it** decides whether what you copy goes
   there by itself (with Elevated on), and **Accept its clipboard** whether what it copies
@@ -432,6 +438,11 @@ change things that need a step from you, and its notes say so.
   thumbnail that arrived made the PC rebuild the entire gallery, so with a large library
   everything lagged while the grid filled in. Thanks to
   [@w-rakeeb](https://github.com/w-rakeeb) ([#442](https://github.com/thtbee/nectarlink/issues/442)).
+- **Less CPU on a PC whose graphics driver isn't working.** Windows then draws the app
+  in software, where the moving honeycomb costs real CPU; it now keeps still there, and
+  the log names the graphics adapter in use. Thanks to
+  [@donsenilo1968](https://github.com/donsenilo1968)
+  ([#456](https://github.com/thtbee/nectarlink/discussions/456)).
 - **NectarLink starts on Windows installs without `cldapi.dll`.** Some trimmed Windows
   builds remove the Cloud Files API, and the app stopped with "cldapi.dll was not found".
   It now starts there, with the phone folders in File Explorer off. Thanks to

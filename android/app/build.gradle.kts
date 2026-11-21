@@ -16,9 +16,12 @@ val appVersion: String = rootProject.file("../Cargo.toml").readLines()
  * their own release, so a nightly install moves to the release when it's out.
  */
 val appVersionCode: Int = run {
-    val (major, minor, patch) = appVersion.substringBefore('-').split('.').map(String::toInt)
+    // A canary (`+canary.<commit>`) is its nightly's code: it installs over that
+    // nightly and other canaries, and the next nightly still updates it.
+    val plain = appVersion.substringBefore('+')
+    val (major, minor, patch) = plain.substringBefore('-').split('.').map(String::toInt)
     require(major <= 213 && minor <= 99 && patch <= 99) { "version $appVersion doesn't fit an Android version code" }
-    val pre = appVersion.substringAfter('-', "")
+    val pre = plain.substringAfter('-', "")
     val build = when {
         pre.isEmpty() -> 999
         pre.startsWith("nightly.") -> pre.removePrefix("nightly.").toInt()

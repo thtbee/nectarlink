@@ -29,6 +29,10 @@ QtObject {
     // Breathes and pulses: the user's setting, never with reduced motion or
     // battery saver (it holds still then).
     readonly property bool combMotion: hive && Preferences.combMotion && !reduceMotion && !AppController.powerSaver
+                                       && !softwareRendering
+    // Windows draws without a graphics driver (the main window says so):
+    // every animated frame then costs CPU, so the comb keeps still.
+    property bool softwareRendering: false
     readonly property color combLine: Qt.rgba(primary.r, primary.g, primary.b,
                                               dark ? comb.lineAlphaDark : comb.lineAlphaLight)
     readonly property color combGlow: dark ? Qt.rgba(1.0, 0.62, 0.18, comb.glowAlphaDark)
@@ -45,7 +49,8 @@ QtObject {
         interval: theme.comb.frameMs
         repeat: true
         running: theme.combClockRunning
-                 && (theme.combMotion || (theme.combPreviewShown && !theme.reduceMotion && !AppController.powerSaver))
+                 && (theme.combMotion || (theme.combPreviewShown && !theme.reduceMotion && !AppController.powerSaver
+                     && !theme.softwareRendering))
         onRunningChanged: {
             if (running)
                 theme._combSince = Date.now()

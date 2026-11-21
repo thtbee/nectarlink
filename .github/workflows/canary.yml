@@ -1,0 +1,176 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Canary: main as it is, for people who want to try what landed before a
+# nightly (#507). Built after each push to main that CI passed, as Bun does,
+# when the apps changed (not for docs, CI or the report service alone).
+# GitHub keeps at most one canary waiting behind the running one (a newer
+# push replaces it), so builds never pile up and the canary catches up with
+# main. Published as one pre-release under the tag `canary`, replaced each
+# time, with fixed file names. The in-app updaters never offer
+# it: its version is the last nightly's with `+canary.<commit>`, so it
+# installs over that nightly (same signing key) and the next nightly or
+# release updates it as usual.
+name: Canary
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Build even if the apps haven't changed since the last canary"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  # Which CI runs passed, and what they built.
+  actions: read
+
+# One canary at a time; a newer one waits rather than cancelling a build.
+concurrency:
+  group: canary
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: Is a canary due?
+    # After CI on a push to main, only when it passed.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    outputs:
+      due: ${{ steps.plan.outputs.due }}
+      version: ${{ steps.plan.outputs.version }}
+      commit: ${{ steps.plan.outputs.commit }}
+      since: ${{ steps.plan.outputs.since }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+      - id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FORCE: ${{ inputs.force || 'false' }}
+        run: |
+          set -euo pipefail
+          commit=$(git rev-parse HEAD)
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+          no() { echo "::notice::no canary: $1"; echo "due=false" >> "$GITHUB_OUTPUT"; exit 0; }
+          # Paths that never change what the apps do: docs (docs-only.sh),
+          # CI itself and the report service, which runs on a server.
+          apps_unchanged() {
+            local paths
+            paths=$(grep -v -E '^(\.github/|tools/report-worker/)' || true)
+            [ -z "$paths" ] || printf '%s\n' "$paths" | bash .github/scripts/docs-only.sh
+          }
+
+          # What the current canary was built from (the tag points at it).
+          since=""
+          if git fetch -q origin "refs/tags/canary:refs/tags/canary" 2>/dev/null; then
+            since=$(git rev-list -n 1 canary)
+          fi
+          echo "since=$since" >> "$GITHUB_OUTPUT"
+          if [ -n "$since" ] && [ "$FORCE" != "true" ]; then
+            [ "$since" = "$commit" ] && no "main hasn't changed since the last canary"
+            if git diff --name-only --no-renames "$since" "$commit" | apps_unchanged; then
+              no "only docs, CI or the report service changed since the last canary"
+            fi
+          fi
+
+          # CI must have built and tested this commit, or one with only
+          # changes like the above after it (as for nightlies).
+          tested=""
+          for run in $(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=main&event=push&status=success&per_page=50" \
+            --jq '.workflow_runs[] | "\(.id):\(.head_sha)"'); do
+            built_here=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/${run%%:*}/jobs?per_page=100" \
+              --jq '[.jobs[] | select(.name == "Windows app (x64)" and .conclusion == "success")] | length')
+            if [ "$built_here" -gt 0 ]; then tested="${run#*:}"; break; fi
+          done
+          [ -n "$tested" ] || no "no CI run on main has built and tested the code yet"
+          if [ "$tested" != "$commit" ]; then
+            git merge-base --is-ancestor "$tested" "$commit" ||
+              no "the last tested commit, ${tested:0:7}, isn't on main any more"
+            git diff --name-only --no-renames "$tested" "$commit" | apps_unchanged ||
+              no "CI hasn't built and tested the code at ${commit:0:7} yet"
+          fi
+
+          # The last nightly's version, as nightly.yml counts them, with this
+          # commit as build metadata.
+          current=$(grep -m1 '^version = ' Cargo.toml | cut -d'"' -f2)
+          if gh release view "v$current" --repo "$GITHUB_REPOSITORY" --json isDraft --jq '.isDraft' 2>/dev/null | grep -qx false; then
+            IFS=. read -r major minor patch <<< "$current"
+            base="$major.$minor.$((patch + 1))"
+          else
+            base="$current"
+          fi
+          last=$(gh release list --repo "$GITHUB_REPOSITORY" --limit 100 --json tagName \
+            --jq "[.[].tagName | select(startswith(\"v$base-nightly.\")) | ltrimstr(\"v$base-nightly.\") | tonumber] | max // 0")
+          [ "$last" -ge 1 ] || last=1
+          version="$base-nightly.$last+canary.${commit:0:7}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "due=true" >> "$GITHUB_OUTPUT"
+          echo "::notice::building canary $version from ${commit:0:7}"
+
+  build:
+    name: Build
+    needs: plan
+    if: needs.plan.outputs.due == 'true'
+    uses: ./.github/workflows/build.yml
+    with:
+      version: ${{ needs.plan.outputs.version }}
+    secrets:
+      ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+
+  publish:
+    name: Publish the canary
+    needs: [plan, build]
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ needs.plan.outputs.version }}
+      COMMIT: ${{ needs.plan.outputs.commit }}
+      SINCE: ${{ needs.plan.outputs.since }}
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: files
+          merge-multiple: true
+      - name: Replace the canary pre-release
+        run: |
+          set -euo pipefail
+          cd files
+          # Fixed names, so a download link keeps working: the version in
+          # each file name becomes "canary". install.sh installs releases,
+          # so it isn't part of a canary.
+          rm -f install.sh
+          for f in *; do
+            n="${f//$VERSION/canary}"
+            [ "$f" = "$n" ] || mv -- "$f" "$n"
+          done
+          sha256sum * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+          compare=""
+          if [ -n "$SINCE" ] && [ "$SINCE" != "$COMMIT" ]; then
+            compare="What changed since the last canary: https://github.com/$GITHUB_REPOSITORY/compare/${SINCE:0:7}...${COMMIT:0:7}"
+          fi
+          printf '%s\n' \
+            "> [!WARNING]" \
+            "> **This is an untested build, not a release.** It's main as it was at ${COMMIT:0:7}, built automatically. It can crash, lose settings or pairings, drain the battery or break things that work in the Nightly and the release. Only install it if you're fine with that, and keep a way back (the [releases](https://github.com/$GITHUB_REPOSITORY/releases) stay where they are)." \
+            "" \
+            "Canary **$VERSION**, built $(date -u +'%Y-%m-%d %H:%M') UTC. It's rebuilt after changes to main that pass CI, and each one replaces the last." \
+            "" \
+            "- The apps don't update to a canary by themselves, and don't warn about the next one: download it again when you want a newer one." \
+            "- It installs over the Nightly it's based on (the phone app is signed with the same key). The next Nightly or release updates it as usual." \
+            "- Hit a problem? Say it's a canary and give the version above: in an [issue](https://github.com/$GITHUB_REPOSITORY/issues) or the Hive on Discord: https://discord.gg/AA2Dp8PYqf" \
+            "" \
+            "$compare" > notes.md
+          # The old one goes first; its tag moves to this commit.
+          gh release delete canary --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes 2>/dev/null || true
+          gh release create canary * \
+            --repo "$GITHUB_REPOSITORY" --target "$COMMIT" --prerelease --latest=false \
+            --title "Canary (untested): $VERSION" --notes-file notes.md

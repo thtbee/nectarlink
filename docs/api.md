@@ -247,6 +247,71 @@ Returns recent cross-device timeline items. Accepts optional query parameters `?
 `timestamp` is in Unix seconds, and `target` is the saved path (several are
 separated by newlines) or the link.
 
+### Notifications and messages
+
+These two are off even when the API is on. Turn on **Notifications and
+messages** under **Settings → Local automation API** (`"localApiPrivate": true`
+in `desktop-settings.json`). Until then both answer `403`
+(`{"ok":false,"error":"not_allowed"}`). Both take an optional `?device=` (an
+ID, the start of one, or part of a device's name); a device that isn't paired
+answers `404` (`unknown_device`).
+
+### `GET /v1/notifications`
+
+The phone notifications shown on this PC, newest first, with ongoing ones
+(calls, timers, downloads) first as in the feed. Apps hidden in NectarLink stay
+out. Optional `?limit=20` (1 to 100).
+
+**Response (`200 OK`)**:
+```json
+{
+  "ok": true,
+  "notifications": [
+    {
+      "id": "0|com.whatsapp|1|null|10123",
+      "deviceId": "a1b2c3...",
+      "app": "com.whatsapp",
+      "appName": "WhatsApp",
+      "title": "Sam",
+      "text": "On my way",
+      "sub": null,
+      "timestamp": 1730000000,
+      "silent": false,
+      "ongoing": false
+    }
+  ]
+}
+```
+
+### `GET /v1/messages`
+
+Conversations, newest first, with unread counts: SMS and MMS from each
+connected Android phone (`"kind": "sms"`), and chats from notifications such as
+WhatsApp or Signal kept on this PC (`"kind": "chat"`). A phone that doesn't
+answer within 5 seconds leaves its SMS out.
+
+**Response (`200 OK`)**:
+```json
+{
+  "ok": true,
+  "unreadTotal": 3,
+  "threads": [
+    {
+      "id": "42",
+      "deviceId": "a1b2c3...",
+      "kind": "sms",
+      "app": "",
+      "appName": "SMS",
+      "title": "Sam",
+      "group": false,
+      "lastMessage": "See you at 6",
+      "unread": 2,
+      "timestamp": 1730000000
+    }
+  ]
+}
+```
+
 ---
 
 ## 4. Examples

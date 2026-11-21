@@ -10,7 +10,7 @@ on:
   workflow_call:
     inputs:
       version:
-        description: "The version to build: 1.2.3, or a nightly's 1.2.3-nightly.N"
+        description: "The version to build: 1.2.3, a nightly's 1.2.3-nightly.N, or a canary's 1.2.3-nightly.N+canary.<commit>"
         required: true
         type: string
     secrets:

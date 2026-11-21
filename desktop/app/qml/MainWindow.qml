@@ -469,6 +469,13 @@ NativeWindow {
         pulseReach: 1.05
     }
 
+    // No graphics driver: Windows draws in software, so motion stays off.
+    Binding {
+        target: Theme
+        property: "softwareRendering"
+        value: window.softwareRendering === true
+    }
+
     // The comb's clock runs while this window is in front and showing Hive.
     Binding {
         target: Theme
