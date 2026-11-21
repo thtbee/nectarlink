@@ -22,7 +22,27 @@ const WAIT: Duration = Duration::from_secs(20);
 
 type MmsRecord = (Vec<String>, String, Vec<nectarlink_core::SmsAttachment>);
 type RichClipboardRecord = (String, Option<String>, Option<String>);
-type LinuxSigningPause = (tokio::sync::oneshot::Sender<()>, std::sync::mpsc::Receiver<()>);
+type LinuxUnlockPause = (tokio::sync::oneshot::Sender<()>, std::sync::mpsc::Receiver<()>);
+
+fn wait_for_linux_biometric(
+    pause: &Mutex<Option<LinuxUnlockPause>>,
+    attempt: &nectarlink_core::linux_unlock::Attempt,
+) -> Result<(), nectarlink_core::unlock::KeyRefusal> {
+    let pause = pause.lock().unwrap().take();
+    let Some((started, resume)) = pause else { return Ok(()) };
+    started.send(()).unwrap();
+    let deadline = std::time::Instant::now() + WAIT;
+    loop {
+        if attempt.is_cancelled() {
+            return Err(nectarlink_core::unlock::KeyRefusal::Declined);
+        }
+        match resume.recv_timeout(Duration::from_millis(10)) {
+            Ok(()) => return Ok(()),
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout) if std::time::Instant::now() < deadline => {}
+            err => panic!("test did not resume the biometric: {err:?}"),
+        }
+    }
+}
 
 #[derive(Debug, Default)]
 struct RecordingPlatform {
@@ -70,8 +90,9 @@ struct RecordingPlatform {
     unlock_forgotten: Mutex<Vec<(nectarlink_core::DeviceId, Option<String>)>>,
     linux_unlock_asks: Mutex<Vec<nectarlink_core::linux_unlock::Ask>>,
     linux_unlock_keys: Mutex<std::collections::HashMap<(nectarlink_core::DeviceId, u32), Vec<u8>>>,
-    linux_signing_pause: Mutex<Option<LinuxSigningPause>>,
-    linux_forget_pause: Mutex<Option<LinuxSigningPause>>,
+    linux_enrollment_pause: Mutex<Option<LinuxUnlockPause>>,
+    linux_signing_pause: Mutex<Option<LinuxUnlockPause>>,
+    linux_forget_pause: Mutex<Option<LinuxUnlockPause>>,
     phone_toggles: Mutex<Vec<(String, nectarlink_core::PhoneToggleValue)>>,
     deck_presses: Mutex<Vec<String>>,
     pc_audio_changes: Mutex<Vec<(Option<u8>, Option<bool>)>>,
@@ -626,6 +647,7 @@ impl Platform for RecordingPlatform {
         &self,
         pc: &nectarlink_core::DeviceId,
         ask: &nectarlink_core::linux_unlock::Ask,
+        attempt: &nectarlink_core::linux_unlock::Attempt,
     ) -> Result<Vec<u8>, nectarlink_core::unlock::KeyRefusal> {
         use ring::signature::{ECDSA_P256_SHA256_ASN1_SIGNING, EcdsaKeyPair, KeyPair};
 
@@ -633,6 +655,7 @@ impl Platform for RecordingPlatform {
         let rng = ring::rand::SystemRandom::new();
         let pkcs8 = EcdsaKeyPair::generate_pkcs8(&ECDSA_P256_SHA256_ASN1_SIGNING, &rng).unwrap();
         let key = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_ASN1_SIGNING, pkcs8.as_ref(), &rng).unwrap();
+        wait_for_linux_biometric(&self.linux_enrollment_pause, attempt)?;
         self.linux_unlock_keys.lock().unwrap().insert((*pc, ask.uid), pkcs8.as_ref().to_vec());
         Ok(key.public_key().as_ref().to_vec())
     }
@@ -642,6 +665,7 @@ impl Platform for RecordingPlatform {
         pc: &nectarlink_core::DeviceId,
         uid: u32,
         transcript: &[u8],
+        attempt: &nectarlink_core::linux_unlock::Attempt,
     ) -> Result<Vec<u8>, nectarlink_core::unlock::KeyRefusal> {
         use nectarlink_core::unlock::KeyRefusal;
         use ring::signature::{ECDSA_P256_SHA256_ASN1_SIGNING, EcdsaKeyPair};
@@ -655,11 +679,7 @@ impl Platform for RecordingPlatform {
         let key = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_ASN1_SIGNING, pkcs8, &rng).unwrap();
         let signature = key.sign(&rng, transcript).unwrap().as_ref().to_vec();
         drop(keys);
-        let pause = self.linux_signing_pause.lock().unwrap().take();
-        if let Some((started, resume)) = pause {
-            started.send(()).unwrap();
-            resume.recv_timeout(WAIT).unwrap();
-        }
+        wait_for_linux_biometric(&self.linux_signing_pause, attempt)?;
         Ok(signature)
     }
 
@@ -3783,6 +3803,11 @@ async fn linux_unlock_round_trip_binds_the_paired_devices_and_account() {
     assert!(matches!(enroll().await, Err(Error::Denied)));
     assert!(phone.platform.linux_unlock_asks.lock().unwrap().is_empty());
     phone.node.set_device_toggle(pc_id, "unlock", true).unwrap();
+    assert!(pc.node.linux_unlock_enroll(phone_id, 0, "root").await.is_err());
+    assert!(matches!(
+        pc.node.linux_unlock_sign(LinuxUnlockChallenge { uid: 0, ..challenge }).await,
+        Err(Error::Denied)
+    ));
     assert!(matches!(pc.node.linux_unlock_sign(challenge).await, Err(Error::NotFound)));
     assert!(matches!(
         pc.node.linux_unlock_enroll(phone_id, challenge.uid, "bad\nlabel").await,
@@ -3800,6 +3825,50 @@ async fn linux_unlock_round_trip_binds_the_paired_devices_and_account() {
     let key = UnparsedPublicKey::new(&ECDSA_P256_SHA256_ASN1, key);
     let signature = with_timeout("Linux unlock signing", pc.node.linux_unlock_sign(challenge)).await.unwrap();
     key.verify(&challenge.signing_bytes(), &signature).unwrap();
+
+    let (started, wait_started) = tokio::sync::oneshot::channel();
+    let (resume, wait_resume) = std::sync::mpsc::channel();
+    *phone.platform.linux_signing_pause.lock().unwrap() = Some((started, wait_resume));
+    let mut cancelled = Box::pin(pc.node.linux_unlock_sign(challenge));
+    tokio::select! {
+        result = &mut cancelled => panic!("first unlock finished before cancellation: {result:?}"),
+        started = wait_started => started.unwrap(),
+    };
+    drop(cancelled);
+    let retry_challenge = LinuxUnlockChallenge { nonce: [0x58; 32], ..challenge };
+    let retry = tokio::time::timeout(Duration::from_secs(1), async {
+        loop {
+            match pc.node.linux_unlock_sign(retry_challenge).await {
+                Err(Error::Denied) => tokio::time::sleep(Duration::from_millis(25)).await,
+                result => break result,
+            }
+        }
+    })
+    .await;
+    let _ = resume.send(());
+    let retry = retry.expect("cancelled phone prompt should release the slot").unwrap();
+    key.verify(&retry_challenge.signing_bytes(), &retry).unwrap();
+
+    let (started, wait_started) = tokio::sync::oneshot::channel();
+    let (resume, wait_resume) = std::sync::mpsc::channel();
+    *phone.platform.linux_enrollment_pause.lock().unwrap() = Some((started, wait_resume));
+    let mut cancelled = Box::pin(enroll());
+    tokio::select! {
+        result = &mut cancelled => panic!("enrollment finished before cancellation: {result:?}"),
+        started = wait_started => started.unwrap(),
+    };
+    drop(cancelled);
+    let retry_signature = with_timeout("signing after cancelled enrollment", async {
+        loop {
+            match pc.node.linux_unlock_sign(retry_challenge).await {
+                Err(Error::Denied) => tokio::time::sleep(Duration::from_millis(25)).await,
+                result => break result.unwrap(),
+            }
+        }
+    })
+    .await;
+    drop(resume);
+    key.verify(&retry_challenge.signing_bytes(), &retry_signature).unwrap();
 
     for other in [
         LinuxUnlockChallenge { pc: DeviceId([0xab; 32]), ..challenge },
@@ -3846,7 +3915,7 @@ async fn linux_unlock_round_trip_binds_the_paired_devices_and_account() {
         })
         .await;
         phone.node.set_device_toggle(pc_id, "unlock", true).unwrap();
-        resume.send(()).unwrap();
+        let _ = resume.send(());
     });
     assert!(matches!(pending, Err(Error::Denied)));
     let after_cleanup = with_timeout("phone finishes deleting the old key", async {

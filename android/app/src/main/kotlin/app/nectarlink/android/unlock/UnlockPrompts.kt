@@ -9,23 +9,25 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.hardware.biometrics.BiometricManager
+import android.hardware.biometrics.BiometricPrompt
 import android.os.Build
 import android.os.Bundle
+import android.os.CancellationSignal
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import android.widget.TextView
+import androidx.activity.ComponentActivity
 import androidx.annotation.RequiresApi
-import androidx.biometric.BiometricManager
-import androidx.biometric.BiometricPrompt
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
-import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import app.nectarlink.android.R
+import app.nectarlink.core.LinuxUnlockAttempt
 import java.security.Signature
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
@@ -33,9 +35,31 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import javax.crypto.Cipher
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.future.asDeferred
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.selects.select
+import kotlinx.coroutines.withTimeoutOrNull
+
+internal suspend fun <T> awaitUnlockResult(
+    result: CompletableFuture<T?>,
+    waitCancelled: suspend () -> Unit,
+): T? = coroutineScope {
+    val answer = result.asDeferred()
+    val cancelled = async(start = CoroutineStart.UNDISPATCHED) { waitCancelled() }
+    try {
+        select {
+            cancelled.onAwait { null }
+            answer.onAwait { it }
+        }
+    } finally {
+        cancelled.cancel()
+    }
+}
 
 /**
  * Asks the phone's owner to use a PC's unlock key (ADR 0009): a high-priority notification
@@ -55,7 +79,8 @@ object UnlockPrompts {
     ) {
         val result = CompletableFuture<BiometricPrompt.CryptoObject?>()
         val showing = AtomicBoolean(false)
-        @Volatile var cancel: (() -> Unit)? = null
+        val cancellationSignal = CancellationSignal()
+        @Volatile var close: (() -> Unit)? = null
     }
 
     private val pending = ConcurrentHashMap<Int, Pending>()
@@ -78,23 +103,37 @@ object UnlockPrompts {
         userName: String,
         signature: Signature,
         timeoutMs: Long,
+        attempt: LinuxUnlockAttempt?,
         confirmed: CompletableFuture<String?>? = null,
     ): Signature? = ask(
         context,
         Pending(pcName, userName, confirmed != null, BiometricPrompt.CryptoObject(signature), confirmed),
         timeoutMs,
+        attempt,
     )?.signature
 
-    private fun ask(context: Context, request: Pending, timeoutMs: Long): BiometricPrompt.CryptoObject? {
+    private fun ask(
+        context: Context,
+        request: Pending,
+        timeoutMs: Long,
+        attempt: LinuxUnlockAttempt? = null,
+    ): BiometricPrompt.CryptoObject? {
+        if (attempt?.isCancelled() == true) return null
         val id = ids.incrementAndGet()
         pending[id] = request
         try {
             show(context, id, request)
-            return runCatching { request.result.get(timeoutMs, TimeUnit.MILLISECONDS) }.getOrNull()
+            if (attempt == null) return runCatching { request.result.get(timeoutMs, TimeUnit.MILLISECONDS) }.getOrNull()
+            return runBlocking {
+                withTimeoutOrNull(timeoutMs) { awaitUnlockResult(request.result, attempt::waitCancelled) }
+            }
         } finally {
             pending.remove(id)
             if (request.result.complete(null)) {
-                Handler(Looper.getMainLooper()).post { request.cancel?.invoke() }
+                Handler(Looper.getMainLooper()).post {
+                    request.cancellationSignal.cancel()
+                    request.close?.invoke()
+                }
             }
             runCatching { NotificationManagerCompat.from(context).cancel(TAG, id) }
         }
@@ -155,7 +194,7 @@ internal class EnrollmentComparison : ViewModel() {
 }
 
 /** Shows the biometric prompt for one [UnlockPrompts] request, then closes. */
-class UnlockPromptActivity : FragmentActivity() {
+class UnlockPromptActivity : ComponentActivity() {
     companion object {
         const val EXTRA_ID = "unlock_request"
     }
@@ -175,15 +214,15 @@ class UnlockPromptActivity : FragmentActivity() {
             finish()
             return
         }
-        val first = request.showing.compareAndSet(false, true)
-        if ((!first && savedInstanceState == null) || request.result.isDone) {
+        if (!request.showing.compareAndSet(false, true) || request.result.isDone) {
             finish()
             return
         }
-        prompt(request, first)
+        prompt(request)
     }
 
-    private fun prompt(request: UnlockPrompts.Pending, first: Boolean) {
+    @RequiresApi(Build.VERSION_CODES.R)
+    private fun prompt(request: UnlockPrompts.Pending) {
         val title = if (request.enroll) {
             getString(R.string.unlock_enroll_title, request.pcName)
         } else {
@@ -194,38 +233,39 @@ class UnlockPromptActivity : FragmentActivity() {
             request.enroll -> getString(R.string.unlock_enroll_text, request.pcName)
             else -> getString(R.string.unlock_prompt_text)
         }
-        val info = BiometricPrompt.PromptInfo.Builder()
+        val executor = ContextCompat.getMainExecutor(this)
+        val prompt = BiometricPrompt.Builder(this)
             .setTitle(title)
             .setSubtitle(getString(R.string.unlock_request_text, request.userName))
             .setDescription(description)
             .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
             .setConfirmationRequired(true)
-            .setNegativeButtonText(getString(R.string.action_cancel))
+            .setNegativeButton(getString(R.string.action_cancel), executor) { _, _ -> done(request, null) }
             .build()
-        val prompt = BiometricPrompt(
-            this,
-            ContextCompat.getMainExecutor(this),
-            object : BiometricPrompt.AuthenticationCallback() {
-                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                    done(request, result.cryptoObject)
-                }
-
-                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                    done(request, null)
-                }
-            },
-        )
-        request.cancel = {
-            prompt.cancelAuthentication()
-            finish()
-        }
+        request.close = ::finish
         if (request.result.isDone) {
             finish()
-        } else if (first) {
-            runCatching { prompt.authenticate(info, request.crypto) }.onFailure { done(request, null) }
+            return
         }
+        runCatching {
+            prompt.authenticate(
+                request.crypto,
+                request.cancellationSignal,
+                executor,
+                object : BiometricPrompt.AuthenticationCallback() {
+                    override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                        done(request, result.cryptoObject)
+                    }
+
+                    override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                        done(request, null)
+                    }
+                },
+            )
+        }.onFailure { done(request, null) }
     }
 
+    @RequiresApi(Build.VERSION_CODES.R)
     private fun done(request: UnlockPrompts.Pending, crypto: BiometricPrompt.CryptoObject?) {
         if (!request.result.complete(crypto)) return
         val confirmed = request.confirmed

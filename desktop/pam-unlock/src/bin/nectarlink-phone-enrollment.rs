@@ -34,8 +34,11 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             writeln!(tty, "Linux account {account:?} (UID {})", enrollment.uid)?;
             writeln!(tty, "PC {}", enrollment.pc)?;
             writeln!(tty, "Phone {}", enrollment.phone)?;
-            writeln!(tty, "Public key SHA-256 {}", enrollment.fingerprint())?;
-            write!(tty, "Enter the matching fingerprint shown on the phone to authorize enrollment: ")?;
+            let fingerprint = enrollment.fingerprint();
+            let groups =
+                fingerprint.as_bytes().chunks(8).map(std::str::from_utf8).collect::<Result<Vec<_>, _>>()?;
+            writeln!(tty, "Public key SHA-256 {}", groups.join(" "))?;
+            write!(tty, "Enter the unspaced fingerprint from your phone to authorize enrollment: ")?;
             tty.flush()?;
             let mut confirmation = String::new();
             BufReader::new(&tty).take(128).read_line(&mut confirmation)?;

@@ -29,6 +29,7 @@ pub mod types {
     pub const LINUX_UNLOCK_SIGN: &str = "unlock.linux.v1.sign";
     pub const LINUX_UNLOCK_SIGNED: &str = "unlock.linux.v1.signed";
     pub const LINUX_UNLOCK_FORGET: &str = "unlock.linux.v1.forget";
+    pub const LINUX_UNLOCK_CANCEL: &str = "unlock.linux.v1.cancel";
 
     pub const PAIR_REQUEST: &str = "pair.request";
     pub const PAIR_ACCEPT: &str = "pair.accept";
@@ -4911,7 +4912,7 @@ impl std::fmt::Debug for LinuxUnlockEnroll {
 
 impl LinuxUnlockEnroll {
     pub fn is_valid(&self) -> bool {
-        unlock::name_ok(&self.user_name) && !self.user_name.trim().is_empty()
+        self.uid != 0 && unlock::name_ok(&self.user_name) && !self.user_name.trim().is_empty()
     }
 }
 
@@ -4991,6 +4992,18 @@ pub enum LinuxUnlockForget {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn linux_unlock_enrollment_requires_a_non_root_account() {
+        let request = LinuxUnlockEnroll {
+            pc: DeviceId([1; 32]),
+            phone: DeviceId([2; 32]),
+            uid: 0,
+            user_name: "root".into(),
+        };
+        assert!(!request.is_valid());
+        assert!(LinuxUnlockEnroll { uid: 1000, user_name: "bee".into(), ..request }.is_valid());
+    }
+
     #[test]
     fn linux_unlock_signs_the_fixed_v1_transcript() {
         let challenge = LinuxUnlockChallenge {

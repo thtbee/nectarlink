@@ -2,7 +2,6 @@
 use std::{
     fs::File,
     io::{self, Read, Write},
-    net::Shutdown,
     os::unix::{
         fs::{FileTypeExt, MetadataExt},
         net::UnixStream,
@@ -22,7 +21,7 @@ use serde::{Deserialize, Serialize};
 use crate::store::{descriptor_path, open_trusted_directory};
 
 const SOCKET_NAME: &str = "nectarlink-phone-unlock.sock";
-const VERSION: u32 = 1;
+const VERSION: u32 = 2;
 const MAX_REPLY: usize = 1024;
 
 #[derive(Serialize)]
@@ -73,8 +72,10 @@ pub(crate) fn request_signature(
     stream.set_nonblocking(false)?;
     stream.set_write_timeout(Some(remaining(deadline)?))?;
     let request = serde_json::to_vec(&Request { version: VERSION, operation: "sign", challenge })?;
+    let length = u32::try_from(request.len()).map_err(io::Error::other)?;
+    stream.write_all(&length.to_be_bytes())?;
+    stream.set_write_timeout(Some(remaining(deadline)?))?;
     stream.write_all(&request)?;
-    stream.shutdown(Shutdown::Write)?;
     read_signature(&mut stream, deadline)
 }
 

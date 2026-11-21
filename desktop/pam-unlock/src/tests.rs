@@ -33,16 +33,16 @@ fn only_a_signature_over_this_attempt_authenticates() {
 #[test]
 fn relay_rejects_malformed_messages() {
     for reply in [
-        br#"{"version":1,"signature":[1,2]}"#.as_slice(),
-        br#"{"version":2,"signature":[1,2]}"#,
-        br#"{"version":1,"success":true}"#,
-        br#"{"version":1,"signature":[1"#,
+        br#"{"version":2,"signature":[1,2]}"#.as_slice(),
+        br#"{"version":1,"signature":[1,2]}"#,
+        br#"{"version":2,"success":true}"#,
+        br#"{"version":2,"signature":[1"#,
     ] {
         let (mut server, mut client) = UnixStream::pair().unwrap();
         server.write_all(reply).unwrap();
         server.shutdown(Shutdown::Write).unwrap();
         let result = read_signature(&mut client, Instant::now() + Duration::from_secs(2));
-        if reply == br#"{"version":1,"signature":[1,2]}"# {
+        if reply == br#"{"version":2,"signature":[1,2]}"# {
             assert_eq!(result.unwrap(), [1, 2]);
         } else {
             assert!(result.is_err());

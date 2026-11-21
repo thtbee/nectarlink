@@ -10,13 +10,16 @@ import android.security.keystore.KeyInfo
 import android.security.keystore.KeyPermanentlyInvalidatedException
 import android.security.keystore.KeyProperties
 import androidx.annotation.RequiresApi
+import app.nectarlink.core.LinuxUnlockAttempt
 import app.nectarlink.core.UnlockRefusal
 import java.math.BigInteger
 import java.security.KeyFactory
+import java.security.KeyPair
 import java.security.KeyPairGenerator
 import java.security.KeyStore
 import java.security.MessageDigest
 import java.security.PrivateKey
+import java.security.ProviderException
 import java.security.Signature
 import java.security.interfaces.ECPublicKey
 import java.security.spec.ECGenParameterSpec
@@ -54,12 +57,20 @@ internal object LinuxUnlockKeys {
 
     @RequiresApi(Build.VERSION_CODES.R)
     @SuppressLint("ApplySharedPref")
-    fun enroll(context: Context, pc: String, pcName: String, userName: String, uid: UInt, timeoutMs: Long): ByteArray {
+    fun enroll(
+        context: Context,
+        pc: String,
+        pcName: String,
+        userName: String,
+        uid: UInt,
+        timeoutMs: Long,
+        attempt: LinuxUnlockAttempt? = null,
+    ): ByteArray {
         if (timeoutMs <= 0) throw UnlockRefusal.Declined()
         val startedAt = SystemClock.elapsedRealtime()
         fun remainingMs(): Long {
             val remaining = timeoutMs - (SystemClock.elapsedRealtime() - startedAt)
-            if (remaining <= 0) throw UnlockRefusal.Declined()
+            if (remaining <= 0 || attempt?.isCancelled() == true) throw UnlockRefusal.Declined()
             return remaining
         }
 
@@ -70,19 +81,18 @@ internal object LinuxUnlockKeys {
         try {
             val prefs = prefs(context)
             val previous: String?
+            val labelsChanged: Boolean
             val (alias, signature, publicKey) = synchronized(this) {
                 remainingMs()
                 val store = keyStore()
                 previous = prefs.getString(account, null)
                 val record = previous?.let(::JSONObject)
-                val existingAlias = record?.getString("alias")
-                if (existingAlias != null && !existingAlias.startsWith(account)) throw UnlockRefusal.KeyGone()
-                val existing = existingAlias?.let { reusableKey(store, it) }
-                if (record != null && existingAlias != null && existing != null) {
-                    if (record.getString("pc") != pcName || record.getString("user") != userName) {
-                        throw UnlockRefusal.Declined()
-                    }
-                    Triple(existingAlias, existing.first, encodeLinuxUnlockPublicKey(existing.second.w))
+                val previousAlias = record?.getString("alias")
+                if (previousAlias != null && !previousAlias.startsWith(account)) throw UnlockRefusal.KeyGone()
+                val existing = previousAlias?.let { reusableKey(store, it) }
+                labelsChanged = record != null && (record.getString("pc") != pcName || record.getString("user") != userName)
+                if (previousAlias != null && existing != null) {
+                    Triple(previousAlias, existing.first, encodeLinuxUnlockPublicKey(existing.second.w))
                 } else {
                     val alias = account + UUID.randomUUID()
                     stagedAlias = alias
@@ -90,7 +100,7 @@ internal object LinuxUnlockKeys {
                     Triple(alias, signature, encodeLinuxUnlockPublicKey(publicKey.w))
                 }
             }
-            val authorized = UnlockPrompts.askToSign(context, pcName, userName, signature, remainingMs(), confirmed)
+            val authorized = UnlockPrompts.askToSign(context, pcName, userName, signature, remainingMs(), attempt, confirmed)
                 ?: throw UnlockRefusal.Declined()
             val fingerprint = synchronized(this) {
                 remainingMs()
@@ -106,6 +116,8 @@ internal object LinuxUnlockKeys {
                 remainingMs()
                 if (stagedAlias != null) {
                     staleAliases = store.aliases().toList().filter { it.startsWith(account) && it != alias }
+                }
+                if (stagedAlias != null || labelsChanged) {
                     val record = JSONObject().put("alias", alias).put("pc", pcName).put("user", userName)
                     remainingMs()
                     try {
@@ -153,16 +165,10 @@ internal object LinuxUnlockKeys {
 
     @RequiresApi(Build.VERSION_CODES.R)
     private fun createKey(alias: String): Pair<Signature, ECPublicKey> {
-        val spec = KeyGenParameterSpec.Builder(alias, KeyProperties.PURPOSE_SIGN)
-            .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1"))
-            .setDigests(KeyProperties.DIGEST_SHA256)
-            .setUserAuthenticationRequired(true)
-            .setUserAuthenticationParameters(0, KeyProperties.AUTH_BIOMETRIC_STRONG)
-            .setInvalidatedByBiometricEnrollment(true)
-            .build()
-        val key = KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC, STORE).run {
-            initialize(spec)
-            generateKeyPair()
+        val key = try {
+            generateKey(alias, strongBox = true)
+        } catch (_: ProviderException) {
+            generateKey(alias, strongBox = false)
         }
         val info = KeyFactory.getInstance(KeyProperties.KEY_ALGORITHM_EC, STORE)
             .getKeySpec(key.private, KeyInfo::class.java)
@@ -171,7 +177,31 @@ internal object LinuxUnlockKeys {
     }
 
     @RequiresApi(Build.VERSION_CODES.R)
-    fun sign(context: Context, pc: String, uid: UInt, transcript: ByteArray, timeoutMs: Long): ByteArray {
+    private fun generateKey(alias: String, strongBox: Boolean): KeyPair {
+        val spec = KeyGenParameterSpec.Builder(alias, KeyProperties.PURPOSE_SIGN)
+            .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1"))
+            .setDigests(KeyProperties.DIGEST_SHA256)
+            .setUserAuthenticationRequired(true)
+            .setUserAuthenticationParameters(0, KeyProperties.AUTH_BIOMETRIC_STRONG)
+            .setInvalidatedByBiometricEnrollment(true)
+            .setIsStrongBoxBacked(strongBox)
+            .build()
+        return KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_EC, STORE).run {
+            initialize(spec)
+            generateKeyPair()
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.R)
+    fun sign(
+        context: Context,
+        pc: String,
+        uid: UInt,
+        transcript: ByteArray,
+        timeoutMs: Long,
+        attempt: LinuxUnlockAttempt? = null,
+    ): ByteArray {
+        if (attempt?.isCancelled() == true) throw UnlockRefusal.Declined()
         val account = accountPrefix(pc, uid)
         val stored = prefs(context).getString(account, null) ?: throw UnlockRefusal.KeyGone()
         try {
@@ -180,12 +210,15 @@ internal object LinuxUnlockKeys {
             if (!alias.startsWith(account)) throw UnlockRefusal.KeyGone()
             val key = keyStore().getKey(alias, null) as? PrivateKey ?: throw UnlockRefusal.KeyGone()
             val authorized = UnlockPrompts.askToSign(
-                context, record.getString("pc"), record.getString("user"), signer(key), timeoutMs,
+                context, record.getString("pc"), record.getString("user"), signer(key), timeoutMs, attempt,
             ) ?: throw UnlockRefusal.Declined()
             return synchronized(this) {
+                if (attempt?.isCancelled() == true) throw UnlockRefusal.Declined()
                 if (prefs(context).getString(account, null) != stored) throw UnlockRefusal.KeyGone()
                 authorized.update(transcript)
-                authorized.sign()
+                val signed = authorized.sign()
+                if (attempt?.isCancelled() == true) throw UnlockRefusal.Declined()
+                signed
             }
         } catch (err: Exception) {
             if (err is UnlockRefusal) throw err

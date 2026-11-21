@@ -64,7 +64,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import app.nectarlink.android.NectarlinkApplication
-import app.nectarlink.android.BuildConfig
 import app.nectarlink.android.R
 import app.nectarlink.android.core.Core
 import app.nectarlink.android.core.CoreState
@@ -332,10 +331,8 @@ class MainActivity : ComponentActivity() {
      * from Recents, and that must not start a stale pairing.
      */
     private fun handlePairingLink(intent: Intent?) {
-        val incoming = intent?.takeIf { it.action == Intent.ACTION_VIEW }?.dataString ?: return
-        val prefix = "${BuildConfig.PAIRING_SCHEME}://pair?"
-        if (!incoming.startsWith(prefix)) return
-        val link = "nectarlink://pair?" + incoming.removePrefix(prefix)
+        val link = intent?.takeIf { it.action == Intent.ACTION_VIEW }?.dataString ?: return
+        if (!link.startsWith("nectarlink://pair?")) return
         if (intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) return
         if (PairingLinks(this).isUsed(link)) return
         pendingPairingLink = link

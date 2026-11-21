@@ -1,4 +1,7 @@
 #%PAM-1.0
-# If the locker uses pam_faillock, apply its preauth policy here too.
+# Enable before installing if the password stack uses pam_faillock.
+# Use the same policy options as that stack.
 # auth requisite pam_faillock.so preauth silent
 auth required libpam_nectarlink_phone_unlock.so
+account requisite libpam_nectarlink_phone_unlock.so
+# Include the password stack's account policy for lockers that call pam_acct_mgmt.

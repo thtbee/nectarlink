@@ -19,6 +19,7 @@ use crate::{
 };
 
 const PAM_SUCCESS: c_int = 0;
+const PAM_PERM_DENIED: c_int = 6;
 const PAM_AUTH_ERR: c_int = 7;
 const PAM_SERVICE: c_int = 1;
 const PAM_USER: c_int = 2;
@@ -42,12 +43,11 @@ unsafe extern "C" fn pam_sm_authenticate(
     argc: c_int,
     argv: *const *const c_char,
 ) -> c_int {
-    let deadline = Instant::now() + Duration::from_secs(30);
-    std::panic::catch_unwind(|| {
+    pam_result(PAM_AUTH_ERR, || {
+        let deadline = Instant::now() + Duration::from_secs(30);
         // Linux-PAM owns the handle and the module arguments for this call.
-        unsafe { authenticate(pamh, argc, argv, deadline) }.map_or(PAM_AUTH_ERR, |()| PAM_SUCCESS)
+        unsafe { authenticate(pamh, argc, argv, deadline) }
     })
-    .unwrap_or(PAM_AUTH_ERR)
 }
 
 #[unsafe(no_mangle)]
@@ -58,7 +58,25 @@ unsafe extern "C" fn pam_sm_setcred(
     _argv: *const *const c_char,
 ) -> c_int {
     // This authentication mechanism grants no supplementary credentials.
-    if unsafe { local_pam_uid(pamh) }.is_ok() { PAM_SUCCESS } else { PAM_AUTH_ERR }
+    pam_result(PAM_AUTH_ERR, || unsafe { local_pam_uid(pamh) }.map(|_| ()))
+}
+
+#[unsafe(no_mangle)]
+unsafe extern "C" fn pam_sm_acct_mgmt(
+    pamh: *mut PamHandle,
+    _flags: c_int,
+    _argc: c_int,
+    _argv: *const *const c_char,
+) -> c_int {
+    // Apply the same service and UID scope in the account phase.
+    pam_result(PAM_PERM_DENIED, || unsafe { local_pam_uid(pamh) }.map(|_| ()))
+}
+
+fn pam_result(error: c_int, check: impl FnOnce() -> Result<(), ()> + std::panic::UnwindSafe) -> c_int {
+    match std::panic::catch_unwind(check) {
+        Ok(Ok(())) => PAM_SUCCESS,
+        _ => error,
+    }
 }
 
 unsafe fn authenticate(
@@ -150,6 +168,9 @@ fn lookup_account(
         match code {
             0 if !result.is_null() => {
                 let entry = unsafe { entry.assume_init() };
+                if entry.pw_name.is_null() {
+                    return Err(io::Error::new(io::ErrorKind::InvalidData, "account has no name"));
+                }
                 let name = unsafe { CStr::from_ptr(entry.pw_name) }
                     .to_str()
                     .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
@@ -159,5 +180,24 @@ fn lookup_account(
             libc::ERANGE if buffer.len() < 1024 * 1024 => buffer.resize(buffer.len() * 2, 0),
             _ => return Err(io::Error::from_raw_os_error(code)),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_missing_account_name_fails_closed() {
+        let error = lookup_account(|entry, _, _, result| {
+            // Simulate an NSS result with a null pw_name. All fields allow zero.
+            unsafe {
+                entry.write(std::mem::zeroed());
+                result.write(entry);
+            }
+            0
+        })
+        .unwrap_err();
+        assert_eq!(error.kind(), io::ErrorKind::InvalidData);
     }
 }

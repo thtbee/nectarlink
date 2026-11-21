@@ -10,7 +10,8 @@ vault continue to use [its existing wire messages](unlock.md).
 ## Requests and replies
 
 Requests use the normal envelope ID and reply correlation. The fields below
-are CBOR values in the body. IDs are 32-byte strings.
+are CBOR values in the body. Device IDs are 32-byte strings. UIDs must be
+nonzero.
 
 | Message | Direction | Body and response |
 | --- | --- | --- |
@@ -18,6 +19,7 @@ are CBOR values in the body. IDs are 32-byte strings.
 | `unlock.linux.v1.enrolled` | phone → PC | `public_key` is a 65-byte uncompressed P-256 point (0x04, 32-byte X, 32-byte Y). The local administrator decides whether to trust it. |
 | `unlock.linux.v1.sign` | PC → phone | `pc`, `phone`, `uid`, and `nonce` (32-byte string). The phone uses the account label it confirmed during enrollment and asks for a fresh biometric. |
 | `unlock.linux.v1.signed` | phone → PC | `signature` is the DER-encoded ECDSA P-256/SHA-256 signature. |
+| `unlock.linux.v1.cancel` | PC → phone | Unsigned 64-bit request ID of the pending enrollment or signing attempt on this same session. This one-way message has no envelope ID or reply. |
 | `unlock.linux.v1.forget` | PC → phone | `{"user": {"uid": …}}` removes one account key, or the CBOR text `"all"` removes all the authenticated PC's keys. The phone replies with `ok` after the platform processes removal. |
 
 Invalid requests, unsupported capabilities, missing keys, and a denied
@@ -27,7 +29,11 @@ request carries no display labels. The phone keeps one Linux biometric prompt
 active at a time and backs off after repeated refusals or timeouts. Both sides
 recheck consent, pairing, capabilities, and path after a successful response.
 They discard a pending attempt if the connection leaves the selected local
-path for a nonlocal route or loses its path event history.
+path for a nonlocal route or loses its path event history. The PC also cancels
+when its local caller disconnects or the request times out. The phone closes
+its biometric prompt and discards the staged key, leaving any previous
+enrollment intact. A cancel cannot affect requests on a different session or
+remove an existing key.
 Turning the feature off or unpairing clears the phone's keys when the phone
 receives the change. Administrator removal revokes the local PAM enrollment
 even when the phone is offline.

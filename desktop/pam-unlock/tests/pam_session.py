@@ -22,9 +22,10 @@ ACCOUNT = pwd.getpwnam("nobody")
 USER = dict(user=ACCOUNT.pw_uid, group=ACCOUNT.pw_gid, extra_groups=[])
 SCRIPT = [sys.executable, str(Path(__file__).resolve())]
 PAM_AUTH_ERR = 7
+PAM_PERM_DENIED = 6
 
 
-def authenticate(confdir, service, account, remote):
+def authenticate(confdir, service, account, remote, account_only=False):
     pam = c.CDLL("libpam.so.0")
     handler = c.c_void_p()
     callback_type = c.CFUNCTYPE(c.c_int, c.c_int, c.c_void_p, c.c_void_p, c.c_void_p)
@@ -43,9 +44,13 @@ def authenticate(confdir, service, account, remote):
     assert result == 0, f"pam_start_confdir returned {result}"
     if remote:
         assert pam.pam_set_item(handler, 4, remote.encode()) == 0  # PAM_RHOST
-    result = pam.pam_authenticate(handler, 0)
-    if result == 0:
-        assert pam.pam_setcred(handler, 2) == 0  # PAM_ESTABLISH_CRED
+    if account_only:
+        result = pam.pam_acct_mgmt(handler, 0)
+    else:
+        result = pam.pam_authenticate(handler, 0)
+        if result == 0:
+            assert pam.pam_setcred(handler, 2) == 0  # PAM_ESTABLISH_CRED
+            assert pam.pam_acct_mgmt(handler, 0) == 0
     assert pam.pam_end(handler, result) == 0
     print(result)
 
@@ -62,7 +67,17 @@ def relay(path, attempts):
             stream, _ = listener.accept()
             connections.enter_context(stream)
             stream.settimeout(8)
-            requests.append((stream, stream.makefile("rb").read(1025)))
+            with stream.makefile("rb") as reader:
+                header = reader.read(4)
+                if not header:
+                    requests.append((stream, None))
+                    continue
+                assert len(header) == 4
+                length = int.from_bytes(header, "big")
+                assert 0 < length <= 2048
+                body = reader.read(length)
+                assert len(body) == length
+                requests.append((stream, body))
         print(json.dumps([json.loads(body) if body else None for _, body in requests]), flush=True)
         for stream, body in requests:
             if not body:
@@ -94,13 +109,17 @@ def exercise(module):
         record = store / f"{ACCOUNT.pw_uid}.json"
         record.write_text(json.dumps(enrollment))
         record.chmod(0o644)
-        stack = f"auth required {module} enrollment_dir={store} runtime_dir={runtime}\n"
+        stack = (
+            f"auth required {module} enrollment_dir={store} runtime_dir={runtime}\n"
+            f"account required {module}\n"
+        )
         (conf / SERVICE).write_text(stack)
         (conf / "wrong-service").write_text(stack)
         socket_path = runtime / SOCKET
 
-        def pam(service=SERVICE, account="nobody", remote=""):
-            return sp.Popen(SCRIPT + ["auth", str(conf), service, account, remote], stdout=sp.PIPE, text=True, **USER)
+        def pam(service=SERVICE, account="nobody", remote="", account_only=False):
+            mode = "account" if account_only else "auth"
+            return sp.Popen(SCRIPT + [mode, str(conf), service, account, remote], stdout=sp.PIPE, text=True, **USER)
 
         def result(process, expected):
             output, _ = process.communicate(timeout=10)
@@ -108,7 +127,7 @@ def exercise(module):
             assert output.strip() == str(expected), (output, expected)
 
         def sign(request):
-            assert request["version"] == 1 and request["operation"] == "sign"
+            assert request["version"] == 2 and request["operation"] == "sign"
             challenge = request["challenge"]
             assert challenge["pc"] == enrollment["pc"]
             assert challenge["phone"] == enrollment["phone"]
@@ -119,7 +138,7 @@ def exercise(module):
                 + challenge["uid"].to_bytes(4, "big") + bytes(challenge["nonce"])
             )
             signature = sp.check_output(["openssl", "dgst", "-sha256", "-sign", test_key], input=transcript)
-            return json.dumps(dict(version=1, signature=list(signature))).encode()
+            return json.dumps(dict(version=2, signature=list(signature))).encode()
 
         @contextlib.contextmanager
         def broker(attempts=1, credentials=USER):
@@ -141,6 +160,10 @@ def exercise(module):
             assert server.wait(timeout=10) == 0
 
         result(pam(), PAM_AUTH_ERR)  # Relay missing.
+        result(pam(account_only=True), 0)
+        result(pam(service="wrong-service", account_only=True), PAM_PERM_DENIED)
+        result(pam(account="daemon", account_only=True), PAM_PERM_DENIED)
+        result(pam(remote="remote.invalid", account_only=True), PAM_PERM_DENIED)
         with broker(2) as server:
             clients = [pam(), pam()]
             first, second = json.loads(server.stdout.readline())
@@ -154,7 +177,7 @@ def exercise(module):
             json.loads(server.stdout.readline())
             send(server, reply)
             result(client, PAM_AUTH_ERR)  # Same signed response in a later transaction.
-        for malformed in [b'{"success":true}', b'{"version":1,"signature":', b"", b" " * 1025]:
+        for malformed in [b'{"success":true}', b'{"version":2,"signature":', b"", b" " * 1025]:
             with broker() as server:
                 client = pam()
                 json.loads(server.stdout.readline())
@@ -204,6 +227,8 @@ def exercise(module):
 if __name__ == "__main__":
     if sys.argv[1] == "auth":
         authenticate(*sys.argv[2:])
+    elif sys.argv[1] == "account":
+        authenticate(*sys.argv[2:], account_only=True)
     elif sys.argv[1] == "relay":
         relay(*sys.argv[2:])
     else:

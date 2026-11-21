@@ -4,10 +4,14 @@
 use std::{
     ffi::CStr,
     fs::{self, OpenOptions},
+    future::Future,
     io,
     os::unix::fs::{FileTypeExt, MetadataExt, OpenOptionsExt, PermissionsExt},
-    path::PathBuf,
-    sync::atomic::{AtomicBool, Ordering},
+    path::{Path, PathBuf},
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
     time::Duration,
 };
 
@@ -18,6 +22,7 @@ use serde_json::{Value, json};
 use tokio::{
     io::{AsyncRead, AsyncReadExt, AsyncWriteExt},
     net::{UnixListener, UnixStream},
+    sync::Semaphore,
     time::timeout,
 };
 
@@ -25,8 +30,9 @@ const SOCKET: &str = "nectarlink-phone-unlock.sock";
 const PAM_CONFIG: &str = "/etc/pam.d/nectarlink-phone-lock";
 const MAX_REQUEST: usize = 2048;
 const MAX_RESPONSE: usize = 16 * 1024;
+const MAX_CLIENTS: usize = 8;
 const READ_TIMEOUT: Duration = Duration::from_secs(2);
-const IPC_VERSION: u8 = 1;
+const IPC_VERSION: u8 = 2;
 static AVAILABLE: AtomicBool = AtomicBool::new(false);
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -72,19 +78,58 @@ fn socket_path() -> io::Result<PathBuf> {
         .filter(|path| path.is_absolute())
         .ok_or_else(|| io::Error::other("XDG_RUNTIME_DIR must name a private runtime directory"))?;
     let meta = fs::symlink_metadata(&directory)?;
-    if !meta.is_dir() || meta.uid() != uid() || meta.mode() & 0o777 != 0o700 || uid() == 0 {
+    if !meta.is_dir() || meta.uid() != uid() || meta.mode() & 0o7777 != 0o700 || uid() == 0 {
         return Err(io::Error::new(io::ErrorKind::PermissionDenied, "invalid runtime directory"));
     }
     Ok(directory.join(SOCKET))
 }
 
-async fn read_frame(reader: impl AsyncRead + Unpin, limit: usize, wait: Duration) -> io::Result<Vec<u8>> {
+async fn read_frame(mut reader: impl AsyncRead + Unpin, limit: usize, wait: Duration) -> io::Result<Vec<u8>> {
+    timeout(wait, async {
+        let len = reader.read_u32().await? as usize;
+        if len == 0 || len > limit {
+            return Err(io::Error::new(io::ErrorKind::InvalidData, "invalid phone unlock frame length"));
+        }
+        let mut bytes = vec![0; len];
+        reader.read_exact(&mut bytes).await?;
+        Ok(bytes)
+    })
+    .await?
+}
+
+async fn write_request(stream: &mut UnixStream, request: Request) -> io::Result<()> {
+    let body = serde_json::to_vec(&Message { version: IPC_VERSION, request })?;
+    timeout(READ_TIMEOUT, async {
+        stream.write_u32(u32::try_from(body.len()).map_err(io::Error::other)?).await?;
+        stream.write_all(&body).await
+    })
+    .await?
+}
+
+async fn read_reply(reader: impl AsyncRead + Unpin, limit: usize, wait: Duration) -> io::Result<Vec<u8>> {
     let mut bytes = Vec::new();
     timeout(wait, reader.take(limit as u64 + 1).read_to_end(&mut bytes)).await??;
     if bytes.is_empty() || bytes.len() > limit {
         return Err(io::Error::new(io::ErrorKind::InvalidData, "invalid phone unlock frame length"));
     }
     Ok(bytes)
+}
+
+fn bind_private(path: &Path) -> io::Result<std::os::unix::net::UnixListener> {
+    let directory = path.parent().ok_or_else(|| io::Error::other("phone unlock socket needs a parent"))?;
+    // The caller has verified the runtime directory is private. Publish only after chmod.
+    let staged_socket = directory.join(format!(".nl-{:016x}", rand::random::<u64>()));
+    let listener = std::os::unix::net::UnixListener::bind(&staged_socket)?;
+    let publish = (|| {
+        fs::set_permissions(&staged_socket, fs::Permissions::from_mode(0o600))?;
+        listener.set_nonblocking(true)?;
+        fs::rename(&staged_socket, path)
+    })();
+    if publish.is_err() {
+        let _ = fs::remove_file(staged_socket);
+    }
+    publish?;
+    Ok(listener)
 }
 
 pub fn start() -> io::Result<()> {
@@ -106,14 +151,12 @@ pub fn start() -> io::Result<()> {
         return Err(io::Error::last_os_error());
     }
     match fs::symlink_metadata(&path) {
-        Ok(meta) if meta.file_type().is_socket() && meta.uid() == uid() => fs::remove_file(&path)?,
+        Ok(meta) if meta.file_type().is_socket() && meta.uid() == uid() => (),
         Ok(_) => return Err(io::Error::new(io::ErrorKind::PermissionDenied, "invalid phone unlock socket")),
         Err(e) if e.kind() == io::ErrorKind::NotFound => {}
         Err(e) => return Err(e),
     }
-    let listener = std::os::unix::net::UnixListener::bind(&path)?;
-    fs::set_permissions(&path, fs::Permissions::from_mode(0o600))?;
-    listener.set_nonblocking(true)?;
+    let listener = bind_private(&path)?;
     let listener = {
         let _enter = crate::core_host::host().runtime.enter();
         UnixListener::from_std(listener)?
@@ -121,7 +164,9 @@ pub fn start() -> io::Result<()> {
     AVAILABLE.store(true, Ordering::Release);
     crate::core_host::spawn(async move {
         let _lock = lock;
-        let requests = std::sync::Arc::new(tokio::sync::Semaphore::new(1));
+        let clients = Arc::new(Semaphore::new(MAX_CLIENTS));
+        let signing = Arc::new(Semaphore::new(1));
+        let enrolling = Arc::new(Semaphore::new(1));
         loop {
             let (stream, _) = match listener.accept().await {
                 Ok(accepted) => accepted,
@@ -150,10 +195,15 @@ pub fn start() -> io::Result<()> {
             if !stream.peer_cred().is_ok_and(|cred| cred.uid() == uid()) {
                 continue;
             }
-            let Ok(permit) = requests.clone().try_acquire_owned() else { continue };
+            let Ok(client) = clients.clone().try_acquire_owned() else { continue };
+            let (signing, enrolling) = (signing.clone(), enrolling.clone());
             tokio::spawn(async move {
-                let _permit = permit;
-                let _ = serve(stream).await;
+                let _client = client;
+                let _ = serve(stream, &signing, &enrolling, |request| async move {
+                    let node = crate::core_host::node().ok_or("NectarLink is still starting")?;
+                    process(&node, request).await
+                })
+                .await;
             });
         }
         AVAILABLE.store(false, Ordering::Release);
@@ -161,14 +211,33 @@ pub fn start() -> io::Result<()> {
     Ok(())
 }
 
-async fn serve(mut stream: UnixStream) -> io::Result<()> {
+async fn serve<F: Future<Output = Result<Value, String>>>(
+    mut stream: UnixStream,
+    signing: &Semaphore,
+    enrolling: &Semaphore,
+    run: impl FnOnce(Request) -> F,
+) -> io::Result<()> {
     let bytes = read_frame(&mut stream, MAX_REQUEST, READ_TIMEOUT).await?;
     let request = parse_request(&bytes)?;
-    let mut reply = match crate::core_host::node() {
-        Some(node) => process(&node, request).await,
-        None => Err("NectarLink is still starting".into()),
-    }
-    .unwrap_or_else(|error| json!({ "error": error }));
+    let permit = match &request {
+        Request::Devices {} => None,
+        Request::Sign { .. } => Some(signing.try_acquire()),
+        Request::Enroll { .. } => Some(enrolling.try_acquire()),
+    };
+    let mut reply = if matches!(permit, Some(Err(_))) {
+        json!({ "error": "Another phone unlock request of this type is in progress" })
+    } else {
+        // A version 2 client keeps its write side open until it receives the reply.
+        tokio::select! {
+            biased;
+            extra = stream.read_u8() => {
+                extra?;
+                return Err(io::Error::new(io::ErrorKind::InvalidData, "expected one phone unlock request"));
+            }
+            reply = run(request) => reply.unwrap_or_else(|error| json!({ "error": error })),
+        }
+    };
+    drop(permit);
     reply["version"] = json!(IPC_VERSION);
     let response = serde_json::to_vec(&reply)?;
     timeout(READ_TIMEOUT, stream.write_all(&response)).await??;
@@ -223,9 +292,13 @@ fn account_name(uid: u32) -> io::Result<String> {
     if name.is_null() {
         return Err(io::Error::new(io::ErrorKind::NotFound, "Linux account not found"));
     }
-    // SAFETY: a non-null result from getpwuid_r points to a valid passwd record,
-    // and pw_name is a NUL-terminated string within the buffer.
-    Ok(unsafe { CStr::from_ptr((*name).pw_name) }.to_string_lossy().into_owned())
+    // SAFETY: the non-null result points to the passwd record returned by getpwuid_r.
+    let name = unsafe { (*name).pw_name };
+    if name.is_null() {
+        return Err(io::Error::new(io::ErrorKind::InvalidData, "Linux account name missing"));
+    }
+    // SAFETY: getpwuid_r returned a non-null, NUL-terminated name in the live buffer.
+    Ok(unsafe { CStr::from_ptr(name) }.to_string_lossy().into_owned())
 }
 
 pub fn run_cli(request: Request) -> io::Result<Value> {
@@ -235,10 +308,8 @@ pub fn run_cli(request: Request) -> io::Result<Value> {
         if stream.peer_cred()?.uid() != uid() {
             return Err(io::Error::new(io::ErrorKind::PermissionDenied, "unexpected socket owner"));
         }
-        let message = Message { version: IPC_VERSION, request };
-        stream.write_all(&serde_json::to_vec(&message)?).await?;
-        stream.shutdown().await?;
-        let bytes = read_frame(stream, MAX_RESPONSE, Duration::from_secs(125)).await?;
+        write_request(&mut stream, request).await?;
+        let bytes = read_reply(stream, MAX_RESPONSE, Duration::from_secs(125)).await?;
         let mut value: Value = serde_json::from_slice(&bytes)?;
         if value.as_object_mut().and_then(|object| object.remove("version")).and_then(|v| v.as_u64())
             != Some(IPC_VERSION.into())
@@ -260,18 +331,83 @@ mod tests {
     use super::*;
 
     #[tokio::test]
+    async fn reads_one_request_while_client_remains_open() {
+        let (mut client, mut relay) = UnixStream::pair().unwrap();
+        let body = br#"{"version":2,"operation":"devices"}"#;
+        client.write_u32(u32::try_from(body.len()).unwrap()).await.unwrap();
+        client.write_all(body).await.unwrap();
+        assert_eq!(read_frame(&mut relay, MAX_REQUEST, Duration::from_millis(100)).await.unwrap(), body);
+    }
+
+    #[tokio::test]
     async fn truncated_and_oversized_frames_fail_closed() {
         assert!(read_frame(&b""[..], 1, READ_TIMEOUT).await.is_err());
-        assert!(read_frame(&b"ab"[..], 1, READ_TIMEOUT).await.is_err());
-        assert_eq!(read_frame(&b"ab"[..], 2, READ_TIMEOUT).await.unwrap(), b"ab");
+        assert!(read_frame(&b"\0\0\0\0"[..], 2, READ_TIMEOUT).await.is_err());
+        assert!(read_frame(&b"\0\0\0\x02a"[..], 2, READ_TIMEOUT).await.is_err());
+        assert!(read_frame(&b"\0\0\0\x02ab"[..], 1, READ_TIMEOUT).await.is_err());
+        assert_eq!(read_frame(&b"\0\0\0\x02ab"[..], 2, READ_TIMEOUT).await.unwrap(), b"ab");
         assert!(serde_json::from_slice::<Request>(b"{\"operation\":\"sign\",\"approved\":true}").is_err());
     }
 
     #[test]
     fn requires_supported_message_version() {
-        assert!(parse_request(br#"{"version":1,"operation":"devices"}"#).is_ok());
-        assert!(parse_request(br#"{"version":2,"operation":"devices"}"#).is_err());
+        assert!(parse_request(br#"{"version":2,"operation":"devices"}"#).is_ok());
+        assert!(parse_request(br#"{"version":1,"operation":"devices"}"#).is_err());
         assert!(parse_request(br#"{"operation":"devices"}"#).is_err());
-        assert!(parse_request(br#"{"version":1,"operation":"devices","approved":true}"#).is_err());
+        assert!(parse_request(br#"{"version":2,"operation":"devices","approved":true}"#).is_err());
+    }
+
+    #[tokio::test]
+    async fn disconnect_releases_signing_permit_and_enrollment_has_its_own() {
+        let signing = Semaphore::new(1);
+        let enrolling = Semaphore::new(1);
+        let challenge = LinuxUnlockChallenge {
+            pc: DeviceId([1; 32]),
+            phone: DeviceId([2; 32]),
+            uid: 1000,
+            nonce: [3; 32],
+        };
+        let (mut first, relay) = UnixStream::pair().unwrap();
+        write_request(&mut first, Request::Sign { challenge }).await.unwrap();
+        let (started, waiting) = tokio::sync::oneshot::channel();
+        let request = serve(relay, &signing, &enrolling, |request| async move {
+            assert!(matches!(request, Request::Sign { .. }));
+            started.send(()).unwrap();
+            std::future::pending().await
+        });
+        let peer = async {
+            waiting.await.unwrap();
+            assert_eq!(signing.available_permits(), 0);
+            let (mut second, relay) = UnixStream::pair().unwrap();
+            write_request(&mut second, Request::Enroll { phone: challenge.phone }).await.unwrap();
+            let enrollment = serve(relay, &signing, &enrolling, |request| async move {
+                assert!(matches!(request, Request::Enroll { .. }));
+                Ok(json!({ "enrolled": true }))
+            });
+            let (result, reply) = tokio::join!(enrollment, read_reply(second, MAX_RESPONSE, READ_TIMEOUT));
+            result.unwrap();
+            assert_eq!(serde_json::from_slice::<Value>(&reply.unwrap()).unwrap()["enrolled"], true);
+            drop(first);
+        };
+        let (result, ()) = timeout(READ_TIMEOUT, async { tokio::join!(request, peer) }).await.unwrap();
+        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
+        assert_eq!(signing.available_permits(), 1);
+
+        let (mut retry, relay) = UnixStream::pair().unwrap();
+        write_request(&mut retry, Request::Sign { challenge }).await.unwrap();
+        let request = serve(relay, &signing, &enrolling, |_| async { Ok(json!({ "signature": [1] })) });
+        let (result, reply) = tokio::join!(request, read_reply(retry, MAX_RESPONSE, READ_TIMEOUT));
+        result.unwrap();
+        assert_eq!(serde_json::from_slice::<Value>(&reply.unwrap()).unwrap()["signature"], json!([1]));
+    }
+
+    #[test]
+    fn publishes_a_private_socket() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join(SOCKET);
+        let _listener = bind_private(&path).unwrap();
+        assert_eq!(fs::symlink_metadata(&path).unwrap().mode() & 0o7777, 0o600);
+        assert_eq!(fs::read_dir(directory.path()).unwrap().count(), 1);
+        assert!(std::os::unix::net::UnixStream::connect(path).is_ok());
     }
 }

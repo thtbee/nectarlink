@@ -2921,9 +2921,16 @@ pub trait Platform: Send + Sync {
         user_name: String,
         uid: u32,
         timeout_ms: u64,
+        attempt: Arc<LinuxUnlockAttempt>,
     ) -> Result<Vec<u8>, UnlockRefusal>;
     /// Prompt using the confirmed enrollment, then return a DER ECDSA signature.
-    fn linux_unlock_sign(&self, pc: String, uid: u32, transcript: Vec<u8>) -> Result<Vec<u8>, UnlockRefusal>;
+    fn linux_unlock_sign(
+        &self,
+        pc: String,
+        uid: u32,
+        transcript: Vec<u8>,
+        attempt: Arc<LinuxUnlockAttempt>,
+    ) -> Result<Vec<u8>, UnlockRefusal>;
     /// Forget one Linux account or all Linux unlock keys for this paired PC.
     fn linux_unlock_forget(&self, pc: String, uid: Option<u32>);
     /// A PC asked to list a folder in this phone's storage (`""` is root).
@@ -3418,6 +3425,7 @@ impl core::Platform for PlatformAdapter {
         &self,
         pc: &core::DeviceId,
         ask: &core::linux_unlock::Ask,
+        attempt: &core::linux_unlock::Attempt,
     ) -> Result<Vec<u8>, core::unlock::KeyRefusal> {
         let timeout_ms = u64::try_from(ask.timeout.as_millis()).unwrap_or(u64::MAX);
         Ok(self.0.linux_unlock_enroll(
@@ -3426,6 +3434,7 @@ impl core::Platform for PlatformAdapter {
             ask.user_name.clone(),
             ask.uid,
             timeout_ms,
+            Arc::new(LinuxUnlockAttempt(attempt.clone())),
         )?)
     }
     fn linux_unlock_sign(
@@ -3433,8 +3442,14 @@ impl core::Platform for PlatformAdapter {
         pc: &core::DeviceId,
         uid: u32,
         transcript: &[u8],
+        attempt: &core::linux_unlock::Attempt,
     ) -> Result<Vec<u8>, core::unlock::KeyRefusal> {
-        Ok(self.0.linux_unlock_sign(pc.to_string(), uid, transcript.to_vec())?)
+        Ok(self.0.linux_unlock_sign(
+            pc.to_string(),
+            uid,
+            transcript.to_vec(),
+            Arc::new(LinuxUnlockAttempt(attempt.clone())),
+        )?)
     }
     fn linux_unlock_forget(&self, pc: &core::DeviceId, uid: Option<u32>) {
         self.0.linux_unlock_forget(pc.to_string(), uid);
@@ -3586,6 +3601,21 @@ pub enum RelayEditResult {
     Duplicate,
     Limit,
     Failed,
+}
+
+/// Cancellation of a single Linux unlock or enrollment on the phone.
+#[derive(Debug, uniffi::Object)]
+pub struct LinuxUnlockAttempt(core::linux_unlock::Attempt);
+
+#[uniffi::export]
+impl LinuxUnlockAttempt {
+    pub fn is_cancelled(&self) -> bool {
+        self.0.is_cancelled()
+    }
+
+    pub async fn wait_cancelled(&self) {
+        self.0.cancelled().await;
+    }
 }
 
 /// The NectarLink engine. One per app process.

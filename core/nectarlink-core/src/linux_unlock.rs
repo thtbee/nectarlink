@@ -33,6 +33,7 @@ pub const PC: &str = linux_unlock::CAP_PC;
 pub const KEY: &str = linux_unlock::CAP_KEY;
 pub const REQUEST_TTL: Duration = Duration::from_secs(30);
 const ENROLL_TTL: Duration = unlock::ENROLL_TTL;
+pub type Attempt = tokio_util::sync::CancellationToken;
 
 /// The names confirmed during enrollment and retained on the phone.
 #[derive(Clone, PartialEq, Eq)]
@@ -49,20 +50,22 @@ impl std::fmt::Debug for Ask {
     }
 }
 
-struct ActivePrompt {
+pub(crate) struct ActivePrompt {
     peer: DeviceId,
-    revoked: AtomicBool,
+    request: Option<(usize, u64)>,
+    cancellation: Attempt,
+    started: AtomicBool,
 }
 
-impl ActivePrompt {
-    fn is_revoked(&self) -> bool {
-        self.revoked.load(Ordering::Acquire)
-    }
+pub(crate) enum Incoming {
+    Prompt { current: Arc<ActivePrompt>, paths: PathEventStream },
+    Forget { uid: Option<u32>, cleanup: Arc<()> },
 }
 
 #[derive(Default)]
 struct ActivityState {
     active: Weak<ActivePrompt>,
+    outgoing: HashMap<DeviceId, Weak<ActivePrompt>>,
     cleanup: HashMap<DeviceId, Weak<()>>,
 }
 
@@ -73,16 +76,38 @@ pub(crate) struct Activity {
 }
 
 impl Activity {
-    fn try_begin(&self, peer: DeviceId) -> Option<Arc<ActivePrompt>> {
+    fn try_begin(&self, peer: DeviceId, request: Option<(usize, u64)>) -> Option<Arc<ActivePrompt>> {
         let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
-        if state.active.strong_count() != 0
-            || state.cleanup.get(&peer).is_some_and(|cleanup| cleanup.strong_count() != 0)
-        {
+        if state.cleanup.get(&peer).is_some_and(|cleanup| cleanup.strong_count() != 0) {
             return None;
         }
-        let current = Arc::new(ActivePrompt { peer, revoked: AtomicBool::new(false) });
-        state.active = Arc::downgrade(&current);
+        let slot = if request.is_some() {
+            &mut state.active
+        } else {
+            state.outgoing.retain(|_, prompt| prompt.strong_count() != 0);
+            state.outgoing.entry(peer).or_default()
+        };
+        if slot.strong_count() != 0 {
+            return None;
+        }
+        let current = Arc::new(ActivePrompt {
+            peer,
+            request,
+            cancellation: Attempt::new(),
+            started: AtomicBool::new(false),
+        });
+        *slot = Arc::downgrade(&current);
         Some(current)
+    }
+
+    pub(crate) fn cancel_request(&self, session: &Session, id: u64) {
+        let state = self.state.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(active) = state.active.upgrade()
+            && active.peer == session.peer
+            && active.request == Some((session.conn.stable_id(), id))
+        {
+            active.cancellation.cancel();
+        }
     }
 
     /// End an in-flight request and keep new requests out until all old key deletions finish.
@@ -91,7 +116,10 @@ impl Activity {
         if let Some(active) = state.active.upgrade()
             && active.peer == peer
         {
-            active.revoked.store(true, Ordering::Release);
+            active.cancellation.cancel();
+        }
+        if let Some(outgoing) = state.outgoing.get(&peer).and_then(Weak::upgrade) {
+            outgoing.cancellation.cancel();
         }
         state.cleanup.retain(|_, cleanup| cleanup.strong_count() != 0);
         if let Some(cleanup) = state.cleanup.get(&peer).and_then(Weak::upgrade) {
@@ -149,14 +177,13 @@ fn check(shared: &Shared, session: &Session, local_cap: &str, peer_cap: &str) ->
 async fn prompt(
     shared: &Shared,
     session: &Session,
+    current: Arc<ActivePrompt>,
+    paths: PathEventStream,
     timeout: Duration,
-    run: impl FnOnce(&ActivePrompt) -> Result<Vec<u8>, KeyRefusal> + Send + 'static,
+    run: impl FnOnce(&Attempt) -> Result<Vec<u8>, KeyRefusal> + Send + 'static,
 ) -> Result<Vec<u8>, Envelope> {
     let prompts = &shared.linux_unlock_activity;
-    let current = prompts
-        .try_begin(session.peer)
-        .ok_or_else(|| Envelope::error(ErrorCode::Busy, "phone unlock prompt in progress"))?;
-    let paths = session.path_events();
+    let cancel_on_exit = current.cancellation.clone().drop_guard();
     check(shared, session, KEY, PC).map_err(gate_reply)?;
     if prompts
         .failures
@@ -174,33 +201,45 @@ async fn prompt(
         tokio::time::timeout(
             timeout,
             tokio::task::spawn_blocking(move || {
-                if platform_current.is_revoked() {
+                if platform_current.cancellation.is_cancelled() {
                     return Err(KeyRefusal::Declined);
                 }
-                run(&platform_current)
+                platform_current.started.store(true, Ordering::Release);
+                run(&platform_current.cancellation)
             }),
         )
         .await
     };
     let answer = tokio::select! {
         biased;
-        _ = local_path_lost(shared, session, paths) => {
-            return Err(gate_reply(Error::Denied));
-        }
-        answer = platform_answer => answer,
+        _ = current.cancellation.cancelled() => None,
+        _ = session.cancel.cancelled() => None,
+        _ = local_path_lost(shared, session, paths) => None,
+        answer = platform_answer => Some(answer),
     };
-    if current.is_revoked() {
+    if answer.is_none() || current.cancellation.is_cancelled() {
+        current.cancellation.cancel();
+        if current.started.load(Ordering::Acquire) {
+            prompts
+                .failures
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .entry(session.peer)
+                .or_default()
+                .failed(Instant::now());
+        }
         return Err(gate_reply(Error::Denied));
     }
     check(shared, session, KEY, PC).map_err(gate_reply)?;
 
     let mut failures = prompts.failures.lock().unwrap_or_else(|e| e.into_inner());
     match answer {
-        Ok(Ok(Ok(bytes))) => {
+        Some(Ok(Ok(Ok(bytes)))) => {
             failures.remove(&session.peer);
+            cancel_on_exit.disarm();
             Ok(bytes)
         }
-        Ok(Ok(Err(refusal @ (KeyRefusal::Unsupported | KeyRefusal::KeyGone)))) => Err(refusal.reply()),
+        Some(Ok(Ok(Err(refusal @ (KeyRefusal::Unsupported | KeyRefusal::KeyGone))))) => Err(refusal.reply()),
         _ => {
             failures.entry(session.peer).or_default().failed(Instant::now());
             Err(KeyRefusal::Declined.reply())
@@ -216,8 +255,13 @@ fn gate_reply(error: Error) -> Envelope {
     }
 }
 
-async fn respond(shared: &Shared, session: &Session, env: &Envelope) -> Result<Envelope, Envelope> {
-    let (platform, peer) = (shared.platform.clone(), session.peer);
+pub(crate) fn prepare_background(
+    shared: &Shared,
+    session: &Session,
+    env: &Envelope,
+) -> Result<Option<Incoming>, Envelope> {
+    let Some(id) = env.id.filter(|_| env.re.is_none()) else { return Ok(None) };
+    let peer = session.peer;
     if env.t == types::LINUX_UNLOCK_FORGET {
         if !shared.store.is_paired(&peer).unwrap_or(false) || !shared.offers(&peer, PC).unwrap_or(false) {
             return Err(gate_reply(Error::Denied));
@@ -228,14 +272,40 @@ async fn respond(shared: &Shared, session: &Session, env: &Envelope) -> Result<E
             Err(_) => return Err(Envelope::error(ErrorCode::BadMessage, "invalid Linux key removal")),
         };
         let cleanup = shared.linux_unlock_activity.begin_cleanup(peer);
-        tokio::task::spawn_blocking(move || {
-            let _cleanup = cleanup;
-            platform.linux_unlock_forget(&peer, uid);
-        })
-        .await
-        .map_err(|_| Envelope::error(ErrorCode::Internal, "Linux key removal failed"))?;
-        return Ok(Envelope::empty(types::OK));
+        return Ok(Some(Incoming::Forget { uid, cleanup }));
     }
+    if matches!(env.t.as_str(), types::LINUX_UNLOCK_ENROLL | types::LINUX_UNLOCK_SIGN) {
+        let paths = session.path_events();
+        check(shared, session, KEY, PC).map_err(gate_reply)?;
+        // Reserve this slot before the reader can see a following cancel message.
+        let current = shared
+            .linux_unlock_activity
+            .try_begin(peer, Some((session.conn.stable_id(), id)))
+            .ok_or_else(|| Envelope::error(ErrorCode::Busy, "phone unlock prompt in progress"))?;
+        return Ok(Some(Incoming::Prompt { current, paths }));
+    }
+    Ok(None)
+}
+
+async fn respond(
+    shared: &Shared,
+    session: &Session,
+    env: &Envelope,
+    incoming: Incoming,
+) -> Result<Envelope, Envelope> {
+    let (platform, peer) = (shared.platform.clone(), session.peer);
+    let (current, paths) = match incoming {
+        Incoming::Prompt { current, paths } => (current, paths),
+        Incoming::Forget { uid, cleanup } => {
+            tokio::task::spawn_blocking(move || {
+                let _cleanup = cleanup;
+                platform.linux_unlock_forget(&peer, uid);
+            })
+            .await
+            .map_err(|_| Envelope::error(ErrorCode::Internal, "Linux key removal failed"))?;
+            return Ok(Envelope::empty(types::OK));
+        }
+    };
 
     check(shared, session, KEY, PC).map_err(gate_reply)?;
     let invalid = || Envelope::error(ErrorCode::BadMessage, "invalid Linux phone unlock request");
@@ -248,7 +318,7 @@ async fn respond(shared: &Shared, session: &Session, env: &Envelope) -> Result<E
             }
             let pc_name = unlock::shown_name(&shared.peer_name(&peer));
             let deadline = Instant::now() + ENROLL_TTL;
-            let public_key = prompt(shared, session, ENROLL_TTL, move |current| {
+            let public_key = prompt(shared, session, current, paths, ENROLL_TTL, move |attempt| {
                 let timeout = deadline.saturating_duration_since(Instant::now());
                 // Leave time to return the result after Android finishes committing the key.
                 let timeout = timeout.checked_sub(Duration::from_secs(1)).ok_or(KeyRefusal::Declined)?;
@@ -258,12 +328,7 @@ async fn respond(shared: &Shared, session: &Session, env: &Envelope) -> Result<E
                     uid: req.uid,
                     timeout,
                 };
-                let key = platform.linux_unlock_enroll(&peer, &ask)?;
-                if current.is_revoked() {
-                    platform.linux_unlock_forget(&peer, Some(ask.uid));
-                    return Err(KeyRefusal::Declined);
-                }
-                Ok(key)
+                platform.linux_unlock_enroll(&peer, &ask, attempt)
             })
             .await?;
             let enrolled = LinuxUnlockEnrolled { public_key };
@@ -274,11 +339,11 @@ async fn respond(shared: &Shared, session: &Session, env: &Envelope) -> Result<E
         }
         types::LINUX_UNLOCK_SIGN => {
             let req: LinuxUnlockChallenge = env.body().map_err(|_| invalid())?;
-            if req.pc != peer || req.phone != shared.id {
+            if req.uid == 0 || req.pc != peer || req.phone != shared.id {
                 return Err(invalid());
             }
-            let signature = prompt(shared, session, REQUEST_TTL, move |_| {
-                platform.linux_unlock_sign(&peer, req.uid, &req.signing_bytes())
+            let signature = prompt(shared, session, current, paths, REQUEST_TTL, move |attempt| {
+                platform.linux_unlock_sign(&peer, req.uid, &req.signing_bytes(), attempt)
             })
             .await?;
             let signed = LinuxUnlockSigned { signature };
@@ -291,15 +356,29 @@ async fn respond(shared: &Shared, session: &Session, env: &Envelope) -> Result<E
     }
 }
 
-pub(crate) async fn handle(shared: &Shared, session: &Session, env: &Envelope) -> Result<bool> {
+pub(crate) async fn handle(
+    shared: &Shared,
+    session: &Session,
+    env: &Envelope,
+    incoming: Option<Incoming>,
+) -> Result<bool> {
+    if env.t == types::LINUX_UNLOCK_CANCEL {
+        if env.id.is_none()
+            && env.re.is_none()
+            && let Ok(id) = env.body::<u64>()
+        {
+            shared.linux_unlock_activity.cancel_request(session, id);
+        }
+        return Ok(true);
+    }
     if !matches!(
         env.t.as_str(),
         types::LINUX_UNLOCK_ENROLL | types::LINUX_UNLOCK_SIGN | types::LINUX_UNLOCK_FORGET
     ) {
         return Ok(false);
     }
-    if env.id.is_some() && env.re.is_none() {
-        let reply = match respond(shared, session, env).await {
+    if let Some(incoming) = incoming {
+        let reply = match respond(shared, session, env, incoming).await {
             Ok(reply) | Err(reply) => reply,
         };
         session.send(reply.reply_to(env.id)).await?;
@@ -308,15 +387,16 @@ pub(crate) async fn handle(shared: &Shared, session: &Session, env: &Envelope) -
 }
 
 async fn request(shared: &Shared, session: &Session, env: Envelope, timeout: Duration) -> Result<Envelope> {
-    let current = shared.linux_unlock_activity.try_begin(session.peer).ok_or(Error::Denied)?;
+    let current = shared.linux_unlock_activity.try_begin(session.peer, None).ok_or(Error::Denied)?;
     let paths = session.path_events();
     check(shared, session, PC, KEY)?;
     let reply = tokio::select! {
         biased;
+        _ = current.cancellation.cancelled() => return Err(Error::Denied),
         _ = local_path_lost(shared, session, paths) => return Err(Error::Denied),
         reply = session.request(env, timeout) => reply?,
     };
-    if current.is_revoked() {
+    if current.cancellation.is_cancelled() {
         return Err(Error::Denied);
     }
     check(shared, session, PC, KEY)?;
@@ -342,6 +422,9 @@ pub(crate) async fn sign(
     session: &Session,
     challenge: LinuxUnlockChallenge,
 ) -> Result<Vec<u8>> {
+    if challenge.uid == 0 {
+        return Err(Error::Denied);
+    }
     let reply =
         request(shared, session, Envelope::new(types::LINUX_UNLOCK_SIGN, &challenge)?, REQUEST_TTL).await?;
     let signed: LinuxUnlockSigned = reply.expect_body(types::LINUX_UNLOCK_SIGNED)?;
@@ -357,4 +440,22 @@ pub(crate) async fn forget(session: &Session, uid: Option<u32>) -> Result<()> {
         .request(Envelope::new(types::LINUX_UNLOCK_FORGET, &req)?, crate::session::REQUEST_TIMEOUT)
         .await?;
     Ok(reply.expect(types::OK)?)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn outgoing_attempts_only_serialize_against_the_same_phone() {
+        let activity = Activity::default();
+        let first = DeviceId([1; 32]);
+        let second = DeviceId([2; 32]);
+        let first_attempt = activity.try_begin(first, None).unwrap();
+        assert!(activity.try_begin(first, None).is_none());
+        let second_attempt = activity.try_begin(second, None).unwrap();
+        let _cleanup = activity.begin_cleanup(first);
+        assert!(first_attempt.cancellation.is_cancelled());
+        assert!(!second_attempt.cancellation.is_cancelled());
+    }
 }

@@ -567,6 +567,7 @@ pub trait Platform: Send + Sync + 'static {
         &self,
         _pc: &nectarlink_protocol::DeviceId,
         _ask: &crate::linux_unlock::Ask,
+        _attempt: &crate::linux_unlock::Attempt,
     ) -> Result<Vec<u8>, crate::unlock::KeyRefusal> {
         Err(crate::unlock::KeyRefusal::Unsupported)
     }
@@ -577,6 +578,7 @@ pub trait Platform: Send + Sync + 'static {
         _pc: &nectarlink_protocol::DeviceId,
         _uid: u32,
         _transcript: &[u8],
+        _attempt: &crate::linux_unlock::Attempt,
     ) -> Result<Vec<u8>, crate::unlock::KeyRefusal> {
         Err(crate::unlock::KeyRefusal::Unsupported)
     }
