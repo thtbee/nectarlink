@@ -423,6 +423,11 @@ change things that need a step from you, and its notes say so.
   thumbnail that arrived made the PC rebuild the entire gallery, so with a large library
   everything lagged while the grid filled in. Thanks to
   [@w-rakeeb](https://github.com/w-rakeeb) ([#442](https://github.com/thtbee/nectarlink/issues/442)).
+- **Less CPU on a PC whose graphics driver isn't working.** Windows then draws the app
+  in software, where the moving honeycomb costs real CPU; it now keeps still there, and
+  the log names the graphics adapter in use. Thanks to
+  [@donsenilo1968](https://github.com/donsenilo1968)
+  ([#456](https://github.com/thtbee/nectarlink/discussions/456)).
 - **NectarLink starts on Windows installs without `cldapi.dll`.** Some trimmed Windows
   builds remove the Cloud Files API, and the app stopped with "cldapi.dll was not found".
   It now starts there, with the phone folders in File Explorer off. Thanks to

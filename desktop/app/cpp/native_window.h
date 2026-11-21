@@ -35,9 +35,13 @@ class NativeWindow : public QQuickWindow
     // Whether Windows can draw Mica/Acrylic behind the window (Windows 11,
     // build 22000 and later). Elsewhere the window must stay opaque.
     Q_PROPERTY(bool systemBackdropSupported READ systemBackdropSupported CONSTANT)
+    // Windows draws with its software renderer (no working graphics driver):
+    // every frame costs CPU, so motion and blur should stay off.
+    Q_PROPERTY(bool softwareRendering READ softwareRendering NOTIFY softwareRenderingChanged)
 
 public:
     explicit NativeWindow(QWindow *parent = nullptr);
+    bool softwareRendering() const { return m_softwareRendering; }
 
     bool backdrop() const { return m_backdrop; }
     void setBackdrop(bool on);
@@ -82,12 +86,16 @@ signals:
     void maximizeStateChanged();
     void windowVisibilityChanged();
     void closeRequested();
+    void softwareRenderingChanged();
 
 protected:
     bool event(QEvent *event) override;
     bool nativeEvent(const QByteArray &eventType, void *message, qintptr *result) override;
 
 private:
+    void checkAdapter();
+    bool m_softwareRendering = false;
+    bool m_adapterChecked = false;
     void applyFrame();
     long hitTest(int screenX, int screenY) const;
     bool itemContains(const QQuickItem *item, const QPointF &scenePoint) const;

@@ -96,9 +96,43 @@ void trimD3DResources(QQuickWindow *window)
         dxgi3->Release();
     }
 }
+
+// The adapter Qt's D3D11 device runs on: its name, and whether it's Windows'
+// software renderer (Microsoft Basic Render Driver, vendor 0x1414), which
+// Windows falls back to when the graphics driver is missing or broken.
+bool d3dAdapter(QQuickWindow *window, QString *name)
+{
+    QSGRendererInterface *rif = window ? window->rendererInterface() : nullptr;
+    if (!rif)
+        return false;
+    auto *device = static_cast<ID3D11Device *>(
+        rif->getResource(window, QSGRendererInterface::DeviceResource));
+    if (!device)
+        return false;
+    bool software = false;
+    IDXGIDevice *dxgi = nullptr;
+    if (SUCCEEDED(device->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void **>(&dxgi))) && dxgi) {
+        IDXGIAdapter *adapter = nullptr;
+        if (SUCCEEDED(dxgi->GetAdapter(&adapter)) && adapter) {
+            DXGI_ADAPTER_DESC desc = {};
+            if (SUCCEEDED(adapter->GetDesc(&desc))) {
+                *name = QString::fromWCharArray(desc.Description);
+                software = desc.VendorId == 0x1414;
+            }
+            adapter->Release();
+        }
+        dxgi->Release();
+    }
+    return software;
+}
 #else
 void trimD3DResources(QQuickWindow *)
 {
+}
+
+bool d3dAdapter(QQuickWindow *, QString *)
+{
+    return false;
 }
 #endif
 
@@ -402,6 +436,7 @@ NativeWindow::NativeWindow(QWindow *parent)
     // closed to the tray instead of keeping GPU buffers in private commit.
     setPersistentSceneGraph(false);
     setPersistentGraphics(false);
+    connect(this, &QQuickWindow::sceneGraphInitialized, this, &NativeWindow::checkAdapter, Qt::DirectConnection);
     connect(this, &QWindow::visibilityChanged, this, [this](QWindow::Visibility) {
         emit windowVisibilityChanged();
     });
@@ -778,4 +813,23 @@ bool NativeWindow::nativeEvent(const QByteArray &eventType, void *message, qintp
     }
 #endif
     return QQuickWindow::nativeEvent(eventType, message, result);
+}
+
+// On the render thread, once the graphics device exists: logs which adapter
+// draws the app (the first time) and tells QML when it's the software one.
+void NativeWindow::checkAdapter()
+{
+    QString name;
+    const bool software = d3dAdapter(this, &name);
+    if (!m_adapterChecked) {
+        m_adapterChecked = true;
+        if (!name.isEmpty())
+            qInfo().noquote() << "graphics adapter:" << name << (software ? "(software rendering)" : "");
+    }
+    QMetaObject::invokeMethod(this, [this, software] {
+        if (m_softwareRendering != software) {
+            m_softwareRendering = software;
+            emit softwareRenderingChanged();
+        }
+    }, Qt::QueuedConnection);
 }
