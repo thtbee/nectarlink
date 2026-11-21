@@ -82,7 +82,7 @@ class CallAudioService : Service() {
                     }
                     // The PC plays the call now; the phone's copy goes quiet (#133).
                     CallEarpiece.quiet(this@CallAudioService)
-                    val input = call.socket.getInputStream()
+                    val input = call.socket.inputStream
                     val chunk = ByteArray(CallAudio.CHUNK_BYTES)
                     var samples = 0L
                     while (true) {
