@@ -1347,6 +1347,20 @@ Item {
 
                         Divider { width: parent.width }
 
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.eyeOff
+                            title: qsTr("Toolbar in mirroring and app windows")
+                            description: qsTr("Shows when the pointer is near the top of the window. Off, Ctrl+Shift+T in a window shows it again.")
+                            Toggle {
+                                label: qsTr("Toolbar in mirroring and app windows")
+                                checked: !Preferences.hideMirrorToolbar
+                                onToggled: (on) => Preferences.hideMirrorToolbar = !on
+                            }
+                        }
+
+                        Divider { width: parent.width }
+
                         // Row 3: Sync clipboard
                         ListRow {
                             width: parent.width

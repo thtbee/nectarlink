@@ -48,6 +48,23 @@ fn file_stem(label: &str, pkg: &str) -> String {
     if cleaned.is_empty() { pkg.to_owned() } else { cleaned.chars().take(80).collect() }
 }
 
+/// How Windows starts an app window again from the taskbar (#465): the
+/// command, and the app's icon as a resource (`path,0`) when there is one.
+/// Without these, pinning an app window pinned NectarLink itself.
+#[cfg(windows)]
+pub fn relaunch(data_dir: &Path, device: DeviceId, pkg: &str) -> Option<(String, String)> {
+    if !nectarlink_core::is_package_name(pkg) {
+        return None;
+    }
+    let exe = std::env::current_exe().ok()?;
+    let command = format!("\"{}\" {} {}", exe.display(), crate::win::jumplist::ARG, task(&device, pkg));
+    let icon = crate::icons::existing(data_dir, pkg)
+        .and_then(|png| imp::current_ico(data_dir, pkg, &png))
+        .map(|ico| format!("{},0", ico.display()))
+        .unwrap_or_default();
+    Some((command, icon))
+}
+
 /// Adds the shortcut for `pkg` (shown as `label`) on `device`; where it went.
 pub fn add(data_dir: &Path, device: DeviceId, pkg: &str, label: &str) -> Result<PathBuf, String> {
     if !nectarlink_core::is_package_name(pkg) {
@@ -84,9 +101,20 @@ mod imp {
         Ok(path)
     }
 
+    /// The `.ico` for `png`, written only when it's missing or older than
+    /// the app's icon: the taskbar asks each time a window changes.
+    pub(super) fn current_ico(data_dir: &Path, pkg: &str, png_path: &Path) -> Option<PathBuf> {
+        let ico = data_dir.join("cache").join("shortcut-icons").join(format!("{pkg}.ico"));
+        let modified = |p: &Path| std::fs::metadata(p).and_then(|m| m.modified()).ok();
+        match (modified(&ico), modified(png_path)) {
+            (Some(ico_at), Some(png_at)) if ico_at >= png_at => Some(ico),
+            _ => write_ico(data_dir, pkg, png_path).ok(),
+        }
+    }
+
     /// The app's PNG icon as a one-image `.ico` (an ICO may hold a PNG as
     /// is), which a shortcut needs.
-    fn write_ico(data_dir: &Path, pkg: &str, png_path: &Path) -> std::io::Result<PathBuf> {
+    pub(super) fn write_ico(data_dir: &Path, pkg: &str, png_path: &Path) -> std::io::Result<PathBuf> {
         let png = std::fs::read(png_path)?;
         let ico = super::ico_from_png(&png)
             .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "not a PNG"))?;
