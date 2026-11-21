@@ -199,8 +199,17 @@ impl Platform for RecordingPlatform {
         let app = options.app.as_deref().map(|a| format!(" {a} as {}", options.session)).unwrap_or_default();
         let watch = options.watch.as_deref().map(|p| format!(" watching {p}")).unwrap_or_default();
         let only = if options.sound_only { ", sound only" } else { "" };
-        self.mirror_asks.lock().unwrap().push(format!("start {}{sound}{only}{app}{watch}", options.max_size));
+        let on = options.display.map(|d| format!(" on screen {d}")).unwrap_or_default();
+        self.mirror_asks
+            .lock()
+            .unwrap()
+            .push(format!("start {}{sound}{only}{app}{watch}{on}", options.max_size));
         Ok(())
+    }
+    fn mirror_displays(&self) -> Vec<nectarlink_core::MirrorDisplay> {
+        [(0, 1920, 1080, true), (1, 2560, 1440, false)]
+            .map(|(id, width, height, primary)| nectarlink_core::MirrorDisplay { id, width, height, primary })
+            .to_vec()
     }
     fn watch_offered(
         &self,
@@ -973,6 +982,35 @@ async fn pair_qr(pc: &mut TestDevice, phone: &mut TestDevice) {
     wait_online(pc, phone_id).await;
 }
 
+/// A quiet healthy link pings once, to check the new session end to end,
+/// and then lives on QUIC's own keepalives: no ping of its own every 15 s.
+/// It stays online, and its round-trip time is known.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_quiet_session_sends_no_pings_after_the_first() {
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+
+    tokio::time::sleep(Duration::from_secs(21)).await;
+
+    // Still the same live session (a count needs one), with at most one
+    // more ping: a window can look empty when a keepalive arrives just
+    // after the look (about RTT / 5 s of them).
+    for (who, pings) in
+        [("PC", pc.node.heartbeat_pings(&phone_id)), ("phone", phone.node.heartbeat_pings(&pc_id))]
+    {
+        assert!((1..=2).contains(&pings), "{who} sent {pings} pings in 21 s");
+    }
+    // And neither side saw the other go offline meanwhile.
+    for (dev, peer) in [(&mut pc, phone_id), (&mut phone, pc_id)] {
+        while let Ok(event) = dev.events.try_recv() {
+            let went = matches!(event, NodeEvent::LinkChanged { device, link: LinkState::Offline { .. } } if device == peer);
+            assert!(!went, "{} saw its peer go offline", dev.name);
+        }
+    }
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn qr_pairing_connects_both_devices() {
     let mut pc = device("Desktop", DeviceKind::Desktop).await;
@@ -1614,6 +1652,7 @@ async fn a_video_stream_outlasts_its_reports() {
         screen_off: false,
         watch: None,
         sound_only: false,
+        display: None,
     };
     with_timeout("start", pc.node.mirror_start(phone_id, options)).await.unwrap();
     let stream = Arc::new(with_timeout("open", phone.node.mirror_open(pc_id)).await.unwrap());
@@ -2523,6 +2562,7 @@ async fn the_phone_sound_plays_on_the_pc_without_its_screen() {
         screen_off: false,
         watch: None,
         sound_only: true,
+        display: None,
     };
 
     // An older phone: no mirror.sound, so the request is refused, not
@@ -2637,6 +2677,7 @@ async fn the_phone_screen_streams_to_the_pc() {
         screen_off: false,
         watch: None,
         sound_only: false,
+        display: None,
     };
     with_timeout("start", pc.node.mirror_start(phone_id, options)).await.unwrap();
     assert_eq!(*phone.platform.mirror_asks.lock().unwrap(), ["start 1920 with sound"]);
@@ -2847,6 +2888,7 @@ async fn phone_apps_open_in_windows_of_their_own() {
         screen_off: false,
         watch: None,
         sound_only: false,
+        display: None,
     };
 
     // Not Elevated yet: no apps, no app windows.
@@ -7294,6 +7336,7 @@ async fn usb_transport_carries_features_when_wifi_unavailable() {
         screen_off: false,
         watch: None,
         sound_only: false,
+        display: None,
     };
     with_timeout("start mirror over USB", pc.node.mirror_start(phone_id, options)).await.unwrap();
     let stream = Arc::new(with_timeout("open mirror over USB", phone.node.mirror_open(pc_id)).await.unwrap());
@@ -7327,6 +7370,52 @@ async fn usb_transport_carries_features_when_wifi_unavailable() {
     phone.node.shutdown().await;
 }
 
+/// A phone viewing a PC lists its screens and picks one (#442): only from a
+/// PC that offers `mirror.displays` and shares its screen with that phone.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_phone_picks_which_of_the_pcs_screens_it_views() {
+    use nectarlink_core::{MIRROR_CAPTURE, MIRROR_DISPLAYS, MIRROR_SCREEN, MirrorStart, PC_MIRROR_TOGGLE};
+
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[MIRROR_CAPTURE, MIRROR_DISPLAYS]).await;
+    let mut phone = device_with("Pixel", DeviceKind::Phone, &[nectarlink_core::MIRROR_VIEW]).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let pc_id = pc.node.device_id();
+    let phone_id = phone.node.device_id();
+
+    // Not while the PC doesn't share its screen with this phone.
+    let refused = with_timeout("displays before sharing", phone.node.mirror_displays(pc_id)).await;
+    assert!(matches!(refused, Err(Error::Denied)), "{refused:?}");
+
+    pc.node.set_device_toggle(phone_id, PC_MIRROR_TOGGLE, true).unwrap();
+    let displays = with_timeout("displays", phone.node.mirror_displays(pc_id)).await.unwrap();
+    assert_eq!(
+        displays.iter().map(|d| (d.id, d.width, d.primary)).collect::<Vec<_>>(),
+        [(0, 1920, true), (1, 2560, false)]
+    );
+
+    let second = MirrorStart {
+        max_size: 1280,
+        fps: 30,
+        bitrate: 4_000_000,
+        audio: false,
+        session: MIRROR_SCREEN,
+        app: None,
+        stay_awake: false,
+        screen_off: false,
+        watch: None,
+        sound_only: false,
+        display: Some(1),
+    };
+    with_timeout("view the second screen", phone.node.mirror_start(pc_id, second)).await.unwrap();
+    assert_eq!(*pc.platform.mirror_asks.lock().unwrap(), ["start 1280 on screen 1"]);
+
+    // A PC that doesn't list its screens: none, and nothing asked.
+    let mut other = device_with("Laptop", DeviceKind::Desktop, &[MIRROR_CAPTURE]).await;
+    pair_qr(&mut other, &mut phone).await;
+    let none = with_timeout("no displays", phone.node.mirror_displays(other.node.device_id())).await.unwrap();
+    assert!(none.is_empty());
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn reverse_mirror_requires_pc_consent_and_remote_input_toggle() {
     use nectarlink_core::{
@@ -7351,6 +7440,7 @@ async fn reverse_mirror_requires_pc_consent_and_remote_input_toggle() {
         screen_off: false,
         watch: None,
         sound_only: false,
+        display: None,
     };
 
     // (a) A paired phone calling `mirror_start` against a PC is denied by default
@@ -8045,6 +8135,7 @@ async fn play_on_phone_lets_the_phone_watch_only_what_the_pc_offered() {
         screen_off: false,
         watch: Some(player.into()),
         sound_only: false,
+        display: None,
     };
 
     // Not offered: the phone can't watch, and the PC isn't asked to share its screen.
@@ -8567,6 +8658,7 @@ async fn one_time_screen_consent_ends_with_the_pairing() {
         screen_off: false,
         watch: None,
         sound_only: false,
+        display: None,
     };
 
     // "Allow once" lets the phone view the PC's screen during this connection

@@ -10,6 +10,8 @@ FocusScope {
     property string text: ""
     property string label
     property bool tonal: false
+    // A small dot at the top right: something new behind this button.
+    property bool dot: false
     property color iconColor: tonal ? Theme.secondaryContainerContent : Theme.surfaceContentVariant
     signal clicked
 
@@ -26,7 +28,8 @@ FocusScope {
 
     Accessible.role: Accessible.Button
     Accessible.name: hasText ? text : label
-    Accessible.description: hasText && label.length > 0 && label !== text ? label : ""
+    Accessible.description: dot ? qsTr("New changes")
+        : (hasText && label.length > 0 && label !== text ? label : "")
     Accessible.onPressAction: if (enabled) button.clicked()
     Keys.onPressed: (event) => {
         if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
@@ -86,6 +89,17 @@ FocusScope {
                 color: button.tonal ? Theme.secondaryContainerContent : Theme.surfaceContent
             }
         }
+    }
+    Rectangle {
+        width: 6
+        height: 6
+        radius: 3
+        x: body.width - 11
+        y: 7
+        color: Theme.primary
+        visible: opacity > 0
+        opacity: button.dot ? 1 : 0
+        Behavior on opacity { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.fadeFast } }
     }
     Rectangle {
         anchors.fill: body

@@ -320,15 +320,16 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     private val accent = AccentMonitor(this.context) { seed ->
         node?.let { scope.launch { runCatching { it.updateAccent(seed) } } }
     }
+    private val reconnect = ReconnectPolicy(this.context)
+    private var lastNetwork: String? = null
+    private var giveUpCheck: Job? = null
+
     private val network: NetworkMonitor = NetworkMonitor(this.context) {
         // Network callbacks come in bursts; tell the core once they settle.
         networkChange?.cancel()
         networkChange = scope.launch {
             delay(150)
-            // No Wi-Fi, Ethernet or VPN: the core stops dialing PCs until there is (#397).
-            val local = network.hasLocalNetwork()
-            node?.setLocalNetwork(local)
-            _state.update { it.copy(hasNetwork = local) }
+            withContext(dialing) { applyDialing() }
             if (lastSignal.wifiBars != null || _state.value.awayMode) {
                 node?.networkChanged()
             }
@@ -476,9 +477,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 node = started
                 isRunning = true
             }
-            val local = network.hasLocalNetwork()
-            runCatching { started.setLocalNetwork(local) }
-            _state.update { it.copy(hasNetwork = local) }
+            withContext(dialing) { applyDialing() }
             val devices = runCatching { started.pairedDevices() }.getOrDefault(emptyList())
             val pcToggles = perPcToggles(started, devices.map { it.id })
             val clipHistEnabled = runCatching { started.clipboardHistoryEnabled() }.getOrDefault(true)
@@ -513,6 +512,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 )
             }
             if (devices.isNotEmpty()) ConnectionService.start(context)
+            // With the PCs known, the wait before giving up can start.
+            onDialing { reviewDialing() }
             val companionAssociated = PcCompanion.isAssociated(context)
             if (companionAssociated && devices.isNotEmpty()) {
                 PcCompanion.startObservingPresence(context)
@@ -882,6 +883,10 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             }
         }
         val removedName = if (event is Event.DeviceRemoved) _state.value.nameOf(event.id) else null
+        // What the link was before this event: a new round-trip time alone isn't a reconnect.
+        val previousLink = (event as? Event.LinkChanged)?.let { changed ->
+            _state.value.devices.firstOrNull { it.id == changed.id }?.link
+        }
         if (event.affectsCoreState()) {
             _state.update { it.reduce(event) }
         }
@@ -964,7 +969,18 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                     if (lastPcMirrorKeyframe?.pcId == event.id) {
                         lastPcMirrorKeyframe = null
                     }
-                } else if (event.link is Link.Online) {
+                }
+                // Only a link that came up, or moved to another path, starts the work of a
+                // new connection: the round-trip time changes every few heartbeats on
+                // Wi-Fi, and redoing all this each time cost battery for nothing.
+                val link = event.link
+                if (sameConnection(previousLink, link)) return
+                // After the state has the new link: learn the network, or count the wait (#397).
+                onDialing {
+                    learnNetwork(link)
+                    reviewDialing()
+                }
+                if (event.link is Link.Online) {
                     wakeTimers.remove(event.id)?.cancel()
                     taskTimers.remove(event.id)?.cancel()
                     retryWaitingRecordings(event.id)
@@ -1170,6 +1186,10 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         }
     }
 
+    /** Whether [now] is the same connection as [before], with only its round-trip time changed. */
+    private fun sameConnection(before: Link?, now: Link): Boolean =
+        before is Link.Online && now is Link.Online && before.relayed == now.relayed && before.usb == now.usb
+
     private fun retryWaitingRecordings(pcId: String) {
         val activeIds = _state.value.transfers.filterNot { it.isFinished() }.map { it.id }.toSet()
         for (rec in recordings.waitingForPc(pcId)) {
@@ -1212,6 +1232,12 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     suspend fun webcamCodecs(pcId: String): List<String> {
         startJob?.join()
         return runCatching { node?.webcamCodecs(pcId) }.getOrNull() ?: listOf("h264")
+    }
+
+    /** A PC's screens, the main one first; empty when it only shares its main one (#442). */
+    suspend fun pcDisplays(pcId: String): List<app.nectarlink.core.PcDisplay> {
+        startJob?.join()
+        return runCatching { node?.pcDisplays(pcId) }.getOrNull().orEmpty()
     }
 
     /** Accepted screen codecs from the connected PC; unknown receivers use H.264. */
@@ -1595,6 +1621,113 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         )
     }
 
+    // ---- When the phone looks for its PCs (#397) ----
+
+    /** One at a time: the network, links, settings and the timer all change these. */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    private val dialing = Dispatchers.Default.limitedParallelism(1)
+
+    private fun onDialing(block: () -> Unit) {
+        scope.launch(dialing) { block() }
+    }
+
+    /**
+     * Tells the core whether to dial PCs: only with Wi-Fi, Ethernet, USB or a
+     * VPN, and then only as Known networks only and Stop looking after allow.
+     * Runs on [dialing].
+     */
+    private fun applyDialing() {
+        val local = network.hasLocalNetwork()
+        val id = reconnect.currentNetwork()
+        if (id != lastNetwork) {
+            // Somewhere else now: worth trying again, with the wait from the start.
+            lastNetwork = id
+            reconnect.reset()
+            cancelGiveUpCheck()
+        }
+        runCatching { node?.setLocalNetwork(local && reconnect.allows(id)) }
+        val pause = when {
+            !local -> null
+            reconnect.gaveUp -> DialingPause.GaveUp
+            reconnect.unknownNetwork(id) -> DialingPause.UnknownNetwork
+            else -> null
+        }
+        _state.update { it.copy(hasNetwork = local, dialingPause = pause) }
+        reviewDialing()
+    }
+
+    /** Counts how long no PC has been reachable, and stops looking once it's been too long. Runs on [dialing]. */
+    private fun reviewDialing() {
+        val state = _state.value
+        val anyOnline = state.devices.any { it.online }
+        val trying = state.hasNetwork && state.dialingPause == null && !state.awayMode &&
+            state.devices.any { !it.isAndroid && it.reconnect }
+        val now = android.os.SystemClock.elapsedRealtime()
+        val gaveUpBefore = reconnect.gaveUp
+        reconnect.note(anyOnline, trying, now)
+        if (reconnect.gaveUp != gaveUpBefore) {
+            // Gave up just now, or a PC came back after it had: tell the core.
+            applyDialing()
+            return
+        }
+        val left = reconnect.remainingMs(now)
+        if (!trying || anyOnline || left == null) {
+            cancelGiveUpCheck()
+        } else if (giveUpCheck == null) {
+            giveUpCheck = scope.launch(dialing) {
+                delay(left + 1_000L)
+                giveUpCheck = null
+                reviewDialing()
+            }
+        }
+    }
+
+    private fun cancelGiveUpCheck() {
+        giveUpCheck?.cancel()
+        giveUpCheck = null
+    }
+
+    /** A PC came online directly: the network the phone is on now is one where PCs are found. */
+    private fun learnNetwork(link: Link) {
+        if (link is Link.Online && !link.relayed && !link.usb) {
+            reconnect.learn(reconnect.currentNetwork())
+        }
+    }
+
+    /** NectarLink was opened: look for PCs again, even after giving up. */
+    fun retryReconnecting() {
+        onDialing {
+            if (reconnect.gaveUp) {
+                reconnect.reset()
+                cancelGiveUpCheck()
+                applyDialing()
+            }
+        }
+    }
+
+    val reconnectKnownOnly: Boolean get() = reconnect.knownOnly
+    val reconnectGiveUpMinutes: Int get() = reconnect.giveUpMinutes
+    val reconnectKnownNetworks: Int get() = reconnect.knownCount
+
+    fun setReconnectKnownOnly(on: Boolean) {
+        reconnect.knownOnly = on
+        onDialing { applyDialing() }
+    }
+
+    fun setReconnectGiveUpMinutes(minutes: Int) {
+        reconnect.giveUpMinutes = minutes
+        onDialing {
+            reconnect.reset()
+            cancelGiveUpCheck()
+            applyDialing()
+        }
+    }
+
+    fun forgetReconnectNetworks() {
+        reconnect.forgetNetworks()
+        onDialing { applyDialing() }
+    }
+
     // ---- LocalSend interop & Mobile Data (Away mode) ----
 
     fun setAwayMode(enabled: Boolean) {
@@ -1604,6 +1737,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             startJob?.join()
             runCatching { node?.setAwayMode(enabled) }
         }
+        onDialing { reviewDialing() }
     }
 
     internal fun onScreenInteractiveChanged(interactive: Boolean) {
@@ -2618,6 +2752,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         fps: Int = 30,
         bitrate: Int = 4_000_000,
         watch: String? = null,
+        display: Int? = null,
     ) {
         _pcMirrorCaptureFailed.compareAndSet(id, null)
         command {
@@ -2627,6 +2762,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 fps.coerceIn(10, 60).toUInt(),
                 bitrate.coerceIn(500_000, 20_000_000).toUInt(),
                 watch,
+                display?.takeIf { it >= 0 }?.toUInt(),
             )
         }
     }
@@ -2787,6 +2923,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     /** Stops reconnecting to a paired PC by itself ("Stop reconnecting"), or starts again. */
     fun setReconnect(pcId: String, on: Boolean) {
         _state.update { it.reduce(Event.ReconnectChanged(pcId, on)) }
+        onDialing { reviewDialing() }
         scope.launch(Dispatchers.IO) {
             startJob?.join()
             val currentNode = node ?: return@launch

@@ -988,7 +988,7 @@ FocusScope {
                                             variant: "tonal"
                                             size: "sm"
                                             Accessible.name: qsTr("Open Android release page in browser")
-                                            onClicked: Qt.openUrlExternally("https://github.com/thtbee/nectarlink/releases/latest")
+                                            onClicked: Links.open("latestRelease")
                                         }
 
                                         Button {

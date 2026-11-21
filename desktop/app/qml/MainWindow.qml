@@ -13,7 +13,10 @@ NativeWindow {
     readonly property bool welcome: AppController.status !== "ready" || showWalkthrough
     property string page: AppController.currentPage.length > 0 ? AppController.currentPage : "home"
     property string pendingSettingsSection: ""
-    onPageChanged: if (AppController.currentPage !== page) AppController.currentPage = page
+    onPageChanged: {
+        if (AppController.currentPage !== page) AppController.currentPage = page
+        whatsNewLoader.hide()
+    }
     Connections {
         target: AppController
         function onCurrentPageChanged() {
@@ -390,6 +393,8 @@ NativeWindow {
                 AppController.refreshToastsEnabled()
                 if (!window.activeFocusItem && window.contentItem)
                     window.contentItem.forceActiveFocus()
+            } else {
+                whatsNewLoader.hide()
             }
         }
         function onActiveFocusItemChanged() {
@@ -877,6 +882,19 @@ NativeWindow {
                     }
                     Component.onCompleted: window.addCaptionHole(refresh)
                 }
+                // What's new (#461), last on the right; its dot shows after an
+                // update that brought something not seen yet.
+                IconButton {
+                    id: whatsNewBtn
+                    anchors.verticalCenter: parent.verticalCenter
+                    iconPath: Icons.whatsNew
+                    iconSize: 16
+                    label: qsTr("What's new")
+                    dot: AppController.whatsNewPending
+                    tonal: whatsNewLoader.item ? whatsNewLoader.item.opened : false
+                    onClicked: whatsNewLoader.toggle()
+                    Component.onCompleted: window.addCaptionHole(whatsNewBtn)
+                }
             }
         }
 
@@ -1002,8 +1020,17 @@ NativeWindow {
 
     StarPrompt {
         eligible: AppController.status === "ready" && !window.showWalkthrough && window.active
-        onStarred: Qt.openUrlExternally("https://github.com/thtbee/nectarlink")
-        onSupported: Qt.openUrlExternally("https://buymeacoffee.com/thtbee_")
+        onStarred: Links.open("repo")
+        onSupported: Links.open("donate")
+    }
+
+    // Now and then after an update, an ask to come chat on Discord: never
+    // while the star prompt or What's new is open, one ask at a time.
+    DiscordPrompt {
+        eligible: AppController.status === "ready" && !window.showWalkthrough && window.active
+            && Preferences.starPromptDone
+            && !(whatsNewLoader.item && whatsNewLoader.item.opened)
+        onJoined: Links.open("discord")
     }
 
     // ---- First run ----
@@ -1238,6 +1265,32 @@ NativeWindow {
         window: window
         anchors.top: parent.top
         anchors.right: parent.right
+    }
+
+    // What's new (#461): a panel under the top bar's sparkle button. It
+    // never opens by itself; the button's dot says there's something new.
+    Loader {
+        id: whatsNewLoader
+        anchors.fill: parent
+        z: 120
+        active: false
+        source: active ? "qrc:/qt/qml/app/nectarlink/qml/components/WhatsNewPanel.qml" : ""
+        onLoaded: {
+            item.anchorItem = whatsNewBtn
+            item.open()
+        }
+        function toggle() {
+            if (!active) active = true
+            else if (item && item.opened) item.close()
+            else if (item) item.open()
+        }
+        function hide() { if (item) item.close() }
+    }
+    Connections {
+        target: AppController
+        function onWhatsNewRequested() {
+            if (!whatsNewLoader.item || !whatsNewLoader.item.opened) whatsNewLoader.toggle()
+        }
     }
 
     Loader {

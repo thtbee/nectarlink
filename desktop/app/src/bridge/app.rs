@@ -53,6 +53,8 @@ pub mod qobject {
         #[qproperty(i32, caps_revision)]
         /// Pop-ups for phone notifications are paused.
         #[qproperty(bool, notifications_paused)]
+        /// Updated since What's new was last closed: it opens by itself (#461).
+        #[qproperty(bool, whats_new_pending, cxx_name = "whatsNewPending")]
         /// Bumped when a device toggle is changed from this PC.
         #[qproperty(i32, toggles_revision)]
         /// Bumped whenever a phone's quick settings toggles change.
@@ -234,6 +236,18 @@ pub mod qobject {
         /// Pauses or resumes pop-ups for phone notifications.
         #[qinvokable]
         fn toggle_notifications_paused(self: Pin<&mut AppController>);
+        /// This build's release notes and the ones before, as JSON (#461).
+        #[qinvokable]
+        #[cxx_name = "whatsNew"]
+        fn whats_new(self: &AppController) -> QString;
+        /// What's new was closed: all of this build's notes are seen.
+        #[qinvokable]
+        #[cxx_name = "markWhatsNewSeen"]
+        fn mark_whats_new_seen(self: Pin<&mut AppController>);
+        /// Opens What's new.
+        #[qinvokable]
+        #[cxx_name = "openWhatsNew"]
+        fn open_whats_new(self: Pin<&mut AppController>);
         #[qinvokable]
         fn unpair(self: Pin<&mut AppController>, device: &QString);
 
@@ -446,6 +460,10 @@ pub mod qobject {
         /// Show the Connection Doctor.
         #[qsignal]
         fn doctor_requested(self: Pin<&mut AppController>);
+        /// Show What's new.
+        #[qsignal]
+        #[cxx_name = "whatsNewRequested"]
+        fn whats_new_requested(self: Pin<&mut AppController>);
         /// Open the Send files picker on the Home page.
         #[qsignal]
         fn file_picker_requested(self: Pin<&mut AppController>);
@@ -467,6 +485,7 @@ pub struct AppControllerRust {
     has_devices: bool,
     caps_revision: i32,
     notifications_paused: bool,
+    whats_new_pending: bool,
     toggles_revision: i32,
     phone_toggles_revision: i32,
     ringing_from: QString,
@@ -804,6 +823,9 @@ fn spawn_data_retention_refresh(qt: CxxQtThread<qobject::AppController>) {
 impl cxx_qt::Initialize for qobject::AppController {
     fn initialize(mut self: Pin<&mut Self>) {
         self.as_mut().set_version(QString::from(env!("CARGO_PKG_VERSION")));
+        self.as_mut().set_notifications_paused(crate::notifications::paused());
+        self.as_mut()
+            .set_whats_new_pending(nectarlink_core::whats_new::pending(&crate::core_host::host().data_dir));
         self.as_mut().set_current_page(QString::from("home"));
         // Queued: Rust also changes the selection, from inside refresh.
         self.as_mut()
@@ -918,7 +940,10 @@ impl cxx_qt::Initialize for qobject::AppController {
             quit: tr!("App", "Quit NectarLink"),
         };
         match tray::Tray::create("NectarLink", labels, move |event| on_tray_event(&qt, event)) {
-            Ok(tray) => self.rust_mut().tray = Some(tray),
+            Ok(tray) => {
+                tray.set_notifications_paused(crate::notifications::paused());
+                self.rust_mut().tray = Some(tray);
+            }
             Err(e) => tracing::warn!(error = %e, "no tray icon"),
         }
     }
@@ -1654,9 +1679,23 @@ impl qobject::AppController {
         }
     }
 
+    pub fn whats_new(&self) -> QString {
+        QString::from(&nectarlink_core::whats_new::json(&crate::core_host::host().data_dir))
+    }
+
+    pub fn open_whats_new(self: Pin<&mut Self>) {
+        self.whats_new_requested();
+    }
+
+    pub fn mark_whats_new_seen(mut self: Pin<&mut Self>) {
+        nectarlink_core::whats_new::mark_seen(&crate::core_host::host().data_dir);
+        self.as_mut().set_whats_new_pending(false);
+    }
+
     pub fn toggle_notifications_paused(mut self: Pin<&mut Self>) {
         let paused = !crate::notifications::paused();
         crate::notifications::set_paused(paused);
+        crate::settings::remember_popups_paused(paused);
         self.as_mut().set_notifications_paused(paused);
         if let Some(tray) = self.rust().tray.as_ref() {
             tray.set_notifications_paused(paused);

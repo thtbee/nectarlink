@@ -1,7 +1,6 @@
 # AI agents
 
-Claude Code, Claude Desktop, Codex, Cursor, Gemini CLI, VS Code and other AI
-assistants on your PC can use NectarLink: read your notifications and texts,
+AI assistants on your PC, whichever you use, can use NectarLink: read your notifications and texts,
 send a file to your phone, reply to a message, find a photo, control music.
 Only with your permission, and the sensitive things always ask you first.
 
@@ -10,14 +9,14 @@ It's off until you turn it on.
 ## Turn it on
 
 1. On the PC, open **Settings › AI agents** and turn on **Let AI agents use NectarLink**.
-2. Under **Add an agent**, pick the app (Claude Code, Codex, Cursor...) and how much it may do:
+2. Under **Add an agent**, give it a name and pick how much it may do:
    - **Read only**: reads devices, notifications, messages, calls, contacts, photos, files and media. Changes nothing.
    - **Everyday**: also sends messages, files and notifications, controls media, copies photos to the PC,
      opens phone apps on the PC and changes the phone's quick settings (Do Not Disturb, volume...).
-3. Click **Add**. For most apps there's then an **Add to** button that puts NectarLink in the app's
-   settings for you; restart the app afterwards. NectarLink keeps a copy of the old settings file next
-   to it. If the button isn't there, or the app's settings file has comments in it, NectarLink shows
-   what to paste instead, with a **Copy** button.
+3. Click **Create**, then **Copy prompt** and paste it into your agent. The prompt tells it how to
+   add NectarLink to its own settings and check that it works, and the card says **Connected** once
+   it has. The prompt never holds a token or key: the agent's command finds that by itself.
+   **Set up by hand** shows the MCP settings, the commands or the HTTP request instead.
 
 To change what one agent may do, click **Permissions** next to it and pick **Off**, **Read** or
 **Read and act** for each area. Your phone's files, Deck tiles and turning PCs off are never in a

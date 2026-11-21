@@ -53,9 +53,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalUriHandler
 import app.nectarlink.android.ui.AppLanguage
-import app.nectarlink.android.ui.StarNotification
 import androidx.compose.material3.RadioButton
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.ui.res.pluralStringResource
@@ -717,6 +715,8 @@ fun SettingsScreen(
                     FilledTonalButton(onClick = onOpenRelaySettings) {
                         Text(stringResource(R.string.relay_settings_title))
                     }
+                    SettingRowDivider()
+                    ReconnectSettings()
                 }
             }
         }
@@ -1208,34 +1208,39 @@ fun SettingsScreen(
                     CheckForUpdates(updater)
                 }
             }
+            // Community: Discord, news, the code and support, side by side.
             item(key = "support", contentType = "section") {
-                val uriHandler = LocalUriHandler.current
-                Section(stringResource(R.string.support_title)) {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            stringResource(R.string.support_body),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.weight(1f).padding(end = 12.dp),
-                        )
-                        FilledTonalButton(onClick = { runCatching { uriHandler.openUri(StarNotification.SUPPORT) } }) {
-                            Text(stringResource(R.string.support_action))
-                        }
-                    }
+                val context = LocalContext.current
+                Section(stringResource(R.string.community_title)) {
+                    CommunityRow(
+                        title = stringResource(R.string.community_discord_title),
+                        body = stringResource(R.string.community_discord_body),
+                        action = stringResource(R.string.clip_action_open),
+                    ) { app.nectarlink.android.ui.Link.open(context, app.nectarlink.android.ui.Link.DISCORD) }
                     SettingRowDivider()
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                        Column(Modifier.weight(1f).padding(end = 12.dp)) {
-                            Text(stringResource(R.string.report_title), style = MaterialTheme.typography.titleSmall)
-                            Text(
-                                stringResource(R.string.report_entry_body),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        OutlinedButton(onClick = onReportProblem) {
-                            Text(stringResource(R.string.clip_action_open))
-                        }
-                    }
+                    CommunityRow(
+                        title = stringResource(R.string.community_x_title),
+                        body = stringResource(R.string.community_x_body),
+                        action = stringResource(R.string.clip_action_open),
+                    ) { app.nectarlink.android.ui.Link.open(context, app.nectarlink.android.ui.Link.X) }
+                    SettingRowDivider()
+                    CommunityRow(
+                        title = stringResource(R.string.community_github_title),
+                        body = stringResource(R.string.community_github_body),
+                        action = stringResource(R.string.clip_action_open),
+                    ) { app.nectarlink.android.ui.Link.open(context, app.nectarlink.android.ui.Link.REPO) }
+                    SettingRowDivider()
+                    CommunityRow(
+                        title = stringResource(R.string.support_title),
+                        body = stringResource(R.string.support_body),
+                        action = stringResource(R.string.support_action),
+                    ) { app.nectarlink.android.ui.Link.open(context, app.nectarlink.android.ui.Link.DONATE) }
+                    SettingRowDivider()
+                    CommunityRow(
+                        title = stringResource(R.string.report_title),
+                        body = stringResource(R.string.report_entry_body),
+                        action = stringResource(R.string.clip_action_open),
+                    ) { onReportProblem() }
                 }
             }
         }
@@ -1912,6 +1917,22 @@ private fun SettingRowDivider() {
     )
 }
 
+/** One row of Community: what it is, and a button that opens it. */
+@Composable
+private fun CommunityRow(title: String, body: String, action: String, onOpen: () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+            Text(title, style = MaterialTheme.typography.titleSmall)
+            Text(
+                body,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        FilledTonalButton(onClick = onOpen) { Text(action) }
+    }
+}
+
 @Composable
 private fun Section(
     title: String,
@@ -1958,6 +1979,73 @@ private fun Label(text: String) {
 
 /** The third language choice when it isn't a picked language: opens the list. */
 private const val MORE_LANGUAGES = "more"
+
+/** When the phone looks for its PCs by itself (#397). */
+@Composable
+private fun ReconnectSettings() {
+    val core = (LocalContext.current.applicationContext as app.nectarlink.android.NectarlinkApplication).core
+    var knownOnly by remember { mutableStateOf(core.reconnectKnownOnly) }
+    var giveUp by remember { mutableStateOf(core.reconnectGiveUpMinutes) }
+    var known by remember { mutableStateOf(core.reconnectKnownNetworks) }
+    val knownTitle = stringResource(R.string.reconnect_known_only_title)
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+            Text(knownTitle, style = MaterialTheme.typography.titleSmall)
+            Text(
+                stringResource(R.string.reconnect_known_only_body),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (known > 0) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        pluralStringResource(R.plurals.reconnect_known_count, known, known),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    TextButton(onClick = {
+                        core.forgetReconnectNetworks()
+                        known = 0
+                    }) { Text(stringResource(R.string.reconnect_forget)) }
+                }
+            }
+        }
+        Switch(
+            checked = knownOnly,
+            onCheckedChange = { on ->
+                knownOnly = on
+                core.setReconnectKnownOnly(on)
+                known = core.reconnectKnownNetworks
+            },
+            colors = app.nectarlink.android.ui.theme.nectarSwitchColors(),
+            modifier = Modifier.semantics { contentDescription = knownTitle },
+        )
+    }
+    SettingRowDivider()
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(stringResource(R.string.reconnect_give_up_title), style = MaterialTheme.typography.titleSmall)
+        Text(
+            stringResource(R.string.reconnect_give_up_body),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        val labels = listOf(
+            stringResource(R.string.reconnect_give_up_never),
+            stringResource(R.string.reconnect_give_up_15_min),
+            stringResource(R.string.reconnect_give_up_1_hour),
+            stringResource(R.string.reconnect_give_up_4_hours),
+        )
+        Choice(
+            options = app.nectarlink.android.core.ReconnectPolicy.GIVE_UP_CHOICES.map { it.toString() }.zip(labels),
+            selected = giveUp.toString(),
+            onSelect = { value ->
+                val minutes = value.toIntOrNull() ?: 0
+                giveUp = minutes
+                core.setReconnectGiveUpMinutes(minutes)
+            },
+        )
+    }
+}
 
 /** A row of choices, one picked. */
 @Composable

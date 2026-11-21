@@ -169,6 +169,8 @@
     <string name="transfer_resume">Resume</string>
     <string name="transfer_paused_progress">Paused · %1$s / %2$s</string>
     <string name="transfer_received_from">From %1$s · in Download/Nectarlink</string>
+    <string name="transfer_app_received_from">From %1$s · tap to install</string>
+    <string name="transfer_install">Install</string>
     <string name="transfer_sent_to">Sent to %1$s</string>
     <string name="transfer_cancelled">Cancelled</string>
     <string name="transfer_denied">%1$s doesn’t accept files from this phone.</string>
@@ -344,6 +346,21 @@
     </plurals>
     <string name="notification_waiting">Waiting for your PC</string>
     <string name="notification_waiting_network">Waiting for Wi-Fi to reach your PC</string>
+    <string name="reconnect_known_only_title">Only on networks where a PC was found</string>
+    <string name="reconnect_known_only_body">Looks for your PCs by itself only on Wi-Fi where it reached one before. Elsewhere a PC can still reach the phone.</string>
+    <plurals name="reconnect_known_count">
+        <item quantity="one">%1$d network so far</item>
+        <item quantity="other">%1$d networks so far</item>
+    </plurals>
+    <string name="reconnect_forget">Forget them</string>
+    <string name="reconnect_give_up_title">Stop looking after</string>
+    <string name="reconnect_give_up_body">With no PC reachable for this long, the phone stops looking until the network changes or you open NectarLink.</string>
+    <string name="reconnect_give_up_never">Never</string>
+    <string name="reconnect_give_up_15_min">15 min</string>
+    <string name="reconnect_give_up_1_hour">1 hour</string>
+    <string name="reconnect_give_up_4_hours">4 hours</string>
+    <string name="notification_stopped_looking">Stopped looking for your PC. Open NectarLink to look again</string>
+    <string name="notification_unknown_network">Not looking for your PC on this network</string>
     <string name="notification_not_paired">Not paired with a PC yet</string>
     <plurals name="transfer_files">
         <item quantity="one">%1$d file</item>
@@ -1435,6 +1452,22 @@
     <string name="settings_guide_card_body">Browse every feature, check live requirements, or jump straight to its controls.</string>
     <string name="settings_walkthrough_body">Reopen the setup guide for permissions, pairing, and power levels.</string>
     <string name="desk_exit">Exit Desk Mode</string>
+    <string name="desk_customize">Customize</string>
+    <string name="desk_background">Background</string>
+    <string name="desk_background_black">Black</string>
+    <string name="desk_background_graphite">Graphite</string>
+    <string name="desk_background_accent">Accent</string>
+    <string name="desk_font">Clock font</string>
+    <string name="desk_font_mono">Mono</string>
+    <string name="desk_font_sans">Sans</string>
+    <string name="desk_font_serif">Serif</string>
+    <string name="desk_show">Show</string>
+    <string name="desk_show_seconds">Seconds</string>
+    <string name="desk_show_date">Date</string>
+    <string name="desk_show_media">PC media and volume</string>
+    <string name="desk_show_battery">Battery</string>
+    <string name="desk_battery_phone">Phone %1$d%%</string>
+    <string name="desk_battery_pc">%1$s %2$d%%</string>
     <string name="desk_media_playing">PC Media · Playing</string>
     <string name="desk_media_audio">PC Media &amp; Audio</string>
     <string name="desk_pc_screen">PC Screen</string>
@@ -1564,6 +1597,34 @@
     <string name="crash_card_off">Don\'t ask about crashes</string>
     <string name="crash_card_fixed">This crash is fixed in NectarLink %1$s. Update to get the fix.</string>
     <string name="crash_card_update">Update</string>
+    <!-- What's new (#461) -->
+    <string name="whats_new_dot">New changes</string>
+    <string name="whats_new_group_new">New</string>
+    <string name="whats_new_group_changed">Changed</string>
+    <string name="whats_new_group_fixed">Fixed</string>
+    <string name="whats_new_in_this_version">In this version</string>
+    <string name="whats_new_more">and %1$d more</string>
+    <string name="whats_new_empty">Nothing to list for this build.</string>
+    <string name="whats_new_release_notes">Release notes on GitHub</string>
+    <!-- Calls through WhatsApp from the PC (#434) -->
+    <string name="app_call_channel">Calls from your PC</string>
+    <string name="app_call_title">Call %1$s on %2$s</string>
+    <string name="app_call_text">Tap to start the call.</string>
+    <!-- Which of the PC's screens to view (#442) -->
+    <string name="pc_mirror_screen">Screen %1$d</string>
+    <string name="pc_mirror_screen_desc">Showing screen %1$d of %2$d. Tap for the next one.</string>
+    <!-- Community: Discord, X, GitHub and support -->
+    <string name="community_title">Community</string>
+    <string name="community_discord_title">Discord</string>
+    <string name="community_discord_body">Our server. Ask questions, share ideas and try new builds with others.</string>
+    <string name="community_x_title">𝕏</string>
+    <string name="community_x_body">Follow me. I post what\'s coming to NectarLink and other things I make.</string>
+    <string name="community_github_title">GitHub</string>
+    <string name="community_github_body">Source code, issues and releases.</string>
+    <string name="community_invite_title">Come chat on Discord</string>
+    <string name="community_invite_text">Questions, ideas and early builds, with the people who make and use NectarLink.</string>
+    <string name="community_invite_join">Join Discord</string>
+    <string name="community_invite_later">Not now</string>
 </resources>
 
 

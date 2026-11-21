@@ -579,6 +579,23 @@ fun PcMirrorView(
     var surface by remember { mutableStateOf<Surface?>(null) }
     var hasRenderedFrame by remember(pcId) { mutableStateOf(false) }
     var reconnectTick by remember { mutableIntStateOf(0) }
+    // Which of the PC's screens (#442); its main one until another is picked.
+    var displays by remember(pcId) { mutableStateOf<List<app.nectarlink.core.PcDisplay>>(emptyList()) }
+    var display by rememberSaveable(pcId) { mutableStateOf<Int?>(null) }
+    // Asked again once the picture arrives: before the PC allows this phone
+    // (or while the link is down) it lists none.
+    LaunchedEffect(pcId, watch, hasRenderedFrame) {
+        if (watch == null && displays.isEmpty()) displays = core.pcDisplays(pcId)
+    }
+    val screenIndex = displays.indexOfFirst { it.id.toInt() == display }.coerceAtLeast(0)
+    val showScreens = watch == null && displays.size > 1
+    val nextScreen = {
+        if (displays.size > 1) {
+            display = displays[(screenIndex + 1) % displays.size].id.toInt()
+            // Another screen can have another size: a fresh decoder, as for the quality.
+            reconnectTick++
+        }
+    }
     var requestTick by remember(pcId) { mutableIntStateOf(0) }
 
     // Full-screen overlay & auto-rotate state
@@ -780,7 +797,7 @@ fun PcMirrorView(
     val showing = watch != null || lifecycleState.isAtLeast(Lifecycle.State.STARTED)
     var asked by remember(pcId) { mutableStateOf(false) }
 
-    LaunchedEffect(pcId, maxSize, bitrate, showing, requestTick) {
+    LaunchedEffect(pcId, maxSize, bitrate, showing, requestTick, display) {
         hasRenderedFrame = false
         if (!showing) {
             if (asked) {
@@ -795,7 +812,7 @@ fun PcMirrorView(
             "PcMirrorView",
             "startPcMirror maxSize=$maxSize fps=30 bitrate=$bitrate",
         )
-        core.startPcMirror(pcId, maxSize = maxSize, fps = 30, bitrate = bitrate, watch = watch)
+        core.startPcMirror(pcId, maxSize = maxSize, fps = 30, bitrate = bitrate, watch = watch, display = display)
     }
 
     DisposableEffect(pcId) {
@@ -1012,6 +1029,8 @@ fun PcMirrorView(
         if (highQuality) R.string.pc_mirror_quality_1080p else R.string.pc_mirror_quality_720p,
     )
     val qualityA11yLabel = stringResource(R.string.pc_mirror_quality_desc, qualityShortLabel)
+    val screenLabel = stringResource(R.string.pc_mirror_screen, screenIndex + 1)
+    val screenA11yLabel = stringResource(R.string.pc_mirror_screen_desc, screenIndex + 1, displays.size)
 
     // Unified Column so AndroidView(TextureView) stays in the exact same composition slot
     // across portrait and full-screen landscape transitions.
@@ -1387,7 +1406,7 @@ fun PcMirrorView(
             // live there, always shown, and never cover the PC's screen.
             if (useRails) {
                 // One tile size for both sides, from the longer one.
-                val tiles = if (touchpadSensitivity != null) 6 else 5
+                val tiles = maxOf(if (touchpadSensitivity != null) 6 else 5, if (showScreens) 6 else 5)
                 FullScreenRail(width = railWidth, tiles = tiles, modifier = Modifier.align(Alignment.CenterStart)) { h ->
                     if (touchpadSensitivity != null) {
                         RailButton(touchpadLabel, h, selected = touchpadMode) { touchpadMode = !touchpadMode }
@@ -1405,6 +1424,9 @@ fun PcMirrorView(
                     RailButton(qualityShortLabel, h, description = qualityA11yLabel) {
                         highQuality = !highQuality
                         reconnectTick++
+                    }
+                    if (showScreens) {
+                        RailButton(screenLabel, h, description = screenA11yLabel) { nextScreen() }
                     }
                     RailTile(
                         height = h,
@@ -1544,6 +1566,21 @@ fun PcMirrorView(
                                         style = MaterialTheme.typography.labelLarge,
                                         maxLines = 1,
                                     )
+                                }
+                            }
+                            if (showScreens) {
+                                TextButton(
+                                    onClick = {
+                                        bumpOverlay()
+                                        nextScreen()
+                                    },
+                                    colors = ButtonDefaults.textButtonColors(contentColor = Color.White),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                                    modifier = Modifier
+                                        .height(36.dp)
+                                        .semantics { contentDescription = screenA11yLabel },
+                                ) {
+                                    Text(screenLabel, style = MaterialTheme.typography.labelLarge, maxLines = 1)
                                 }
                             }
                             TextButton(
@@ -1705,6 +1742,15 @@ fun PcMirrorView(
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
                 ) {
                     FitLabel(keyboardLabel)
+                }
+                if (showScreens) {
+                    OutlinedButton(
+                        onClick = nextScreen,
+                        modifier = Modifier.semantics { contentDescription = screenA11yLabel },
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp),
+                    ) {
+                        FitLabel(screenLabel)
+                    }
                 }
                 OutlinedButton(
                     onClick = {

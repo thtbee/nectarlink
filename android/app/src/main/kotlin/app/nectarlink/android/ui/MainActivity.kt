@@ -128,12 +128,21 @@ class MainActivity : ComponentActivity() {
             (application as NectarlinkApplication).core.refreshNotificationAccess()
         }
 
+    /** The star ask was posted as the app opened: the Discord card waits for another time. */
+    private var starAskedNow = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         val core = (application as NectarlinkApplication).core
         val preferences = Preferences(this)
-        StarNotification.onAppOpened(this)
+        // One ask at a time: the Discord card waits while the star ask is new.
+        starAskedNow = StarNotification.onAppOpened(this)
+        runCatching {
+            val info = packageManager.getPackageInfo(packageName, 0)
+            preferences.armCommunityInvite(updated = info.lastUpdateTime > info.firstInstallTime)
+        }
+        lifecycleScope.launch { WhatsNew.onAppOpened(this@MainActivity) }
 
         // Notifications (transfers, calls, requests from PCs) and, on Android
         // 17, the local network, without which no PC can be reached.
@@ -181,6 +190,7 @@ class MainActivity : ComponentActivity() {
                         state = state,
                         appearance = appearance,
                         preferences = preferences,
+                        starAskedNow = starAskedNow,
                         requestedRemotePc = requestedRemotePc,
                         requestedRemoteMode = requestedRemoteMode,
                         onRemoteConsumed = { requestedRemotePc = null },
@@ -242,6 +252,8 @@ class MainActivity : ComponentActivity() {
         if (app.core.state.value.status is CoreStatus.Ready) {
             app.core.refreshNotificationAccess()
         }
+        // Opened after the phone stopped looking for its PCs: look again (#397).
+        app.core.retryReconnecting()
         if (app.updater.enabled) {
             // Back from allowing installs: the update the user started carries on.
             app.updater.onAppResumed()
@@ -369,6 +381,7 @@ private fun App(
     state: CoreState,
     appearance: Appearance,
     preferences: Preferences,
+    starAskedNow: Boolean,
     requestedRemotePc: String?,
     requestedRemoteMode: RemoteMode,
     onRemoteConsumed: () -> Unit,
@@ -863,6 +876,7 @@ private fun App(
                     val backgroundServiceEnabled by preferences.backgroundServiceEnabled.collectAsStateWithLifecycle()
                     val startWithoutAsking by app.nectarlink.android.service.PcAutoStart.pcs(context).collectAsStateWithLifecycle()
                     val hiveInviteShown by preferences.hiveInviteShown.collectAsStateWithLifecycle()
+                    val communityInviteShown by preferences.communityInviteShown.collectAsStateWithLifecycle()
                     val saveableStateHolder = androidx.compose.runtime.saveable.rememberSaveableStateHolder()
 
                     // Only apply top scaffold padding here so LazyColumns in HomeScreen/SettingsScreen
@@ -1038,6 +1052,12 @@ private fun App(
                                         preferences.update { it.copy(theme = "hive") }
                                     },
                                     onDismissHiveInvite = preferences::answerHiveInvite,
+                                    showCommunityInvite = communityInviteShown && !starAskedNow,
+                                    onJoinDiscord = {
+                                        preferences.answerCommunityInvite(joined = true)
+                                        Link.open(context, Link.DISCORD)
+                                    },
+                                    onDismissCommunityInvite = { preferences.answerCommunityInvite(joined = false) },
                                     backgroundServiceEnabled = backgroundServiceEnabled,
                                     onTurnOnBackgroundService = {
                                         preferences.updateBackgroundServiceEnabled(true)
