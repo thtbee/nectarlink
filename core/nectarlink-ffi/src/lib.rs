@@ -2749,6 +2749,10 @@ pub trait Platform: Send + Sync {
         action: MediaAction,
         position: Option<u64>,
     ) -> Result<(), MediaFailure>;
+    /// Whether a computer could be reaching this phone through adb right now
+    /// (USB debugging on with a cable in, or wireless debugging on). Pairing
+    /// over the USB tunnel without pairing mode is taken only then.
+    fn adb_may_be_connected(&self) -> bool;
     /// A paired PC sent a web link (http or https, checked) to open.
     /// False if it couldn't be shown.
     fn open_link(&self, from_id: String, url: String) -> bool;
@@ -3044,6 +3048,9 @@ impl core::Platform for PlatformAdapter {
         position: Option<u64>,
     ) -> Result<(), core::MediaError> {
         Ok(self.0.media_command(player.to_owned(), action.into(), position)?)
+    }
+    fn adb_may_be_connected(&self) -> bool {
+        self.0.adb_may_be_connected()
     }
     fn open_link(&self, from: &DeviceId, url: &str) -> Result<(), String> {
         if self.0.open_link(from.to_string(), url.to_owned()) { Ok(()) } else { Err("not shown".into()) }
@@ -3667,9 +3674,12 @@ impl NectarlinkNode {
                     tracing::error!("the app's event listener failed on an event; carrying on");
                 }
             };
+            // What the app was given, so after a lag it gets only what it missed.
+            let mut given = core::Resync::new();
             loop {
                 match events.recv().await {
                     Ok(event) => {
+                        given.note(&event);
                         if let Some(ev) = Event::from_node(event) {
                             deliver(ev);
                         }
@@ -3693,6 +3703,12 @@ impl NectarlinkNode {
                             }
                         }
                         deliver(Event::QueueChanged);
+                        // Transfers, rings and pairing only ever come as events.
+                        for event in given.missed(node_for_events.latest_state()) {
+                            if let Some(ev) = Event::from_node(event) {
+                                deliver(ev);
+                            }
+                        }
                     }
                     Err(RecvError::Closed) => return,
                 }

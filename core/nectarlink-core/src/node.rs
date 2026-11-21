@@ -156,6 +156,8 @@ pub(crate) struct Shared {
     pub pairing: PairingState,
     pub cancel: CancellationToken,
     events: broadcast::Sender<NodeEvent>,
+    /// What an app that fell behind the events needs again (see [`crate::Resync`]).
+    latest: Mutex<crate::resync::LatestState>,
     sessions: Mutex<HashMap<DeviceId, Arc<Session>>>,
     links: Mutex<HashMap<DeviceId, LinkState>>,
     supervisors: Mutex<HashMap<DeviceId, Supervisor>>,
@@ -314,6 +316,7 @@ fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
 
 impl Shared {
     pub fn emit(&self, event: NodeEvent) {
+        lock(&self.latest).note(&event);
         // No subscribers is fine; events are a UI convenience.
         let _ = self.events.send(event);
     }
@@ -1988,6 +1991,7 @@ impl Node {
             pairing: PairingState::default(),
             cancel: CancellationToken::new(),
             events,
+            latest: Mutex::default(),
             sessions: Mutex::new(HashMap::new()),
             links: Mutex::new(HashMap::new()),
             supervisors: Mutex::new(HashMap::new()),
@@ -2248,6 +2252,12 @@ impl Node {
     /// Subscribes to node events. Each subscriber gets its own stream.
     pub fn events(&self) -> broadcast::Receiver<NodeEvent> {
         self.shared.events.subscribe()
+    }
+
+    /// The latest transfer states, rings and pairing step, as events: for an
+    /// app that fell behind [`Node::events`], through [`crate::Resync`].
+    pub fn latest_state(&self) -> Vec<NodeEvent> {
+        lock(&self.shared.latest).snapshot()
     }
 
     /// This device's direct addresses (for diagnostics and tests).

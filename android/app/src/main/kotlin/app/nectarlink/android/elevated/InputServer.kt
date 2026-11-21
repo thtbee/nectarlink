@@ -407,8 +407,12 @@ object InputServer {
             client.tcpNoDelay = true
             client.soTimeout = AUTH_TIMEOUT_MS
             val reader = client.inputStream.bufferedReader()
+            var given = runCatching { reader.nextLine(MAX_TOKEN_CHARS) }.getOrNull() ?: return
+            // The app first checks this is the helper it started (HelperProof).
+            if (runCatching { HelperProof.answerIfChallenge(given, token, client.getOutputStream()) }.getOrElse { return }) {
+                given = runCatching { reader.nextLine(MAX_TOKEN_CHARS) }.getOrNull() ?: return
+            }
             // Compared in constant time: the token is the only key.
-            val given = runCatching { reader.nextLine(MAX_TOKEN_CHARS) }.getOrNull() ?: return
             if (!MessageDigest.isEqual(given.toByteArray(), token.toByteArray())) return
             val first = runCatching { reader.nextLine(MAX_LINE_CHARS) }.getOrNull()
             client.soTimeout = 0

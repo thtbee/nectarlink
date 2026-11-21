@@ -403,6 +403,51 @@ change things that need a step from you, and its notes say so.
 - **NectarLink's data on Linux and macOS is readable by you only.** The data folder and
   database took the system default, which on many Linux systems lets other accounts on
   the same computer read them.
+- **Elevated makes sure it's talking to its own helper** before it sends it anything.
+- **The phone is more careful about what may pair with it over a USB cable.** Plugging
+  into a PC works as before.
+- **LocalSend receiving holds up better on a busy or unfriendly network.** One device
+  can no longer crowd out the others or fill the list of LocalSend devices.
+- **Cancelling a LocalSend receive ends it at once,** also when you accepted it and the
+  sender hasn't started: it could stay "receiving". A cancel at the last
+  moment is no longer reported as received, a file that fails to save to another drive
+  leaves no broken copy, and a write error at the very end now fails the file.
+- **What you type in Messages on the PC stays when you go to another page.** A half
+  written text came back empty after a look at Calls or Settings; it now waits in its
+  conversation until you send it or clear it.
+- **A first text to someone new that fails to send comes back to the box,** with the
+  number and the picture, instead of being lost.
+- **A chat reply from the PC that fails says "Not sent".** It said "Sending…" for good,
+  then vanished.
+- **The PC stays on the phone you picked when its list reorders.** When a phone paired
+  earlier came back online and moved up the list, a page open for another phone could
+  act on the one that took its place, such as taking a photo with the wrong phone.
+- **Renaming a phone on the PC shows the new name everywhere at once.** Some labels kept
+  the old one until something else changed.
+- **Saving a file to the phone from the PC twice at once can't mix the two.** The second
+  is turned away instead of writing into the same unfinished file.
+- **Cancelling pairing always stops it,** even at the last moment, and a pairing code
+  pairs one device.
+- **Transfers, rings and pairing catch up when the app falls behind.** In a very busy
+  moment the app can miss some of what happens; a transfer could then stay "receiving", a
+  ring stay on screen or pairing wait forever. The app now gets what it missed.
+- **Switching the phone's update channel during a check no longer offers the old
+  channel's build,** or installs it by itself.
+- **The phone as a webcam recovers when Android takes its video encoder away.** It
+  starts it again, or ends the stream, instead of leaving the PC a frozen picture.
+- **A voice recording keeps going after the phone's sound system restarts,** instead of
+  recording silence to the end, and the phone's microphone on a PC ends rather than
+  hang when the microphone stops answering.
+- **A PC task's "running" notification goes away when you unpair that PC,** or when it
+  has been away for half an hour.
+- **A file saved from the PC over one on the phone's SD card is never left half
+  written** when saving fails; the old one stays as it was.
+- **Elevated uses less battery while it can't reach Wireless debugging.** It tries less
+  often as time goes on, and right away when Wi-Fi or Wireless debugging changes.
+- **Windows updates that ask for administrator rights check the download more safely.**
+- **Windows shows the update channel that really applies.** Where updates install for
+  every account on the PC, they all follow one channel, the last one picked; Settings
+  now shows that one and says so, instead of each account setting it back at start.
 - **Pairing from the PC's list of nearby phones works.** Picking a phone there said it
   couldn't reach the phone, because the phone only took pairing it started itself. While
   its pairing screen is open, the phone now accepts it from either side.

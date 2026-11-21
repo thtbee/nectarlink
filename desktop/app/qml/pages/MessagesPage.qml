@@ -119,6 +119,14 @@ Item {
         if (Messages.composeTo.length > 0) {
             composing = true
             toField.text = Messages.composeTo
+            // A first message that didn't go out comes back to the box.
+            const unsentKey = deviceId + "|to:" + Messages.composeTo
+            const unsent = Messages.draft(unsentKey)
+            if (unsent.length > 0) {
+                Messages.saveDraft(unsentKey, "")
+                if (input.text.length === 0)
+                    input.text = unsent
+            }
             Qt.callLater(() => composer.focusText())
         } else if (Messages.thread.length > 0) {
             composing = false
@@ -146,8 +154,13 @@ Item {
     }
     // Leaving the page closes the open conversation.
     onActiveChanged: active ? load() : closeChat()
-    Component.onCompleted: load()
-    Component.onDestruction: Messages.closeThread()
+    Component.onCompleted: { load(); switchDraft() }
+    // What's typed stays for when you come back, even from another page.
+    Component.onDestruction: {
+        if (draftKey.length > 0)
+            Messages.saveDraft(draftKey, input.text)
+        Messages.closeThread()
+    }
 
     Shortcut {
         sequence: "Esc"
@@ -182,21 +195,17 @@ Item {
     onDeviceIdChanged: { composing = false; switchDraft(); load() }
 
     // What was typed in each conversation, so text written for one is never
-    // sent to another and comes back when you return to it.
-    property var drafts: ({})
+    // sent to another and comes back when you return to it. Kept by the app,
+    // not this page, so changing pages doesn't lose it.
     property string draftKey: ""
     function switchDraft() {
         const key = deviceId + "|" + Messages.thread
         if (key === draftKey)
             return
-        if (draftKey.length > 0) {
-            if (input.text.length > 0)
-                drafts[draftKey] = input.text
-            else
-                delete drafts[draftKey]
-        }
+        if (draftKey.length > 0)
+            Messages.saveDraft(draftKey, input.text)
         draftKey = key
-        input.text = drafts[key] || ""
+        input.text = Messages.draft(key)
     }
 
     // "14:05", "Yesterday", "Tue", or a date.
@@ -892,7 +901,7 @@ Item {
                 else
                     Messages.send(input.text)
                 input.text = ""
-                delete page.drafts[page.draftKey]
+                Messages.saveDraft(page.draftKey, "")
                 page.composing = false
                 toField.text = ""
             }

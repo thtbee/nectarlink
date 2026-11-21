@@ -42,6 +42,8 @@ struct RecordingPlatform {
     mms_sent: Mutex<Vec<MmsRecord>>,
     mirror_asks: Mutex<Vec<String>>,
     mirror_reject: std::sync::atomic::AtomicBool,
+    /// Says no computer can be reaching it through adb.
+    adb_off: std::sync::atomic::AtomicBool,
     watch_offers: Mutex<Vec<String>>,
     mic_asks: Mutex<Vec<String>>,
     mic: Arc<TestMicSink>,
@@ -76,6 +78,9 @@ struct RecordingPlatform {
 }
 
 impl Platform for RecordingPlatform {
+    fn adb_may_be_connected(&self) -> bool {
+        !self.adb_off.load(std::sync::atomic::Ordering::SeqCst)
+    }
     fn start_ringing(&self) {
         self.rings.lock().unwrap().push(true);
     }
@@ -6203,6 +6208,91 @@ async fn localsend_refuses_duplicate_ids_and_records_a_cancelled_partial_deliver
     receiver.node.shutdown().await;
 }
 
+async fn start_receiving_localsend() -> (TestDevice, u16) {
+    let port = free_tcp_port();
+    let receiver =
+        start_localsend_in(tempfile::tempdir().unwrap(), "PC Receiver", DeviceKind::Desktop, port).await;
+    receiver.node.set_localsend_enabled(true).unwrap();
+    for _ in 0..40 {
+        if receiver.node.localsend_receiving() {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    assert!(receiver.node.localsend_receiving());
+    (receiver, port)
+}
+
+/// Cancelling a receive that was accepted but hasn't started uploading ends
+/// it at once: no upload runs to notice the cancel (SEC-09).
+#[tokio::test]
+async fn localsend_cancelling_an_accepted_idle_receive_ends_it() {
+    let (mut receiver, port) = start_receiving_localsend().await;
+    let offer = localsend_offer(&[("f1", "f1", "first.txt", 5)]);
+    let prepare = tokio::spawn(async move {
+        localsend_request(port, "POST", "/api/localsend/v2/prepare-upload", &offer).await
+    });
+    let req: Transfer = wait_for(&mut receiver, "offer", |e| match e {
+        NodeEvent::Transfer(t) if t.state == TransferState::Requested => Some(t.clone()),
+        _ => None,
+    })
+    .await;
+    receiver.node.accept_transfer(&req.id);
+    let (status, body) = with_timeout("prepare-upload", prepare).await.unwrap();
+    assert_eq!(status, 200);
+    let answer: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    let session = answer["sessionId"].as_str().unwrap().to_owned();
+    let token = answer["files"]["f1"].as_str().unwrap().to_owned();
+    wait_for(&mut receiver, "running", |e| match e {
+        NodeEvent::Transfer(t) if t.id == req.id && t.state == TransferState::Running => Some(()),
+        _ => None,
+    })
+    .await;
+
+    receiver.node.cancel_transfer(&req.id);
+    wait_for(&mut receiver, "cancelled", |e| match e {
+        NodeEvent::Transfer(t) if t.id == req.id && t.state == TransferState::Cancelled => Some(()),
+        _ => None,
+    })
+    .await;
+    let (status, _) = localsend_request(
+        port,
+        "POST",
+        &format!("/api/localsend/v2/upload?sessionId={session}&fileId=f1&token={token}"),
+        b"hello",
+    )
+    .await;
+    assert_eq!(status, 404, "the session is gone");
+    assert!(!receiver.dir.path().join("received").join("first.txt").exists());
+    receiver.node.shutdown().await;
+}
+
+/// One address can't stack up prompts: past two waiting for an answer, it's
+/// told to try later (SEC-06).
+#[tokio::test]
+async fn localsend_limits_waiting_prompts_per_sender() {
+    let (mut receiver, port) = start_receiving_localsend().await;
+    let mut waiting = Vec::new();
+    for n in 0..2 {
+        let offer = localsend_offer(&[("f", "f", &format!("{n}.txt"), 5)]);
+        waiting.push(tokio::spawn(async move {
+            localsend_request(port, "POST", "/api/localsend/v2/prepare-upload", &offer).await
+        }));
+        wait_for(&mut receiver, "offer", |e| match e {
+            NodeEvent::Transfer(t) if t.state == TransferState::Requested => Some(()),
+            _ => None,
+        })
+        .await;
+    }
+    let offer = localsend_offer(&[("f", "f", "third.txt", 5)]);
+    let (status, _) = localsend_request(port, "POST", "/api/localsend/v2/prepare-upload", &offer).await;
+    assert_eq!(status, 429);
+    receiver.node.shutdown().await;
+    for prompt in waiting {
+        prompt.abort();
+    }
+}
+
 #[tokio::test]
 async fn localsend_declining_transfer_returns_denied_to_sender() {
     let sender_port = free_tcp_port();
@@ -6547,6 +6637,33 @@ async fn start_usb_device_in(
     let node = Node::start(config, platform.clone()).await.expect("usb test node starts");
     let events = node.events();
     TestDevice { node, events, platform, dir, name }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn usb_tunnel_pairing_needs_adb_to_be_possible() {
+    // Something on the phone that isn't adb (adb is off) reaches the tunnel's
+    // port and asks to pair: the phone isn't in pairing mode, so it refuses
+    // without showing a code.
+    let mut phone = start_usb_device("Pixel USB", DeviceKind::Phone, Some(0), &[]).await;
+    phone.platform.adb_off.store(true, std::sync::atomic::Ordering::SeqCst);
+    let mut pc = start_usb_device("Desktop USB", DeviceKind::Desktop, None, &[]).await;
+    let phone_id = phone.node.device_id();
+    let usb_port = phone.node.usb_port().expect("phone bound ephemeral USB TCP listener");
+    let tunnel_addr: SocketAddr = ("127.0.0.1".parse::<std::net::IpAddr>().unwrap(), usb_port).into();
+    pc.node.connect_usb_tunnel(tunnel_addr).await.expect("connect USB tunnel");
+
+    wait_for(&mut pc, "pc pairing refused", |e| match e {
+        NodeEvent::Pairing(PairingEvent::Failed(_)) => Some(()),
+        NodeEvent::Pairing(PairingEvent::SasCode { peer, .. }) if *peer == phone_id => {
+            panic!("the PC got a code from a phone that should have refused")
+        }
+        _ => None,
+    })
+    .await;
+    while let Ok(Ok(ev)) = tokio::time::timeout(Duration::from_millis(500), phone.events.recv()).await {
+        assert!(!matches!(ev, NodeEvent::Pairing(PairingEvent::SasCode { .. })), "the phone showed a code");
+    }
+    assert!(phone.node.paired_devices().unwrap().is_empty());
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

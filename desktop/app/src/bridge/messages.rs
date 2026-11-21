@@ -122,6 +122,14 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "clearAttachment"]
         fn clear_attachment(self: &Messages);
+        /// Keeps what was typed for `key` (`"<device>|<conversation>"`) while
+        /// the app runs; empty text drops it.
+        #[qinvokable]
+        #[cxx_name = "saveDraft"]
+        fn save_draft(self: &Messages, key: &QString, text: &QString);
+        /// What was kept for `key`, or "".
+        #[qinvokable]
+        fn draft(self: &Messages, key: &QString) -> QString;
         /// Texts in the open conversation go out on `sim` (an id from `sims`).
         #[qinvokable]
         #[cxx_name = "chooseSim"]
@@ -250,6 +258,14 @@ impl qobject::Messages {
 
     pub fn refresh(&self) {
         messages::reload();
+    }
+
+    pub fn save_draft(&self, key: &QString, text: &QString) {
+        messages::save_draft(String::from(key), String::from(text));
+    }
+
+    pub fn draft(&self, key: &QString) -> QString {
+        QString::from(&messages::draft(&String::from(key)))
     }
 
     pub fn copy(&self, text: &QString) {

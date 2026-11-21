@@ -11,7 +11,7 @@ NectarLink shares your clipboard between your PC and your Android phone. Copy pl
 | Requirement | Details |
 | :--- | :--- |
 | **Android Permissions** | No special permission is needed for PC-to-phone clipboard sync or manual phone-to-PC sending. |
-| **Android Power Level** | `Standard` for automatic PC-to-phone sync and one-tap phone-to-PC sending (via Quick Settings tile, share sheet, widget, or app button). `Elevated` enables **automatic background phone-to-PC clipboard sync** whenever you copy text or images in any Android app. |
+| **Android Power Level** | `Standard` for automatic PC-to-phone sync and one-tap phone-to-PC sending (via Quick Settings tile, share sheet, widget, or app button). `Elevated` enables **automatic background phone-to-PC clipboard sync** whenever you copy text in any Android app. |
 | **Per-Device Toggle** | **Clipboard** (enabled by default in **Settings › Devices** on the PC). |
 | **Network** | Local network, USB cable, or **Connect over mobile data**. If the target device is offline, your latest clipboard send waits in the `Waiting to send` queue (replacing any older queued clip for that device) and arrives automatically on reconnect. |
 
@@ -28,7 +28,7 @@ NectarLink shares your clipboard between your PC and your Android phone. Copy pl
 
 Android 10 and newer block background apps from reading the system clipboard unless they run with shell privileges. NectarLink gives you two ways to send your phone's clipboard to your PC:
 
-- **Automatic in the background (with `Elevated`)**: Once you enable `Elevated` (via Wireless Debugging in **Settings › Permissions › Control from your PC** or **Settings › Features & Data › Clipboard › Background clipboard access**), NectarLink's local shell helper listens for clipboard changes and sends copied text and images to your PC automatically as soon as you tap **Copy** in any app.
+- **Automatic in the background (with `Elevated`)**: Once you enable `Elevated` (via Wireless Debugging in **Settings › Permissions › Control from your PC** or **Settings › Features & Data › Clipboard › Background clipboard access**), NectarLink's local shell helper listens for clipboard changes and sends copied text to your PC automatically as soon as you tap **Copy** in any app. Copied images go with the one-tap send below.
 - **One-tap manual send (at `Standard` or `Assist`)**: Without `Elevated`, you can send what you copied on your phone using any of four quick surfaces:
   1. **Quick Settings tile**: Pull down your phone's notification shade and tap the **Send clipboard** tile.
   2. **Android share sheet**: Select text or an image in any app, tap **Share**, and choose **Send to PC** (or tap your PC's Direct Share icon).
@@ -83,7 +83,7 @@ Both the Windows app and the Android app keep an optional encrypted local **Clip
 ## Data and Privacy
 
 - **Automatic exclusion of passwords and one-time codes**:
-  - Any clipboard item marked private or sensitive by a password manager (`ExcludeClipboardContentFromMonitorProcessing` / `CloudClipboard` format flags on Windows, or `ClipDescription.EXTRA_IS_SENSITIVE` on Android 13+) is ignored and **never** transmitted or saved.
+  - Any clipboard item marked private or sensitive by a password manager (`ExcludeClipboardContentFromMonitorProcessing` / `CloudClipboard` format flags on Windows, or `ClipDescription.EXTRA_IS_SENSITIVE` on Android 13+) is ignored by default: it isn't sent, and it's **never** saved in clipboard history. Turn on **Sync copied passwords** (off by default) to send it anyway; it then leaves the other device's clipboard after a minute and still isn't kept in history.
   - One-time verification codes (OTPs) are never written to clipboard history or `Timeline`, and an OTP auto-copied on your PC is never echoed back to your phone.
 - **At-rest encryption**: When **Clipboard history** is enabled, your saved clips (`clipboard_history.enc` with `NLCB\x01` header) and clipboard images (`clipboard_images/<id>.enc` with `NLCI\x01` header) are encrypted directly at rest using the platform `KeyProtector`: **Windows DPAPI** (`CryptProtectData`, tied to your Windows user account) on the PC and the **Android Keystore** (`AES-256-GCM`, which may be hardware-backed) on Android.
 - **Retention**: Unpinned clipboard history entries expire automatically after **7 days** (capped at 50 items and 128 MB total). In `Timeline`, clipboard entries reference the encrypted history item by ID so clip content is never stored in plain text inside SQLite.

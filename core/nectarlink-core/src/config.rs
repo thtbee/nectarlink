@@ -229,6 +229,15 @@ pub trait Platform: Send + Sync + 'static {
         Err("this device doesn't lock or sleep on request".into())
     }
 
+    /// Whether a computer could be reaching this device through adb right
+    /// now (USB debugging on with a cable in, or wireless debugging on). The
+    /// USB tunnel's loopback port is open to any app on a phone, so pairing
+    /// through it without pairing mode is only taken while this is true.
+    /// True where nothing tells otherwise.
+    fn adb_may_be_connected(&self) -> bool {
+        true
+    }
+
     /// Open a web link a paired device sent (http or https; checked).
     fn open_link(&self, _from: &nectarlink_protocol::DeviceId, _url: &str) -> Result<(), String> {
         Err("this device doesn't open links".into())

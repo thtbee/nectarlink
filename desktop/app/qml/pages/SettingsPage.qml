@@ -3921,9 +3921,12 @@ Item {
                             visible: AppController.canUpdate
                             iconPath: Icons.moon
                             title: qsTr("Update channel")
-                            description: Preferences.updateChannel === "nightly"
-                                         ? qsTr("The newest build from every couple of hours, with the latest fixes and features, and sometimes new bugs. Back on Stable, this PC keeps its build until the next release is newer.")
-                                         : qsTr("Releases, tested and less often.")
+                            description: (Preferences.updateChannel === "nightly"
+                                          ? qsTr("The newest build from every couple of hours, with the latest fixes and features, and sometimes new bugs. Back on Stable, this PC keeps its build until the next release is newer.")
+                                          : qsTr("Releases, tested and less often."))
+                                         + (Preferences.updateChannelShared
+                                            ? " " + qsTr("It's the same for everyone who uses NectarLink on this PC.")
+                                            : "")
                             Segmented {
                                 options: [
                                     { value: "stable", label: qsTr("Stable") },

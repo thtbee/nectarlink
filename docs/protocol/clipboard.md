@@ -69,10 +69,13 @@ PNG arrived; Android as a content URI from the app's own provider.
 
 - **Consent.** Each device sends and accepts only with the `clipboard`
   toggle on for the other device.
-- **Sensitive content is never sent.** On Windows: clips marked
-  `ExcludeClipboardContentFromMonitorProcessing`, or with
+- **Sensitive content isn't sent unless the user opts in.** On Windows:
+  clips marked `ExcludeClipboardContentFromMonitorProcessing`, or with
   `CanIncludeInClipboardHistory` set to 0 (what password managers use). On
-  Android: clips marked `ClipDescription.EXTRA_IS_SENSITIVE`.
+  Android: clips marked `ClipDescription.EXTRA_IS_SENSITIVE`. With **Sync
+  copied passwords** on (off by default), they're sent marked sensitive,
+  removed from the receiving clipboard after a minute, and never kept in
+  history.
 - **No echoes.** A device does not send text it just received with
   `clip.set`.
 - **Smart clipboard context chips (local only).** When a text clip arrives via
