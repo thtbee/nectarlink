@@ -117,6 +117,10 @@
          phone's speech recognizer for voice typing: Android hides other apps
          unless they're declared here. -->
     <queries>
+        <package android:name="app.nectarlink.services" />
+        <intent>
+            <action android:name="app.nectarlink.services.ACTION_BIND" />
+        </intent>
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />

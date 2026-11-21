@@ -315,7 +315,7 @@ fun HomeScreen(
                     var missingCount = 0
                     if (!state.backgroundUnrestricted) missingCount++
                     if (!state.notificationAccess) missingCount++
-                    if (!state.elevated) missingCount++
+                    if (!state.elevated && !state.romServiceAvailable) missingCount++
                     if (!state.inputAccess && !state.elevated) missingCount++
                     if (!state.smsAccess) missingCount++
                     if (!state.callAccess) missingCount++
@@ -722,7 +722,7 @@ fun HomeScreen(
             var missingCount = 0
             if (!state.backgroundUnrestricted) missingCount++
             if (!state.notificationAccess) missingCount++
-            if (!state.elevated) missingCount++
+            if (!state.elevated && !state.romServiceAvailable) missingCount++
             if (!state.inputAccess && !state.elevated) missingCount++
             if (!state.smsAccess) missingCount++
             if (!state.callAccess) missingCount++
@@ -1209,7 +1209,7 @@ private fun PermissionsSetupCard(
                         runCatching { context.startActivity(NotificationListener.settingsIntent(context)) }
                     }
                 }
-                if (!state.elevated) {
+                if (!state.elevated && !state.romServiceAvailable) {
                     SetupCard(
                         title = stringResource(R.string.home_background_clipboard_title),
                         text = stringResource(R.string.home_background_clipboard_body),
