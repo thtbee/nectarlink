@@ -1456,12 +1456,13 @@ object Elevated {
         }
         val (port, token) = helper ?: return null
         return runCatching {
-            java.net.Socket(java.net.InetAddress.getLoopbackAddress(), port).apply {
+            val socket = java.net.Socket(java.net.InetAddress.getLoopbackAddress(), port).apply {
                 tcpNoDelay = true
                 val out = OutputStreamWriter(getOutputStream(), Charsets.UTF_8)
                 out.write("$token\nV $width $height $dpi $bitrate $fps $pkg $codec\n")
                 out.flush()
             }
+            SocketDisplayStream(socket)
         }.onFailure { Log.w(TAG, "can't open an app window", it) }.getOrNull()
     }
 
@@ -1490,12 +1491,13 @@ object Elevated {
         }
         val (port, token) = helper ?: return null
         return runCatching {
-            java.net.Socket(java.net.InetAddress.getLoopbackAddress(), port).apply {
+            val socket = java.net.Socket(java.net.InetAddress.getLoopbackAddress(), port).apply {
                 tcpNoDelay = true
                 val out = OutputStreamWriter(getOutputStream(), Charsets.UTF_8)
                 out.write("$token\nV $width $height $dpi $bitrate $fps - $codec\n")
                 out.flush()
             }
+            SocketDisplayStream(socket)
         }.onFailure { Log.w(TAG, "can't open Elevated screen mirror", it) }.getOrNull()
     }
 
