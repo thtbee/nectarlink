@@ -10,6 +10,7 @@ members = [
     "core/nectarlink-mcp",
     "desktop/app",
     "desktop/credprov",
+    "desktop/pam-unlock",
     "desktop/vcam",
     "tools/xtask",
     "spikes/s1-qt-rust",

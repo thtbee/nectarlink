@@ -2094,8 +2094,12 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             (if (PhoneSms.canSend(context)) listOf("sms.send") else emptyList()) +
             (if (PhoneSms.canSend(context) && PhoneSms.canListSims(context)) listOf("sms.sims") else emptyList()) +
             PhoneStorage.capabilities(context) +
-            // Unlock a PC with this phone's fingerprint (ADR 0009).
-            (if (app.nectarlink.android.unlock.UnlockKeys.supported(context)) listOf("unlock.key") else emptyList()) +
+            // Unlock a Windows or Linux PC with a strong biometric.
+            (if (app.nectarlink.android.unlock.UnlockKeys.supported(context)) {
+                listOf("unlock.key", "unlock.linux.key")
+            } else {
+                emptyList()
+            }) +
             (if (WebcamService.hasPermission(context)) listOf("camera.stream") else emptyList()) +
             (if (context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) listOf("camera.capture") else emptyList()) +
             (if (InputService.running || Elevated.running) listOf("mirror.input") else emptyList()) +

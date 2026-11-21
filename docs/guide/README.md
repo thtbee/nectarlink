@@ -20,6 +20,7 @@ Separating task-oriented workflows from implementation internals keeps everyday 
 ### Setup and Foundations
 
 - [Getting Started](getting-started.md): System requirements, installing on Windows 11 and Android, the first-run walkthrough, pairing methods (QR code, 6-digit nearby code, USB auto-pair), and choosing an Android power level (`Standard`, `Assist`, or `Elevated`).
+- [Linux Phone Unlock](linux-phone-unlock.md) covers biometric enrollment and setup for Linux-PAM screen lockers.
 
 ### Everyday Features
 

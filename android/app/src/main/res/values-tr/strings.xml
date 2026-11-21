@@ -455,6 +455,9 @@
     <string name="channel_unlock_requests">Bilgisayar kilidini açma</string>
     <string name="unlock_enroll_title">%1$s bu telefonla kilidi açılsın mı?</string>
     <string name="unlock_enroll_text">Artık parmak iziniz %1$s kilidini açabilir. Her seferinde istenir.</string>
+    <string name="linux_unlock_enroll_text">Onayladıktan sonra Linux kilit açma anahtarının parmak izini iki cihazda karşılaştır.</string>
+    <string name="linux_unlock_key_fingerprint">Linux kilit açma anahtarının parmak izi</string>
+    <string name="linux_unlock_confirm_fingerprint">Onaylamadan önce %1$s (%2$s) için bu SHA-256 parmak izini bilgisayarındaki parmak iziyle karşılaştır.\n\n%3$s</string>
     <string name="unlock_request_title">%1$s kilidi açılsın mı?</string>
     <string name="unlock_request_text">%1$s olarak</string>
     <string name="unlock_prompt_text">Yalnızca şu anda bu bilgisayarın başındaysanız onaylayın.</string>

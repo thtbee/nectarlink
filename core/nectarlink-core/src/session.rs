@@ -11,7 +11,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use iroh::endpoint::{Connection, RecvStream, SendStream, VarInt};
+use iroh::endpoint::{Connection, PathEventStream, RecvStream, SendStream, VarInt};
 use nectarlink_protocol::{
     DeviceId, Envelope, ErrorCode, MIN_PROTOCOL_VERSION, PROTOCOL_VERSION, ProtocolError, messages::*,
     negotiate_version, read_frame, write_frame,
@@ -240,6 +240,34 @@ pub(crate) struct Session {
     pub(crate) cancel: CancellationToken,
 }
 
+struct PendingReply<'a> {
+    session: &'a Session,
+    id: u64,
+    sent: bool,
+    cancel_unlock: bool,
+}
+
+impl Drop for PendingReply<'_> {
+    fn drop(&mut self) {
+        let unanswered = self.session.pending.lock().unwrap_or_else(|e| e.into_inner()).remove(&self.id);
+        if unanswered.is_some()
+            && self.sent
+            && self.cancel_unlock
+            && let Ok(cancel) = Envelope::new(types::LINUX_UNLOCK_CANCEL, &self.id)
+            && let Err(mpsc::error::TrySendError::Full(cancel)) = self.session.outbox.try_send(cancel)
+        {
+            let outbox = self.session.outbox.clone();
+            if let Ok(runtime) = tokio::runtime::Handle::try_current() {
+                runtime.spawn(async move {
+                    let _ = outbox.send(cancel).await;
+                });
+            } else {
+                self.session.close(CLOSE_NORMAL, b"phone unlock cancelled");
+            }
+        }
+    }
+}
+
 impl std::fmt::Debug for Session {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Session")
@@ -324,7 +352,7 @@ impl Session {
         self.last_rx_ms.load(Ordering::Relaxed) > since_ms
     }
 
-    fn is_usb_addr(&self, addr: &std::net::SocketAddr) -> bool {
+    pub(crate) fn is_usb_addr(&self, addr: &std::net::SocketAddr) -> bool {
         addr.ip().to_canonical().is_loopback()
             && self.usb_bridge_ports.lock().unwrap_or_else(|e| e.into_inner()).get(&addr.port())
                 == Some(&self.peer)
@@ -387,15 +415,19 @@ impl Session {
     /// The address of the path the connection uses now, when that's a direct IP path
     /// (not a relay, not the USB tunnel). `None` while no path is selected.
     pub(crate) fn selected_direct_addr(&self) -> Option<std::net::SocketAddr> {
+        self.selected_ip_path().filter(|(_, usb)| !usb).map(|(addr, _)| addr)
+    }
+
+    /// The selected direct address and whether it belongs to this peer's USB bridge.
+    pub(crate) fn selected_ip_path(&self) -> Option<(std::net::SocketAddr, bool)> {
         let paths = self.conn.paths();
         let selected = paths.iter().find(|p| p.is_selected())?;
-        if selected.is_relay() {
-            return None;
-        }
-        match selected.remote_addr() {
-            iroh::TransportAddr::Ip(addr) if !self.is_usb_addr(addr) => Some(*addr),
-            _ => None,
-        }
+        let addr = direct_ip_addr(selected.remote_addr())?;
+        Some((addr, self.is_usb_addr(&addr)))
+    }
+
+    pub(crate) fn path_events(&self) -> PathEventStream {
+        self.conn.path_events()
     }
 
     /// The peer's direct IP addresses currently in use, for reconnecting later.
@@ -471,10 +503,11 @@ impl Session {
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
         let (tx, rx) = oneshot::channel();
         self.pending.lock().unwrap_or_else(|e| e.into_inner()).insert(id, tx);
-        let mut sent = false;
+        let cancel_unlock = matches!(env.t.as_str(), types::LINUX_UNLOCK_ENROLL | types::LINUX_UNLOCK_SIGN);
+        let mut pending = PendingReply { session: self, id, sent: false, cancel_unlock };
         let result = match tokio::time::timeout(timeout, async {
             self.send(env.with_id(id)).await?;
-            sent = true;
+            pending.sent = true;
             rx.await.map_err(|_| Error::Offline)
         })
         .await
@@ -482,8 +515,7 @@ impl Session {
             Ok(inner) => inner,
             Err(_) => Err(Error::Timeout),
         };
-        self.pending.lock().unwrap_or_else(|e| e.into_inner()).remove(&id);
-        (result, sent)
+        (result, pending.sent)
     }
 
     /// Closes the connection with an application code.
@@ -546,8 +578,16 @@ async fn writer(mut send: SendStream, mut outbox: mpsc::Receiver<Envelope>) {
     let _ = send.finish();
 }
 
+fn direct_ip_addr(addr: &iroh::TransportAddr) -> Option<std::net::SocketAddr> {
+    match addr {
+        iroh::TransportAddr::Ip(addr) => Some(*addr),
+        _ => None,
+    }
+}
+
 async fn reader(session: &Arc<Session>, mut recv: RecvStream, shared: &Weak<Shared>) {
     let background = Arc::new(tokio::sync::Semaphore::new(MAX_BACKGROUND_RPCS));
+    let unlock_cleanup = Arc::new(tokio::sync::Semaphore::new(1));
     loop {
         let frame = match read_frame(&mut recv).await {
             Ok(Some(frame)) => {
@@ -584,7 +624,14 @@ async fn reader(session: &Arc<Session>, mut recv: RecvStream, shared: &Weak<Shar
         if is_background_rpc(&env.t) {
             // Waiting for a slot would hold up heartbeats behind slow
             // requests, so past the limit a request is turned away instead.
-            let Ok(permit) = background.clone().try_acquire_owned() else {
+            // An opt-out must reach the phone even when unrelated background requests are full.
+            let permits =
+                if env.t == types::LINUX_UNLOCK_FORGET && matches!(env.body(), Ok(LinuxUnlockForget::All)) {
+                    &unlock_cleanup
+                } else {
+                    &background
+                };
+            let Ok(permit) = permits.clone().try_acquire_owned() else {
                 tracing::warn!(peer = %session.peer.short(), t = %env.t, "too many requests at once");
                 if env.id.is_some() {
                     let reply = Envelope::error(ErrorCode::Busy, "too many requests at once");
@@ -592,14 +639,21 @@ async fn reader(session: &Arc<Session>, mut recv: RecvStream, shared: &Weak<Shar
                 }
                 continue;
             };
+            let unlock = match crate::linux_unlock::prepare_background(&shared, session, &env) {
+                Ok(unlock) => unlock,
+                Err(reply) => {
+                    let _ = session.send(reply.reply_to(env.id)).await;
+                    continue;
+                }
+            };
             let session = session.clone();
             tokio::spawn(async move {
-                if let Err(e) = handle(&shared, &session, env).await {
+                if let Err(e) = handle(&shared, &session, env, unlock).await {
                     tracing::warn!(peer = %session.peer.short(), error = %e, "failed to handle message");
                 }
                 drop(permit);
             });
-        } else if let Err(e) = handle(&shared, session, env).await {
+        } else if let Err(e) = handle(&shared, session, env, None).await {
             tracing::warn!(peer = %session.peer.short(), error = %e, "failed to handle message");
         }
     }
@@ -639,11 +693,19 @@ fn is_background_rpc(t: &str) -> bool {
             // The phone's owner answers a biometric prompt.
             | types::UNLOCK_ENROLL
             | types::UNLOCK_REQUEST
+            | types::LINUX_UNLOCK_ENROLL
+            | types::LINUX_UNLOCK_SIGN
+            | types::LINUX_UNLOCK_FORGET
     )
 }
 
 /// Handles one incoming message that isn't a reply.
-async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> Result<()> {
+async fn handle(
+    shared: &Arc<Shared>,
+    session: &Arc<Session>,
+    env: Envelope,
+    unlock: Option<crate::linux_unlock::Incoming>,
+) -> Result<()> {
     let peer = session.peer;
     match env.t.as_str() {
         types::PING => {
@@ -732,6 +794,8 @@ async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> 
         t if (t.starts_with("deck.") || t == types::PC_AUDIO_SET)
             && crate::deck::handle(shared, session, &env).await? => {}
         t if t.starts_with("storage.") && crate::storage::handle(shared, session, &env).await? => {}
+        t if t.starts_with("unlock.linux.v1.")
+            && crate::linux_unlock::handle(shared, session, &env, unlock).await? => {}
         t if t.starts_with("unlock.") && crate::unlock::handle(shared, session, &env).await? => {}
         t if (t == types::FILES_RESUME || t == types::FILES_CANCEL)
             && crate::transfer::handle_control(shared, peer, &env).await? => {}
@@ -930,6 +994,12 @@ mod tests {
         pcm_frame_ok,
     };
     use std::net::{IpAddr, Ipv6Addr, SocketAddr};
+
+    #[test]
+    fn a_relay_address_is_not_a_direct_path_for_phone_unlock() {
+        let relay = iroh::TransportAddr::Relay("https://relay.example/".parse().unwrap());
+        assert_eq!(super::direct_ip_addr(&relay), None);
+    }
 
     #[test]
     fn private_lan_ip_leaves_out_tailnet_cgnat_and_wan() {

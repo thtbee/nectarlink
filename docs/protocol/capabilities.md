@@ -44,6 +44,7 @@ capability is missing.
 | `notify.reply` | Accepts inline replies and actions on notifications | notification access |
 | `notify.sensitive` | Forwards notifications Android hides as sensitive (e.g. one-time codes) | Elevated |
 | `notify.show` | Shows a paired phone's or tablet's notifications ([notifications service](notifications.md)) | app update |
+| `unlock.linux.key` | Authorizes a paired Linux PC's session-unlock challenge with a biometric-backed signing key ([Linux session unlock](linux-unlock.md)) | Android 11 or newer with a strong biometric |
 | `sms.read` | Lists conversations and messages ([messages](sms.md)) | SMS permission |
 | `sms.send` | Sends texts when a PC asks ([messages](sms.md)) | SMS permission |
 | `sms.sims` | Lists the SIMs it texts from and sends on the one a PC picks ([messages](sms.md)) | SMS and phone permissions |
@@ -89,6 +90,7 @@ capability is missing.
 | `pc.power.hibernate` | Can hibernate on request now ([actions](actions.md)); not while hibernation is off on the PC | app update |
 | `pc.power.shutdown` | Can be shut down on request ([actions](actions.md)); Windows and Linux | app update |
 | `pc.wake` | Shares network adapter addresses (`pc.wake_info`) so a paired phone can wake it with Wake-on-LAN ([actions](actions.md)) | app update |
+| `unlock.linux.pc` | Requests a biometric signature to unlock a Linux session ([Linux session unlock](linux-unlock.md)) | Linux PAM service and desktop unlock relay |
 | `photos.show` | Shows a phone's new photos and gallery ([photos](photos.md)) | app update |
 | `call.show` | Shows a phone's calls, recent calls and dialer ([calls](calls.md)) | app update |
 | `contacts.show` | Shows a phone's contacts ([contacts](contacts.md)) | app update |

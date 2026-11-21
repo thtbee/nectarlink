@@ -37,6 +37,7 @@ android {
         applicationId = "app.nectarlink"
         minSdk = 26
         targetSdk = 37
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         versionCode = appVersionCode
         versionName = appVersion
     }
@@ -228,4 +229,5 @@ dependencies {
     implementation(libs.jna) { artifact { type = "aar" } }
     testImplementation(libs.junit)
     testImplementation(libs.org.json)
+    androidTestImplementation(libs.androidx.test.runner)
 }

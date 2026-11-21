@@ -455,6 +455,9 @@
     <string name="channel_unlock_requests">Desbloqueio do PC</string>
     <string name="unlock_enroll_title">Deixar %1$s desbloquear com este celular?</string>
     <string name="unlock_enroll_text">A partir de agora sua digital pode desbloquear %1$s. Ela é pedida toda vez.</string>
+    <string name="linux_unlock_enroll_text">Depois de aprovar, compare a impressão digital da chave de desbloqueio do Linux nos dois dispositivos.</string>
+    <string name="linux_unlock_key_fingerprint">Impressão digital da chave de desbloqueio do Linux</string>
+    <string name="linux_unlock_confirm_fingerprint">Antes de confirmar, compare esta impressão digital SHA-256 de %1$s (%2$s) com a exibida no seu PC.\n\n%3$s</string>
     <string name="unlock_request_title">Desbloquear %1$s?</string>
     <string name="unlock_request_text">Como %1$s</string>
     <string name="unlock_prompt_text">Só confirme se você estiver neste PC agora.</string>

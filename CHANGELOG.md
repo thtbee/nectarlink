@@ -16,6 +16,12 @@ change things that need a step from you, and its notes say so.
   password is kept encrypted on the PC with a key only the phone holds, behind its
   fingerprint, and sealed so only the lock screen can read it, not apps running as you. Only for unlocking, not the first sign-in after a restart
   ([#36](https://github.com/thtbee/nectarlink/pull/36)).
+- **Unlock a Linux session with your phone's fingerprint.** An opt-in PAM service for a
+  running graphical session: the lock screen asks the phone, you confirm with your
+  fingerprint, and the password still works as before. Set up and revoked by the
+  administrator ([docs](https://github.com/thtbee/nectarlink/blob/main/docs/guide/linux-phone-unlock.md)).
+  Thanks to [@UmarAlMukhtar](https://github.com/UmarAlMukhtar)
+  ([#494](https://github.com/thtbee/nectarlink/pull/494)).
 - **AI agents can use NectarLink.** Claude Code, Claude Desktop, Codex, Cursor, Gemini CLI,
   VS Code and other AI assistants on the PC can read notifications and texts, send files and
   messages, control media, look at and copy photos, work with the phone's files, change its

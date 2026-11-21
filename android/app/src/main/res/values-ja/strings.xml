@@ -451,6 +451,9 @@
     <string name="channel_unlock_requests">PC のロック解除</string>
     <string name="unlock_enroll_title">このスマートフォンで %1$s のロックを解除できるようにしますか？</string>
     <string name="unlock_enroll_text">今後は指紋で %1$s のロックを解除できます。毎回指紋が必要です。</string>
+    <string name="linux_unlock_enroll_text">承認後、両方のデバイスに表示される Linux ロック解除キーのフィンガープリントを照合してください。</string>
+    <string name="linux_unlock_key_fingerprint">Linux ロック解除キーのフィンガープリント</string>
+    <string name="linux_unlock_confirm_fingerprint">PC で確定する前に、%1$s（%2$s）の SHA-256 フィンガープリントが PC の表示と一致することを確認してください。\n\n%3$s</string>
     <string name="unlock_request_title">%1$s のロックを解除しますか？</string>
     <string name="unlock_request_text">ユーザー: %1$s</string>
     <string name="unlock_prompt_text">今この PC の前にいる場合のみ確認してください。</string>

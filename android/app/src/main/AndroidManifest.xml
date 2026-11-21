@@ -361,8 +361,7 @@
         <activity
             android:name=".unlock.UnlockPromptActivity"
             android:exported="false"
-            android:excludeFromRecents="true"
-            android:noHistory="true"
+            android:noHistory="false"
             android:taskAffinity=""
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />
 

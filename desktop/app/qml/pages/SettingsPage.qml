@@ -1669,13 +1669,12 @@ Item {
                                     }
                                 }
                             }
-                            // Unlock with phone (#36): Windows, with a phone that can keep the key
-                            // behind its fingerprint (only then does the core list the switch).
+                            // The core offers this for phones with compatible biometric keys.
                             ListRow {
                                 id: unlockRow
                                 readonly property var item: deviceCard.toggles.find(t => t.name === "unlock")
                                 width: parent.width
-                                visible: Qt.platform.os === "windows" && item !== undefined
+                                visible: (Qt.platform.os === "windows" || Qt.platform.os === "linux") && item !== undefined
                                 iconPath: Icons.lock
                                 title: qsTr("Unlock this PC with the phone")
                                 description: page.toggleDescriptions.unlock

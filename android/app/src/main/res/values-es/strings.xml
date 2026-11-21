@@ -461,6 +461,9 @@
     <string name="channel_unlock_requests">Desbloqueo del PC</string>
     <string name="unlock_enroll_title">¿Dejar que %1$s se desbloquee con este teléfono?</string>
     <string name="unlock_enroll_text">A partir de ahora tu huella podrá desbloquear %1$s. Se pedirá cada vez.</string>
+    <string name="linux_unlock_enroll_text">Después de aprobar, compara la huella de la clave de desbloqueo de Linux en ambos dispositivos.</string>
+    <string name="linux_unlock_key_fingerprint">Huella de la clave de desbloqueo de Linux</string>
+    <string name="linux_unlock_confirm_fingerprint">Antes de confirmar, compara esta huella SHA-256 de %1$s (%2$s) con la que aparece en tu PC.\n\n%3$s</string>
     <string name="unlock_request_title">¿Desbloquear %1$s?</string>
     <string name="unlock_request_text">Como %1$s</string>
     <string name="unlock_prompt_text">Confirma solo si estás ahora mismo frente a este PC.</string>
