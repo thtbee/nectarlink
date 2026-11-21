@@ -45,6 +45,7 @@ of new features I wanted that I think you'll enjoy having too.
 | **Windows (x64)** | [Installer (.exe)](https://github.com/thtbee/nectarlink/releases/download/v0.1.5/Nectarlink-0.1.5-x64-setup.exe) | Windows 10 (2004+) or 11, 64-bit Intel or AMD (Phone as webcam needs Windows 11) |
 | **Windows (ARM64)** | [Installer (.exe)](https://github.com/thtbee/nectarlink/releases/download/v0.1.5/Nectarlink-0.1.5-arm64-setup.exe) | Windows 11 on ARM (Snapdragon) |
 | **Linux (x86_64)** | [One command](#on-linux), or a [.deb](https://github.com/thtbee/nectarlink/releases/download/v0.1.5/nectarlink_0.1.5_amd64.deb), [.rpm](https://github.com/thtbee/nectarlink/releases/download/v0.1.5/nectarlink-0.1.5-1.x86_64.rpm), [AppImage](https://github.com/thtbee/nectarlink/releases/download/v0.1.5/Nectarlink-0.1.5-x86_64.AppImage) or [.tar.gz](https://github.com/thtbee/nectarlink/releases/download/v0.1.5/Nectarlink-0.1.5-linux-x86_64.tar.gz) | Ubuntu 24.04 or newer, Debian 13, Fedora 40 or newer, 64-bit Intel or AMD |
+| **macOS (preview)** | [Disk image (.dmg)](https://github.com/thtbee/nectarlink/releases/latest), `Nectarlink-<version>-macos-universal.dmg` | macOS 14.4 or newer, Apple silicon or Intel |
 | **Android** | [App (.apk)](https://github.com/thtbee/nectarlink/releases/download/v0.1.5/Nectarlink-0.1.5-android.apk) | Android 8.0 or newer |
 
 The apps update themselves from GitHub Releases and check every download
@@ -166,7 +167,7 @@ in light and dark. In English, German, Turkish, Simplified Chinese, Brazilian Po
 | Calls & SMS viewer | Yes | Yes | Yes |
 | Phone quick toggles & volume | Yes | Yes | Yes |
 | Clipboard text & image sync | Yes | Yes | Yes (two-way text, incoming photo) |
-| System notifications | Yes | Yes | Yes (system banners) |
+| System notifications | Yes | Yes | Yes (buttons, replies, calls) |
 | Phone screen mirroring | Yes | Yes | Yes (H.264) |
 | Screen recording (MP4) | Yes | Yes | Yes (H.264) |
 | PC audio stream / phone mic | Yes | Yes | Yes (PC audio needs Screen Recording permission) |
@@ -282,7 +283,7 @@ docs/                    Guide, technical docs, protocol, design system    (CC B
 | Core and CLI | [Rust](https://rustup.rs) (stable, pinned in `rust-toolchain.toml`) |
 | Windows app | Windows 11, Visual Studio 2022 Build Tools (C++), [Qt 6.12](https://www.qt.io/download-open-source) for MSVC 2022 x64 |
 | Linux app | Ubuntu 24.04 or newer (glibc 2.39), a C++17 compiler, pkg-config, the X11, Wayland and D-Bus development packages, [Qt 6.12](https://www.qt.io/download-open-source) (`gcc_64`, with Qt Shader Tools and Qt Wayland Compositor) |
-| macOS app | macOS 14+, Xcode Command Line Tools, [Qt 6.12](https://www.qt.io/download-open-source) (or Homebrew Qt 6) |
+| macOS app | macOS 14.4+, Xcode Command Line Tools, [Qt 6.12](https://www.qt.io/download-open-source) (or Homebrew Qt 6, for your Mac's own chip only: `ARCH=arm64`) |
 | Android app | Android SDK (platform 37, NDK 30.0.16248370), JDK 17 or newer, `cargo-ndk` (see [android/README.md](android/README.md)) |
 
 For Linux hardware video encoding and decoding, install `libavcodec-dev` and
@@ -299,6 +300,10 @@ cargo test -p nectarlink-protocol -p nectarlink-core -p nectarlink-ffi   # core 
 cargo run -p nectarlink-cli -- --help                                     # command-line client
 cargo run -p nectarlink-desktop                                           # desktop app (Qt's bin on PATH)
 cd android && ./gradlew assembleDebug                                     # Android app
+```
+
+```sh
+bash desktop/packaging/macos/build-dmg.sh   # macOS: dist/Nectarlink-<version>-macos-universal.dmg (ARCH=arm64 for one chip; signing: docs/technical/releasing.md)
 ```
 
 ```powershell
