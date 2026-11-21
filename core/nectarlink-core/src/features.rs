@@ -375,6 +375,8 @@ pub const DEVICE_TOGGLES: &[(&str, bool)] = &[
     ("commands", false),
     // Browsing the PC's files from anywhere is opt-in.
     ("remote_files", false),
+    // Unlocking the PC with the phone's fingerprint is opt-in on both sides.
+    ("unlock", false),
 ];
 
 /// The default for a toggle, or `None` if no such toggle exists.
@@ -566,7 +568,12 @@ fn summarize(requires: &[Requirement], ctx: &Context<'_>) -> Summary {
 /// of the feature works even if the rest never will); else Unsupported if
 /// something can't be met on this pair; else Locked with the easiest upgrade.
 fn evaluate(def: &FeatureDef, ctx: &Context<'_>) -> FeatureState {
-    let full = summarize(def.requires, ctx);
+    let requires = if def.id == "device.unlock" && ctx.desktop.os == "linux" {
+        LINUX_UNLOCK_REQUIREMENTS
+    } else {
+        def.requires
+    };
+    let full = summarize(requires, ctx);
     if full.met {
         return FeatureState::Available;
     }
@@ -685,6 +692,11 @@ pub const DESKTOP_PAIR_FEATURES: &[FeatureDef] = &[
 ];
 const ASSIST: Unlock = Unlock::Power(PowerLevel::Assist);
 const UPDATE: Unlock = Unlock::UpdateApp;
+const LINUX_UNLOCK_REQUIREMENTS: &[Requirement] = &[
+    phone(crate::linux_unlock::KEY, UPDATE),
+    desktop(crate::linux_unlock::PC, UPDATE),
+    DeviceToggle(crate::unlock::TOGGLE),
+];
 
 /// Every feature, in display order. Capability IDs are listed in
 /// docs/protocol/capabilities.md.
@@ -700,6 +712,12 @@ pub const FEATURES: &[FeatureDef] = &[
         id: "device.battery",
         group: FeatureGroup::Device,
         requires: &[phone("device.battery", UPDATE)],
+        partial: None,
+    },
+    FeatureDef {
+        id: "device.unlock",
+        group: FeatureGroup::Device,
+        requires: &[phone("unlock.key", UPDATE), desktop("unlock.pc", UPDATE), DeviceToggle("unlock")],
         partial: None,
     },
     FeatureDef {
@@ -1453,6 +1471,32 @@ mod tests {
         assert_eq!(f.android_release(), Some(12));
         let f = facts(DeviceKind::Phone, "android", "beta", PowerLevel::Basic, &[]);
         assert_eq!(f.android_release(), None);
+    }
+
+    #[test]
+    fn linux_unlock_requires_linux_capabilities_and_local_consent() {
+        let phone = facts(DeviceKind::Phone, "android", "16", PowerLevel::Basic, &[crate::linux_unlock::KEY]);
+        let linux = facts(
+            DeviceKind::Desktop,
+            "linux",
+            "test",
+            PowerLevel::NotApplicable,
+            &[crate::linux_unlock::PC],
+        );
+        let legacy = facts(DeviceKind::Phone, "android", "16", PowerLevel::Basic, &[crate::unlock::KEY]);
+        let status = |peer, toggles| {
+            compute(
+                DeviceId([0; 32]),
+                MatrixInputs { local: &linux, peer, paths: &[ConnectionPath::Lan], toggles },
+            )
+            .features["device.unlock"]
+        };
+        let disabled = HashMap::new();
+        let enabled = HashMap::from([(crate::unlock::TOGGLE.to_owned(), true)]);
+
+        assert!(matches!(status(&phone, &enabled), FeatureState::Available));
+        assert!(matches!(status(&phone, &disabled), FeatureState::Locked { .. }));
+        assert!(matches!(status(&legacy, &enabled), FeatureState::Locked { .. }));
     }
 
     #[test]

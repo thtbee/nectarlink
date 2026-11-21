@@ -26,6 +26,7 @@ mod events;
 pub mod features;
 pub mod handoff;
 mod identity;
+pub mod linux_unlock;
 pub mod localsend;
 mod media;
 pub mod mic;
@@ -39,6 +40,7 @@ mod photos;
 pub mod play_on_phone;
 pub mod relays;
 pub mod remote;
+mod resync;
 mod ring;
 mod session;
 mod sms;
@@ -47,6 +49,7 @@ mod store;
 pub mod timeline;
 pub mod toggles;
 mod transfer;
+pub mod unlock;
 pub mod usb;
 pub mod webcam;
 
@@ -101,8 +104,8 @@ pub use nectarlink_protocol::{
         AudioOutputDevice, Battery, CLIP_MAX_BYTES, CallControls, CallLogEntry, CallSim, CallSims, CallState,
         CameraCaptureCancel, CameraCaptureMode, CameraCaptureOk, CameraCaptureRequest,
         CameraCaptureResultMeta, Contact, ContactNumber, DeviceInfo, DeviceKind, LivePoint, LiveSegment,
-        MediaPlayer, MirrorAudioConfig, MirrorConfig, MirrorInput, MirrorPower, MirrorResize, MirrorStart,
-        Notification, NotificationAction, NotificationChatMessage, NotificationConversation,
+        MediaPlayer, MirrorAudioConfig, MirrorConfig, MirrorInput, MirrorPower, MirrorResize, MirrorRotate,
+        MirrorStart, Notification, NotificationAction, NotificationChatMessage, NotificationConversation,
         NotificationLive, PcAudioSet, PcWakeInfo, PhoneApp, PhoneToggleSet, PhoneToggleValue, PhoneToggles,
         PhotoAlbum, PhotoItem, PhotoNew as Photo, PhotoThumb, PointerAt, PointerEdge, PointerMove,
         PointerScreen, PowerLevel, ScreenCorners, ScreenRect, ScreenShape, SmsAttachment, SmsMessage,
@@ -141,7 +144,7 @@ pub use nectarlink_protocol::{
         ringer_modes, screen_limits,
         sms::{
             MAX_ATTACHMENT_BYTES as SMS_MAX_ATTACHMENT_BYTES, MAX_ATTACHMENTS as SMS_MAX_ATTACHMENTS,
-            READ as SMS_READ, SEND as SMS_SEND, SHOW as SMS_SHOW,
+            READ as SMS_READ, SEND as SMS_SEND, SHOW as SMS_SHOW, SIMS as SMS_SIMS,
         },
         storage::{MOUNT as STORAGE_MOUNT, READ as STORAGE_READ, WRITE as STORAGE_WRITE},
         task_notify, toggle_ids,
@@ -170,6 +173,7 @@ pub use remote::{
     ButtonAction, INPUT_GAMEPAD, INPUT_INJECT, KeyMod, MouseButton, PAD_DRIVER_MISSING, PadState,
     RemoteInput, SlideAction, remote_keys,
 };
+pub use resync::Resync;
 pub use session::is_lan_ip;
 pub use storage::{
     FolderStorage, MAX_LISTED as MAX_STORAGE_LISTED, StorageError, StorageReadFile, TOGGLE as STORAGE_TOGGLE,

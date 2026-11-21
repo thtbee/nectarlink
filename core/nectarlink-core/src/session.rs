@@ -11,7 +11,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use iroh::endpoint::{Connection, RecvStream, SendStream, VarInt};
+use iroh::endpoint::{Connection, PathEventStream, RecvStream, SendStream, VarInt};
 use nectarlink_protocol::{
     DeviceId, Envelope, ErrorCode, MIN_PROTOCOL_VERSION, PROTOCOL_VERSION, ProtocolError, messages::*,
     negotiate_version, read_frame, write_frame,
@@ -88,8 +88,31 @@ pub(crate) fn is_tailnet_ip(ip: std::net::IpAddr) -> bool {
     }
 }
 
+/// Returns true if `ip` is on a network of this place only: a private or link-local
+/// IPv4 address, a link-local or unique-local IPv6 one, or loopback. Unlike
+/// [`is_lan_ip`], tailnet addresses and carrier CGNAT (`100.64.0.0/10`) don't count:
+/// they reach a device anywhere, over mobile data too.
+pub(crate) fn is_private_lan_ip(ip: std::net::IpAddr) -> bool {
+    if is_tailnet_ip(ip) {
+        return false;
+    }
+    match ip.to_canonical() {
+        std::net::IpAddr::V4(v4) => v4.is_private() || v4.is_link_local() || v4.is_loopback(),
+        std::net::IpAddr::V6(v6) => v6.is_loopback() || v6.is_unicast_link_local() || v6.is_unique_local(),
+    }
+}
+
+/// Returns true if `a` and `b` are on the same subnet as far as can be told without
+/// the interface's prefix: the same `/64` for IPv6, the same `/24` for IPv4.
+pub(crate) fn is_same_subnet(a: std::net::IpAddr, b: std::net::IpAddr) -> bool {
+    match (a.to_canonical(), b.to_canonical()) {
+        (std::net::IpAddr::V4(a), std::net::IpAddr::V4(b)) => a.octets()[..3] == b.octets()[..3],
+        (std::net::IpAddr::V6(a), std::net::IpAddr::V6(b)) => is_same_ipv6_subnet(a, b),
+        _ => false,
+    }
+}
+
 /// Returns true if two IPv6 addresses share the same `/64` subnet prefix.
-#[cfg(test)]
 pub(crate) fn is_same_ipv6_subnet(a: std::net::Ipv6Addr, b: std::net::Ipv6Addr) -> bool {
     a.segments()[..4] == b.segments()[..4]
 }
@@ -217,6 +240,34 @@ pub(crate) struct Session {
     pub(crate) cancel: CancellationToken,
 }
 
+struct PendingReply<'a> {
+    session: &'a Session,
+    id: u64,
+    sent: bool,
+    cancel_unlock: bool,
+}
+
+impl Drop for PendingReply<'_> {
+    fn drop(&mut self) {
+        let unanswered = self.session.pending.lock().unwrap_or_else(|e| e.into_inner()).remove(&self.id);
+        if unanswered.is_some()
+            && self.sent
+            && self.cancel_unlock
+            && let Ok(cancel) = Envelope::new(types::LINUX_UNLOCK_CANCEL, &self.id)
+            && let Err(mpsc::error::TrySendError::Full(cancel)) = self.session.outbox.try_send(cancel)
+        {
+            let outbox = self.session.outbox.clone();
+            if let Ok(runtime) = tokio::runtime::Handle::try_current() {
+                runtime.spawn(async move {
+                    let _ = outbox.send(cancel).await;
+                });
+            } else {
+                self.session.close(CLOSE_NORMAL, b"phone unlock cancelled");
+            }
+        }
+    }
+}
+
 impl std::fmt::Debug for Session {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Session")
@@ -301,7 +352,7 @@ impl Session {
         self.last_rx_ms.load(Ordering::Relaxed) > since_ms
     }
 
-    fn is_usb_addr(&self, addr: &std::net::SocketAddr) -> bool {
+    pub(crate) fn is_usb_addr(&self, addr: &std::net::SocketAddr) -> bool {
         addr.ip().to_canonical().is_loopback()
             && self.usb_bridge_ports.lock().unwrap_or_else(|e| e.into_inner()).get(&addr.port())
                 == Some(&self.peer)
@@ -359,6 +410,24 @@ impl Session {
                 }
             }
         }
+    }
+
+    /// The address of the path the connection uses now, when that's a direct IP path
+    /// (not a relay, not the USB tunnel). `None` while no path is selected.
+    pub(crate) fn selected_direct_addr(&self) -> Option<std::net::SocketAddr> {
+        self.selected_ip_path().filter(|(_, usb)| !usb).map(|(addr, _)| addr)
+    }
+
+    /// The selected direct address and whether it belongs to this peer's USB bridge.
+    pub(crate) fn selected_ip_path(&self) -> Option<(std::net::SocketAddr, bool)> {
+        let paths = self.conn.paths();
+        let selected = paths.iter().find(|p| p.is_selected())?;
+        let addr = direct_ip_addr(selected.remote_addr())?;
+        Some((addr, self.is_usb_addr(&addr)))
+    }
+
+    pub(crate) fn path_events(&self) -> PathEventStream {
+        self.conn.path_events()
     }
 
     /// The peer's direct IP addresses currently in use, for reconnecting later.
@@ -434,10 +503,11 @@ impl Session {
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
         let (tx, rx) = oneshot::channel();
         self.pending.lock().unwrap_or_else(|e| e.into_inner()).insert(id, tx);
-        let mut sent = false;
+        let cancel_unlock = matches!(env.t.as_str(), types::LINUX_UNLOCK_ENROLL | types::LINUX_UNLOCK_SIGN);
+        let mut pending = PendingReply { session: self, id, sent: false, cancel_unlock };
         let result = match tokio::time::timeout(timeout, async {
             self.send(env.with_id(id)).await?;
-            sent = true;
+            pending.sent = true;
             rx.await.map_err(|_| Error::Offline)
         })
         .await
@@ -445,8 +515,7 @@ impl Session {
             Ok(inner) => inner,
             Err(_) => Err(Error::Timeout),
         };
-        self.pending.lock().unwrap_or_else(|e| e.into_inner()).remove(&id);
-        (result, sent)
+        (result, pending.sent)
     }
 
     /// Closes the connection with an application code.
@@ -509,8 +578,16 @@ async fn writer(mut send: SendStream, mut outbox: mpsc::Receiver<Envelope>) {
     let _ = send.finish();
 }
 
+fn direct_ip_addr(addr: &iroh::TransportAddr) -> Option<std::net::SocketAddr> {
+    match addr {
+        iroh::TransportAddr::Ip(addr) => Some(*addr),
+        _ => None,
+    }
+}
+
 async fn reader(session: &Arc<Session>, mut recv: RecvStream, shared: &Weak<Shared>) {
     let background = Arc::new(tokio::sync::Semaphore::new(MAX_BACKGROUND_RPCS));
+    let unlock_cleanup = Arc::new(tokio::sync::Semaphore::new(1));
     loop {
         let frame = match read_frame(&mut recv).await {
             Ok(Some(frame)) => {
@@ -547,7 +624,14 @@ async fn reader(session: &Arc<Session>, mut recv: RecvStream, shared: &Weak<Shar
         if is_background_rpc(&env.t) {
             // Waiting for a slot would hold up heartbeats behind slow
             // requests, so past the limit a request is turned away instead.
-            let Ok(permit) = background.clone().try_acquire_owned() else {
+            // An opt-out must reach the phone even when unrelated background requests are full.
+            let permits =
+                if env.t == types::LINUX_UNLOCK_FORGET && matches!(env.body(), Ok(LinuxUnlockForget::All)) {
+                    &unlock_cleanup
+                } else {
+                    &background
+                };
+            let Ok(permit) = permits.clone().try_acquire_owned() else {
                 tracing::warn!(peer = %session.peer.short(), t = %env.t, "too many requests at once");
                 if env.id.is_some() {
                     let reply = Envelope::error(ErrorCode::Busy, "too many requests at once");
@@ -555,14 +639,21 @@ async fn reader(session: &Arc<Session>, mut recv: RecvStream, shared: &Weak<Shar
                 }
                 continue;
             };
+            let unlock = match crate::linux_unlock::prepare_background(&shared, session, &env) {
+                Ok(unlock) => unlock,
+                Err(reply) => {
+                    let _ = session.send(reply.reply_to(env.id)).await;
+                    continue;
+                }
+            };
             let session = session.clone();
             tokio::spawn(async move {
-                if let Err(e) = handle(&shared, &session, env).await {
+                if let Err(e) = handle(&shared, &session, env, unlock).await {
                     tracing::warn!(peer = %session.peer.short(), error = %e, "failed to handle message");
                 }
                 drop(permit);
             });
-        } else if let Err(e) = handle(&shared, session, env).await {
+        } else if let Err(e) = handle(&shared, session, env, None).await {
             tracing::warn!(peer = %session.peer.short(), error = %e, "failed to handle message");
         }
     }
@@ -599,11 +690,22 @@ fn is_background_rpc(t: &str) -> bool {
             | types::STORAGE_RENAME
             | types::STORAGE_DELETE
             | types::WAKE_RELAY
+            // The phone's owner answers a biometric prompt.
+            | types::UNLOCK_ENROLL
+            | types::UNLOCK_REQUEST
+            | types::LINUX_UNLOCK_ENROLL
+            | types::LINUX_UNLOCK_SIGN
+            | types::LINUX_UNLOCK_FORGET
     )
 }
 
 /// Handles one incoming message that isn't a reply.
-async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> Result<()> {
+async fn handle(
+    shared: &Arc<Shared>,
+    session: &Arc<Session>,
+    env: Envelope,
+    unlock: Option<crate::linux_unlock::Incoming>,
+) -> Result<()> {
     let peer = session.peer;
     match env.t.as_str() {
         types::PING => {
@@ -693,6 +795,9 @@ async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> 
         t if (t.starts_with("deck.") || t == types::PC_AUDIO_SET)
             && crate::deck::handle(shared, session, &env).await? => {}
         t if t.starts_with("storage.") && crate::storage::handle(shared, session, &env).await? => {}
+        t if t.starts_with("unlock.linux.v1.")
+            && crate::linux_unlock::handle(shared, session, &env, unlock).await? => {}
+        t if t.starts_with("unlock.") && crate::unlock::handle(shared, session, &env).await? => {}
         t if (t == types::FILES_RESUME || t == types::FILES_CANCEL)
             && crate::transfer::handle_control(shared, peer, &env).await? => {}
         types::WAKE_RELAY => {
@@ -885,8 +990,56 @@ fn received_bytes(session: &Session) -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use super::{is_lan_ip, is_lan_peer_ip, is_same_ipv6_subnet, is_tailnet_ip, pcm_frame_ok};
+    use super::{
+        is_lan_ip, is_lan_peer_ip, is_private_lan_ip, is_same_ipv6_subnet, is_same_subnet, is_tailnet_ip,
+        pcm_frame_ok,
+    };
     use std::net::{IpAddr, Ipv6Addr, SocketAddr};
+
+    #[test]
+    fn a_relay_address_is_not_a_direct_path_for_phone_unlock() {
+        let relay = iroh::TransportAddr::Relay("https://relay.example/".parse().unwrap());
+        assert_eq!(super::direct_ip_addr(&relay), None);
+    }
+
+    #[test]
+    fn private_lan_ip_leaves_out_tailnet_cgnat_and_wan() {
+        for ok in [
+            "127.0.0.1",
+            "10.1.2.3",
+            "172.16.0.9",
+            "192.168.1.20",
+            "169.254.3.4",
+            "::1",
+            "fe80::1",
+            "fd00::5",
+        ] {
+            assert!(is_private_lan_ip(ok.parse().unwrap()), "expected {ok} to be private");
+        }
+        for no in [
+            "100.64.0.1",
+            "100.100.100.100",
+            "100.127.255.254",
+            "fd7a:115c:a1e0::1",
+            "8.8.8.8",
+            "2001:4860::8888",
+            "::ffff:100.64.0.1",
+        ] {
+            assert!(!is_private_lan_ip(no.parse().unwrap()), "expected {no} not to be private");
+        }
+        assert!(is_private_lan_ip("::ffff:192.168.1.2".parse().unwrap()));
+    }
+
+    #[test]
+    fn same_subnet_compares_v4_24_and_v6_64() {
+        let ip = |s: &str| s.parse::<IpAddr>().unwrap();
+        assert!(is_same_subnet(ip("203.0.113.5"), ip("203.0.113.200")));
+        assert!(!is_same_subnet(ip("203.0.113.5"), ip("203.0.114.5")));
+        assert!(is_same_subnet(ip("2001:db8:1:2::a"), ip("2001:db8:1:2:ffff::1")));
+        assert!(!is_same_subnet(ip("2001:db8:1:2::a"), ip("2001:db8:1:3::a")));
+        assert!(is_same_subnet(ip("::ffff:203.0.113.5"), ip("203.0.113.9")));
+        assert!(!is_same_subnet(ip("203.0.113.5"), ip("2001:db8::1")));
+    }
 
     #[test]
     fn lan_ip_accepts_private_local_and_tailnet_and_rejects_wan() {

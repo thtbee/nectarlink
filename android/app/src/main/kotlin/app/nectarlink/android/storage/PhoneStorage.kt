@@ -349,15 +349,20 @@ class PhoneStorage(
             throw StorageFailure.Invalid("destination is a directory")
         }
         if (staged.renameTo(dest)) return
+        // Another volume (an SD card): copy beside the file first, then swap it
+        // in, so a copy that fails partway leaves the file that was there as it was.
+        val temp = File(dest.parentFile, ".nectarlink-part-${java.util.UUID.randomUUID()}-${dest.name}")
         try {
             FileInputStream(staged).use { input ->
-                FileOutputStream(dest).use { output ->
+                FileOutputStream(temp).use { output ->
                     input.copyTo(output)
                     output.fd.sync()
                 }
             }
+            if (!temp.renameTo(dest)) throw java.io.IOException("can't put the copy in place")
             staged.delete()
         } catch (e: Exception) {
+            temp.delete()
             throw StorageFailure.Failed(e.message ?: "write failed")
         }
     }
@@ -524,10 +529,12 @@ class PhoneStorage(
                     output.flush()
                 } ?: throw StorageFailure.Failed("cannot open SAF output stream")
             }
-        } catch (e: StorageFailure) {
-            throw e
         } catch (e: Exception) {
-            throw StorageFailure.Failed(e.message ?: "SAF write failed")
+            // A file made just now for this write goes again rather than stay half written.
+            if (existing == null) {
+                runCatching { DocumentsContract.deleteDocument(context.contentResolver, targetUri) }
+            }
+            throw e as? StorageFailure ?: StorageFailure.Failed(e.message ?: "SAF write failed")
         }
         val size = staged.length().coerceAtLeast(0L).toULong()
         return StorageWriteDone(

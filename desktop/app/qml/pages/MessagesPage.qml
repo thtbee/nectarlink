@@ -119,6 +119,14 @@ Item {
         if (Messages.composeTo.length > 0) {
             composing = true
             toField.text = Messages.composeTo
+            // A first message that didn't go out comes back to the box.
+            const unsentKey = deviceId + "|to:" + Messages.composeTo
+            const unsent = Messages.draft(unsentKey)
+            if (unsent.length > 0) {
+                Messages.saveDraft(unsentKey, "")
+                if (input.text.length === 0)
+                    input.text = unsent
+            }
             Qt.callLater(() => composer.focusText())
         } else if (Messages.thread.length > 0) {
             composing = false
@@ -146,8 +154,13 @@ Item {
     }
     // Leaving the page closes the open conversation.
     onActiveChanged: active ? load() : closeChat()
-    Component.onCompleted: load()
-    Component.onDestruction: Messages.closeThread()
+    Component.onCompleted: { load(); switchDraft() }
+    // What's typed stays for when you come back, even from another page.
+    Component.onDestruction: {
+        if (draftKey.length > 0)
+            Messages.saveDraft(draftKey, input.text)
+        Messages.closeThread()
+    }
 
     Shortcut {
         sequence: "Esc"
@@ -182,21 +195,17 @@ Item {
     onDeviceIdChanged: { composing = false; switchDraft(); load() }
 
     // What was typed in each conversation, so text written for one is never
-    // sent to another and comes back when you return to it.
-    property var drafts: ({})
+    // sent to another and comes back when you return to it. Kept by the app,
+    // not this page, so changing pages doesn't lose it.
     property string draftKey: ""
     function switchDraft() {
         const key = deviceId + "|" + Messages.thread
         if (key === draftKey)
             return
-        if (draftKey.length > 0) {
-            if (input.text.length > 0)
-                drafts[draftKey] = input.text
-            else
-                delete drafts[draftKey]
-        }
+        if (draftKey.length > 0)
+            Messages.saveDraft(draftKey, input.text)
         draftKey = key
-        input.text = drafts[key] || ""
+        input.text = Messages.draft(key)
     }
 
     // "14:05", "Yesterday", "Tue", or a date.
@@ -892,7 +901,7 @@ Item {
                 else
                     Messages.send(input.text)
                 input.text = ""
-                delete page.drafts[page.draftKey]
+                Messages.saveDraft(page.draftKey, "")
                 page.composing = false
                 toField.text = ""
             }
@@ -926,10 +935,29 @@ Item {
                 }
             }
 
+            // Which SIM it goes out on, when the phone has more than one (#474).
+            // A click moves to the next; the phone's label says which is which.
+            Chip {
+                id: simChip
+                readonly property var sims: { try { return JSON.parse(Messages.sims || "[]") } catch (e) { return [] } }
+                readonly property int current: Math.max(0, sims.findIndex(s => s.id === Messages.sim))
+                readonly property string fullLabel: sims.length > 0 ? sims[current].label : ""
+                visible: sims.length > 1 && !composer.isChat && !composer.groupSms
+                anchors.left: attachButton.visible ? attachButton.right : parent.left
+                anchors.leftMargin: 4
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: 9
+                interactive: !Messages.sending
+                // "SIM 1 · Airtel" shows as "SIM 1"; a label without a slot as it is.
+                text: fullLabel.split(" · ")[0]
+                Accessible.name: qsTr("Sending from %1. Switch SIM").arg(fullLabel)
+                onClicked: Messages.chooseSim(sims[(current + 1) % sims.length].id)
+            }
+
             Flickable {
                 id: inputScroll
-                anchors.left: attachButton.visible ? attachButton.right : parent.left
-                anchors.leftMargin: attachButton.visible ? 4 : 18
+                anchors.left: simChip.visible ? simChip.right : (attachButton.visible ? attachButton.right : parent.left)
+                anchors.leftMargin: simChip.visible || attachButton.visible ? 4 : 18
                 anchors.right: sendButton.left
                 anchors.rightMargin: 8
                 anchors.top: parent.top

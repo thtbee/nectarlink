@@ -30,6 +30,7 @@ use nectarlink_protocol::{
     read_frame, write_frame,
 };
 use tokio::sync::oneshot;
+use tokio_util::sync::CancellationToken;
 
 use crate::{
     Error, Result,
@@ -61,6 +62,12 @@ struct HostMode {
     secret: [u8; SECRET_LEN],
     expires_at: Instant,
     failures_by_peer: std::collections::HashMap<DeviceId, u32>,
+    /// Which showing of a QR code this is: a ceremony that proved itself
+    /// against one may only finish while that one is still shown.
+    generation: u64,
+    /// The device that proved it has the code and is finishing, if any: one
+    /// code pairs one device.
+    claimed_by: Option<DeviceId>,
 }
 
 /// Pairing state shared by both flows. Only one ceremony runs at a time.
@@ -72,6 +79,29 @@ pub(crate) struct PairingState {
     /// True while a nearby ceremony is in flight, so a second one cannot
     /// overwrite `sas_decision`.
     nearby_active: std::sync::atomic::AtomicBool,
+    /// Cancelled (and replaced) when the user cancels pairing: every ceremony
+    /// running then stops, whatever step it waits on.
+    ceremonies: Mutex<CancellationToken>,
+    generations: std::sync::atomic::AtomicU64,
+}
+
+/// A QR code's claim by the device finishing with it; let go when dropped,
+/// so a ceremony that fails before it's stored leaves the code usable.
+struct QrClaim<'a> {
+    state: &'a PairingState,
+    generation: u64,
+    peer: DeviceId,
+}
+
+impl Drop for QrClaim<'_> {
+    fn drop(&mut self) {
+        if let Some(mode) = lock(&self.state.host).as_mut()
+            && mode.generation == self.generation
+            && mode.claimed_by == Some(self.peer)
+        {
+            mode.claimed_by = None;
+        }
+    }
 }
 
 pub(crate) struct NearbyGuard<'a>(&'a PairingState);
@@ -94,10 +124,11 @@ fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
 }
 
 impl PairingState {
-    fn host_secret(&self) -> Option<[u8; SECRET_LEN]> {
+    /// The QR code shown now, if one is: its secret and generation.
+    fn host_secret(&self) -> Option<([u8; SECRET_LEN], u64)> {
         let mut host = lock(&self.host);
         match host.as_ref() {
-            Some(mode) if mode.expires_at > Instant::now() => Some(mode.secret),
+            Some(mode) if mode.expires_at > Instant::now() => Some((mode.secret, mode.generation)),
             Some(_) => {
                 *host = None;
                 None
@@ -110,8 +141,53 @@ impl PairingState {
         self.host_secret().is_some()
     }
 
+    fn host_generation(&self) -> Option<u64> {
+        self.host_secret().map(|(_, generation)| generation)
+    }
+
     fn end_host(&self) {
         *lock(&self.host) = None;
+    }
+
+    /// Ends pairing mode if it's still the showing `generation` started; a
+    /// newer one is left alone.
+    fn end_host_if(&self, generation: Option<u64>) {
+        let mut host = lock(&self.host);
+        if generation.is_some() && host.as_ref().map(|m| m.generation) == generation {
+            *host = None;
+        }
+    }
+
+    fn next_generation(&self) -> u64 {
+        self.generations.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1
+    }
+
+    /// The token every ceremony starting now stops on.
+    fn ceremony(&self) -> CancellationToken {
+        lock(&self.ceremonies).clone()
+    }
+
+    /// Stops every ceremony running now; later ones start afresh.
+    fn cancel_ceremonies(&self) {
+        std::mem::take(&mut *lock(&self.ceremonies)).cancel();
+    }
+
+    /// Claims the QR code of `generation` for `peer`, unless it's gone or
+    /// another device is already finishing with it.
+    fn claim_qr(&self, generation: u64, peer: DeviceId) -> Option<QrClaim<'_>> {
+        let mut host = lock(&self.host);
+        let mode = host.as_mut().filter(|m| m.generation == generation && m.expires_at > Instant::now())?;
+        if mode.claimed_by.is_some_and(|by| by != peer) {
+            return None;
+        }
+        mode.claimed_by = Some(peer);
+        Some(QrClaim { state: self, generation, peer })
+    }
+
+    /// Whether the QR code of `generation` is still shown (not cancelled,
+    /// replaced or expired).
+    fn host_is(&self, generation: u64) -> bool {
+        self.host_generation() == Some(generation)
     }
 
     /// Records a failed attempt for `peer`; returns true if pairing mode just ended.
@@ -179,6 +255,8 @@ pub(crate) async fn start_host(shared: &Arc<Shared>) -> Result<PairingUri> {
         secret,
         expires_at: Instant::now() + PAIRING_TTL,
         failures_by_peer: std::collections::HashMap::new(),
+        generation: shared.pairing.next_generation(),
+        claimed_by: None,
     });
 
     // Expire quietly; tell the UI if nobody paired in time.
@@ -255,24 +333,40 @@ fn link_addrs(mut addrs: Vec<SocketAddr>, preferred: Option<IpAddr>) -> Vec<Sock
 pub(crate) fn cancel(shared: &Shared) {
     shared.pairing.end_host();
     shared.pairing.clear_decision();
+    shared.pairing.cancel_ceremonies();
+}
+
+/// Runs `step` unless the user cancels pairing first.
+async fn until_cancelled<T>(
+    ceremony: &CancellationToken,
+    step: impl Future<Output = Result<T>>,
+) -> Result<T> {
+    tokio::select! {
+        _ = ceremony.cancelled() => Err(Error::Declined),
+        result = step => result,
+    }
 }
 
 // ---- Initiator side ----
 
 /// Joins a host by scanning its pairing link (the phone side of the QR flow).
 pub(crate) async fn join_qr(shared: &Arc<Shared>, uri: &PairingUri) -> Result<()> {
+    let ceremony = shared.pairing.ceremony();
     shared.remember_addrs(&uri.id, &uri.addrs);
-    let conn = dial(shared, &uri.id).await?;
-    let result = async {
+    let conn = until_cancelled(&ceremony, dial(shared, &uri.id)).await?;
+    let exchange = async {
         let (mut send, mut recv) = conn.open_bi().await.map_err(crate::error::net)?;
         let device = local_device(shared);
         let proof = proto::pair_proof(&uri.secret, &shared.id, &uri.id).to_vec();
         send_env(&mut send, Envelope::new(types::PAIR_REQUEST, &PairRequest { device, proof })?).await?;
         let accept: PairAccept = recv_env(&mut recv, STEP_TIMEOUT).await?.expect_body(types::PAIR_ACCEPT)?;
-        finish_initiator(&conn, send).await?;
-        Ok(accept.device.sanitized())
-    }
-    .await;
+        Ok((send, accept.device.sanitized()))
+    };
+    // A cancel counts until `pair.done` goes out; after that the host stores it.
+    let result = match until_cancelled(&ceremony, exchange).await {
+        Ok((send, device)) => finish_initiator(&conn, send).await.map(|()| device),
+        Err(e) => Err(e),
+    };
     settle_initiator(shared, &conn, uri.id, result).await
 }
 
@@ -280,15 +374,16 @@ pub(crate) async fn join_qr(shared: &Arc<Shared>, uri: &PairingUri) -> Result<()
 /// mode. The 6-digit code arrives as [`PairingEvent::SasCode`]; answer with
 /// [`crate::Node::pairing_confirm`].
 pub(crate) async fn start_nearby(shared: &Arc<Shared>, peer: DeviceId) -> Result<()> {
+    let ceremony = shared.pairing.ceremony();
     let nearby = shared.pairing.begin_nearby().ok_or(Error::Denied)?;
-    let conn = match dial(shared, &peer).await {
+    let conn = match until_cancelled(&ceremony, dial(shared, &peer)).await {
         Ok(conn) => conn,
         Err(e) => {
             drop(nearby);
             return Err(e);
         }
     };
-    let result = async {
+    let exchange = async {
         let (mut send, mut recv) = conn.open_bi().await.map_err(crate::error::net)?;
         let n_a: [u8; NONCE_LEN] = rand::random();
         let commit = PairCommit { device: local_device(shared), c: proto::commitment(&n_a).to_vec() };
@@ -299,10 +394,12 @@ pub(crate) async fn start_nearby(shared: &Arc<Shared>, peer: DeviceId) -> Result
         // We are A (initiator), the host is B.
         let code = proto::sas_code(&n_a, &nonce.n_b, &shared.id, &peer);
         exchange_decisions(shared, peer, code, &mut send, &mut recv, Role::Initiator).await?;
-        finish_initiator(&conn, send).await?;
-        Ok(nonce.device.sanitized())
-    }
-    .await;
+        Ok((send, nonce.device.sanitized()))
+    };
+    let result = match until_cancelled(&ceremony, exchange).await {
+        Ok((send, device)) => finish_initiator(&conn, send).await.map(|()| device),
+        Err(e) => Err(e),
+    };
     drop(nearby);
     settle_initiator(shared, &conn, peer, result).await
 }
@@ -343,23 +440,43 @@ async fn settle_initiator(
 /// Handles an incoming pairing connection (host side of both flows).
 pub(crate) async fn accept(shared: Arc<Shared>, conn: Connection) {
     let peer = crate::device_id(&conn.remote_id());
-    let is_usb = shared.is_usb_connection(&conn);
-    if !shared.pairing.is_hosting() && !is_usb {
+    // Over the USB tunnel pairing needs no pairing mode, but only while adb
+    // could be what reached the tunnel: any app on the phone can reach it too.
+    let is_usb = shared.is_usb_connection(&conn) && shared.platform.adb_may_be_connected();
+    let ceremony = shared.pairing.ceremony();
+    // The QR code shown when this started, if one was: it may be ended once
+    // this pairs, but not a newer one.
+    let host_generation = shared.pairing.host_generation();
+    if host_generation.is_none() && !is_usb {
         tracing::debug!(peer = %peer.short(), "refusing pairing connection: not in pairing mode");
         conn.close(VarInt::from_u32(ErrorCode::Denied.close_code()), b"not pairing");
         return;
     }
-    let (mut send, mut recv) = match conn.accept_bi().await {
+    // The first stream must come soon, and not after a cancel.
+    let streams = until_cancelled(&ceremony, async {
+        tokio::time::timeout(STEP_TIMEOUT, conn.accept_bi())
+            .await
+            .map_err(|_| Error::Timeout)?
+            .map_err(crate::error::net)
+    })
+    .await;
+    let (mut send, mut recv) = match streams {
         Ok(streams) => streams,
         Err(e) => {
-            tracing::debug!(peer = %peer.short(), error = %e, "pairing connection dropped");
+            tracing::debug!(peer = %peer.short(), error = %e, "pairing connection ended before its first stream");
+            conn.close(VarInt::from_u32(CLOSE_FAILED), b"failed");
             return;
         }
     };
-    let result = async {
+    let result = until_cancelled(&ceremony, async {
         let first = recv_env(&mut recv, STEP_TIMEOUT).await?;
+        let mut claim = None;
         let device = match first.t.as_str() {
-            types::PAIR_REQUEST => accept_qr(&shared, peer, first, &mut send).await?,
+            types::PAIR_REQUEST => {
+                let (device, qr) = accept_qr(&shared, peer, first, &mut send).await?;
+                claim = Some(qr);
+                device
+            }
             types::PAIR_COMMIT => {
                 match accept_nearby(&shared, peer, first, &mut send, &mut recv, is_usb).await {
                     Ok(Some(device)) => device,
@@ -382,11 +499,17 @@ pub(crate) async fn accept(shared: Arc<Shared>, conn: Connection) {
                 return Err(Error::Protocol(format!("unexpected pairing message {other}")));
             }
         };
-        // Store only once the initiator acknowledged our last message.
+        // Store only once the initiator acknowledged our last message, and
+        // for a QR code only while that code is still shown.
         recv_env(&mut recv, STEP_TIMEOUT).await?.expect(types::PAIR_DONE)?;
-        shared.pairing.end_host();
+        if let Some(qr) = &claim
+            && !shared.pairing.host_is(qr.generation)
+        {
+            return Err(Error::NotPairing);
+        }
+        shared.pairing.end_host_if(claim.as_ref().map(|qr| qr.generation).or(host_generation));
         Ok(device)
-    }
+    })
     .await;
 
     match result {
@@ -407,14 +530,14 @@ pub(crate) async fn accept(shared: Arc<Shared>, conn: Connection) {
     }
 }
 
-async fn accept_qr(
-    shared: &Arc<Shared>,
+async fn accept_qr<'a>(
+    shared: &'a Arc<Shared>,
     peer: DeviceId,
     env: Envelope,
     send: &mut SendStream,
-) -> Result<DeviceInfo> {
+) -> Result<(DeviceInfo, QrClaim<'a>)> {
     let request: PairRequest = env.body()?;
-    let Some(secret) = shared.pairing.host_secret() else {
+    let Some((secret, generation)) = shared.pairing.host_secret() else {
         send_env(send, Envelope::error(ErrorCode::Denied, "pairing mode ended")).await?;
         return Err(Error::NotPairing);
     };
@@ -425,9 +548,13 @@ async fn accept_qr(
         }
         return Err(Error::Denied);
     }
+    let Some(claim) = shared.pairing.claim_qr(generation, peer) else {
+        send_env(send, Envelope::error(ErrorCode::Busy, "another device is pairing with this code")).await?;
+        return Err(Error::Denied);
+    };
     shared.pairing.cancel_nearby();
     send_env(send, Envelope::new(types::PAIR_ACCEPT, &PairAccept { device: local_device(shared) })?).await?;
-    Ok(request.device.sanitized())
+    Ok((request.device.sanitized(), claim))
 }
 
 async fn accept_nearby(
@@ -571,8 +698,11 @@ async fn dial(shared: &Arc<Shared>, peer: &DeviceId) -> Result<Connection> {
     Err(err)
 }
 
+/// Sends one message; a peer that stops reading can't hold it past [`STEP_TIMEOUT`].
 async fn send_env(send: &mut SendStream, env: Envelope) -> Result<()> {
-    write_frame(send, &env.to_cbor()).await?;
+    tokio::time::timeout(STEP_TIMEOUT, write_frame(send, &env.to_cbor()))
+        .await
+        .map_err(|_| Error::Timeout)??;
     Ok(())
 }
 
@@ -713,6 +843,51 @@ mod tests {
         assert!(state.begin_nearby().is_some(), "slot released after guard drops");
     }
 
+    fn hosting(state: &PairingState) -> u64 {
+        let generation = state.next_generation();
+        *lock(&state.host) = Some(HostMode {
+            secret: [7; SECRET_LEN],
+            expires_at: Instant::now() + PAIRING_TTL,
+            failures_by_peer: std::collections::HashMap::new(),
+            generation,
+            claimed_by: None,
+        });
+        generation
+    }
+
+    #[test]
+    fn one_qr_code_pairs_one_device_at_a_time() {
+        let state = PairingState::default();
+        let generation = hosting(&state);
+        let (a, b) = (DeviceId([1; 32]), DeviceId([2; 32]));
+        let claim = state.claim_qr(generation, a).expect("the first device claims it");
+        assert!(state.claim_qr(generation, b).is_none(), "a second device must wait");
+        drop(claim);
+        assert!(state.claim_qr(generation, b).is_some(), "a failed ceremony lets the code go");
+    }
+
+    #[test]
+    fn an_old_ceremony_cant_finish_on_or_end_a_newer_code() {
+        let state = PairingState::default();
+        let old = hosting(&state);
+        let claim = state.claim_qr(old, DeviceId([1; 32])).unwrap();
+        let new = hosting(&state);
+        assert!(!state.host_is(claim.generation), "the old code's ceremony can't store");
+        state.end_host_if(Some(old));
+        assert!(state.host_is(new), "and doesn't end the new code");
+        state.end_host_if(Some(new));
+        assert!(!state.is_hosting());
+    }
+
+    #[test]
+    fn cancel_stops_ceremonies_running_now_but_not_later_ones() {
+        let state = PairingState::default();
+        let running = state.ceremony();
+        state.cancel_ceremonies();
+        assert!(running.is_cancelled());
+        assert!(!state.ceremony().is_cancelled());
+    }
+
     #[test]
     fn failures_are_tracked_per_peer_and_cancel_nearby_dismisses_pending_sas() {
         let state = PairingState::default();
@@ -720,6 +895,8 @@ mod tests {
             secret: [7; SECRET_LEN],
             expires_at: Instant::now() + PAIRING_TTL,
             failures_by_peer: std::collections::HashMap::new(),
+            generation: 1,
+            claimed_by: None,
         });
         let peer_a = DeviceId([1; 32]);
         let peer_b = DeviceId([2; 32]);

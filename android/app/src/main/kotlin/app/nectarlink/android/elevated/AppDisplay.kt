@@ -82,6 +82,7 @@ class AppDisplay(
                 launch(pkg, displayId)
                 watchActivities(displayId)
                 keepActive(displayId)
+                if (device == null) stayInteractive()
             }
             while (running) {
                 val activeCodec = codec ?: break
@@ -453,6 +454,30 @@ class AppDisplay(
         }
     }
 
+    /**
+     * A window on a plain display takes input only while the phone is
+     * interactive: Android drops injected input otherwise, and a plain
+     * display has no interactivity of its own the way a virtual device's
+     * does. HyperOS refuses the virtual device (#483), so locking the phone
+     * left its windows view only. When the phone goes to sleep, [wakePhone]
+     * wakes it again (with its own screen kept dark), checked twice a second.
+     */
+    private fun stayInteractive() {
+        val interactive = UserActivity.interactive() ?: return
+        Thread({
+            try {
+                while (running) {
+                    if (interactive() == false) wakePhone()
+                    Thread.sleep(INTERACTIVE_CHECK_MS)
+                }
+            } catch (_: InterruptedException) {
+            }
+        }, "app-display-awake").apply {
+            isDaemon = true
+            start()
+        }
+    }
+
     /** Stops the stream when the app on [display] finishes its last activity. */
     private fun watchActivities(display: Int) {
         Thread({
@@ -514,6 +539,7 @@ class AppDisplay(
 
         /** How often an open window counts as activity; well under any screen timeout. */
         private const val KEEP_ACTIVE_MS = 4_000L
+        private const val INTERACTIVE_CHECK_MS = 500L
         private const val ROTATION_CHECK_MS = 250L
 
         /** WindowManager.DISPLAY_IME_POLICY_HIDE. */
@@ -599,7 +625,7 @@ internal class ShellContext private constructor(base: Context) : ContextWrapper(
 
 /** `IPowerManager.userActivity`, which the shell may call (DEVICE_POWER). */
 @SuppressLint("PrivateApi", "DiscouragedPrivateApi")
-private object UserActivity {
+internal object UserActivity {
     private val power: Any? by lazy {
         runCatching {
             val binder = Class.forName("android.os.ServiceManager")
@@ -638,6 +664,14 @@ private object UserActivity {
                 }
             }.onFailure { System.err.println("user activity: $it") }.isSuccess
         }
+    }
+
+    /** A call answering whether the phone is interactive (null: it can't say), or null if there is none. */
+    fun interactive(): (() -> Boolean?)? {
+        val manager = power ?: return null
+        val method = runCatching { manager.javaClass.getMethod("isInteractive") }
+            .onFailure { System.err.println("no isInteractive: $it") }.getOrNull() ?: return null
+        return { runCatching { method.invoke(manager) as? Boolean }.getOrNull() }
     }
 
     /** PowerManager.USER_ACTIVITY_EVENT_OTHER. */

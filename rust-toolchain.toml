@@ -1,3 +1,5 @@
 [toolchain]
-channel = "stable"
+# An exact release, moved on purpose: a new stable can bring new clippy lints
+# (CI denies warnings) and builds a release with a compiler CI never tested.
+channel = "1.100.0"
 components = ["rustfmt", "clippy"]

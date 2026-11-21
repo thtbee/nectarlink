@@ -140,9 +140,20 @@ class MicService : Service() {
                     recorder.startRecording()
                     val chunk = ByteArray(CHUNK_BYTES)
                     var samples = 0L
+                    var failures = 0
                     while (running) {
                         val read = recorder.read(chunk, 0, chunk.size)
-                        if (read <= 0) continue
+                        if (read <= 0) {
+                            // A read that keeps failing (the microphone went away)
+                            // ends the stream rather than spin at full speed.
+                            if (read < 0 && ++failures >= MAX_READ_FAILURES) {
+                                Log.w(TAG, "the microphone stopped answering ($read)")
+                                break
+                            }
+                            Thread.sleep(READ_RETRY_MS)
+                            continue
+                        }
+                        failures = 0
                         val timeUs = samples * 1_000_000L / RATE
                         samples += read / 2
                         // Dropped packets (a slow link) only lose that moment; a closed stream ends it.
@@ -207,6 +218,8 @@ class MicService : Service() {
 
         /** 10 ms of 16-bit mono at [RATE]. */
         private const val CHUNK_BYTES = RATE / 100 * 2
+        private const val MAX_READ_FAILURES = 50
+        private const val READ_RETRY_MS = 20L
 
         private const val ACTION_START = "app.nectarlink.android.mic.START"
         private const val ACTION_STOP = "app.nectarlink.android.mic.STOP"

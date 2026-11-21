@@ -127,6 +127,18 @@ When your phone is resting on a charger or desk stand, tap **Desk clock** on the
   - If you have another NectarLink device online on your home LAN while you are on mobile data (**Connect over mobile data**), NectarLink can also relay the wake request through your online home device.
   - Check **Settings › Connection & About › Wake from your phone** on your PC to verify whether your Windows network adapter has Wake on LAN enabled in Device Manager.
 
+#### Unlock the PC with the phone (Windows)
+
+When the PC is locked, pick **Unlock with phone** on the lock screen and touch the fingerprint sensor on your phone. Off by default.
+
+1. On the phone, in **Settings**, turn on **Unlock this PC with your fingerprint** under that PC. It needs Android 11 or newer with a fingerprint (or another strong biometric) set up.
+2. On the PC, in **Settings › Devices**, turn on **Unlock this PC with the phone** for that phone. Windows asks for an administrator once: this adds NectarLink's sign-in option to the lock screen.
+3. Type your Windows password there once and press **Set up**. The phone asks you to confirm with your fingerprint.
+
+Each unlock asks for your fingerprint on the phone, which names the PC and the account. It works while you're signed in and the PC is locked, not for the first sign-in after a restart, and only with the phone connected directly (the same network or USB), never through a relay. Your normal password and PIN keep working.
+
+How it's kept: the PC stores your password encrypted, and the key to it lives only on the phone, inside its secure hardware, where it needs your fingerprint for every use. A new fingerprint on the phone, turning the switch off on either side, or unpairing ends it; change your Windows password and you set it up again. Five failed tries in 15 minutes pause it for 15 minutes. Microsoft accounts that have no password (Windows Hello PIN only) can't use it.
+
 ## What the Options Do
 
 - **Remote mouse, keyboard & Deck** (`Settings › Devices` on PC, default: **Off**): Allows the selected phone to control the PC's mouse, keyboard, presentation remote, and standard `Deck` tiles.

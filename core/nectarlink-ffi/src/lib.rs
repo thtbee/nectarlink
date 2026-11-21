@@ -1323,6 +1323,8 @@ pub struct SmsMessage {
     pub status: Option<String>,
     /// Pictures and other attachments, fetched with `sms_part`.
     pub parts: Vec<SmsPart>,
+    /// The SIM it came in on or went out from (an id from `sms_sims`), when known.
+    pub sim: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
@@ -2608,6 +2610,30 @@ fn parse_id(id: &str) -> Result<DeviceId> {
 
 // ---- Foreign interfaces (implemented in Kotlin) ----
 
+/// Why the phone declined a PC unlock operation.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
+pub enum UnlockRefusal {
+    /// The owner said no, or didn't confirm in time.
+    #[error("declined")]
+    Declined,
+    /// No strong biometric enrolled, or no secure key storage.
+    #[error("unsupported")]
+    Unsupported,
+    /// The key is gone (a fingerprint was added, or app data cleared).
+    #[error("key gone")]
+    KeyGone,
+}
+
+impl From<UnlockRefusal> for core::unlock::KeyRefusal {
+    fn from(r: UnlockRefusal) -> Self {
+        match r {
+            UnlockRefusal::Declined => core::unlock::KeyRefusal::Declined,
+            UnlockRefusal::Unsupported => core::unlock::KeyRefusal::Unsupported,
+            UnlockRefusal::KeyGone => core::unlock::KeyRefusal::KeyGone,
+        }
+    }
+}
+
 /// Why a notification couldn't be dismissed or its action run.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
 pub enum NotificationFailure {
@@ -2742,6 +2768,10 @@ pub trait Platform: Send + Sync {
         action: MediaAction,
         position: Option<u64>,
     ) -> Result<(), MediaFailure>;
+    /// Whether a computer could be reaching this phone through adb right now
+    /// (USB debugging on with a cable in, or wireless debugging on). Pairing
+    /// over the USB tunnel without pairing mode is taken only then.
+    fn adb_may_be_connected(&self) -> bool;
     /// A paired PC sent a web link (http or https, checked) to open.
     /// False if it couldn't be shown.
     fn open_link(&self, from_id: String, url: String) -> bool;
@@ -2818,6 +2848,8 @@ pub trait Platform: Send + Sync {
     fn mirror_resize_requested(&self, pc_id: String, session: u32, width: u32, height: u32, zoom: u32);
     /// The PC updated `stay_awake` or `screen_off` while mirroring the screen (`session == 0`).
     fn mirror_power_requested(&self, pc_id: String, stay_awake: bool, screen_off: bool);
+    /// The PC wants the mirrored screen in landscape or portrait.
+    fn mirror_rotate_requested(&self, pc_id: String, landscape: bool);
     /// The PC wants the phone's sound sent to it, or left on the phone, while
     /// mirroring the screen.
     fn mirror_sound_requested(&self, pc_id: String, on: bool);
@@ -2877,12 +2909,70 @@ pub trait Platform: Send + Sync {
         body: String,
         attachments: Vec<SmsAttachment>,
     ) -> bool;
+    /// A PC asked which SIMs this phone texts from (#474).
+    fn sms_sims(&self) -> Vec<CallSim>;
+    /// Like `send_sms_with_attachments`, on the SIM `sim` (an id from `sms_sims`).
+    fn sms_send_on(
+        &self,
+        to: Vec<String>,
+        body: String,
+        attachments: Vec<SmsAttachment>,
+        sim: String,
+    ) -> bool;
     /// A PC asked for a message's attachment; null when it's gone.
     fn sms_part(&self, id: String) -> Option<SmsPartData>;
     /// A PC asked to change one of this phone's quick settings (`id`: `"dnd"`,
     /// `"ringer"`, `"flashlight"`, `"volume"`, `"brightness"`, `"wifi"`,
     /// `"bluetooth"`). False if the phone couldn't.
     fn set_phone_toggle(&self, id: String, value: PhoneToggleValue) -> bool;
+    /// Unlock the PC with this phone (ADR 0009), enrolling: ask the owner
+    /// ("Let `pc_name` unlock with your fingerprint for `user_name`?"); after a
+    /// strong biometric, encrypt `key` with a Keystore key for `pc` and `user`
+    /// that needs a strong biometric for every use and is invalidated by a new
+    /// fingerprint. Return it encrypted (IV included). Blocks until answered
+    /// (the core gives up after 90 s).
+    fn unlock_wrap(
+        &self,
+        pc: String,
+        pc_name: String,
+        user_name: String,
+        user: String,
+        key: Vec<u8>,
+    ) -> Result<Vec<u8>, UnlockRefusal>;
+    /// Unlock the PC with this phone: show "Unlock `pc_name` for
+    /// `user_name`?"; after a strong biometric, decrypt `wrapped` with that
+    /// Keystore key and return the key. Blocks until answered (30 s).
+    fn unlock_unwrap(
+        &self,
+        pc: String,
+        pc_name: String,
+        user_name: String,
+        user: String,
+        wrapped: Vec<u8>,
+    ) -> Result<Vec<u8>, UnlockRefusal>;
+    /// Unlock the PC with this phone: delete the Keystore keys kept for `pc`
+    /// (for `user`, or all of them).
+    fn unlock_forget(&self, pc: String, user: Option<String>);
+    /// Enroll a biometric-bound Linux unlock key and return the uncompressed P-256 point.
+    fn linux_unlock_enroll(
+        &self,
+        pc: String,
+        pc_name: String,
+        user_name: String,
+        uid: u32,
+        timeout_ms: u64,
+        attempt: Arc<LinuxUnlockAttempt>,
+    ) -> Result<Vec<u8>, UnlockRefusal>;
+    /// Prompt using the confirmed enrollment, then return a DER ECDSA signature.
+    fn linux_unlock_sign(
+        &self,
+        pc: String,
+        uid: u32,
+        transcript: Vec<u8>,
+        attempt: Arc<LinuxUnlockAttempt>,
+    ) -> Result<Vec<u8>, UnlockRefusal>;
+    /// Forget one Linux account or all Linux unlock keys for this paired PC.
+    fn linux_unlock_forget(&self, pc: String, uid: Option<u32>);
     /// A PC asked to list a folder in this phone's storage (`""` is root).
     fn storage_list(&self, path: String) -> Result<Vec<StorageEntry>, StorageFailure>;
     /// A PC asked to open a file in this phone's storage for ranged reading.
@@ -3004,6 +3094,9 @@ impl core::Platform for PlatformAdapter {
     ) -> Result<(), core::MediaError> {
         Ok(self.0.media_command(player.to_owned(), action.into(), position)?)
     }
+    fn adb_may_be_connected(&self) -> bool {
+        self.0.adb_may_be_connected()
+    }
     fn open_link(&self, from: &DeviceId, url: &str) -> Result<(), String> {
         if self.0.open_link(from.to_string(), url.to_owned()) { Ok(()) } else { Err("not shown".into()) }
     }
@@ -3072,6 +3165,9 @@ impl core::Platform for PlatformAdapter {
     }
     fn mirror_power_requested(&self, peer: &DeviceId, stay_awake: bool, screen_off: bool) {
         self.0.mirror_power_requested(peer.to_string(), stay_awake, screen_off);
+    }
+    fn mirror_rotate_requested(&self, peer: &DeviceId, landscape: bool) {
+        self.0.mirror_rotate_requested(peer.to_string(), landscape);
     }
     fn mirror_sound_requested(&self, peer: &DeviceId, on: bool) {
         self.0.mirror_sound_requested(peer.to_string(), on);
@@ -3205,6 +3301,7 @@ impl core::Platform for PlatformAdapter {
                     .into_iter()
                     .map(|p| core::SmsPart { id: p.id, mime: p.mime, size: p.size })
                     .collect(),
+                sim: m.sim,
             })
             .collect())
     }
@@ -3223,6 +3320,29 @@ impl core::Platform for PlatformAdapter {
         let att: Vec<SmsAttachment> =
             attachments.iter().cloned().map(|a| SmsAttachment { mime: a.mime, data: a.data }).collect();
         if self.0.send_sms_with_attachments(to.to_vec(), body.to_owned(), att) {
+            Ok(())
+        } else {
+            Err("not sent".into())
+        }
+    }
+    fn sms_sims(&self) -> Result<core::CallSims, String> {
+        let sims = self.0.sms_sims();
+        let default = sims.iter().find(|s| s.is_default).map(|s| s.id.clone());
+        Ok(core::CallSims {
+            sims: sims.into_iter().map(|s| core::CallSim { id: s.id, label: s.label }).collect(),
+            default,
+        })
+    }
+    fn send_sms_on(
+        &self,
+        to: &[String],
+        body: &str,
+        attachments: &[core::SmsAttachment],
+        sim: &str,
+    ) -> Result<(), String> {
+        let att: Vec<SmsAttachment> =
+            attachments.iter().cloned().map(|a| SmsAttachment { mime: a.mime, data: a.data }).collect();
+        if self.0.sms_send_on(to.to_vec(), body.to_owned(), att, sim.to_owned()) {
             Ok(())
         } else {
             Err("not sent".into())
@@ -3342,6 +3462,70 @@ impl core::Platform for PlatformAdapter {
             .into_iter()
             .map(|t| core::PhotoThumb { id: t.id, data: t.data })
             .collect())
+    }
+    fn unlock_wrap(
+        &self,
+        pc: &core::DeviceId,
+        ask: &core::unlock::Ask,
+        key: &[u8],
+    ) -> Result<Vec<u8>, core::unlock::KeyRefusal> {
+        Ok(self.0.unlock_wrap(
+            pc.to_string(),
+            ask.pc_name.clone(),
+            ask.user_name.clone(),
+            ask.user.clone(),
+            key.to_vec(),
+        )?)
+    }
+    fn unlock_unwrap(
+        &self,
+        pc: &core::DeviceId,
+        ask: &core::unlock::Ask,
+        wrapped: &[u8],
+    ) -> Result<Vec<u8>, core::unlock::KeyRefusal> {
+        Ok(self.0.unlock_unwrap(
+            pc.to_string(),
+            ask.pc_name.clone(),
+            ask.user_name.clone(),
+            ask.user.clone(),
+            wrapped.to_vec(),
+        )?)
+    }
+    fn unlock_forget(&self, pc: &core::DeviceId, user: Option<&str>) {
+        self.0.unlock_forget(pc.to_string(), user.map(str::to_owned));
+    }
+    fn linux_unlock_enroll(
+        &self,
+        pc: &core::DeviceId,
+        ask: &core::linux_unlock::Ask,
+        attempt: &core::linux_unlock::Attempt,
+    ) -> Result<Vec<u8>, core::unlock::KeyRefusal> {
+        let timeout_ms = u64::try_from(ask.timeout.as_millis()).unwrap_or(u64::MAX);
+        Ok(self.0.linux_unlock_enroll(
+            pc.to_string(),
+            ask.pc_name.clone(),
+            ask.user_name.clone(),
+            ask.uid,
+            timeout_ms,
+            Arc::new(LinuxUnlockAttempt(attempt.clone())),
+        )?)
+    }
+    fn linux_unlock_sign(
+        &self,
+        pc: &core::DeviceId,
+        uid: u32,
+        transcript: &[u8],
+        attempt: &core::linux_unlock::Attempt,
+    ) -> Result<Vec<u8>, core::unlock::KeyRefusal> {
+        Ok(self.0.linux_unlock_sign(
+            pc.to_string(),
+            uid,
+            transcript.to_vec(),
+            Arc::new(LinuxUnlockAttempt(attempt.clone())),
+        )?)
+    }
+    fn linux_unlock_forget(&self, pc: &core::DeviceId, uid: Option<u32>) {
+        self.0.linux_unlock_forget(pc.to_string(), uid);
     }
     fn set_phone_toggle(&self, id: &str, value: &core::PhoneToggleValue) -> Result<(), String> {
         let value = match value {
@@ -3492,6 +3676,21 @@ pub enum RelayEditResult {
     Failed,
 }
 
+/// Cancellation of a single Linux unlock or enrollment on the phone.
+#[derive(Debug, uniffi::Object)]
+pub struct LinuxUnlockAttempt(core::linux_unlock::Attempt);
+
+#[uniffi::export]
+impl LinuxUnlockAttempt {
+    pub fn is_cancelled(&self) -> bool {
+        self.0.is_cancelled()
+    }
+
+    pub async fn wait_cancelled(&self) {
+        self.0.cancelled().await;
+    }
+}
+
 /// The NectarLink engine. One per app process.
 #[derive(uniffi::Object)]
 pub struct NectarlinkNode {
@@ -3568,9 +3767,12 @@ impl NectarlinkNode {
                     tracing::error!("the app's event listener failed on an event; carrying on");
                 }
             };
+            // What the app was given, so after a lag it gets only what it missed.
+            let mut given = core::Resync::new();
             loop {
                 match events.recv().await {
                     Ok(event) => {
+                        given.note(&event);
                         if let Some(ev) = Event::from_node(event) {
                             deliver(ev);
                         }
@@ -3594,6 +3796,12 @@ impl NectarlinkNode {
                             }
                         }
                         deliver(Event::QueueChanged);
+                        // Transfers, rings and pairing only ever come as events.
+                        for event in given.missed(node_for_events.latest_state()) {
+                            if let Some(ev) = Event::from_node(event) {
+                                deliver(ev);
+                            }
+                        }
                     }
                     Err(RecvError::Closed) => return,
                 }

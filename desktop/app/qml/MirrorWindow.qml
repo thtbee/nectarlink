@@ -364,6 +364,15 @@ Window {
         windowAppId: win.info.app && (win.info.pkg || "").length > 0
             ? "Nectarlink.App." + (win.info.device || "").slice(0, 8) + "." + win.info.pkg
             : ""
+        // Pinned to the taskbar, it opens this app again (#465).
+        windowRelaunch: {
+            if (!win.info.app || (win.info.pkg || "").length === 0) return ""
+            const relaunch = Mirror.relaunch(win.info.device || "", win.info.pkg)
+            if (relaunch.length === 0) return ""
+            const r = JSON.parse(relaunch)
+            r.name = (win.info.title || win.info.pkg).replace(/^@+/, "")
+            return JSON.stringify(r)
+        }
         focus: true
         acceptsText: win.phase === "showing" && win.canControl
         // The emoji panel (Win+.) and input methods give finished text here
@@ -520,6 +529,11 @@ Window {
                 event.accepted = true
                 return
             }
+            if ((event.modifiers & Qt.ControlModifier) && (event.modifiers & Qt.ShiftModifier) && event.key === Qt.Key_T) {
+                win.setToolbarHidden(!Preferences.hideMirrorToolbar)
+                event.accepted = true
+                return
+            }
             if (!win.canControl)
                 return
             if (Preferences.enterSends && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)) {
@@ -651,6 +665,22 @@ Window {
         }
     }
 
+    // Hiding the toolbar (D475) is for every window, and says how to get it back.
+    property string localNotice: ""
+    function setToolbarHidden(hidden) {
+        Preferences.hideMirrorToolbar = hidden
+        localNotice = hidden ? qsTr("Toolbar hidden. Ctrl+Shift+T shows it again.") : ""
+        if (hidden)
+            localNoticeTimer.restart()
+        else
+            toolbarWakeTimer.restart()
+    }
+    Timer {
+        id: localNoticeTimer
+        interval: 3000
+        onTriggered: win.localNotice = ""
+    }
+
     // Floating mirror toolbar: screenshots, MP4 recording, stay awake, screen off, and audio mute.
     Timer {
         id: toolbarWakeTimer
@@ -673,10 +703,10 @@ Window {
         height: 40
         radius: 20
         color: Qt.rgba(0, 0, 0, 0.68)
-        visible: win.phase === "showing" && video.frameSize.width > 0
+        visible: win.phase === "showing" && video.frameSize.width > 0 && !Preferences.hideMirrorToolbar
         readonly property bool toolbarHasFocus: flexibleBtn.activeFocus || lockBtn.activeFocus || copyShotBtn.activeFocus || saveShotBtn.activeFocus
-            || recordBtn.activeFocus || stayAwakeBtn.activeFocus || screenOffBtn.activeFocus || soundBtn.activeFocus
-            || backBtn.activeFocus || homeBtn.activeFocus || recentsBtn.activeFocus
+            || recordBtn.activeFocus || stayAwakeBtn.activeFocus || screenOffBtn.activeFocus || rotateBtn.activeFocus || soundBtn.activeFocus
+            || backBtn.activeFocus || homeBtn.activeFocus || recentsBtn.activeFocus || hideToolbarBtn.activeFocus
         // Only while it's wanted: it sits over the app's own top bar (#340).
         // Recording and a dark phone screen show in the window's title instead.
         opacity: topZoneHover.hovered || toolbarHover.hovered || navHover.hovered || toolbarWakeTimer.running
@@ -750,6 +780,15 @@ Window {
                 onClicked: Mirror.setScreenOff(win.mirrorKey, !(win.info.screenOff === true))
             }
             IconButton {
+                id: rotateBtn
+                // The phone's screen only, and with Elevated (the phone turns itself).
+                visible: win.canControl && !win.info.app
+                iconPath: Icons.rotate
+                iconColor: "white"
+                label: win.frame.width > win.frame.height ? qsTr("Turn the phone to portrait") : qsTr("Turn the phone to landscape")
+                onClicked: Mirror.rotate(win.mirrorKey, !(win.frame.width > win.frame.height))
+            }
+            IconButton {
                 id: lockBtn
                 // The phone's screen only: an app window runs whether it's locked or not.
                 visible: win.canControl && !win.info.app
@@ -773,6 +812,13 @@ Window {
                 iconColor: "white"
                 label: Mirror.muted ? qsTr("Play the phone's sound here") : qsTr("Play the sound on the phone")
                 onClicked: Mirror.toggleSound()
+            }
+            IconButton {
+                id: hideToolbarBtn
+                iconPath: Icons.eyeOff
+                iconColor: "white"
+                label: qsTr("Hide the toolbar (Ctrl+Shift+T)")
+                onClicked: win.setToolbarHidden(true)
             }
         }
     }
@@ -857,7 +903,7 @@ Window {
         id: noticePill
         readonly property string pillText: mirrorDropArea.containsDrag
             ? qsTr("Release to send files to %1").arg(win.deviceName.length > 0 ? win.deviceName : qsTr("phone"))
-            : (win.info.notice || "")
+            : (win.localNotice || win.info.notice || "")
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: hintBanner.visible ? hintBanner.top : parent.bottom
         anchors.bottomMargin: hintBanner.visible ? 8 : 16

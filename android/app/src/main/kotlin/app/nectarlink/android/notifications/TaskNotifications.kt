@@ -83,6 +83,21 @@ object TaskNotifications {
         }
     }
 
+    /**
+     * Takes down the running tasks [fromId] showed: it was unpaired, or has been
+     * away so long that no word of their end will come. Read from what's shown,
+     * so it also finds ones shown before NectarLink restarted.
+     */
+    fun cancelRunning(context: Context, fromId: String) {
+        val manager = context.getSystemService(NotificationManager::class.java) ?: return
+        val prefix = "pc_task_run:$fromId:"
+        runCatching {
+            manager.activeNotifications
+                .filter { it.id == NOTIFICATION_ID && it.tag?.startsWith(prefix) == true }
+                .forEach { manager.cancel(it.tag, NOTIFICATION_ID) }
+        }
+    }
+
     @SuppressLint("NewApi")
     private fun buildRunning(
         context: Context,

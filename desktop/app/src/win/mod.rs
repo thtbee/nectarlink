@@ -35,6 +35,7 @@ pub mod smtc;
 pub mod sound;
 pub mod toast;
 pub mod tray;
+pub mod unlock;
 pub mod usb_driver;
 pub mod vcam;
 pub mod wallpaper;
@@ -201,6 +202,16 @@ pub fn system_dark() -> bool {
         r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize",
         "AppsUseLightTheme",
     ) == Some(0)
+}
+
+/// Whether the taskbar is light (Windows mode set to Light), for a
+/// one-colour tray icon that has to stand out on it.
+pub fn taskbar_light() -> bool {
+    reg_dword(
+        HKEY_CURRENT_USER,
+        r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize",
+        "SystemUsesLightTheme",
+    ) == Some(1)
 }
 
 /// Whether the user turned off animations in Windows settings.

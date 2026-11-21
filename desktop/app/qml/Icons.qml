@@ -5,6 +5,7 @@ import QtQuick
 // Stroke icons as SVG paths on a 24×24 grid (round caps and joins), drawn
 // by Icon. Same shapes as the design mockups.
 QtObject {
+    readonly property string eyeOff: "M10.73 5.08a10.74 10.74 0 0 1 11.2 6.57 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-1.44 2.49M14.08 14.16a3 3 0 0 1-4.24-4.24M17.48 17.5a10.75 10.75 0 0 1-15.42-5.15 1 1 0 0 1 0-.7 10.75 10.75 0 0 1 4.45-5.14M2 2l20 20"
     readonly property string home: "M3 10a2 2 0 0 1 .71-1.53l7-6a2 2 0 0 1 2.58 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM9 21v-6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v6"
     readonly property string messages: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2zM8 8.5h8M8 12.5h5"
     readonly property string person: "M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"
@@ -71,6 +72,8 @@ QtObject {
     readonly property string power: "M12 2v10M18.4 6.6a9 9 0 1 1-12.77.04"
     readonly property string folder: "M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"
     readonly property string sparkle: "M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"
+    // Rotate: an arrow turning around a phone.
+    readonly property string rotate: "M8 3h7a2 2 0 0 1 2 2v6M16 21H9a2 2 0 0 1-2-2v-6M3 8l4-4 4 4M7 4v6a2 2 0 0 0 2 2M21 16l-4 4-4-4M17 20v-6a2 2 0 0 0-2-2"
     readonly property string island: "M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM9 7.5h6"
     readonly property string shelf: "M12 3L2 8l10 5 10-5-10-5zM2 13l10 5 10-5M2 18l10 5 10-5"
     readonly property string glass: "M8 3h11a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM4 7v11a3 3 0 0 0 3 3h11"

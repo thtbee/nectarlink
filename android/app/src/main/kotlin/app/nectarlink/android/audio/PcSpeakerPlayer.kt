@@ -31,6 +31,10 @@ class PcSpeakerPlayer(
     )
 
     private val queue = LinkedBlockingDeque<AudioChunk>(MAX_QUEUE_CHUNKS)
+
+    /** How much sound may wait to play, in ms (Settings, #321). */
+    @Volatile
+    var bufferMs: Int = 40
     private val workerRunning = AtomicBoolean(false)
     private val watchdogRunning = AtomicBoolean(false)
     @Volatile
@@ -62,9 +66,10 @@ class PcSpeakerPlayer(
         val safeRate = sampleRate.coerceIn(8_000, 96_000)
         val safeChannels = if (channels >= 2) 2 else 1
         val frameBytes = safeChannels * 2
-        // Cap queued backlog at ~40 ms so Wi-Fi bursts never build up latency
-        // and we never need to flush the hardware AudioTrack.
-        val maxQueuedBytes = (safeRate * frameBytes * 40) / 1000
+        // Cap the queued backlog at the buffer setting (40 ms by default) so
+        // Wi-Fi bursts never build up latency and the AudioTrack never needs
+        // a flush; a bigger buffer rides out a busy Wi-Fi (#321).
+        val maxQueuedBytes = (safeRate * frameBytes * bufferMs) / 1000
 
         synchronized(queue) {
             while (queuedBytes + pcm.size > maxQueuedBytes || queue.size >= MAX_QUEUE_CHUNKS - 1) {

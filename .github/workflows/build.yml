@@ -40,12 +40,12 @@ jobs:
         run: rustup show active-toolchain || rustup toolchain install
       # Reuses what earlier builds on main compiled; only main's runs save it,
       # so nothing from a pull request ever reaches a release.
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           shared-key: release-windows-x64
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: Install Qt
-        uses: jurplel/install-qt-action@v4
+        uses: jurplel/install-qt-action@b344308e4483fc892e0d27b3cd1b173ebdd95f06 # v4.5.0
         with:
           version: ${{ env.QT_VERSION }}
           host: windows
@@ -84,12 +84,12 @@ jobs:
         run: |
           rustup show active-toolchain || rustup toolchain install
           rustup target add aarch64-pc-windows-msvc
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           shared-key: release-windows-arm64
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: Install Qt (ARM64, with the x64 host tools)
-        uses: jurplel/install-qt-action@v4
+        uses: jurplel/install-qt-action@b344308e4483fc892e0d27b3cd1b173ebdd95f06 # v4.5.0
         with:
           version: ${{ env.QT_VERSION }}
           host: windows
@@ -117,7 +117,7 @@ jobs:
         run: bash .github/scripts/set-version.sh "$VERSION"
       - name: Install the pinned Rust toolchain
         run: rustup show active-toolchain || rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           shared-key: release-linux-x64
           save-if: ${{ github.ref == 'refs/heads/main' }}
@@ -131,7 +131,7 @@ jobs:
             qt6-l10n-tools file desktop-file-utils appstream rpm shellcheck
           pkg-config --exists libavcodec libavutil
       - name: Install Qt
-        uses: jurplel/install-qt-action@v4
+        uses: jurplel/install-qt-action@b344308e4483fc892e0d27b3cd1b173ebdd95f06 # v4.5.0
         with:
           version: ${{ env.QT_VERSION }}
           host: linux
@@ -263,7 +263,7 @@ jobs:
         run: |
           rustup show active-toolchain || rustup toolchain install
           rustup target add aarch64-linux-android armv7-linux-androideabi
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           shared-key: release-android
           save-if: ${{ github.ref == 'refs/heads/main' }}
@@ -273,11 +273,11 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
-      - uses: android-actions/setup-android@v4
+      - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
         with:
           cmdline-tools-version: "16111833"
           packages: "platforms;android-37.0 ndk;30.0.16248370 build-tools;37.0.0"
-      - uses: gradle/actions/setup-gradle@v6
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
       - name: The signing key
         env:
           KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
@@ -314,12 +314,12 @@ jobs:
         run: bash .github/scripts/set-version.sh "$VERSION"
       - name: Install the pinned Rust toolchain
         run: rustup show active-toolchain || rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           shared-key: release-macos-arm64
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: Install Qt
-        uses: jurplel/install-qt-action@v4
+        uses: jurplel/install-qt-action@b344308e4483fc892e0d27b3cd1b173ebdd95f06 # v4.5.0
         with:
           version: ${{ env.QT_VERSION }}
           host: mac

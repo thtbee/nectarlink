@@ -92,6 +92,9 @@ impl Update {
 pub const TASK: &str = "Nectarlink Update";
 /// What the task runs: `nectarlink-desktop.exe --update-service`.
 pub const SERVICE_ARG: &str = "--update-service";
+/// What the administrator prompt runs when there's no task (Windows):
+/// `nectarlink-desktop.exe --update-elevated <channel>`.
+pub const ELEVATED_ARG: &str = "--update-elevated";
 /// How long nobody may have used the PC before an update installs by itself.
 const QUIET_FOR: Duration = Duration::from_secs(10 * 60);
 /// While an update waits for a quiet moment, how often to look for one.
@@ -136,6 +139,18 @@ pub fn set_channel(channel: Channel) {
     if changed {
         check_soon();
     }
+}
+
+/// Whether the installer's update task installs updates on this PC, for
+/// every account on it (asked once).
+pub fn task_installs() -> bool {
+    static REGISTERED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *REGISTERED.get_or_init(task_registered)
+}
+
+/// The channel the update task was told, if any, without asking whether the task is there.
+pub fn machine_channel() -> Option<Channel> {
+    read_service_channel()
 }
 
 /// Where the app tells the update task which channel to follow.
@@ -924,6 +939,26 @@ pub fn run_service() -> ExitCode {
     if let Some(channel) = read_service_channel() {
         *CHANNEL.lock().unwrap_or_else(|e| e.into_inner()) = Some(channel);
     }
+    install_latest(&log, false)
+}
+
+/// After the administrator prompt, when there's no update task (Windows):
+/// does what the task does, on the channel the user follows, and opens the
+/// new version once it's installed. The app only asks; this copy of
+/// NectarLink, installed where only administrators can write, finds the
+/// release, and checks and runs a copy that only administrators can change.
+pub fn run_elevated(channel: Option<&str>) -> ExitCode {
+    if let Some(channel) = channel.and_then(Channel::parse) {
+        *CHANNEL.lock().unwrap_or_else(|e| e.into_inner()) = Some(channel);
+    }
+    let log = |message: &str| tracing::info!("{message}");
+    install_latest(&log, true)
+}
+
+/// Installs the latest release if it's newer than this copy, from a copy in
+/// [`service_dir`] checked there; with `open_after`, the installer opens the
+/// new version (`/RUN`).
+fn install_latest(log: &dyn Fn(&str), open_after: bool) -> ExitCode {
     let update = match latest() {
         Ok(Some(update)) => update,
         Ok(None) => {
@@ -954,11 +989,15 @@ pub fn run_service() -> ExitCode {
     let spawned = {
         let mut cmd = std::process::Command::new(&path);
         cmd.arg("/S");
+        if open_after {
+            cmd.arg("/RUN");
+        }
         cmd.creation_flags(CREATE_NO_WINDOW | DETACHED_PROCESS);
         cmd.spawn()
     };
     #[cfg(not(windows))]
     let spawned = {
+        let _ = open_after;
         let name = path.file_name().and_then(|s| s.to_str()).unwrap_or_default();
         if name.ends_with(".deb") {
             std::process::Command::new("sh")
@@ -1085,33 +1124,27 @@ fn download_verified(update: &Update, dir: &Path) -> Result<PathBuf, String> {
     Ok(path)
 }
 
-/// The installer with Windows' administrator prompt (no update task): a
-/// fresh copy of the download in this user's temp folder, checked again, so
-/// what runs is what was checked.
+/// The installer with Windows' administrator prompt (no update task). The
+/// prompt is for this program ([`run_elevated`]), not the download: a file
+/// in a folder this account can change could be swapped between being
+/// checked and being run, so it's checked and run only once elevated, from
+/// a copy only administrators can change. The download staged here is
+/// reused when it matches.
 #[cfg(windows)]
-fn install_with_prompt(update: &Update, staged: &Path) -> Result<(), String> {
+fn install_with_prompt(_update: &Update, _staged: &Path) -> Result<(), String> {
     let failed = |e: String| {
         tracing::warn!(error = e, "update failed");
         tr!("Updater", "The update couldn't be started. Try again.")
     };
-    let expected = expected_hash(update).map_err(|e| e.for_user())?;
-    let dir = std::env::temp_dir().join("Nectarlink update");
-    let path: PathBuf = dir.join(&update.installer_name);
-    std::fs::create_dir_all(&dir)
-        .and_then(|()| match std::fs::remove_file(&path) {
-            Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e),
-            _ => Ok(()),
-        })
-        .and_then(|()| std::fs::copy(staged, &path).map(|_| ()))
-        .map_err(|e| failed(e.to_string()))?;
-    if sha256_file(&path).map_err(|e| failed(e.to_string()))? != expected {
-        let _ = std::fs::remove_file(&path);
-        return Err(StageError::Damaged.for_user());
+    let exe = std::env::current_exe().map_err(|e| failed(e.to_string()))?;
+    // The installer closes this copy itself, then opens the new version.
+    match crate::win::elevated::start(&exe, &format!("{ELEVATED_ARG} {}", channel().as_str())) {
+        Ok(_) => Ok(()),
+        Err(crate::win::elevated::Error::Declined) => {
+            Err(failed("the administrator prompt was declined".into()))
+        }
+        Err(crate::win::elevated::Error::Other(e)) => Err(failed(e)),
     }
-    // Silent, then opens the new version (/RUN); Windows asks for
-    // permission first. The installer closes this copy itself.
-    crate::win::shell::run(&path, "/S /RUN").map_err(failed)?;
-    Ok(())
 }
 
 /// Root-executed shell script that copies a user-staged `.deb` into a

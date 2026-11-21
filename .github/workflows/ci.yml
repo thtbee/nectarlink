@@ -67,7 +67,7 @@ jobs:
       - uses: actions/checkout@v7
       - name: Install the pinned Rust toolchain
         run: rustup show active-toolchain || rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Format
         if: runner.os == 'Linux'
         run: cargo fmt --all --check
@@ -114,9 +114,9 @@ jobs:
       - uses: actions/checkout@v7
       - name: Install the pinned Rust toolchain
         run: rustup show active-toolchain || rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Install Qt
-        uses: jurplel/install-qt-action@v4
+        uses: jurplel/install-qt-action@b344308e4483fc892e0d27b3cd1b173ebdd95f06 # v4.5.0
         with:
           version: ${{ env.QT_VERSION }}
           host: windows
@@ -126,9 +126,9 @@ jobs:
           # Qt 6.12's repository layout needs a current aqtinstall, pinned to a commit so nothing upstream reaches a build unreviewed.
           aqtsource: git+https://github.com/miurahr/aqtinstall.git@5a49f2b391ae8ee1d3c0dd87f8b33c1d49a4deb7
       - name: Clippy
-        run: cargo clippy --locked -p nectarlink-desktop -p nectarlink-vcam -p s1-qt-rust --all-targets -- -D warnings
+        run: cargo clippy --locked -p nectarlink-desktop -p nectarlink-vcam -p nectarlink-credprov -p s1-qt-rust --all-targets -- -D warnings
       - name: Tests
-        run: cargo test --locked -p nectarlink-desktop -p nectarlink-vcam
+        run: cargo test --locked -p nectarlink-desktop -p nectarlink-vcam -p nectarlink-credprov
       - name: QML tests
         shell: pwsh
         run: ./scripts/qml-tests.ps1
@@ -142,9 +142,9 @@ jobs:
       - uses: actions/checkout@v7
       - name: Install the pinned Rust toolchain
         run: rustup show active-toolchain || rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Install Qt
-        uses: jurplel/install-qt-action@v4
+        uses: jurplel/install-qt-action@b344308e4483fc892e0d27b3cd1b173ebdd95f06 # v4.5.0
         with:
           version: ${{ env.QT_VERSION }}
           host: windows
@@ -154,7 +154,7 @@ jobs:
           # Qt 6.12's repository layout needs a current aqtinstall, pinned to a commit so nothing upstream reaches a build unreviewed.
           aqtsource: git+https://github.com/miurahr/aqtinstall.git@5a49f2b391ae8ee1d3c0dd87f8b33c1d49a4deb7
       - name: Release build
-        run: cargo build --locked --release -p nectarlink-desktop -p nectarlink-mcp -p nectarlink-vcam
+        run: cargo build --locked --release -p nectarlink-desktop -p nectarlink-mcp -p nectarlink-vcam -p nectarlink-credprov
       - name: Install NSIS
         shell: pwsh
         run: ./scripts/install-nsis.ps1
@@ -184,9 +184,9 @@ jobs:
         run: |
           rustup show active-toolchain || rustup toolchain install
           rustup target add aarch64-pc-windows-msvc
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Install Qt (ARM64, with the x64 host tools)
-        uses: jurplel/install-qt-action@v4
+        uses: jurplel/install-qt-action@b344308e4483fc892e0d27b3cd1b173ebdd95f06 # v4.5.0
         with:
           version: ${{ env.QT_VERSION }}
           host: windows
@@ -215,9 +215,9 @@ jobs:
       - uses: actions/checkout@v7
       - name: Install the pinned Rust toolchain
         run: rustup show active-toolchain || rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Install Qt
-        uses: jurplel/install-qt-action@v4
+        uses: jurplel/install-qt-action@b344308e4483fc892e0d27b3cd1b173ebdd95f06 # v4.5.0
         with:
           version: ${{ env.QT_VERSION }}
           host: mac
@@ -239,9 +239,9 @@ jobs:
       - uses: actions/checkout@v7
       - name: Install the pinned Rust toolchain
         run: rustup show active-toolchain || rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Install Qt
-        uses: jurplel/install-qt-action@v4
+        uses: jurplel/install-qt-action@b344308e4483fc892e0d27b3cd1b173ebdd95f06 # v4.5.0
         with:
           version: ${{ env.QT_VERSION }}
           host: mac
@@ -274,7 +274,7 @@ jobs:
       - uses: actions/checkout@v7
       - name: Install the pinned Rust toolchain
         run: rustup show active-toolchain || rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Where the system packages are cached
         id: apt
         run: |
@@ -293,12 +293,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends -o Dir::Cache::Archives="$HOME/apt-archives" \
             libgl1-mesa-dev libxkbcommon-dev libvulkan-dev libx11-dev \
-            ffmpeg libavcodec-dev libavutil-dev libopenh264-dev qt6-l10n-tools
+            ffmpeg libavcodec-dev libavutil-dev libopenh264-dev qt6-l10n-tools libpam0g-dev
           # Drop what the mirror no longer has, so the cache doesn't grow.
           sudo apt-get autoclean -o Dir::Cache::Archives="$HOME/apt-archives"
           sudo chown -R "$USER" ~/apt-archives
       - name: Install Qt
-        uses: jurplel/install-qt-action@v4
+        uses: jurplel/install-qt-action@b344308e4483fc892e0d27b3cd1b173ebdd95f06 # v4.5.0
         with:
           version: ${{ env.QT_VERSION }}
           host: linux
@@ -307,9 +307,17 @@ jobs:
           cache: true
           aqtsource: git+https://github.com/miurahr/aqtinstall.git@5a49f2b391ae8ee1d3c0dd87f8b33c1d49a4deb7
       - name: Clippy
-        run: cargo clippy --locked -p nectarlink-desktop -p nectarlink-vcam -p s1-qt-rust --all-targets -- -D warnings
+        run: cargo clippy --locked -p nectarlink-desktop -p nectarlink-vcam -p nectarlink-credprov -p s1-qt-rust -p nectarlink-pam-unlock --all-targets -- -D warnings
       - name: Tests
-        run: cargo test --locked -p nectarlink-desktop -p nectarlink-vcam
+        run: cargo test --locked -p nectarlink-desktop -p nectarlink-vcam -p nectarlink-credprov -p nectarlink-pam-unlock
+      - name: PAM authentication smoke test
+        run: |
+          cargo build --locked -p nectarlink-pam-unlock
+          smoke_dir=$(mktemp -d)
+          trap 'rm -r -- "$smoke_dir"' EXIT
+          chmod 0755 "$smoke_dir"
+          cp desktop/pam-unlock/tests/pam_session.py target/debug/libpam_nectarlink_phone_unlock.so "$smoke_dir/"
+          sudo python3 "$smoke_dir/pam_session.py" "$smoke_dir/libpam_nectarlink_phone_unlock.so"
       - name: Video adapter fallback
         run: bash desktop/app/tests/linux_video_dispatch_test.sh
       - name: Check without the optional FFmpeg backend
@@ -326,7 +334,7 @@ jobs:
       - uses: actions/checkout@v7
       - name: Install the pinned Rust toolchain
         run: rustup show active-toolchain || rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Where the system packages are cached
         id: apt
         run: |
@@ -350,7 +358,7 @@ jobs:
           sudo apt-get autoclean -o Dir::Cache::Archives="$HOME/apt-archives"
           sudo chown -R "$USER" ~/apt-archives
       - name: Install Qt
-        uses: jurplel/install-qt-action@v4
+        uses: jurplel/install-qt-action@b344308e4483fc892e0d27b3cd1b173ebdd95f06 # v4.5.0
         with:
           version: ${{ env.QT_VERSION }}
           host: linux
@@ -359,7 +367,7 @@ jobs:
           cache: true
           aqtsource: git+https://github.com/miurahr/aqtinstall.git@5a49f2b391ae8ee1d3c0dd87f8b33c1d49a4deb7
       - name: Release build
-        run: cargo build --locked --release -p nectarlink-desktop -p nectarlink-mcp -p nectarlink-vcam
+        run: cargo build --locked --release -p nectarlink-desktop -p nectarlink-mcp -p nectarlink-vcam -p nectarlink-credprov
 
   linux-install:
     name: Linux packages and install.sh
@@ -390,19 +398,19 @@ jobs:
         run: |
           rustup show active-toolchain || rustup toolchain install
           rustup target add aarch64-linux-android x86_64-linux-android
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Install cargo-ndk
         run: cargo install --locked cargo-ndk
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
-      - uses: android-actions/setup-android@v4
+      - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
         with:
           # Command-line tools 23.0: older versions don't list platform 37.0.
           cmdline-tools-version: "16111833"
           packages: "platforms;android-37.0 ndk;30.0.16248370"
-      - uses: gradle/actions/setup-gradle@v6
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
       - name: Unit tests and debug build
         working-directory: android
         run: ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug
@@ -442,4 +450,4 @@ jobs:
         shell: pwsh
         run: ./scripts/check-headers.ps1
       - name: Dependency policy (licenses, advisories, sources)
-        uses: EmbarkStudios/cargo-deny-action@v2
+        uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2.1.1

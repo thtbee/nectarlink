@@ -76,6 +76,10 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "appShortcutsSupported"]
         fn app_shortcuts_supported(self: &Mirror) -> bool;
+        /// How the taskbar starts an app window again once it's pinned, as
+        /// JSON (`command`, `icon`), or "" for a window that has none (#465).
+        #[qinvokable]
+        fn relaunch(self: &Mirror, device: &QString, pkg: &QString) -> QString;
         /// Reopens an ended window (the screen or an app window).
         #[qinvokable]
         fn reopen(self: &Mirror, key: &QString);
@@ -148,6 +152,9 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "setScreenOff"]
         fn set_screen_off(self: &Mirror, key: &QString, on: bool);
+        /// Turns the mirrored phone to landscape or back to portrait.
+        #[qinvokable]
+        fn rotate(self: &Mirror, key: &QString, landscape: bool);
         /// Keeps `device`'s screen off from the start of each mirroring or app window.
         #[qinvokable]
         #[cxx_name = "setKeepScreenOff"]
@@ -404,6 +411,19 @@ impl qobject::Mirror {
         crate::app_shortcuts::supported()
     }
 
+    pub fn relaunch(&self, device: &QString, pkg: &QString) -> QString {
+        #[cfg(windows)]
+        if let Some(device) = super::parse_device(device)
+            && let Some((command, icon)) =
+                crate::app_shortcuts::relaunch(&crate::core_host::host().data_dir, device, &String::from(pkg))
+        {
+            return QString::from(&serde_json::json!({ "command": command, "icon": icon }).to_string());
+        }
+        #[cfg(not(windows))]
+        let _ = (device, pkg);
+        QString::default()
+    }
+
     pub fn start_app(&self, device: &QString, pkg: &QString, label: &QString) {
         let pkg = String::from(pkg);
         if let (Some(device), true) = (super::parse_device(device), nectarlink_core::is_package_name(&pkg)) {
@@ -546,6 +566,12 @@ impl qobject::Mirror {
     pub fn set_screen_off(&self, key: &QString, on: bool) {
         if let Some(window) = Window::parse(&String::from(key)) {
             mirror::set_screen_off(window, on);
+        }
+    }
+
+    pub fn rotate(&self, key: &QString, landscape: bool) {
+        if let Some(window) = Window::parse(&String::from(key)) {
+            mirror::rotate(window, landscape);
         }
     }
 
