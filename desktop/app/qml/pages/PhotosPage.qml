@@ -29,6 +29,27 @@ Item {
 
     // In-app viewer index (-1 when closed).
     property int viewerIndex: -1
+    // The photo the viewer shows: its row moves when the grid's columns change
+    // and the gaps between days with them.
+    property string viewerId: ""
+    property string lastClickedId: ""
+    Connections {
+        target: Photos
+        function onRevisionChanged() {
+            if (page.viewerId.length > 0) {
+                const row = Photos.rowOf(page.viewerId)
+                if (row < 0) {
+                    page.viewerIndex = -1
+                    page.viewerId = ""
+                } else if (row !== page.viewerIndex) {
+                    page.viewerIndex = row
+                }
+            }
+            if (page.lastClickedId.length > 0)
+                page.lastClickedIndex = Photos.rowOf(page.lastClickedId)
+        }
+    }
+    onViewerIndexChanged: if (viewerIndex < 0) viewerId = ""
     readonly property var viewedItem: {
         if (Photos.revision < 0 || viewerIndex < 0 || viewerIndex >= Photos.count)
             return null
@@ -54,7 +75,7 @@ Item {
         let sum = 0
         for (let i = 0; i < albums.length; i++)
             sum += (albums[i].count || 0)
-        return sum > 0 ? sum : Photos.count
+        return sum > 0 ? sum : Photos.photoCount
     }
 
     function sameDay(a, b) {
@@ -137,7 +158,10 @@ Item {
         } else {
             next[id] = true
         }
-        if (index >= 0) lastClickedIndex = index
+        if (index >= 0) {
+            lastClickedIndex = index
+            lastClickedId = Photos.idAt(index)
+        }
         selectedMap = next
         selectedIds = Object.keys(next)
     }
@@ -180,10 +204,11 @@ Item {
 
     function selectAllLoaded() {
         const next = {}
-        const n = Math.min(Photos.count, 500)
-        for (let r = 0; r < n; r++) {
+        // The first 500 photos; the grid's gaps between days have no ID.
+        let taken = 0
+        for (let r = 0; r < Photos.count && taken < 500; r++) {
             const rowId = Photos.idAt(r)
-            if (rowId.length > 0) next[rowId] = true
+            if (rowId.length > 0) { next[rowId] = true; taken++ }
         }
         selectedMap = next
         selectedIds = Object.keys(next)
@@ -195,25 +220,32 @@ Item {
         selectedIds = []
         selectMode = false
         lastClickedIndex = -1
+        lastClickedId = ""
     }
 
     function openViewer(index) {
         if (index < 0 || index >= Photos.count) return
         viewerIndex = index
+        viewerId = Photos.idAt(index)
         try {
             const item = JSON.parse(Photos.itemAt(index))
             if (item && !item.isVideo) {
                 Photos.ensureFull(item.id)
             }
         } catch (e) {}
-        if (index + 6 >= Photos.count && Photos.more) {
+        if (Photos.step(index, 6) < 0 && Photos.more) {
             Photos.loadOlder()
         }
     }
 
+    // The photo `delta` photos away, past the gaps between days.
+    function viewerStep(delta) {
+        return Photos.revision >= 0 && viewerIndex >= 0 ? Photos.step(viewerIndex, delta) : -1
+    }
+
     function stepViewer(delta) {
-        const next = viewerIndex + delta
-        if (next >= 0 && next < Photos.count) {
+        const next = viewerStep(delta)
+        if (next >= 0) {
             openViewer(next)
         }
     }
@@ -236,12 +268,12 @@ Item {
     // Keyboard shortcuts for viewer navigation and selection.
     Shortcut {
         sequence: "Left"
-        enabled: page.active && page.viewerIndex > 0
+        enabled: page.active && page.viewerStep(-1) >= 0
         onActivated: page.stepViewer(-1)
     }
     Shortcut {
         sequence: "Right"
-        enabled: page.active && page.viewerIndex >= 0 && page.viewerIndex + 1 < Photos.count
+        enabled: page.active && page.viewerStep(1) >= 0
         onActivated: page.stepViewer(1)
     }
     Shortcut {
@@ -442,12 +474,12 @@ Item {
                 }
                 Txt {
                     anchors.verticalCenter: parent.verticalCenter
-                    visible: Photos.count > 0
+                    visible: Photos.photoCount > 0
                     role: "caption"
                     muted: true
                     text: Photos.more
-                        ? qsTr("%1+ items").arg(Photos.count)
-                        : (Photos.count === 1 ? qsTr("1 item") : qsTr("%1 items").arg(Photos.count))
+                        ? qsTr("%1+ items").arg(Photos.photoCount)
+                        : (Photos.photoCount === 1 ? qsTr("1 item") : qsTr("%1 items").arg(Photos.photoCount))
                 }
             }
 
@@ -551,7 +583,7 @@ Item {
                     variant: "text"
                     size: "sm"
                     // Selection stops at 500 (selectAllLoaded): say so past that.
-                    text: Photos.count > 500 ? qsTr("Select first 500") : qsTr("Select all")
+                    text: Photos.photoCount > 500 ? qsTr("Select first 500") : qsTr("Select all")
                     onClicked: page.selectAllLoaded()
                 }
             }
@@ -734,7 +766,8 @@ Item {
             }
 
             // Virtualized thumbnail grid grouped by day.
-            ScrollRail { flick: grid }
+            // Drag it to a date: the day at the top shows beside it.
+            ScrollRail { flick: grid; label: grid.stickyDay }
             GridView {
                 id: grid
                 anchors.fill: parent
@@ -750,6 +783,9 @@ Item {
                 cellWidth: Math.floor((width - 8) / columns)
                 cellHeight: cellWidth
                 model: Photos
+                // Each day starts a row of its own (#388).
+                onColumnsChanged: Photos.setColumns(columns)
+                Component.onCompleted: Photos.setColumns(columns)
 
                 onAtYEndChanged: {
                     if (atYEnd && Photos.more && count > 0)
@@ -908,7 +944,7 @@ Item {
                     text: {
                         if (!page.viewedItem) return ""
                         const parts = []
-                        parts.push((page.viewerIndex + 1) + " / " + Photos.count)
+                        parts.push(Photos.ordinal(page.viewerIndex) + " / " + Photos.photoCount)
                         if (page.viewedItem.date > 0) {
                             const d = new Date(page.viewedItem.date)
                             parts.push(page.dayLabel(page.viewedItem.date) + " " + d.toLocaleTimeString(Qt.locale(), Locale.ShortFormat))
@@ -1092,7 +1128,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 width: 44; height: 44
                 tonal: true
-                visible: page.viewerIndex > 0
+                visible: page.viewerStep(-1) >= 0
                 iconPath: Icons.back
                 label: qsTr("Previous photo")
                 onClicked: page.stepViewer(-1)
@@ -1105,7 +1141,7 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 width: 44; height: 44
                 tonal: true
-                visible: page.viewerIndex + 1 < Photos.count
+                visible: page.viewerStep(1) >= 0
                 iconPath: Icons.chevronRight
                 label: qsTr("Next photo")
                 onClicked: page.stepViewer(1)
@@ -1207,6 +1243,8 @@ Item {
     component PhotoTile: Item {
         id: tile
         required property int index
+        // "photo", or "gap": the empty end of a day's last row.
+        required property string kind
         required property string itemId
         required property string name
         required property real date
@@ -1221,7 +1259,8 @@ Item {
         required property string fullUrl
 
         property string requestedThumbId: ""
-        readonly property bool selected: page.selectedCount >= 0 && page.isSelected(itemId)
+        readonly property bool isPhoto: kind === "photo"
+        readonly property bool selected: isPhoto && page.selectedCount >= 0 && page.isSelected(itemId)
         readonly property bool firstOfDay: index === 0 || !page.sameDay(date, prevDate)
 
         function activateTile() {
@@ -1231,7 +1270,8 @@ Item {
                 page.openViewer(tile.index)
         }
 
-        activeFocusOnTab: true
+        activeFocusOnTab: isPhoto
+        Accessible.ignored: !isPhoto
         Accessible.role: Accessible.Button
         Accessible.name: tile.name
         Accessible.onPressAction: tile.activateTile()
@@ -1262,6 +1302,7 @@ Item {
 
         Rectangle {
             id: cellCard
+            visible: tile.isPhoto
             anchors.fill: parent
             anchors.margins: 4
             radius: Theme.radiusSm

@@ -607,7 +607,7 @@ NativeWindow {
                             anchors.fill: parent
                             anchors.margins: -6
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: Qt.openUrlExternally("https://github.com/thtbee/nectarlink/blob/main/docs/guide/privacy-and-security.md")
+                            onClicked: Links.open("privacy")
                         }
                     }
                 }

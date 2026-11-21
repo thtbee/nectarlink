@@ -67,7 +67,7 @@ const EVENT_CAPACITY: usize = 2048;
 /// idle path every 5 s and drops one silent for 15 s), so a device that
 /// drops off shows as offline within ~15 s. Shorter kept the phone's Wi-Fi
 /// and CPU from ever sleeping on a connected phone.
-const KEEP_ALIVE_INTERVAL: Duration = Duration::from_secs(5);
+pub(crate) const KEEP_ALIVE_INTERVAL: Duration = Duration::from_secs(5);
 const IDLE_TIMEOUT: Duration = Duration::from_secs(15);
 /// How often this device asks the LAN who's there (mDNS). Answers to others'
 /// queries go out at once either way, so only a device showing a nearby list
@@ -232,6 +232,7 @@ pub(crate) struct Shared {
     /// Phone side: each PC's declined or unanswered unlock prompts, so a PC can't
     /// keep asking this phone's owner.
     pub(crate) unlock_prompts: Mutex<HashMap<DeviceId, crate::unlock::Requests>>,
+    pub(crate) linux_unlock_activity: crate::linux_unlock::Activity,
     /// Per-peer prompt state and open folders for the storage service.
     pub(crate) storage: Mutex<crate::storage::StorageState>,
     /// Encrypted-at-rest history of the last 50 clips exchanged with peers.
@@ -1280,6 +1281,7 @@ impl Shared {
     /// Removes a paired device locally (after we or the peer unpaired).
     pub async fn forget_peer(self: &Arc<Self>, peer: &DeviceId) -> Result<()> {
         let peer_name = self.peer_name(peer);
+        let linux_cleanup = self.linux_unlock_activity.begin_cleanup(*peer);
         // Keys a phone kept to unlock that PC (ADR 0009). The PC's sealed
         // passwords go with the device's row.
         {
@@ -1323,6 +1325,13 @@ impl Shared {
         if let Some(session) = lock(&self.sessions).remove(peer) {
             session.close(CLOSE_NORMAL, b"unpaired");
         }
+        self.linux_unlock_activity.clear_failures(peer);
+        let (platform, pc) = (self.platform.clone(), *peer);
+        let _ = tokio::task::spawn_blocking(move || {
+            let _cleanup = linux_cleanup;
+            platform.linux_unlock_forget(&pc, None);
+        })
+        .await;
         lock(&self.links).remove(peer);
         lock(&self.lan_seen).remove(peer);
         lock(&self.dial_failures).remove(peer);
@@ -2031,6 +2040,7 @@ impl Node {
             remote: Mutex::new(Default::default()),
             unlock_requests: Mutex::new(crate::unlock::Requests::new()),
             unlock_prompts: Mutex::new(HashMap::new()),
+            linux_unlock_activity: crate::linux_unlock::Activity::default(),
             storage: Mutex::new(Default::default()),
             clipboard_history,
             last_clip_suggestion: Mutex::new(None),
@@ -2465,6 +2475,13 @@ impl Node {
         }
     }
 
+    /// How many heartbeat pings this device sent `peer` on the current
+    /// session (tests: a quiet healthy link sends none after the first).
+    #[doc(hidden)]
+    pub fn heartbeat_pings(&self, peer: &DeviceId) -> u64 {
+        self.connected(peer).map_or(0, |s| s.heartbeat_pings.load(std::sync::atomic::Ordering::Relaxed))
+    }
+
     fn connected(&self, peer: &DeviceId) -> Result<Arc<Session>> {
         if !self.shared.store.is_paired(peer)? {
             return Err(Error::NotPaired);
@@ -2542,6 +2559,8 @@ impl Node {
         if !self.shared.store.is_paired(&peer)? {
             return Err(Error::NotPaired);
         }
+        let linux_cleanup = (toggle == crate::unlock::TOGGLE && !enabled)
+            .then(|| self.shared.linux_unlock_activity.begin_cleanup(peer));
         self.shared.store.set_toggle(&peer, toggle, enabled)?;
         self.shared.refresh_capabilities(&peer);
         if toggle == notifications::TOGGLE {
@@ -2565,14 +2584,26 @@ impl Node {
                 shared.send_deck(&session).await;
             });
         }
-        if toggle == crate::unlock::TOGGLE && !enabled {
+        if let Some(linux_cleanup) = linux_cleanup {
             // Off on either side ends it: this side drops what it kept (the
             // sealed password on a PC, the keys on a phone), and tells the other.
             let shared = self.shared.clone();
             self.shared.runtime.spawn(async move {
                 let _ = crate::unlock::forget(&shared, &peer, None).await;
                 let platform = shared.platform.clone();
-                let _ = tokio::task::spawn_blocking(move || platform.unlock_forget(&peer, None)).await;
+                let cleanup = linux_cleanup.clone();
+                let _ = tokio::task::spawn_blocking(move || {
+                    let _cleanup = cleanup;
+                    platform.unlock_forget(&peer, None);
+                    platform.linux_unlock_forget(&peer, None);
+                })
+                .await;
+                if let Some(session) = shared.session(&peer)
+                    && shared.we_offer(crate::linux_unlock::PC)
+                {
+                    let _ = crate::linux_unlock::forget(&session, None).await;
+                }
+                drop(linux_cleanup);
             });
         }
         if toggle == crate::storage::TOGGLE {
@@ -3338,6 +3369,13 @@ impl Node {
         crate::mirror::notice(&session, mirroring, code).await
     }
 
+    /// A PC's screens, to pick the one to view (`MirrorStart::display`);
+    /// empty from a PC that only shares its main one.
+    pub async fn mirror_displays(&self, peer: DeviceId) -> Result<Vec<crate::MirrorDisplay>> {
+        let session = self.connected(&peer)?;
+        crate::mirror::displays(&self.shared, &session).await
+    }
+
     /// The apps a phone can open in windows of their own (Elevated), by name.
     /// Asks a phone to uninstall `pkg` (D349); only one that offers
     /// `mirror.apps.uninstall`. `Ok` once the phone says it's gone.
@@ -3949,6 +3987,35 @@ impl Node {
     /// PC side: stops `user` (or everyone) unlocking with `phone`.
     pub async fn unlock_forget(&self, phone: DeviceId, user: Option<&str>) -> Result<()> {
         crate::unlock::forget(&self.shared, &phone, user).await
+    }
+
+    /// Enrolls a paired Android phone for this Linux account and returns its public key.
+    /// The administrator's PAM enrollment tool decides whether to trust the key.
+    pub async fn linux_unlock_enroll(&self, phone: DeviceId, uid: u32, user_name: &str) -> Result<Vec<u8>> {
+        let session = self.connected(&phone)?;
+        crate::linux_unlock::enroll(&self.shared, &session, uid, user_name).await
+    }
+
+    /// Asks the enrolled phone to sign one challenge. PAM independently verifies the signature.
+    pub async fn linux_unlock_sign(
+        &self,
+        challenge: nectarlink_protocol::LinuxUnlockChallenge,
+    ) -> Result<Vec<u8>> {
+        if challenge.pc != self.shared.id {
+            return Err(Error::Denied);
+        }
+        let session = self.connected(&challenge.phone)?;
+        crate::linux_unlock::sign(&self.shared, &session, challenge).await
+    }
+
+    /// Requests deletion of the phone's key. The PAM trust record is managed separately.
+    pub async fn linux_unlock_forget(&self, phone: DeviceId, uid: u32) -> Result<()> {
+        let session = self.connected(&phone)?;
+        if !self.shared.we_offer(crate::linux_unlock::PC) {
+            return Err(Error::Unsupported);
+        }
+        let _cleanup = self.shared.linux_unlock_activity.begin_cleanup(phone);
+        crate::linux_unlock::forget(&session, Some(uid)).await
     }
 
     // ---- Remote input (docs/protocol/remote.md) ----

@@ -316,6 +316,12 @@ pub trait Platform: Send + Sync + 'static {
         Err("this device doesn't share its screen".into())
     }
 
+    /// This PC's screens, the main one first, for a phone to pick the one it
+    /// views (`mirror.displays`). None where it can only share the main one.
+    fn mirror_displays(&self) -> Vec<crate::MirrorDisplay> {
+        Vec::new()
+    }
+
     /// The PC stopped watching: stop sharing the screen or app window.
     fn mirror_stop_requested(&self, _peer: &nectarlink_protocol::DeviceId, _session: u32) {}
 
@@ -591,6 +597,30 @@ pub trait Platform: Send + Sync + 'static {
     /// Unlock the PC with this phone: delete the keys kept for `pc` (for
     /// `user`, or all of them).
     fn unlock_forget(&self, _pc: &nectarlink_protocol::DeviceId, _user: Option<&str>) {}
+
+    /// Enroll a per-account biometric key and return its uncompressed P-256 public point.
+    fn linux_unlock_enroll(
+        &self,
+        _pc: &nectarlink_protocol::DeviceId,
+        _ask: &crate::linux_unlock::Ask,
+        _attempt: &crate::linux_unlock::Attempt,
+    ) -> Result<Vec<u8>, crate::unlock::KeyRefusal> {
+        Err(crate::unlock::KeyRefusal::Unsupported)
+    }
+
+    /// Sign a Linux challenge with the enrolled key after a fresh biometric.
+    fn linux_unlock_sign(
+        &self,
+        _pc: &nectarlink_protocol::DeviceId,
+        _uid: u32,
+        _transcript: &[u8],
+        _attempt: &crate::linux_unlock::Attempt,
+    ) -> Result<Vec<u8>, crate::unlock::KeyRefusal> {
+        Err(crate::unlock::KeyRefusal::Unsupported)
+    }
+
+    /// Delete the corresponding key for this PC, or all of its Linux keys.
+    fn linux_unlock_forget(&self, _pc: &nectarlink_protocol::DeviceId, _uid: Option<u32>) {}
 
     fn deck_press(&self, _from: &nectarlink_protocol::DeviceId, _tile: &str) -> Result<(), String> {
         Err("this device has no deck actions".into())

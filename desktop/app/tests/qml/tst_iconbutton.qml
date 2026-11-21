@@ -49,5 +49,26 @@ Item {
             mouseMove(root, 5, 5)
             tryVerify(() => !tip.visible, 3000, "the tooltip hides when the pointer leaves")
         }
+
+        // The small dot for something new shows only while `dot` is set.
+        function test_dot_shows_only_when_set() {
+            function dotItem() {
+                for (let i = 0; i < button.children.length; i++) {
+                    const child = button.children[i]
+                    if (child.width === 6 && child.height === 6)
+                        return child
+                }
+                return null
+            }
+            const d = dotItem()
+            verify(d !== null, "the button has a dot")
+            button.dot = false
+            tryVerify(() => !d.visible, 2000, "no dot by default")
+            button.dot = true
+            tryVerify(() => d.visible, 2000, "the dot shows when set")
+            compare(button.Accessible.description, "New changes")
+            button.dot = false
+            tryVerify(() => !d.visible, 2000, "and goes again")
+        }
     }
 }

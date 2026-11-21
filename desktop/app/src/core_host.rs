@@ -204,6 +204,9 @@ pub fn compute_capabilities(
     #[cfg(any(windows, target_os = "linux"))]
     if pc_mirror_enabled && crate::pc_mirror::is_capture_available() {
         caps.push(nectarlink_core::MIRROR_CAPTURE.into());
+        // A phone viewing this PC picks which screen (#442).
+        #[cfg(windows)]
+        caps.push(nectarlink_core::MIRROR_DISPLAYS.into());
     }
     #[cfg(windows)]
     let input_available = true;
@@ -225,6 +228,10 @@ pub fn compute_capabilities(
     if crate::win::unlock::is_registered() {
         caps.push(nectarlink_core::unlock::PC.into());
         crate::win::unlock::serve();
+    }
+    #[cfg(target_os = "linux")]
+    if crate::win::phone_unlock::available() {
+        caps.push(nectarlink_protocol::messages::linux_unlock::CAP_PC.into());
     }
     caps
 }

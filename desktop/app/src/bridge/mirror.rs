@@ -76,6 +76,10 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "appShortcutsSupported"]
         fn app_shortcuts_supported(self: &Mirror) -> bool;
+        /// How the taskbar starts an app window again once it's pinned, as
+        /// JSON (`command`, `icon`), or "" for a window that has none (#465).
+        #[qinvokable]
+        fn relaunch(self: &Mirror, device: &QString, pkg: &QString) -> QString;
         /// Reopens an ended window (the screen or an app window).
         #[qinvokable]
         fn reopen(self: &Mirror, key: &QString);
@@ -136,6 +140,10 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "setFlexible"]
         fn set_flexible(self: &Mirror, key: &QString, on: bool);
+        /// Swaps light and dark in a window's picture, kept for its app.
+        #[qinvokable]
+        #[cxx_name = "setDark"]
+        fn set_dark(self: &Mirror, key: &QString, on: bool);
         /// Starts or stops MP4 video recording for a mirror window.
         #[qinvokable]
         #[cxx_name = "toggleRecording"]
@@ -291,6 +299,7 @@ impl qobject::Mirror {
                     // Stay awake and screen off: only where the phone's power matters to this window.
                     "powerButtons": power_buttons,
                     "flexible": mirror::flexible(&window),
+                    "dark": mirror::dark(&window),
                     "zoom": mirror::zoom(&window),
                     "notice": mirror::last_notice(&window),
                     "savedX": geom.map(|g| g.x),
@@ -405,6 +414,19 @@ impl qobject::Mirror {
 
     pub fn app_shortcuts_supported(&self) -> bool {
         crate::app_shortcuts::supported()
+    }
+
+    pub fn relaunch(&self, device: &QString, pkg: &QString) -> QString {
+        #[cfg(windows)]
+        if let Some(device) = super::parse_device(device)
+            && let Some((command, icon)) =
+                crate::app_shortcuts::relaunch(&crate::core_host::host().data_dir, device, &String::from(pkg))
+        {
+            return QString::from(&serde_json::json!({ "command": command, "icon": icon }).to_string());
+        }
+        #[cfg(not(windows))]
+        let _ = (device, pkg);
+        QString::default()
     }
 
     pub fn start_app(&self, device: &QString, pkg: &QString, label: &QString) {
@@ -525,6 +547,12 @@ impl qobject::Mirror {
     pub fn set_flexible(&self, key: &QString, on: bool) {
         if let Some(window) = Window::parse(&String::from(key)) {
             mirror::set_flexible(window, on);
+        }
+    }
+
+    pub fn set_dark(&self, key: &QString, on: bool) {
+        if let Some(window) = Window::parse(&String::from(key)) {
+            mirror::set_dark(window, on);
         }
     }
 

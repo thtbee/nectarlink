@@ -17,6 +17,7 @@ pub use envelope::Envelope;
 pub use error::{ErrorCode, ProtocolError};
 pub use frame::{MAX_FRAME_LEN, decode_frame, encode_frame, read_frame, write_frame};
 pub use id::{DeviceId, ParseDeviceIdError};
+pub use messages::LinuxUnlockChallenge;
 pub use video::{MAX_VIDEO_PACKET, PacketKind, VideoPacket, read_video_packet, video_packet_header};
 
 /// ALPN for normal sessions between paired devices.

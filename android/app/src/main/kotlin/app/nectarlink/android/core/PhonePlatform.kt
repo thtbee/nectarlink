@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package app.nectarlink.android.core
 
+import app.nectarlink.android.unlock.LinuxUnlockKeys
 import app.nectarlink.android.unlock.UnlockKeys
 import app.nectarlink.android.unlock.UnlockPrompts
+import app.nectarlink.core.LinuxUnlockAttempt
 import app.nectarlink.core.UnlockRefusal
 import android.app.PendingIntent
 import android.app.RemoteInput
@@ -320,6 +322,28 @@ internal class PhonePlatform(
     }
 
     override fun unlockForget(pc: String, user: String?) = UnlockKeys.forget(pc, user)
+
+    override fun linuxUnlockEnroll(
+        pc: String,
+        pcName: String,
+        userName: String,
+        uid: UInt,
+        timeoutMs: ULong,
+        attempt: LinuxUnlockAttempt,
+    ): ByteArray {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R || !UnlockKeys.supported(context)) {
+            throw UnlockRefusal.Unsupported()
+        }
+        val waitMs = timeoutMs.coerceAtMost(ENROLL_WAIT_MS.toULong()).toLong()
+        return LinuxUnlockKeys.enroll(context, pc, pcName, userName, uid, waitMs, attempt)
+    }
+
+    override fun linuxUnlockSign(pc: String, uid: UInt, transcript: ByteArray, attempt: LinuxUnlockAttempt): ByteArray {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) throw UnlockRefusal.Unsupported()
+        return LinuxUnlockKeys.sign(context, pc, uid, transcript, UNLOCK_WAIT_MS, attempt)
+    }
+
+    override fun linuxUnlockForget(pc: String, uid: UInt?) = LinuxUnlockKeys.forget(context, pc, uid)
 
     override fun micStopRequested(pcId: String) {
         onMicStop(pcId)

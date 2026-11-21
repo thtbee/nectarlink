@@ -24,6 +24,8 @@ import app.nectarlink.core.TransferStatus
  * runs, and "Received" (tap to open) when files from a PC are saved.
  */
 internal object TransferNotifications {
+    private const val APK_MIME = "application/vnd.android.package-archive"
+
     private const val CHANNEL_PROGRESS = "transfers"
     private const val CHANNEL_RECEIVED = "received"
     private const val SENT_TIMEOUT_MS = 8_000L
@@ -141,7 +143,11 @@ internal object TransferNotifications {
             runCatching { context.startActivity(directView) }
         }
         if (!allowed(context)) return
-        val open = if (transfer.files.toInt() == transfer.names.size) {
+        // An app sent from the PC's Apps page (#442): straight to Android's installer.
+        val isApp = files.size == 1 && first.mime == APK_MIME
+        val open = if (isApp) {
+            Intent(Intent.ACTION_VIEW).setDataAndType(first.uri, first.mime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        } else if (transfer.files.toInt() == transfer.names.size) {
             Intent.createChooser(
                 Intent(Intent.ACTION_VIEW).setDataAndType(first.uri, first.mime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION),
                 null,
@@ -154,7 +160,9 @@ internal object TransferNotifications {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         val from = pcName.ifEmpty { context.getString(R.string.your_pc) }
-        val text = if (isHandoffDoc) {
+        val text = if (isApp) {
+            context.getString(R.string.transfer_app_received_from, from)
+        } else if (isHandoffDoc) {
             context.getString(R.string.handoff_doc_received_from, from)
         } else {
             context.getString(R.string.transfer_received_from, from)
@@ -167,6 +175,9 @@ internal object TransferNotifications {
             .setAutoCancel(true)
         if (isHandoffDoc) {
             builder.addAction(0, context.getString(R.string.clip_action_open), tap)
+        }
+        if (isApp) {
+            builder.addAction(0, context.getString(R.string.transfer_install), tap)
         }
         post(context, idOf(transfer), builder.build())
     }

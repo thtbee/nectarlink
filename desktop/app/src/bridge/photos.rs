@@ -13,7 +13,7 @@ use serde_json::json;
 
 use super::{Edit, diff};
 use crate::{
-    photos::{self, ItemRow},
+    photos::{self, CellKind, ItemRow, Rows},
     state::Changes,
 };
 
@@ -49,7 +49,10 @@ pub mod qobject {
         #[qproperty(QString, albums)]
         /// Selected album ID ("" for All photos).
         #[qproperty(QString, album)]
+        /// Rows in the grid, with the day rows and gaps around the photos.
         #[qproperty(i32, count)]
+        /// Photos and videos loaded.
+        #[qproperty(i32, photo_count, cxx_name = "photoCount")]
         #[qproperty(bool, more)]
         #[qproperty(bool, loading_older, cxx_name = "loadingOlder")]
         #[qproperty(bool, saving)]
@@ -73,6 +76,12 @@ pub mod qobject {
         #[inherit]
         #[cxx_name = "endRemoveRows"]
         unsafe fn end_remove_rows(self: Pin<&mut Photos>);
+        #[inherit]
+        #[cxx_name = "beginResetModel"]
+        unsafe fn begin_reset_model(self: Pin<&mut Photos>);
+        #[inherit]
+        #[cxx_name = "endResetModel"]
+        unsafe fn end_reset_model(self: Pin<&mut Photos>);
         #[inherit]
         fn index(self: &Photos, row: i32, column: i32, parent: &QModelIndex) -> QModelIndex;
 
@@ -146,6 +155,20 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "dateAt"]
         fn date_at(self: &Photos, row: i32) -> f64;
+        /// Lays the grid out for this many columns, each day on rows of its own.
+        #[qinvokable]
+        #[cxx_name = "setColumns"]
+        fn set_columns(self: &Photos, columns: i32);
+        /// The row of the photo `delta` photos from `row` (-1 if none).
+        #[qinvokable]
+        fn step(self: &Photos, row: i32, delta: i32) -> i32;
+        /// Which photo `row` is, counting from 1 (0 for a day row or gap).
+        #[qinvokable]
+        fn ordinal(self: &Photos, row: i32) -> i32;
+        /// The row showing photo `id` now (-1 if it isn't loaded).
+        #[qinvokable]
+        #[cxx_name = "rowOf"]
+        fn row_of(self: &Photos, id: &QString) -> i32;
         #[qinvokable]
         #[cxx_name = "startDrag"]
         fn start_drag(self: &Photos, id: &QString) -> bool;
@@ -162,6 +185,7 @@ pub struct PhotosRust {
     albums: QString,
     album: QString,
     count: i32,
+    photo_count: i32,
     more: bool,
     loading_older: bool,
     saving: bool,
@@ -173,6 +197,7 @@ pub struct PhotosRust {
 }
 
 const ROLES: &[&str] = &[
+    "kind",
     "itemId",
     "name",
     "date",
@@ -187,11 +212,15 @@ const ROLES: &[&str] = &[
     "fullUrl",
 ];
 const USER_ROLE: i32 = 0x0100;
+/// More row edits than this replace the whole list at once.
+const MAX_ROW_EDITS: usize = 64;
 
 fn role_value(row: &ItemRow, role: &str) -> QVariant {
     let text = |s: &str| QVariant::from(&QString::from(s));
     match role {
-        "itemId" => text(&row.id),
+        "kind" => text(row.kind.name()),
+        // A day row or gap is no photo: nothing to select or fetch.
+        "itemId" => text(if row.kind == CellKind::Photo { &row.id } else { "" }),
         "name" => text(&row.name),
         "date" => QVariant::from(&(row.date as f64)),
         "prevDate" => QVariant::from(&(row.prev_date as f64)),
@@ -243,7 +272,7 @@ impl qobject::Photos {
             tracing::warn!(reason, "can't open the share sheet");
             photos::show_share_failed();
         }
-        let view = photos::view();
+        let view = photos::view_since(&self.rows);
         self.as_mut().set_device(QString::from(&view.device.map(|d| d.to_string()).unwrap_or_default()));
         self.as_mut().set_status(QString::from(view.status.as_str()));
         let albums_str = view.albums.to_string();
@@ -259,78 +288,95 @@ impl qobject::Photos {
         self.as_mut().set_save_folder(QString::from(&view.save_folder));
 
         let root = QModelIndex::default();
-        if view.rows.is_empty() {
-            if !self.rows.is_empty() {
-                let last = (self.rows.len() - 1) as i32;
-                // SAFETY: 0..=last exists; begin/end are balanced.
-                unsafe {
-                    self.as_mut().begin_remove_rows(&root, 0, last);
-                    self.as_mut().rust_mut().rows = Vec::new();
-                    self.as_mut().end_remove_rows();
+        match view.rows {
+            Rows::Patch { keep, changed, appended } => {
+                if keep < self.rows.len() {
+                    let first = keep as i32;
+                    let last = self.rows.len() as i32 - 1;
+                    // SAFETY: keep..len exists; begin/end are balanced.
+                    unsafe {
+                        self.as_mut().begin_remove_rows(&root, first, last);
+                        self.as_mut().rust_mut().rows.truncate(keep);
+                        self.as_mut().end_remove_rows();
+                    }
                 }
-            }
-        } else if self.rows.is_empty() {
-            let last = (view.rows.len() - 1) as i32;
-            // SAFETY: 0..=last is valid for empty model; begin/end are balanced.
-            unsafe {
-                self.as_mut().begin_insert_rows(&root, 0, last);
-                self.as_mut().rust_mut().rows = view.rows;
-                self.as_mut().end_insert_rows();
-            }
-        } else if view.rows.len() >= self.rows.len()
-            && self.rows.iter().zip(&view.rows).all(|(a, b)| a.id == b.id)
-        {
-            let old_len = self.rows.len();
-            for row in 0..old_len {
-                if self.rows[row] != view.rows[row] {
-                    self.as_mut().rust_mut().rows[row] = view.rows[row].clone();
+                for (row, item) in changed {
+                    self.as_mut().rust_mut().rows[row] = item;
                     let index = self.index(row as i32, 0, &root);
                     self.as_mut().data_changed(&index, &index, &QList::default());
                 }
-            }
-            if view.rows.len() > old_len {
-                let first = old_len as i32;
-                let last = (view.rows.len() - 1) as i32;
-                // SAFETY: first..=last appends to end; begin/end are balanced.
-                unsafe {
-                    self.as_mut().begin_insert_rows(&root, first, last);
-                    self.as_mut().rust_mut().rows.extend_from_slice(&view.rows[old_len..]);
-                    self.as_mut().end_insert_rows();
-                }
-            }
-        } else {
-            for edit in diff(&self.rows, &view.rows, |r| r.id.clone()) {
-                match edit {
-                    Edit::Remove(row) => {
-                        let r = row as i32;
-                        // SAFETY: row exists; begin/end are balanced.
-                        unsafe {
-                            self.as_mut().begin_remove_rows(&root, r, r);
-                            self.as_mut().rust_mut().rows.remove(row);
-                            self.as_mut().end_remove_rows();
-                        }
-                    }
-                    Edit::Insert(row) => {
-                        let r = row as i32;
-                        // SAFETY: row <= len; begin/end are balanced.
-                        unsafe {
-                            self.as_mut().begin_insert_rows(&root, r, r);
-                            self.as_mut().rust_mut().rows.insert(row, view.rows[row].clone());
-                            self.as_mut().end_insert_rows();
-                        }
-                    }
-                    Edit::Change(row) => {
-                        self.as_mut().rust_mut().rows[row] = view.rows[row].clone();
-                        let index = self.index(row as i32, 0, &root);
-                        self.as_mut().data_changed(&index, &index, &QList::default());
+                if !appended.is_empty() {
+                    let first = self.rows.len() as i32;
+                    let last = first + appended.len() as i32 - 1;
+                    // SAFETY: first..=last appends to the end; begin/end are balanced.
+                    unsafe {
+                        self.as_mut().begin_insert_rows(&root, first, last);
+                        self.as_mut().rust_mut().rows.extend(appended);
+                        self.as_mut().end_insert_rows();
                     }
                 }
             }
+            Rows::All(rows) => self.as_mut().replace_rows(rows),
         }
         let count = self.rows.len() as i32;
         self.as_mut().set_count(count);
+        self.as_mut().set_photo_count(i32::try_from(view.photo_count).unwrap_or(i32::MAX));
         let rev = self.revision().wrapping_add(1);
         self.set_revision(rev);
+    }
+
+    /// Shows `rows` instead of the current ones: row by row for a few
+    /// changes, so tiles keep their state, or all at once for many, since
+    /// thousands of single-row signals each relayout the grid.
+    fn replace_rows(mut self: Pin<&mut Self>, rows: Vec<ItemRow>) {
+        let root = QModelIndex::default();
+        if rows.is_empty() && self.rows.is_empty() {
+            return;
+        }
+        let edits = if self.rows.is_empty() || rows.is_empty() {
+            None
+        } else {
+            Some(diff(&self.rows, &rows, |r| r.id.clone()))
+        };
+        match edits {
+            Some(edits) if edits.len() <= MAX_ROW_EDITS => {
+                for edit in edits {
+                    match edit {
+                        Edit::Remove(row) => {
+                            let r = row as i32;
+                            // SAFETY: row exists; begin/end are balanced.
+                            unsafe {
+                                self.as_mut().begin_remove_rows(&root, r, r);
+                                self.as_mut().rust_mut().rows.remove(row);
+                                self.as_mut().end_remove_rows();
+                            }
+                        }
+                        Edit::Insert(row) => {
+                            let r = row as i32;
+                            // SAFETY: row <= len; begin/end are balanced.
+                            unsafe {
+                                self.as_mut().begin_insert_rows(&root, r, r);
+                                self.as_mut().rust_mut().rows.insert(row, rows[row].clone());
+                                self.as_mut().end_insert_rows();
+                            }
+                        }
+                        Edit::Change(row) => {
+                            self.as_mut().rust_mut().rows[row] = rows[row].clone();
+                            let index = self.index(row as i32, 0, &root);
+                            self.as_mut().data_changed(&index, &index, &QList::default());
+                        }
+                    }
+                }
+            }
+            _ => {
+                // SAFETY: begin/end are balanced around the swap.
+                unsafe {
+                    self.as_mut().begin_reset_model();
+                    self.as_mut().rust_mut().rows = rows;
+                    self.as_mut().end_reset_model();
+                }
+            }
+        }
     }
 
     pub fn data(&self, index: &QModelIndex, role: i32) -> QVariant {
@@ -416,7 +462,9 @@ impl qobject::Photos {
     }
 
     pub fn item_at(&self, row: i32) -> QString {
-        let Some(r) = usize::try_from(row).ok().and_then(|i| self.rows.get(i)) else {
+        let Some(r) =
+            usize::try_from(row).ok().and_then(|i| self.rows.get(i)).filter(|r| r.kind == CellKind::Photo)
+        else {
             return QString::from("null");
         };
         QString::from(
@@ -438,10 +486,49 @@ impl qobject::Photos {
         )
     }
 
+    pub fn set_columns(&self, columns: i32) {
+        photos::set_columns(u32::try_from(columns).unwrap_or(0));
+    }
+
+    pub fn step(&self, row: i32, delta: i32) -> i32 {
+        let Ok(start) = usize::try_from(row) else { return -1 };
+        let mut left = delta.unsigned_abs();
+        let mut at = start;
+        while left > 0 {
+            at = match if delta > 0 { at.checked_add(1) } else { at.checked_sub(1) } {
+                Some(next) if next < self.rows.len() => next,
+                _ => return -1,
+            };
+            if self.rows[at].kind == CellKind::Photo {
+                left -= 1;
+            }
+        }
+        i32::try_from(at).unwrap_or(-1)
+    }
+
+    pub fn row_of(&self, id: &QString) -> i32 {
+        let id = String::from(id);
+        self.rows
+            .iter()
+            .position(|r| r.kind == CellKind::Photo && r.id == id)
+            .and_then(|i| i32::try_from(i).ok())
+            .unwrap_or(-1)
+    }
+
+    pub fn ordinal(&self, row: i32) -> i32 {
+        let Some(end) = usize::try_from(row).ok().filter(|&r| r < self.rows.len()) else { return 0 };
+        if self.rows[end].kind != CellKind::Photo {
+            return 0;
+        }
+        let n = self.rows[..=end].iter().filter(|r| r.kind == CellKind::Photo).count();
+        i32::try_from(n).unwrap_or(0)
+    }
+
     pub fn id_at(&self, row: i32) -> QString {
         usize::try_from(row)
             .ok()
             .and_then(|i| self.rows.get(i))
+            .filter(|r| r.kind == CellKind::Photo)
             .map(|r| QString::from(&r.id))
             .unwrap_or_default()
     }
@@ -466,6 +553,7 @@ mod tests {
     #[test]
     fn roles_describe_gallery_item() {
         let row = ItemRow {
+            kind: photos::CellKind::Photo,
             id: "media:42".into(),
             name: "IMG_0042.jpg".into(),
             date: 1_710_000_000_000,

@@ -8,6 +8,61 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **What's new, in the app.** The sparkle button at the top of the PC app, and on the
+  phone's Home, lists what changed since you last looked, in short points by category,
+  with a link to the full release notes. A dot on it means something new arrived with an
+  update. Thanks to
+  [@zzz1465720680](https://github.com/zzz1465720680)
+  ([#461](https://github.com/thtbee/nectarlink/issues/461)).
+- **Community, with the Discord server.** Settings › Community (formerly Support
+  NectarLink) has the [Discord server](https://discord.gg/AA2Dp8PYqf), news on X, the code on
+  GitHub and the support page, side by side. Now and then after an update, a small ask to come
+  chat on Discord appears too: at most once a month, three times in all, and never again after
+  you join.
+- **Set up any AI agent with one prompt.** Settings › AI agents no longer lists particular
+  apps: name the agent, choose what it may do, then copy the prompt it shows into your agent,
+  which adds NectarLink to its own settings and checks that it works. The card says
+  **Connected** once it has. **Set up by hand** has the MCP settings, the commands and the HTTP
+  request. NectarLink no longer edits other apps' settings files itself.
+- **WhatsApp calls from the PC.** On the PC's Calls page, pick **WhatsApp** (or WhatsApp
+  Business) under **Call with**, and the call to that contact starts in WhatsApp on the
+  phone. If Android won't let NectarLink open WhatsApp right then, a notification on the
+  phone starts it with a tap. Thanks to [@kedar284](https://github.com/kedar284)
+  ([#434](https://github.com/thtbee/nectarlink/issues/434)).
+- **Pick which of the PC's screens the phone shows.** With more than one screen on the PC,
+  the PC screen view on the phone has a **Screen** button that moves to the next one, and
+  taps land there. Windows only for now. Thanks to
+  [@w-rakeeb](https://github.com/w-rakeeb) ([#442](https://github.com/thtbee/nectarlink/issues/442)).
+- **Dark picture for apps with no dark mode.** The moon button on a mirroring or app
+  window swaps light and dark in the picture, so a white map turns dark gray with its
+  colors kept. It's remembered for each app.
+- **Choose the frame rate for mirroring.** Settings › Camera & Audio › Frame rate: 30, 60,
+  90 or 120 for the phone's screen and app windows. Thanks to
+  [@w-rakeeb](https://github.com/w-rakeeb) ([#442](https://github.com/thtbee/nectarlink/issues/442)).
+- **Keep pop-ups paused after a restart.** Settings › Notifications › Keep pop-ups paused
+  after a restart makes **Pause pop-ups** last until you resume them. Thanks to
+  [@w-rakeeb](https://github.com/w-rakeeb) ([#442](https://github.com/thtbee/nectarlink/issues/442)).
+- **Each day of Photos starts a row of its own, and the scrollbar shows the date.** Hold
+  or hover the scrollbar on the PC's Photos page to see the day you're at, and drag it
+  there. Thanks to [@Dipen425](https://github.com/Dipen425)
+  ([#388](https://github.com/thtbee/nectarlink/issues/388)) and
+  [@w-rakeeb](https://github.com/w-rakeeb) ([#442](https://github.com/thtbee/nectarlink/issues/442)).
+- **Install an app on the phone from the PC.** The download button on the PC's Apps page
+  sends an app file (.apk) to the phone, whose notification then offers **Install**, which
+  opens Android's installer. Thanks to [@w-rakeeb](https://github.com/w-rakeeb)
+  ([#442](https://github.com/thtbee/nectarlink/issues/442)).
+- **Make Desk clock yours.** **Customize** on Desk clock picks the background (black,
+  graphite or your accent color), the clock's font (mono, sans or serif) and what it shows:
+  seconds, the date, the PC's media and volume, and the battery of the phone and the PC.
+  Thanks to [@xo4x4ww](https://github.com/xo4x4ww)
+  ([#380](https://github.com/thtbee/nectarlink/discussions/380)).
+- **Look for PCs only where they are, and stop after a while.** In the phone's Settings,
+  under Connect over mobile data: **Only on networks where a PC was found** keeps the
+  phone from looking for your PCs on other Wi-Fi, and **Stop looking after** 15 minutes, 1
+  hour or 4 hours with no PC reachable stops it until the network changes or you open
+  NectarLink. A PC can still reach the phone either way. Thanks to
+  [@ThePharaohArt](https://github.com/ThePharaohArt)
+  ([#397](https://github.com/thtbee/nectarlink/issues/397)).
 - **Unlock the PC with your phone's fingerprint (Windows, Android 11+).** On the lock
   screen, pick NectarLink under Sign-in options, press the arrow and confirm with your
   fingerprint on the phone; allow NectarLink to display over other apps and the fingerprint prompt opens
@@ -16,6 +71,12 @@ change things that need a step from you, and its notes say so.
   password is kept encrypted on the PC with a key only the phone holds, behind its
   fingerprint, and sealed so only the lock screen can read it, not apps running as you. Only for unlocking, not the first sign-in after a restart
   ([#36](https://github.com/thtbee/nectarlink/pull/36)).
+- **Unlock a Linux session with your phone's fingerprint.** An opt-in PAM service for a
+  running graphical session: the lock screen asks the phone, you confirm with your
+  fingerprint, and the password still works as before. Set up and revoked by the
+  administrator ([docs](https://github.com/thtbee/nectarlink/blob/main/docs/guide/linux-phone-unlock.md)).
+  Thanks to [@UmarAlMukhtar](https://github.com/UmarAlMukhtar)
+  ([#494](https://github.com/thtbee/nectarlink/pull/494)).
 - **AI agents can use NectarLink.** Claude Code, Claude Desktop, Codex, Cursor, Gemini CLI,
   VS Code and other AI assistants on the PC can read notifications and texts, send files and
   messages, control media, look at and copy photos, work with the phone's files, change its
@@ -334,9 +395,32 @@ change things that need a step from you, and its notes say so.
 - **More keys in full screen on a phone held upright.** Esc, Copy, Paste, Switch window and
   Undo join the row of buttons that shows on a tap, like the side buttons in landscape.
   Thanks to [@cxigit](https://github.com/cxigit) ([#306](https://github.com/thtbee/nectarlink/issues/306)).
+- **Pin a phone app to the taskbar.** Pinning an app window's taskbar button now pins
+  that app: the icon opens it in a window, starting NectarLink first if needed. Thanks to
+  [@ososuosos](https://github.com/ososuosos)
+  ([#465](https://github.com/thtbee/nectarlink/discussions/465)).
+- **Hide the toolbar on mirroring and app windows.** Its new last button, or Ctrl+Shift+T,
+  hides it in every window so it no longer covers the app's top corner; Ctrl+Shift+T or
+  the new switch in Settings brings it back. Thanks to
+  [@JohnDoeXA](https://github.com/JohnDoeXA)
+  ([#475](https://github.com/thtbee/nectarlink/discussions/475)).
 
 ### Fixed
 
+- **Less battery on the phone while it's connected.** A quiet connection no longer sends
+  pings of its own every 15 seconds on top of the connection's keepalives; it only checks
+  when nothing has arrived for a while, and a PC that's gone still shows as offline as
+  quickly as before. A small change in the round-trip time also no longer redoes the
+  work of a new connection, and the banking pause sleeps when no apps are chosen. Thanks
+  to [@Roxxust](https://github.com/Roxxust) ([#145](https://github.com/thtbee/nectarlink/issues/145)).
+- **Photos on the PC no longer slows the whole app down with thousands of photos.** Each
+  thumbnail that arrived made the PC rebuild the entire gallery, so with a large library
+  everything lagged while the grid filled in. Thanks to
+  [@w-rakeeb](https://github.com/w-rakeeb) ([#442](https://github.com/thtbee/nectarlink/issues/442)).
+- **NectarLink starts on Windows installs without `cldapi.dll`.** Some trimmed Windows
+  builds remove the Cloud Files API, and the app stopped with "cldapi.dll was not found".
+  It now starts there, with the phone folders in File Explorer off. Thanks to
+  [@Akbardaging](https://github.com/Akbardaging) ([#499](https://github.com/thtbee/nectarlink/issues/499)).
 - **The PC's log keeps your details out and stays small.** It no longer writes your Windows
   user name inside folder paths, network addresses (only their kind, like "home network"),
   or values it doesn't know are safe. It also keeps to about 2 MB while NectarLink runs,

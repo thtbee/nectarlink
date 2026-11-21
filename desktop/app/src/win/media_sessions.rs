@@ -459,6 +459,13 @@ impl ArtCache {
         }
         let alb_key = Self::album_key(id, artist, album);
         let disk_path = Self::track_disk_path(&track);
+        // Bounded on every path in: covers read back from disk used to skip this.
+        if self.by_track.len() > 32 {
+            self.by_track.clear();
+        }
+        if self.by_album.len() > 32 {
+            self.by_album.clear();
+        }
         if !self.by_track.contains_key(&track)
             && let Some(path) = disk_path.as_ref()
             && let Ok(bytes) = std::fs::read(path)
@@ -475,12 +482,6 @@ impl ArtCache {
         let prev_attempts = self.by_track.get(&track).map_or(0, |(a, _)| *a);
         if prev_attempts >= MAX_ART_ATTEMPTS && !has_smtc_thumb {
             return None;
-        }
-        if self.by_track.len() > 32 {
-            self.by_track.clear();
-        }
-        if self.by_album.len() > 32 {
-            self.by_album.clear();
         }
         let attempts = prev_attempts.saturating_add(1);
         let resolved = if has_smtc_thumb { read() } else { None };

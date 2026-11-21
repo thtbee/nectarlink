@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import QtQuick
+import QtQuick.Dialogs
 import app.nectarlink
 
 // Apps: every app on the phone, to open one in a window of its own on this PC
@@ -78,6 +79,18 @@ Item {
     onAvailableChanged: loadIfNeeded()
     Component.onCompleted: loadIfNeeded()
 
+    // An app file sent to the phone, which offers to install it (#442).
+    FileDialog {
+        id: apkPicker
+        title: qsTr("Install an app on %1").arg(page.deviceName)
+        fileMode: FileDialog.OpenFiles
+        nameFilters: [qsTr("Android apps (*.apk)")]
+        onAccepted: {
+            if (page.deviceId.length > 0 && selectedFiles.length > 0)
+                TransferList.send(page.deviceId, selectedFiles.map(url => url.toString()))
+        }
+    }
+
     // ---- No phone, or opening apps isn't available yet ----
     Column {
         anchors.centerIn: parent
@@ -135,7 +148,7 @@ Item {
             spacing: 8
 
             Rectangle {
-                width: parent.width - refresh.width - parent.spacing
+                width: parent.width - refresh.width - installApk.width - parent.spacing * 2
                 height: parent.height
                 radius: Theme.graphite ? Theme.radiusSm : height / 2
                 color: Theme.graphite ? "transparent" : Theme.surfaceContainerHighest
@@ -175,6 +188,13 @@ Item {
                         text: qsTr("Search %1's apps").arg(page.deviceName)
                     }
                 }
+            }
+            IconButton {
+                id: installApk
+                anchors.verticalCenter: parent.verticalCenter
+                iconPath: Icons.download
+                label: qsTr("Install an app (.apk) on %1").arg(page.deviceName)
+                onClicked: apkPicker.open()
             }
             IconButton {
                 id: refresh

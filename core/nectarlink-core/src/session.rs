@@ -11,7 +11,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use iroh::endpoint::{Connection, RecvStream, SendStream, VarInt};
+use iroh::endpoint::{Connection, PathEventStream, RecvStream, SendStream, VarInt};
 use nectarlink_protocol::{
     DeviceId, Envelope, ErrorCode, MIN_PROTOCOL_VERSION, PROTOCOL_VERSION, ProtocolError, messages::*,
     negotiate_version, read_frame, write_frame,
@@ -31,10 +31,20 @@ pub(crate) mod wake;
 
 pub(crate) const HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(10);
 pub(crate) const REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
-/// How often each side pings the other for the round-trip time and to catch
-/// a peer that stopped answering. A link that dropped is QUIC's to notice
-/// (`IDLE_TIMEOUT` in node.rs); pinging every 2.5 s kept phones awake.
+/// How often the round-trip time shown for a peer is brought up to date.
+/// A link that dropped is QUIC's to notice too (`IDLE_TIMEOUT` in node.rs).
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(15);
+/// How often each side looks for a sign of life from the other. Packets that
+/// arrived since the last look, QUIC's keepalives included, are one, so a
+/// healthy link sends no pings of its own: those only added packets to what
+/// QUIC already sends. A window with nothing is probed with a ping, as
+/// before. It must be clearly longer than QUIC's keep-alive interval
+/// (`KEEP_ALIVE_INTERVAL` in node.rs): a keepalive comes a little after 5 s,
+/// and a window of exactly 5 s sometimes caught none and pinged for nothing.
+/// A peer that's gone is found in about 11.5 to 18.5 s (one silent window,
+/// then the 3 s ping and its 1.5 s retry), as before.
+const EVIDENCE_WINDOW: Duration = Duration::from_secs(7);
+const _: () = assert!(EVIDENCE_WINDOW.as_millis() >= crate::node::KEEP_ALIVE_INTERVAL.as_millis() + 2000);
 const HEARTBEAT_TIMEOUT: Duration = Duration::from_millis(3000);
 const HEARTBEAT_RETRY_TIMEOUT: Duration = Duration::from_millis(1500);
 const OUTBOX_CAPACITY: usize = 256;
@@ -226,6 +236,8 @@ pub(crate) struct Session {
     pending: Mutex<HashMap<u64, oneshot::Sender<Envelope>>>,
     next_id: AtomicU64,
     rtt_ms: AtomicU32,
+    /// Heartbeat pings sent on this session ([`Node::heartbeat_pings`]).
+    pub(crate) heartbeat_pings: std::sync::atomic::AtomicU64,
     pub(crate) started: Instant,
     last_rx_ms: AtomicU64,
     usb_bridge_ports: Arc<Mutex<HashMap<u16, DeviceId>>>,
@@ -238,6 +250,34 @@ pub(crate) struct Session {
     /// PC that's still locked says so again when it reconnects.
     notifications_held: std::sync::atomic::AtomicBool,
     pub(crate) cancel: CancellationToken,
+}
+
+struct PendingReply<'a> {
+    session: &'a Session,
+    id: u64,
+    sent: bool,
+    cancel_unlock: bool,
+}
+
+impl Drop for PendingReply<'_> {
+    fn drop(&mut self) {
+        let unanswered = self.session.pending.lock().unwrap_or_else(|e| e.into_inner()).remove(&self.id);
+        if unanswered.is_some()
+            && self.sent
+            && self.cancel_unlock
+            && let Ok(cancel) = Envelope::new(types::LINUX_UNLOCK_CANCEL, &self.id)
+            && let Err(mpsc::error::TrySendError::Full(cancel)) = self.session.outbox.try_send(cancel)
+        {
+            let outbox = self.session.outbox.clone();
+            if let Ok(runtime) = tokio::runtime::Handle::try_current() {
+                runtime.spawn(async move {
+                    let _ = outbox.send(cancel).await;
+                });
+            } else {
+                self.session.close(CLOSE_NORMAL, b"phone unlock cancelled");
+            }
+        }
+    }
 }
 
 impl std::fmt::Debug for Session {
@@ -267,6 +307,7 @@ impl Session {
             .iter()
             .find(|p| p.is_selected())
             .map_or(0, |p| p.rtt().as_millis().min(u128::from(u32::MAX)) as u32);
+        // (`transport_rtt_ms` reads the same, once the session exists.)
         let (outbox, outbox_rx) = mpsc::channel(OUTBOX_CAPACITY);
         let session = Arc::new(Session {
             peer,
@@ -277,6 +318,7 @@ impl Session {
             pending: Mutex::new(HashMap::new()),
             next_id: AtomicU64::new(1),
             rtt_ms: AtomicU32::new(initial_rtt),
+            heartbeat_pings: std::sync::atomic::AtomicU64::new(0),
             started: Instant::now(),
             last_rx_ms: AtomicU64::new(0),
             usb_bridge_ports: shared.usb_bridge_ports.clone(),
@@ -324,7 +366,7 @@ impl Session {
         self.last_rx_ms.load(Ordering::Relaxed) > since_ms
     }
 
-    fn is_usb_addr(&self, addr: &std::net::SocketAddr) -> bool {
+    pub(crate) fn is_usb_addr(&self, addr: &std::net::SocketAddr) -> bool {
         addr.ip().to_canonical().is_loopback()
             && self.usb_bridge_ports.lock().unwrap_or_else(|e| e.into_inner()).get(&addr.port())
                 == Some(&self.peer)
@@ -387,15 +429,19 @@ impl Session {
     /// The address of the path the connection uses now, when that's a direct IP path
     /// (not a relay, not the USB tunnel). `None` while no path is selected.
     pub(crate) fn selected_direct_addr(&self) -> Option<std::net::SocketAddr> {
+        self.selected_ip_path().filter(|(_, usb)| !usb).map(|(addr, _)| addr)
+    }
+
+    /// The selected direct address and whether it belongs to this peer's USB bridge.
+    pub(crate) fn selected_ip_path(&self) -> Option<(std::net::SocketAddr, bool)> {
         let paths = self.conn.paths();
         let selected = paths.iter().find(|p| p.is_selected())?;
-        if selected.is_relay() {
-            return None;
-        }
-        match selected.remote_addr() {
-            iroh::TransportAddr::Ip(addr) if !self.is_usb_addr(addr) => Some(*addr),
-            _ => None,
-        }
+        let addr = direct_ip_addr(selected.remote_addr())?;
+        Some((addr, self.is_usb_addr(&addr)))
+    }
+
+    pub(crate) fn path_events(&self) -> PathEventStream {
+        self.conn.path_events()
     }
 
     /// The peer's direct IP addresses currently in use, for reconnecting later.
@@ -471,10 +517,11 @@ impl Session {
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
         let (tx, rx) = oneshot::channel();
         self.pending.lock().unwrap_or_else(|e| e.into_inner()).insert(id, tx);
-        let mut sent = false;
+        let cancel_unlock = matches!(env.t.as_str(), types::LINUX_UNLOCK_ENROLL | types::LINUX_UNLOCK_SIGN);
+        let mut pending = PendingReply { session: self, id, sent: false, cancel_unlock };
         let result = match tokio::time::timeout(timeout, async {
             self.send(env.with_id(id)).await?;
-            sent = true;
+            pending.sent = true;
             rx.await.map_err(|_| Error::Offline)
         })
         .await
@@ -482,8 +529,7 @@ impl Session {
             Ok(inner) => inner,
             Err(_) => Err(Error::Timeout),
         };
-        self.pending.lock().unwrap_or_else(|e| e.into_inner()).remove(&id);
-        (result, sent)
+        (result, pending.sent)
     }
 
     /// Closes the connection with an application code.
@@ -546,8 +592,16 @@ async fn writer(mut send: SendStream, mut outbox: mpsc::Receiver<Envelope>) {
     let _ = send.finish();
 }
 
+fn direct_ip_addr(addr: &iroh::TransportAddr) -> Option<std::net::SocketAddr> {
+    match addr {
+        iroh::TransportAddr::Ip(addr) => Some(*addr),
+        _ => None,
+    }
+}
+
 async fn reader(session: &Arc<Session>, mut recv: RecvStream, shared: &Weak<Shared>) {
     let background = Arc::new(tokio::sync::Semaphore::new(MAX_BACKGROUND_RPCS));
+    let unlock_cleanup = Arc::new(tokio::sync::Semaphore::new(1));
     loop {
         let frame = match read_frame(&mut recv).await {
             Ok(Some(frame)) => {
@@ -584,7 +638,14 @@ async fn reader(session: &Arc<Session>, mut recv: RecvStream, shared: &Weak<Shar
         if is_background_rpc(&env.t) {
             // Waiting for a slot would hold up heartbeats behind slow
             // requests, so past the limit a request is turned away instead.
-            let Ok(permit) = background.clone().try_acquire_owned() else {
+            // An opt-out must reach the phone even when unrelated background requests are full.
+            let permits =
+                if env.t == types::LINUX_UNLOCK_FORGET && matches!(env.body(), Ok(LinuxUnlockForget::All)) {
+                    &unlock_cleanup
+                } else {
+                    &background
+                };
+            let Ok(permit) = permits.clone().try_acquire_owned() else {
                 tracing::warn!(peer = %session.peer.short(), t = %env.t, "too many requests at once");
                 if env.id.is_some() {
                     let reply = Envelope::error(ErrorCode::Busy, "too many requests at once");
@@ -592,14 +653,21 @@ async fn reader(session: &Arc<Session>, mut recv: RecvStream, shared: &Weak<Shar
                 }
                 continue;
             };
+            let unlock = match crate::linux_unlock::prepare_background(&shared, session, &env) {
+                Ok(unlock) => unlock,
+                Err(reply) => {
+                    let _ = session.send(reply.reply_to(env.id)).await;
+                    continue;
+                }
+            };
             let session = session.clone();
             tokio::spawn(async move {
-                if let Err(e) = handle(&shared, &session, env).await {
+                if let Err(e) = handle(&shared, &session, env, unlock).await {
                     tracing::warn!(peer = %session.peer.short(), error = %e, "failed to handle message");
                 }
                 drop(permit);
             });
-        } else if let Err(e) = handle(&shared, session, env).await {
+        } else if let Err(e) = handle(&shared, session, env, None).await {
             tracing::warn!(peer = %session.peer.short(), error = %e, "failed to handle message");
         }
     }
@@ -639,11 +707,19 @@ fn is_background_rpc(t: &str) -> bool {
             // The phone's owner answers a biometric prompt.
             | types::UNLOCK_ENROLL
             | types::UNLOCK_REQUEST
+            | types::LINUX_UNLOCK_ENROLL
+            | types::LINUX_UNLOCK_SIGN
+            | types::LINUX_UNLOCK_FORGET
     )
 }
 
 /// Handles one incoming message that isn't a reply.
-async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> Result<()> {
+async fn handle(
+    shared: &Arc<Shared>,
+    session: &Arc<Session>,
+    env: Envelope,
+    unlock: Option<crate::linux_unlock::Incoming>,
+) -> Result<()> {
     let peer = session.peer;
     match env.t.as_str() {
         types::PING => {
@@ -732,6 +808,8 @@ async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> 
         t if (t.starts_with("deck.") || t == types::PC_AUDIO_SET)
             && crate::deck::handle(shared, session, &env).await? => {}
         t if t.starts_with("storage.") && crate::storage::handle(shared, session, &env).await? => {}
+        t if t.starts_with("unlock.linux.v1.")
+            && crate::linux_unlock::handle(shared, session, &env, unlock).await? => {}
         t if t.starts_with("unlock.") && crate::unlock::handle(shared, session, &env).await? => {}
         t if (t == types::FILES_RESUME || t == types::FILES_CANCEL)
             && crate::transfer::handle_control(shared, peer, &env).await? => {}
@@ -868,10 +946,16 @@ pub(crate) async fn probe_after_network_change(shared: &Arc<Shared>, session: &A
 
 async fn heartbeat(session: &Arc<Session>, shared: &Weak<Shared>) {
     let started = Instant::now();
-    let mut interval = tokio::time::interval(HEARTBEAT_INTERVAL);
+    let mut interval = tokio::time::interval(EVIDENCE_WINDOW);
     interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+    let rtt_every = (HEARTBEAT_INTERVAL.as_millis() / EVIDENCE_WINDOW.as_millis()).max(1) as u64;
+    let mut ticks: u64 = 0;
+    let mut last_received = received_bytes(session);
     loop {
         interval.tick().await;
+        ticks += 1;
+        // Every look: a session that moved off the LAN while that isn't
+        // allowed closes, whether or not anything is sent.
         if let Some(shared_arc) = shared.upgrade()
             && !shared_arc.is_connection_allowed(&session.conn)
         {
@@ -879,42 +963,83 @@ async fn heartbeat(session: &Arc<Session>, shared: &Weak<Shared>) {
             session.close(CLOSE_NORMAL, b"away mode disabled");
             return;
         }
-        let sent_at = Instant::now();
         let received = received_bytes(session);
-        let ts = sent_at.duration_since(started).as_millis() as u64;
-        let Ok(ping) = Envelope::new(types::PING, &Ping { ts }) else { continue };
-        match session.request(ping, HEARTBEAT_TIMEOUT).await {
-            Ok(reply) if reply.t == types::PONG => {
-                if let Some(shared_arc) = shared.upgrade() {
-                    let rtt = sent_at.elapsed().as_millis().min(u32::MAX as u128) as u32;
-                    let previous = session.rtt_ms.swap(rtt, Ordering::Relaxed);
-                    if previous.abs_diff(rtt) >= 5 {
-                        shared_arc.publish_online(session);
-                    }
-                }
+        // The first look checks the new session end to end; after that, the
+        // peer's packets arriving are enough, and only silence is probed.
+        let alive_on_its_own = ticks > 1 && received > last_received;
+        last_received = received;
+        if alive_on_its_own {
+            if ticks.is_multiple_of(rtt_every)
+                && let Some(rtt) = transport_rtt_ms(session)
+            {
+                set_rtt(session, shared, rtt);
             }
-            Ok(_) => {}
-            Err(_) if session.rx_since(sent_at) => {}
-            // No answer, but the peer's packets are arriving: a slow link is full
-            // of what's being sent, and the answer is queued behind it.
-            Err(_) if received_bytes(session) > received => {}
-            Err(e) => {
-                // Retry once; if still unreachable and no frames arrived, close.
-                let retry_ts = started.elapsed().as_millis() as u64;
-                let alive = if let Ok(retry_ping) = Envelope::new(types::PING, &Ping { ts: retry_ts }) {
-                    matches!(session.request(retry_ping, HEARTBEAT_RETRY_TIMEOUT).await, Ok(r) if r.t == types::PONG)
-                        || session.rx_since(sent_at)
-                } else {
-                    session.rx_since(sent_at)
-                };
-                if !alive && received_bytes(session) <= received {
-                    tracing::info!(peer = %session.peer.short(), error = %e, "heartbeat timed out; closing dead session");
-                    session.close(CLOSE_NORMAL, b"heartbeat timeout");
-                    return;
-                }
+            continue;
+        }
+        if !probe(session, shared, started).await {
+            return;
+        }
+        last_received = received_bytes(session);
+    }
+}
+
+/// Pings the peer, and once more if no answer came. Returns false after
+/// closing a session that's gone: no answer and nothing at all arrived.
+async fn probe(session: &Arc<Session>, shared: &Weak<Shared>, started: Instant) -> bool {
+    let sent_at = Instant::now();
+    let received = received_bytes(session);
+    let ts = sent_at.duration_since(started).as_millis() as u64;
+    let Ok(ping) = Envelope::new(types::PING, &Ping { ts }) else { return true };
+    session.heartbeat_pings.fetch_add(1, Ordering::Relaxed);
+    match session.request(ping, HEARTBEAT_TIMEOUT).await {
+        Ok(reply) if reply.t == types::PONG => {
+            let rtt = sent_at.elapsed().as_millis().min(u32::MAX as u128) as u32;
+            set_rtt(session, shared, rtt);
+            true
+        }
+        Ok(_) => true,
+        Err(_) if session.rx_since(sent_at) => true,
+        // No answer, but the peer's packets are arriving: a slow link is full
+        // of what's being sent, and the answer is queued behind it.
+        Err(_) if received_bytes(session) > received => true,
+        Err(e) => {
+            // Retry once; if still unreachable and no frames arrived, close.
+            let retry_ts = started.elapsed().as_millis() as u64;
+            let alive = if let Ok(retry_ping) = Envelope::new(types::PING, &Ping { ts: retry_ts }) {
+                matches!(session.request(retry_ping, HEARTBEAT_RETRY_TIMEOUT).await, Ok(r) if r.t == types::PONG)
+                    || session.rx_since(sent_at)
+            } else {
+                session.rx_since(sent_at)
+            };
+            if !alive && received_bytes(session) <= received {
+                tracing::info!(peer = %session.peer.short(), error = %e, "heartbeat timed out; closing dead session");
+                session.close(CLOSE_NORMAL, b"heartbeat timeout");
+                return false;
             }
+            true
         }
     }
+}
+
+/// Keeps the round-trip time, and tells the app when it moved by 5 ms or more.
+fn set_rtt(session: &Arc<Session>, shared: &Weak<Shared>, rtt: u32) {
+    let previous = session.rtt_ms.swap(rtt, Ordering::Relaxed);
+    if previous.abs_diff(rtt) >= 5
+        && let Some(shared_arc) = shared.upgrade()
+    {
+        shared_arc.publish_online(session);
+    }
+}
+
+/// QUIC's smoothed round-trip time on the path in use, end to end over the
+/// relay too, refreshed by every acknowledgement (keepalives included).
+fn transport_rtt_ms(session: &Session) -> Option<u32> {
+    session
+        .conn
+        .paths()
+        .iter()
+        .find(|p| p.is_selected())
+        .map(|p| p.rtt().as_millis().min(u128::from(u32::MAX)) as u32)
 }
 
 /// All that has arrived on this connection, acknowledgements included:
@@ -930,6 +1055,12 @@ mod tests {
         pcm_frame_ok,
     };
     use std::net::{IpAddr, Ipv6Addr, SocketAddr};
+
+    #[test]
+    fn a_relay_address_is_not_a_direct_path_for_phone_unlock() {
+        let relay = iroh::TransportAddr::Relay("https://relay.example/".parse().unwrap());
+        assert_eq!(super::direct_ip_addr(&relay), None);
+    }
 
     #[test]
     fn private_lan_ip_leaves_out_tailnet_cgnat_and_wan() {

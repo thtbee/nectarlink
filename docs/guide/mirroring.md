@@ -52,6 +52,7 @@ The `mirror` window header includes quick controls and keyboard shortcuts:
 | **Turn phone screen off** | Toolbar icon (`Elevated`) | Blanks your phone's physical OLED/LCD display while the `mirror` window continues running on your PC, and turns the physical display back on automatically when mirroring stops. |
 | **Lock phone** | Toolbar icon | Locks the phone, as its power button would. Shows when you can control the phone. |
 | **Play the sound on the phone / here** | Toolbar icon | Stops sending the phone's sound to the PC so the phone plays it again, or brings it back to the PC. While it's on the phone, new mirroring leaves it there. |
+| **Hide the toolbar** | `Ctrl+Shift+T` | Hides the toolbar in every mirroring and app window, so it no longer covers the top corner of the app. `Ctrl+Shift+T` in a window, or **Settings › General › Toolbar in mirroring and app windows**, shows it again. |
 
 ### Opening Phone Apps in Their Own PC Windows (`app window`)
 
@@ -91,6 +92,9 @@ You can also view (and optionally control) your PC's desktop from your phone:
 ## What the Options Do
 
 - **Mirror quality**: On a direct connection, **Smoother** lowers both screen mirroring and app windows to at most 1280 pixels and 4 Mbps. Reopen an app window after changing it. This reduces encoding, network and decoding work; it can help responsiveness when several apps are open.
+- **Frame rate** (`Settings › Camera & Audio`, default: **60**): How many pictures a second the phone sends for screen mirroring and app windows. **90** and **120** are smoother where the phone's screen refreshes that fast, and use more battery and Wi-Fi; **30** is easier on both. Over mobile data through the relay it stays at most 60.
+- **Pin an app to the taskbar** (Windows): right-click an app window's taskbar button and pick **Pin to taskbar**. The pinned icon opens that app in a window, starting NectarLink first if it isn't running.
+- **Dark picture** (the moon button on a mirroring or app window): Swaps light and dark in the picture, for apps with no dark mode of their own, such as a white map. Colors keep their hue. It's remembered for each app and for the phone's screen.
 - **Screen mirroring** (`Settings › Devices` on PC, default: **On**): Allows your PC and phone to start phone-to-PC screen mirroring and `app window` sessions.
 - **Share PC screen to phone** (`Settings › Devices` on PC, default: **Off**): Allows the selected phone to view this PC's screen without showing the one-time consent dialog each time.
 - **Remote mouse, keyboard & Deck** (`Settings › Devices` on PC, default: **Off**): Allows the selected phone to send touch/mouse clicks and keystrokes to this PC (including during reverse mirroring).

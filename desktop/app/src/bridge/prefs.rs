@@ -71,6 +71,8 @@ pub mod qobject {
         #[qproperty(bool, enter_sends)]
         /// In mirroring and app windows, right-click is a long press instead of Back.
         #[qproperty(bool, right_click_long_press)]
+        /// No floating toolbar in mirroring and app windows.
+        #[qproperty(bool, hide_mirror_toolbar)]
         /// No pop-ups for phone notifications while this PC is locked.
         #[qproperty(bool, quiet_when_locked)]
         #[qproperty(bool, hold_when_locked)]
@@ -131,11 +133,13 @@ pub mod qobject {
         #[qproperty(bool, open_shared_files)]
         #[qproperty(bool, sync_wifi_only)]
         #[qproperty(bool, sync_passwords)]
+        #[qproperty(bool, keep_popups_paused, cxx_name = "keepPopupsPaused")]
         /// Use phones' USB debugging for USB features (#439); applies on restart.
         #[qproperty(bool, usb_debugging)]
         /// How many days notification history is kept: 1, 3, 7 or 30 (#442).
         #[qproperty(i32, notification_history_days)]
         #[qproperty(QString, mirror_quality)]
+        #[qproperty(i32, mirror_fps, cxx_name = "mirrorFps")]
         /// Send the clipboard to the phone when control moves to it.
         #[qproperty(bool, flow_follow_clipboard)]
         /// Floating Nectar Island pill at the top center of the screen.
@@ -183,6 +187,14 @@ pub mod qobject {
         #[qproperty(bool, star_prompt_updated)]
         /// Minutes the window has been in use, up to when a new install is asked.
         #[qproperty(i32, star_prompt_minutes)]
+        /// The ask to join Discord ended: joined, or dismissed three times.
+        #[qproperty(bool, community_prompt_done)]
+        /// An update armed the ask to join Discord.
+        #[qproperty(bool, community_prompt_due)]
+        /// How many times the ask to join Discord was shown.
+        #[qproperty(i32, community_prompt_count)]
+        /// When it was last armed (Unix seconds); kept as it is.
+        #[qproperty(i64, community_prompt_at)]
         /// JSON array of configured `FolderSyncRule` items.
         #[qproperty(QString, folder_sync_rules_json)]
         /// JSON array of configured `AutomationRule` items.
@@ -381,6 +393,7 @@ pub struct PreferencesRust {
     sync_dnd: bool,
     enter_sends: bool,
     right_click_long_press: bool,
+    hide_mirror_toolbar: bool,
     quiet_when_locked: bool,
     hold_when_locked: bool,
     send_to_menu: bool,
@@ -412,9 +425,11 @@ pub struct PreferencesRust {
     open_shared_files: bool,
     sync_wifi_only: bool,
     sync_passwords: bool,
+    keep_popups_paused: bool,
     usb_debugging: bool,
     notification_history_days: i32,
     mirror_quality: QString,
+    mirror_fps: i32,
     flow_follow_clipboard: bool,
     nectar_island: bool,
     nectar_island_calls: bool,
@@ -439,6 +454,10 @@ pub struct PreferencesRust {
     star_prompt_done: bool,
     star_prompt_updated: bool,
     star_prompt_minutes: i32,
+    community_prompt_done: bool,
+    community_prompt_due: bool,
+    community_prompt_count: i32,
+    community_prompt_at: i64,
     folder_sync_rules_json: QString,
     automation_rules_json: QString,
     window_screen: QString,
@@ -487,6 +506,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
         crate::notifications::set_sync_dnd(settings.sync_dnd);
         self.as_mut().set_enter_sends(settings.enter_sends);
         self.as_mut().set_right_click_long_press(settings.right_click_long_press);
+        self.as_mut().set_hide_mirror_toolbar(settings.hide_mirror_toolbar);
         self.as_mut().set_quiet_when_locked(settings.quiet_when_locked);
         crate::notifications::set_quiet_when_locked(settings.quiet_when_locked);
         self.as_mut().set_hold_when_locked(settings.hold_when_locked);
@@ -528,9 +548,11 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_open_shared_files(settings.open_shared_files);
         self.as_mut().set_sync_wifi_only(settings.sync_wifi_only);
         self.as_mut().set_sync_passwords(settings.sync_passwords);
+        self.as_mut().set_keep_popups_paused(settings.keep_popups_paused);
         self.as_mut().set_usb_debugging(settings.usb_debugging);
         self.as_mut().set_notification_history_days(settings.notification_history_days as i32);
         self.as_mut().set_mirror_quality(QString::from(crate::settings::mirror_quality().name()));
+        self.as_mut().set_mirror_fps(crate::settings::sane_mirror_fps(settings.mirror_fps) as i32);
         self.as_mut().set_flow_follow_clipboard(settings.flow_follow_clipboard);
         self.as_mut().set_nectar_island(settings.nectar_island);
         self.as_mut().set_nectar_island_calls(settings.nectar_island_calls);
@@ -554,6 +576,11 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_star_prompt_done(settings.star_prompt_done);
         self.as_mut().set_star_prompt_updated(settings.star_prompt_updated);
         self.as_mut().set_star_prompt_minutes(settings.star_prompt_minutes.min(i32::MAX as u32) as i32);
+        self.as_mut().set_community_prompt_done(settings.community_prompt_done);
+        self.as_mut().set_community_prompt_due(settings.community_prompt_due);
+        self.as_mut().set_community_prompt_count(settings.community_prompt_count.min(100) as i32);
+        self.as_mut()
+            .set_community_prompt_at(i64::try_from(settings.community_prompt_at).unwrap_or(i64::MAX));
         let folder_rules_json =
             serde_json::to_string(&settings.folder_sync_rules).unwrap_or_else(|_| "[]".into());
         self.as_mut().set_folder_sync_rules_json(QString::from(&folder_rules_json));
@@ -647,6 +674,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
             .release();
         self.as_mut().on_enter_sends_changed(|p| p.save()).release();
         self.as_mut().on_right_click_long_press_changed(|p| p.save()).release();
+        self.as_mut().on_hide_mirror_toolbar_changed(|p| p.save()).release();
         self.as_mut()
             .on_sync_dnd_changed(|p| {
                 crate::notifications::set_sync_dnd(p.sync_dnd);
@@ -838,6 +866,12 @@ impl cxx_qt::Initialize for qobject::Preferences {
             })
             .release();
         self.as_mut()
+            .on_mirror_fps_changed(|p| {
+                crate::settings::set_mirror_fps(u32::try_from(p.mirror_fps).unwrap_or(60));
+                p.save();
+            })
+            .release();
+        self.as_mut()
             .on_mirror_quality_changed(|p| {
                 crate::settings::set_mirror_quality(&String::from(p.mirror_quality()));
                 p.save();
@@ -846,6 +880,12 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut()
             .on_sync_passwords_changed(|p| {
                 crate::settings::set_sync_passwords(p.sync_passwords);
+                p.save();
+            })
+            .release();
+        self.as_mut()
+            .on_keep_popups_paused_changed(|p| {
+                crate::settings::set_keep_popups_paused(p.keep_popups_paused);
                 p.save();
             })
             .release();
@@ -944,6 +984,9 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().on_hive_invite_dismissed_changed(|p| p.save()).release();
         self.as_mut().on_star_prompt_done_changed(|p| p.save()).release();
         self.as_mut().on_star_prompt_minutes_changed(|p| p.save()).release();
+        self.as_mut().on_community_prompt_done_changed(|p| p.save()).release();
+        self.as_mut().on_community_prompt_due_changed(|p| p.save()).release();
+        self.as_mut().on_community_prompt_count_changed(|p| p.save()).release();
 
         super::subscribe(self.qt_thread(), crate::state::Changes::PREFS, Self::refresh_runtime_flags);
         // Asking Windows takes a moment: not on this thread.
@@ -1288,6 +1331,7 @@ impl qobject::Preferences {
             sync_dnd: p.sync_dnd,
             enter_sends: p.enter_sends,
             right_click_long_press: p.right_click_long_press,
+            hide_mirror_toolbar: p.hide_mirror_toolbar,
             quiet_when_locked: p.quiet_when_locked,
             hold_when_locked: p.hold_when_locked,
             send_to_menu: p.send_to_menu,
@@ -1329,9 +1373,12 @@ impl qobject::Preferences {
             open_shared_files: p.open_shared_files,
             sync_wifi_only: p.sync_wifi_only,
             sync_passwords: p.sync_passwords,
+            keep_popups_paused: p.keep_popups_paused,
+            popups_paused: p.keep_popups_paused && crate::notifications::paused(),
             usb_debugging: p.usb_debugging,
             notification_history_days: u32::try_from(p.notification_history_days).unwrap_or(1),
             mirror_quality: String::from(&p.mirror_quality),
+            mirror_fps: crate::settings::sane_mirror_fps(u32::try_from(p.mirror_fps).unwrap_or(60)),
             flow_follow_clipboard: p.flow_follow_clipboard,
             folder_sync_rules: crate::settings::folder_sync_rules(),
             nectar_island: p.nectar_island,
@@ -1361,6 +1408,10 @@ impl qobject::Preferences {
             star_prompt_done: p.star_prompt_done,
             star_prompt_updated: p.star_prompt_updated,
             star_prompt_minutes: p.star_prompt_minutes.max(0) as u32,
+            community_prompt_done: p.community_prompt_done,
+            community_prompt_due: p.community_prompt_due,
+            community_prompt_count: p.community_prompt_count.max(0) as u32,
+            community_prompt_at: u64::try_from(p.community_prompt_at).unwrap_or(0),
             obs_port: crate::settings::obs_settings().0,
             obs_password: crate::settings::obs_settings().1,
             window_screen: win_screen,

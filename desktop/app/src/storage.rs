@@ -89,6 +89,28 @@ mod imp {
     #[cfg(windows)]
     const PROVIDER_PREFIX: &str = "Nectarlink!";
 
+    /// Whether this PC has the Cloud Files API. Some trimmed Windows builds
+    /// remove `cldapi.dll`, so build.rs delay-loads it: without it the phone
+    /// folders stay off and the rest of the app still starts.
+    #[cfg(windows)]
+    fn cloud_files_available() -> bool {
+        use windows::{
+            Win32::System::LibraryLoader::{LOAD_LIBRARY_SEARCH_SYSTEM32, LoadLibraryExW},
+            core::w,
+        };
+        static AVAILABLE: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+        *AVAILABLE.get_or_init(|| {
+            // SAFETY: loads a system DLL by name from System32 only; it stays
+            // loaded for the delay-load stubs to use.
+            let found =
+                unsafe { LoadLibraryExW(w!("cldapi.dll"), None, LOAD_LIBRARY_SEARCH_SYSTEM32) }.is_ok();
+            if !found {
+                tracing::warn!("cldapi.dll is missing from this Windows install; phone folders are off");
+            }
+            found
+        })
+    }
+
     /// Difference between Windows FILETIME epoch (1601-01-01) and Unix epoch
     /// (1970-01-01) in 100-nanosecond intervals.
     #[cfg_attr(not(windows), allow(dead_code))]
@@ -155,6 +177,9 @@ mod imp {
     /// Phones whose folder couldn't be registered, and when to try again.
     #[cfg(windows)]
     static FAILED: Mutex<Option<HashMap<DeviceId, RetryLater>>> = Mutex::new(None);
+    /// Phones turned off whose folder was already cleared (by folder name).
+    #[cfg(windows)]
+    static CLEARED: Mutex<Option<HashMap<DeviceId, String>>> = Mutex::new(None);
 
     #[cfg(windows)]
     fn intern_device_id(device: DeviceId) -> *const c_void {
@@ -178,6 +203,9 @@ mod imp {
     /// unregister File Explorer sync roots.
     #[cfg(windows)]
     pub fn start() {
+        if !cloud_files_available() {
+            return;
+        }
         {
             let mut map = active_roots();
             if map.is_none() {
@@ -202,6 +230,9 @@ mod imp {
     /// Triggers a reconciliation of active sync roots (e.g. after a device toggle changes).
     #[cfg(windows)]
     pub fn sync() {
+        if !cloud_files_available() {
+            return;
+        }
         let host = core_host::host();
         let Some(node) = core_host::node() else { return };
         let ready = host.hub.read(|s| matches!(s.status, Some(CoreStatus::Ready { .. })));
@@ -278,6 +309,9 @@ mod imp {
     /// Handles core events (`StorageChanged`, `DeviceRemoved`, `LinkChanged`).
     #[cfg(windows)]
     pub fn on_event(event: &NodeEvent) {
+        if !cloud_files_available() {
+            return;
+        }
         match event {
             NodeEvent::DeviceRemoved(device) => {
                 let device = *device;
@@ -535,9 +569,16 @@ mod imp {
 
     #[cfg(windows)]
     fn reconcile(desired: &[(DeviceId, String, String, bool)], disabled: &[(DeviceId, String)]) {
-        // Unregister any disabled devices that belong to this instance.
+        // Unregister any disabled devices that belong to this instance. Once
+        // cleared, a phone that stays off isn't unregistered and walked again
+        // on every pass: each one did a Windows call and a folder walk.
         for (id, folder) in disabled {
-            remove_device_root(*id, Some(folder));
+            let active = get_active_root(id).is_some();
+            let cleared = lock(&CLEARED).get_or_insert_with(HashMap::new).get(id) == Some(folder);
+            if active || !cleared {
+                remove_device_root(*id, Some(folder));
+                lock(&CLEARED).get_or_insert_with(HashMap::new).insert(*id, folder.clone());
+            }
             // Turned off: turning it on again tries right away.
             lock(&FAILED).get_or_insert_with(HashMap::new).remove(id);
         }
@@ -582,6 +623,8 @@ mod imp {
             match register_and_connect(*id, name, folder, *online) {
                 Ok(()) => {
                     lock(&FAILED).get_or_insert_with(HashMap::new).remove(id);
+                    // Registered again: turning it off later clears it again.
+                    lock(&CLEARED).get_or_insert_with(HashMap::new).remove(id);
                 }
                 Err(e) => {
                     let mut failed = lock(&FAILED);

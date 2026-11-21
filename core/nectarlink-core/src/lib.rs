@@ -25,6 +25,7 @@ mod events;
 pub mod features;
 pub mod handoff;
 mod identity;
+pub mod linux_unlock;
 pub mod localsend;
 mod media;
 pub mod mic;
@@ -50,6 +51,7 @@ mod transfer;
 pub mod unlock;
 pub mod usb;
 pub mod webcam;
+pub mod whats_new;
 
 pub use actions::{PC_WAKE, PowerAction};
 /// Offered by PCs that can hibernate right now.
@@ -101,14 +103,15 @@ pub use nectarlink_protocol::{
         AudioOutputDevice, Battery, CLIP_MAX_BYTES, CallControls, CallLogEntry, CallSim, CallSims, CallState,
         CameraCaptureCancel, CameraCaptureMode, CameraCaptureOk, CameraCaptureRequest,
         CameraCaptureResultMeta, Contact, ContactNumber, DeviceInfo, DeviceKind, LivePoint, LiveSegment,
-        MediaPlayer, MirrorAudioConfig, MirrorConfig, MirrorInput, MirrorPower, MirrorResize, MirrorRotate,
-        MirrorStart, Notification, NotificationAction, NotificationChatMessage, NotificationConversation,
-        NotificationLive, PcAudioSet, PcWakeInfo, PhoneApp, PhoneToggleSet, PhoneToggleValue, PhoneToggles,
-        PhotoAlbum, PhotoItem, PhotoNew as Photo, PhotoThumb, PointerAt, PointerEdge, PointerMove,
-        PointerScreen, PowerLevel, ScreenCorners, ScreenRect, ScreenShape, SmsAttachment, SmsMessage,
-        SmsPart, SmsThread, StorageChanged, StorageDelete, StorageEntries, StorageEntry, StorageList,
-        StorageMkdir, StorageRead, StorageReadMeta, StorageRename, StorageWriteAccept, StorageWriteDone,
-        StorageWriteOffer, TaskNotify, TouchAction, WatchFile, WebcamConfig, WebcamStart,
+        MediaPlayer, MirrorAudioConfig, MirrorConfig, MirrorDisplay, MirrorInput, MirrorPower, MirrorResize,
+        MirrorRotate, MirrorStart, Notification, NotificationAction, NotificationChatMessage,
+        NotificationConversation, NotificationLive, PcAudioSet, PcWakeInfo, PhoneApp, PhoneToggleSet,
+        PhoneToggleValue, PhoneToggles, PhotoAlbum, PhotoItem, PhotoNew as Photo, PhotoThumb, PointerAt,
+        PointerEdge, PointerMove, PointerScreen, PowerLevel, ScreenCorners, ScreenRect, ScreenShape,
+        SmsAttachment, SmsMessage, SmsPart, SmsThread, StorageChanged, StorageDelete, StorageEntries,
+        StorageEntry, StorageList, StorageMkdir, StorageRead, StorageReadMeta, StorageRename,
+        StorageWriteAccept, StorageWriteDone, StorageWriteOffer, TaskNotify, TouchAction, WatchFile,
+        WebcamConfig, WebcamStart,
         calls::{
             AUDIO as CALLS_AUDIO, AUDIO_RATE as CALLS_AUDIO_RATE, CONTROL as CALLS_CONTROL,
             DIAL as CALLS_DIAL, IN_CALL as CALLS_IN_CALL, LOG as CALLS_LOG, SHOW as CALLS_SHOW,
@@ -125,9 +128,10 @@ pub use nectarlink_protocol::{
         mic::{LISTEN as MIC_LISTEN, STREAM as MIC_STREAM},
         mirror::{
             AUDIO as MIRROR_AUDIO, AUDIO_PLAYBACK as MIRROR_AUDIO_PLAYBACK, AV1 as MIRROR_AV1,
-            CAPTURE as MIRROR_CAPTURE, H264 as MIRROR_H264, H265 as MIRROR_H265, HEVC as MIRROR_HEVC,
-            INPUT as MIRROR_INPUT, LISTEN as MIRROR_LISTEN, LISTEN_ASK as MIRROR_LISTEN_ASK,
-            MAX_TEXT_BYTES as MIRROR_MAX_TEXT_BYTES, NOTICE_INPUT_BLOCKED as MIRROR_NOTICE_INPUT_BLOCKED,
+            CAPTURE as MIRROR_CAPTURE, DISPLAYS as MIRROR_DISPLAYS, H264 as MIRROR_H264, H265 as MIRROR_H265,
+            HEVC as MIRROR_HEVC, INPUT as MIRROR_INPUT, LISTEN as MIRROR_LISTEN,
+            LISTEN_ASK as MIRROR_LISTEN_ASK, MAX_TEXT_BYTES as MIRROR_MAX_TEXT_BYTES,
+            NOTICE_INPUT_BLOCKED as MIRROR_NOTICE_INPUT_BLOCKED,
             NOTICE_PC_CAPTURE_FAILED as MIRROR_NOTICE_PC_CAPTURE_FAILED, PCM as MIRROR_PCM,
             POINTER as MIRROR_POINTER, SCREEN as MIRROR_SCREEN, SOUND as MIRROR_SOUND, VIEW as MIRROR_VIEW,
             VIRTUAL_DISPLAY as MIRROR_VIRTUAL_DISPLAY,

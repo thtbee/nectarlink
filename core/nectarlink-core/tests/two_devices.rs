@@ -22,6 +22,27 @@ const WAIT: Duration = Duration::from_secs(20);
 
 type MmsRecord = (Vec<String>, String, Vec<nectarlink_core::SmsAttachment>);
 type RichClipboardRecord = (String, Option<String>, Option<String>);
+type LinuxUnlockPause = (tokio::sync::oneshot::Sender<()>, std::sync::mpsc::Receiver<()>);
+
+fn wait_for_linux_biometric(
+    pause: &Mutex<Option<LinuxUnlockPause>>,
+    attempt: &nectarlink_core::linux_unlock::Attempt,
+) -> Result<(), nectarlink_core::unlock::KeyRefusal> {
+    let pause = pause.lock().unwrap().take();
+    let Some((started, resume)) = pause else { return Ok(()) };
+    started.send(()).unwrap();
+    let deadline = std::time::Instant::now() + WAIT;
+    loop {
+        if attempt.is_cancelled() {
+            return Err(nectarlink_core::unlock::KeyRefusal::Declined);
+        }
+        match resume.recv_timeout(Duration::from_millis(10)) {
+            Ok(()) => return Ok(()),
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout) if std::time::Instant::now() < deadline => {}
+            err => panic!("test did not resume the biometric: {err:?}"),
+        }
+    }
+}
 
 #[derive(Debug, Default)]
 struct RecordingPlatform {
@@ -69,6 +90,11 @@ struct RecordingPlatform {
     unlock_asks: Mutex<Vec<nectarlink_core::unlock::Ask>>,
     unlock_answer: Mutex<FakeKeystore>,
     unlock_forgotten: Mutex<Vec<(nectarlink_core::DeviceId, Option<String>)>>,
+    linux_unlock_asks: Mutex<Vec<nectarlink_core::linux_unlock::Ask>>,
+    linux_unlock_keys: Mutex<std::collections::HashMap<(nectarlink_core::DeviceId, u32), Vec<u8>>>,
+    linux_enrollment_pause: Mutex<Option<LinuxUnlockPause>>,
+    linux_signing_pause: Mutex<Option<LinuxUnlockPause>>,
+    linux_forget_pause: Mutex<Option<LinuxUnlockPause>>,
     phone_toggles: Mutex<Vec<(String, nectarlink_core::PhoneToggleValue)>>,
     deck_presses: Mutex<Vec<String>>,
     pc_audio_changes: Mutex<Vec<(Option<u8>, Option<bool>)>>,
@@ -163,8 +189,17 @@ impl Platform for RecordingPlatform {
         let app = options.app.as_deref().map(|a| format!(" {a} as {}", options.session)).unwrap_or_default();
         let watch = options.watch.as_deref().map(|p| format!(" watching {p}")).unwrap_or_default();
         let only = if options.sound_only { ", sound only" } else { "" };
-        self.mirror_asks.lock().unwrap().push(format!("start {}{sound}{only}{app}{watch}", options.max_size));
+        let on = options.display.map(|d| format!(" on screen {d}")).unwrap_or_default();
+        self.mirror_asks
+            .lock()
+            .unwrap()
+            .push(format!("start {}{sound}{only}{app}{watch}{on}", options.max_size));
         Ok(())
+    }
+    fn mirror_displays(&self) -> Vec<nectarlink_core::MirrorDisplay> {
+        [(0, 1920, 1080, true), (1, 2560, 1440, false)]
+            .map(|(id, width, height, primary)| nectarlink_core::MirrorDisplay { id, width, height, primary })
+            .to_vec()
     }
     fn watch_offered(
         &self,
@@ -636,6 +671,57 @@ impl Platform for RecordingPlatform {
             FakeKeystore::KeyGone => Err(nectarlink_core::unlock::KeyRefusal::KeyGone),
         }
     }
+    fn linux_unlock_enroll(
+        &self,
+        pc: &nectarlink_core::DeviceId,
+        ask: &nectarlink_core::linux_unlock::Ask,
+        attempt: &nectarlink_core::linux_unlock::Attempt,
+    ) -> Result<Vec<u8>, nectarlink_core::unlock::KeyRefusal> {
+        use ring::signature::{ECDSA_P256_SHA256_ASN1_SIGNING, EcdsaKeyPair, KeyPair};
+
+        self.linux_unlock_asks.lock().unwrap().push(ask.clone());
+        let rng = ring::rand::SystemRandom::new();
+        let pkcs8 = EcdsaKeyPair::generate_pkcs8(&ECDSA_P256_SHA256_ASN1_SIGNING, &rng).unwrap();
+        let key = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_ASN1_SIGNING, pkcs8.as_ref(), &rng).unwrap();
+        wait_for_linux_biometric(&self.linux_enrollment_pause, attempt)?;
+        self.linux_unlock_keys.lock().unwrap().insert((*pc, ask.uid), pkcs8.as_ref().to_vec());
+        Ok(key.public_key().as_ref().to_vec())
+    }
+
+    fn linux_unlock_sign(
+        &self,
+        pc: &nectarlink_core::DeviceId,
+        uid: u32,
+        transcript: &[u8],
+        attempt: &nectarlink_core::linux_unlock::Attempt,
+    ) -> Result<Vec<u8>, nectarlink_core::unlock::KeyRefusal> {
+        use nectarlink_core::unlock::KeyRefusal;
+        use ring::signature::{ECDSA_P256_SHA256_ASN1_SIGNING, EcdsaKeyPair};
+
+        if matches!(*self.unlock_answer.lock().unwrap(), FakeKeystore::Declines) {
+            return Err(KeyRefusal::Declined);
+        }
+        let keys = self.linux_unlock_keys.lock().unwrap();
+        let pkcs8 = keys.get(&(*pc, uid)).ok_or(KeyRefusal::KeyGone)?;
+        let rng = ring::rand::SystemRandom::new();
+        let key = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_ASN1_SIGNING, pkcs8, &rng).unwrap();
+        let signature = key.sign(&rng, transcript).unwrap().as_ref().to_vec();
+        drop(keys);
+        wait_for_linux_biometric(&self.linux_signing_pause, attempt)?;
+        Ok(signature)
+    }
+
+    fn linux_unlock_forget(&self, pc: &nectarlink_core::DeviceId, uid: Option<u32>) {
+        let pause = self.linux_forget_pause.lock().unwrap().take();
+        if let Some((started, resume)) = pause {
+            started.send(()).unwrap();
+            resume.recv_timeout(WAIT).unwrap();
+        }
+        self.linux_unlock_keys.lock().unwrap().retain(|(enrolled_pc, enrolled_uid), _| {
+            enrolled_pc != pc || uid.is_some_and(|u| u != *enrolled_uid)
+        });
+    }
+
     fn unlock_forget(&self, pc: &nectarlink_core::DeviceId, user: Option<&str>) {
         self.unlock_forgotten.lock().unwrap().push((*pc, user.map(str::to_owned)));
     }
@@ -884,6 +970,35 @@ async fn pair_qr(pc: &mut TestDevice, phone: &mut TestDevice) {
     .await;
     wait_online(phone, pc_id).await;
     wait_online(pc, phone_id).await;
+}
+
+/// A quiet healthy link pings once, to check the new session end to end,
+/// and then lives on QUIC's own keepalives: no ping of its own every 15 s.
+/// It stays online, and its round-trip time is known.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_quiet_session_sends_no_pings_after_the_first() {
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+
+    tokio::time::sleep(Duration::from_secs(21)).await;
+
+    // Still the same live session (a count needs one), with at most one
+    // more ping: a window can look empty when a keepalive arrives just
+    // after the look (about RTT / 5 s of them).
+    for (who, pings) in
+        [("PC", pc.node.heartbeat_pings(&phone_id)), ("phone", phone.node.heartbeat_pings(&pc_id))]
+    {
+        assert!((1..=2).contains(&pings), "{who} sent {pings} pings in 21 s");
+    }
+    // And neither side saw the other go offline meanwhile.
+    for (dev, peer) in [(&mut pc, phone_id), (&mut phone, pc_id)] {
+        while let Ok(event) = dev.events.try_recv() {
+            let went = matches!(event, NodeEvent::LinkChanged { device, link: LinkState::Offline { .. } } if device == peer);
+            assert!(!went, "{} saw its peer go offline", dev.name);
+        }
+    }
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -1527,6 +1642,7 @@ async fn a_video_stream_outlasts_its_reports() {
         screen_off: false,
         watch: None,
         sound_only: false,
+        display: None,
     };
     with_timeout("start", pc.node.mirror_start(phone_id, options)).await.unwrap();
     let stream = Arc::new(with_timeout("open", phone.node.mirror_open(pc_id)).await.unwrap());
@@ -2436,6 +2552,7 @@ async fn the_phone_sound_plays_on_the_pc_without_its_screen() {
         screen_off: false,
         watch: None,
         sound_only: true,
+        display: None,
     };
 
     // An older phone: no mirror.sound, so the request is refused, not
@@ -2550,6 +2667,7 @@ async fn the_phone_screen_streams_to_the_pc() {
         screen_off: false,
         watch: None,
         sound_only: false,
+        display: None,
     };
     with_timeout("start", pc.node.mirror_start(phone_id, options)).await.unwrap();
     assert_eq!(*phone.platform.mirror_asks.lock().unwrap(), ["start 1920 with sound"]);
@@ -2760,6 +2878,7 @@ async fn phone_apps_open_in_windows_of_their_own() {
         screen_off: false,
         watch: None,
         sound_only: false,
+        display: None,
     };
 
     // Not Elevated yet: no apps, no app windows.
@@ -3747,6 +3866,258 @@ async fn gamepad_goes_to_pcs_that_offer_it_reliably_or_by_datagram() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn linux_unlock_round_trip_binds_the_paired_devices_and_account() {
+    use nectarlink_core::DeviceId;
+    use nectarlink_protocol::{
+        LinuxUnlockChallenge,
+        messages::linux_unlock::{CAP_KEY, CAP_PC},
+    };
+    use ring::signature::{ECDSA_P256_SHA256_ASN1, UnparsedPublicKey};
+
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[CAP_PC]).await;
+    let mut phone = device_with("Pixel", DeviceKind::Phone, &["unlock.key"]).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+    let challenge = LinuxUnlockChallenge { pc: pc_id, phone: phone_id, uid: 1000, nonce: [0x45; 32] };
+
+    assert!(matches!(pc.node.linux_unlock_sign(challenge).await, Err(Error::Unsupported)));
+    phone.node.update_power(PowerLevel::Basic, vec![CAP_KEY.into()]).await;
+    with_timeout("Linux phone capability", async {
+        while !pc.node.peer_offers(phone_id, CAP_KEY) {
+            tokio::time::sleep(Duration::from_millis(25)).await;
+        }
+    })
+    .await;
+
+    let enroll = || pc.node.linux_unlock_enroll(phone_id, challenge.uid, "bee");
+    assert!(matches!(enroll().await, Err(Error::Denied)));
+    assert!(matches!(pc.node.linux_unlock_sign(challenge).await, Err(Error::Denied)));
+    pc.node.set_device_toggle(phone_id, "unlock", true).unwrap();
+    assert!(matches!(enroll().await, Err(Error::Denied)));
+    assert!(phone.platform.linux_unlock_asks.lock().unwrap().is_empty());
+    phone.node.set_device_toggle(pc_id, "unlock", true).unwrap();
+    assert!(pc.node.linux_unlock_enroll(phone_id, 0, "root").await.is_err());
+    assert!(matches!(
+        pc.node.linux_unlock_sign(LinuxUnlockChallenge { uid: 0, ..challenge }).await,
+        Err(Error::Denied)
+    ));
+    assert!(matches!(pc.node.linux_unlock_sign(challenge).await, Err(Error::NotFound)));
+    assert!(matches!(
+        pc.node.linux_unlock_enroll(phone_id, challenge.uid, "bad\nlabel").await,
+        Err(Error::Protocol(_))
+    ));
+
+    let key = with_timeout("Linux unlock enrollment", enroll()).await.unwrap();
+    let asks = phone.platform.linux_unlock_asks.lock().unwrap().clone();
+    assert_eq!(asks.len(), 1);
+    assert_eq!(asks[0].pc_name, "Desktop");
+    assert_eq!(asks[0].user_name, "bee");
+    assert_eq!(asks[0].uid, challenge.uid);
+    assert!(!asks[0].timeout.is_zero());
+    assert!(asks[0].timeout < Duration::from_secs(90));
+    let key = UnparsedPublicKey::new(&ECDSA_P256_SHA256_ASN1, key);
+    let signature = with_timeout("Linux unlock signing", pc.node.linux_unlock_sign(challenge)).await.unwrap();
+    key.verify(&challenge.signing_bytes(), &signature).unwrap();
+
+    let (started, wait_started) = tokio::sync::oneshot::channel();
+    let (resume, wait_resume) = std::sync::mpsc::channel();
+    *phone.platform.linux_signing_pause.lock().unwrap() = Some((started, wait_resume));
+    let mut cancelled = Box::pin(pc.node.linux_unlock_sign(challenge));
+    tokio::select! {
+        result = &mut cancelled => panic!("first unlock finished before cancellation: {result:?}"),
+        started = wait_started => started.unwrap(),
+    };
+    drop(cancelled);
+    let retry_challenge = LinuxUnlockChallenge { nonce: [0x58; 32], ..challenge };
+    let retry = tokio::time::timeout(Duration::from_secs(1), async {
+        loop {
+            match pc.node.linux_unlock_sign(retry_challenge).await {
+                Err(Error::Denied) => tokio::time::sleep(Duration::from_millis(25)).await,
+                result => break result,
+            }
+        }
+    })
+    .await;
+    let _ = resume.send(());
+    let retry = retry.expect("cancelled phone prompt should release the slot").unwrap();
+    key.verify(&retry_challenge.signing_bytes(), &retry).unwrap();
+
+    let (started, wait_started) = tokio::sync::oneshot::channel();
+    let (resume, wait_resume) = std::sync::mpsc::channel();
+    *phone.platform.linux_enrollment_pause.lock().unwrap() = Some((started, wait_resume));
+    let mut cancelled = Box::pin(enroll());
+    tokio::select! {
+        result = &mut cancelled => panic!("enrollment finished before cancellation: {result:?}"),
+        started = wait_started => started.unwrap(),
+    };
+    drop(cancelled);
+    let retry_signature = with_timeout("signing after cancelled enrollment", async {
+        loop {
+            match pc.node.linux_unlock_sign(retry_challenge).await {
+                Err(Error::Denied) => tokio::time::sleep(Duration::from_millis(25)).await,
+                result => break result.unwrap(),
+            }
+        }
+    })
+    .await;
+    drop(resume);
+    key.verify(&retry_challenge.signing_bytes(), &retry_signature).unwrap();
+
+    for other in [
+        LinuxUnlockChallenge { pc: DeviceId([0xab; 32]), ..challenge },
+        LinuxUnlockChallenge { phone: DeviceId([0xcd; 32]), ..challenge },
+        LinuxUnlockChallenge { uid: 1001, ..challenge },
+        LinuxUnlockChallenge { nonce: [0x46; 32], ..challenge },
+    ] {
+        assert!(key.verify(&other.signing_bytes(), &signature).is_err());
+    }
+    let mut other_domain = challenge.signing_bytes();
+    other_domain[0] ^= 1;
+    assert!(key.verify(&other_domain, &signature).is_err());
+    let mut bad_signature = signature;
+    *bad_signature.last_mut().unwrap() ^= 1;
+    assert!(key.verify(&challenge.signing_bytes(), &bad_signature).is_err());
+    assert!(matches!(
+        pc.node.linux_unlock_sign(LinuxUnlockChallenge { pc: phone_id, ..challenge }).await,
+        Err(Error::Denied)
+    ));
+    assert!(matches!(
+        pc.node.linux_unlock_sign(LinuxUnlockChallenge { uid: 1001, ..challenge }).await,
+        Err(Error::NotFound)
+    ));
+
+    *phone.platform.unlock_answer.lock().unwrap() = FakeKeystore::Declines;
+    assert!(matches!(pc.node.linux_unlock_sign(challenge).await, Err(Error::Denied)));
+    *phone.platform.unlock_answer.lock().unwrap() = FakeKeystore::Works;
+    pc.node.linux_unlock_forget(phone_id, challenge.uid).await.unwrap();
+    assert!(matches!(pc.node.linux_unlock_sign(challenge).await, Err(Error::NotFound)));
+
+    enroll().await.unwrap();
+    let (started, wait_started) = tokio::sync::oneshot::channel();
+    let (resume, wait_resume) = std::sync::mpsc::channel();
+    *phone.platform.linux_signing_pause.lock().unwrap() = Some((started, wait_resume));
+    let (pending, ()) = tokio::join!(pc.node.linux_unlock_sign(challenge), async {
+        with_timeout("phone started signing", wait_started).await.unwrap();
+        let another = LinuxUnlockChallenge { nonce: [0x47; 32], ..challenge };
+        assert!(matches!(pc.node.linux_unlock_sign(another).await, Err(Error::Denied)));
+        phone.node.set_device_toggle(pc_id, "unlock", false).unwrap();
+        with_timeout("phone removes key when disabled", async {
+            while !phone.platform.linux_unlock_keys.lock().unwrap().is_empty() {
+                tokio::time::sleep(Duration::from_millis(25)).await;
+            }
+        })
+        .await;
+        phone.node.set_device_toggle(pc_id, "unlock", true).unwrap();
+        let _ = resume.send(());
+    });
+    assert!(matches!(pending, Err(Error::Denied)));
+    let after_cleanup = with_timeout("phone finishes deleting the old key", async {
+        loop {
+            match pc.node.linux_unlock_sign(challenge).await {
+                Err(Error::Denied) => tokio::time::sleep(Duration::from_millis(25)).await,
+                result => break result,
+            }
+        }
+    })
+    .await;
+    assert!(matches!(after_cleanup, Err(Error::NotFound)));
+
+    enroll().await.unwrap();
+    let (started, wait_started) = tokio::sync::oneshot::channel();
+    let (resume, wait_resume) = std::sync::mpsc::channel();
+    *phone.platform.linux_forget_pause.lock().unwrap() = Some((started, wait_resume));
+    phone.node.set_device_toggle(pc_id, "unlock", false).unwrap();
+    with_timeout("old phone key cleanup started", wait_started).await.unwrap();
+    phone.node.set_device_toggle(pc_id, "unlock", true).unwrap();
+    let while_revoking = enroll().await;
+    resume.send(()).unwrap();
+    assert!(matches!(while_revoking, Err(Error::Denied)));
+    let new_key = with_timeout("enrollment after old key cleanup", async {
+        loop {
+            match enroll().await {
+                Err(Error::Denied) => tokio::time::sleep(Duration::from_millis(25)).await,
+                result => break result.unwrap(),
+            }
+        }
+    })
+    .await;
+    let signature = pc.node.linux_unlock_sign(challenge).await.unwrap();
+    UnparsedPublicKey::new(&ECDSA_P256_SHA256_ASN1, new_key)
+        .verify(&challenge.signing_bytes(), &signature)
+        .unwrap();
+
+    let (started, wait_started) = tokio::sync::oneshot::channel();
+    let (resume, wait_resume) = std::sync::mpsc::channel();
+    *phone.platform.linux_signing_pause.lock().unwrap() = Some((started, wait_resume));
+    let (pending, ()) = tokio::join!(
+        tokio::time::timeout(Duration::from_secs(3), pc.node.linux_unlock_sign(challenge)),
+        async {
+            with_timeout("phone started signing before disconnect", wait_started).await.unwrap();
+            phone.node.set_reconnect(pc_id, false).unwrap();
+        }
+    );
+    let _ = resume.send(());
+    assert!(matches!(pending, Ok(Err(Error::Denied | Error::Offline))));
+
+    wait_for(&mut pc, "offline phone", |e| match e {
+        NodeEvent::LinkChanged { device, link: LinkState::Offline { .. } } if *device == phone_id => Some(()),
+        _ => None,
+    })
+    .await;
+    assert!(matches!(pc.node.linux_unlock_sign(challenge).await, Err(Error::Offline)));
+    pc.node.unpair(phone_id).await.unwrap();
+    assert!(matches!(pc.node.linux_unlock_sign(challenge).await, Err(Error::NotPaired)));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn linux_unlock_over_a_usb_only_session() {
+    use nectarlink_core::ConnectionPath;
+    use nectarlink_protocol::{
+        LinuxUnlockChallenge,
+        messages::linux_unlock::{CAP_KEY, CAP_PC},
+    };
+    use ring::signature::{ECDSA_P256_SHA256_ASN1, UnparsedPublicKey};
+
+    let mut phone = start_usb_device("Pixel", DeviceKind::Phone, Some(0), &[CAP_KEY]).await;
+    let mut pc = start_usb_device("Desktop", DeviceKind::Desktop, None, &[CAP_PC]).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+    let usb_port = phone.node.usb_port().unwrap();
+    pc.node.connect_usb_tunnel(([127, 0, 0, 1], usb_port).into()).await.unwrap();
+
+    for dev in [&mut pc, &mut phone] {
+        wait_for(dev, "USB pairing prompt", |e| match e {
+            NodeEvent::Pairing(PairingEvent::SasCode { .. }) => Some(()),
+            _ => None,
+        })
+        .await;
+        dev.node.pairing_confirm(true).unwrap();
+    }
+    wait_online(&mut pc, phone_id).await;
+    wait_online(&mut phone, pc_id).await;
+    assert!(matches!(
+        pc.node.paired_devices().unwrap()[0].link,
+        LinkState::Online { path: ConnectionPath::Usb, .. }
+    ));
+
+    pc.node.set_device_toggle(phone_id, "unlock", true).unwrap();
+    phone.node.set_device_toggle(pc_id, "unlock", true).unwrap();
+    let challenge = LinuxUnlockChallenge { pc: pc_id, phone: phone_id, uid: 1000, nonce: [0x45; 32] };
+    let key = pc.node.linux_unlock_enroll(phone_id, challenge.uid, "bee").await.unwrap();
+    let signature = pc.node.linux_unlock_sign(challenge).await.unwrap();
+    UnparsedPublicKey::new(&ECDSA_P256_SHA256_ASN1, key)
+        .verify(&challenge.signing_bytes(), &signature)
+        .unwrap();
+
+    pc.node.unpair(phone_id).await.unwrap();
+    wait_for(&mut phone, "PC unpaired", |e| match e {
+        NodeEvent::DeviceRemoved(device) if *device == pc_id => Some(()),
+        _ => None,
+    })
+    .await;
+    assert!(phone.platform.linux_unlock_keys.lock().unwrap().is_empty());
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn a_phone_unlocks_its_pc_only_as_enrolled_and_with_its_biometric() {
     use nectarlink_core::unlock::{MAX_FAILURES, Secret};
 
@@ -3820,7 +4191,8 @@ async fn a_phone_unlocks_its_pc_only_as_enrolled_and_with_its_biometric() {
         assert!(tokio::time::Instant::now() < deadline, "the PC kept the sealed password");
         tokio::time::sleep(Duration::from_millis(20)).await;
     }
-    assert!(
+    // The phone forgets its keys on a task of its own, so it may finish after the PC.
+    let forgot = || {
         phone
             .platform
             .unlock_forgotten
@@ -3828,7 +4200,11 @@ async fn a_phone_unlocks_its_pc_only_as_enrolled_and_with_its_biometric() {
             .unwrap()
             .iter()
             .any(|(pc, user)| *pc == pc_id && user.is_none())
-    );
+    };
+    while !forgot() {
+        assert!(tokio::time::Instant::now() < deadline, "the phone kept its keys");
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -6950,6 +7326,7 @@ async fn usb_transport_carries_features_when_wifi_unavailable() {
         screen_off: false,
         watch: None,
         sound_only: false,
+        display: None,
     };
     with_timeout("start mirror over USB", pc.node.mirror_start(phone_id, options)).await.unwrap();
     let stream = Arc::new(with_timeout("open mirror over USB", phone.node.mirror_open(pc_id)).await.unwrap());
@@ -6983,6 +7360,52 @@ async fn usb_transport_carries_features_when_wifi_unavailable() {
     phone.node.shutdown().await;
 }
 
+/// A phone viewing a PC lists its screens and picks one (#442): only from a
+/// PC that offers `mirror.displays` and shares its screen with that phone.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_phone_picks_which_of_the_pcs_screens_it_views() {
+    use nectarlink_core::{MIRROR_CAPTURE, MIRROR_DISPLAYS, MIRROR_SCREEN, MirrorStart, PC_MIRROR_TOGGLE};
+
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[MIRROR_CAPTURE, MIRROR_DISPLAYS]).await;
+    let mut phone = device_with("Pixel", DeviceKind::Phone, &[nectarlink_core::MIRROR_VIEW]).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let pc_id = pc.node.device_id();
+    let phone_id = phone.node.device_id();
+
+    // Not while the PC doesn't share its screen with this phone.
+    let refused = with_timeout("displays before sharing", phone.node.mirror_displays(pc_id)).await;
+    assert!(matches!(refused, Err(Error::Denied)), "{refused:?}");
+
+    pc.node.set_device_toggle(phone_id, PC_MIRROR_TOGGLE, true).unwrap();
+    let displays = with_timeout("displays", phone.node.mirror_displays(pc_id)).await.unwrap();
+    assert_eq!(
+        displays.iter().map(|d| (d.id, d.width, d.primary)).collect::<Vec<_>>(),
+        [(0, 1920, true), (1, 2560, false)]
+    );
+
+    let second = MirrorStart {
+        max_size: 1280,
+        fps: 30,
+        bitrate: 4_000_000,
+        audio: false,
+        session: MIRROR_SCREEN,
+        app: None,
+        stay_awake: false,
+        screen_off: false,
+        watch: None,
+        sound_only: false,
+        display: Some(1),
+    };
+    with_timeout("view the second screen", phone.node.mirror_start(pc_id, second)).await.unwrap();
+    assert_eq!(*pc.platform.mirror_asks.lock().unwrap(), ["start 1280 on screen 1"]);
+
+    // A PC that doesn't list its screens: none, and nothing asked.
+    let mut other = device_with("Laptop", DeviceKind::Desktop, &[MIRROR_CAPTURE]).await;
+    pair_qr(&mut other, &mut phone).await;
+    let none = with_timeout("no displays", phone.node.mirror_displays(other.node.device_id())).await.unwrap();
+    assert!(none.is_empty());
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn reverse_mirror_requires_pc_consent_and_remote_input_toggle() {
     use nectarlink_core::{
@@ -7007,6 +7430,7 @@ async fn reverse_mirror_requires_pc_consent_and_remote_input_toggle() {
         screen_off: false,
         watch: None,
         sound_only: false,
+        display: None,
     };
 
     // (a) A paired phone calling `mirror_start` against a PC is denied by default
@@ -7701,6 +8125,7 @@ async fn play_on_phone_lets_the_phone_watch_only_what_the_pc_offered() {
         screen_off: false,
         watch: Some(player.into()),
         sound_only: false,
+        display: None,
     };
 
     // Not offered: the phone can't watch, and the PC isn't asked to share its screen.
@@ -8223,6 +8648,7 @@ async fn one_time_screen_consent_ends_with_the_pairing() {
         screen_off: false,
         watch: None,
         sound_only: false,
+        display: None,
     };
 
     // "Allow once" lets the phone view the PC's screen during this connection

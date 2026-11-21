@@ -127,9 +127,34 @@ fun DeskScreen(
     val activeSummary = summaries[device.id]
     val artBitmap = remember(activeSummary?.artwork) { activeSummary?.artwork?.asImageBitmap() }
 
+    // How it looks, as chosen under Customize (D380).
+    var style by remember { mutableStateOf(DeskStyle.load(context)) }
+    var customizing by remember { mutableStateOf(false) }
+    // The phone's own battery, looked at once a minute while it's shown.
+    val phoneBattery = remember(minuteBucket, style.battery) {
+        if (!style.battery) {
+            null
+        } else {
+            context.getSystemService(android.os.BatteryManager::class.java)
+                ?.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY)
+                ?.takeIf { it in 0..100 }
+        }
+    }
+
     var draggingVolume by remember { mutableStateOf<Float?>(null) }
     var lastSentVolInt by remember { mutableIntStateOf(-1) }
     val scope = rememberCoroutineScope()
+
+    if (customizing) {
+        DeskStyleSheet(
+            style = style,
+            onChange = { next ->
+                style = next
+                next.save(context)
+            },
+            onDismiss = { customizing = false },
+        )
+    }
 
     Surface(
         color = Color.Black,
@@ -139,6 +164,7 @@ fun DeskScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .background(style.brush(MaterialTheme.colorScheme.primary))
                 .padding(horizontal = 20.dp, vertical = 20.dp),
         ) {
             // Top bar: PC connection status + Exit button
@@ -182,11 +208,19 @@ fun DeskScreen(
                     }
                 }
 
-                OutlinedButton(
-                    onClick = onBack,
-                    border = BorderStroke(1.dp, Color(0xFF282C37)),
-                ) {
-                    Text(stringResource(R.string.desk_exit), color = Color(0xFFD1D5DB))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        onClick = { customizing = true },
+                        border = BorderStroke(1.dp, Color(0xFF282C37)),
+                    ) {
+                        Text(stringResource(R.string.desk_customize), color = Color(0xFFD1D5DB))
+                    }
+                    OutlinedButton(
+                        onClick = onBack,
+                        border = BorderStroke(1.dp, Color(0xFF282C37)),
+                    ) {
+                        Text(stringResource(R.string.desk_exit), color = Color(0xFFD1D5DB))
+                    }
                 }
             }
 
@@ -199,12 +233,27 @@ fun DeskScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                DeskClockDisplay()
+                DeskClockDisplay(style)
+
+                if (style.battery) {
+                    val parts = listOfNotNull(
+                        phoneBattery?.let { stringResource(R.string.desk_battery_phone, it) },
+                        device.battery?.takeIf { device.online }
+                            ?.let { stringResource(R.string.desk_battery_pc, device.name, it.level.toInt()) },
+                    )
+                    if (parts.isNotEmpty()) {
+                        Text(
+                            text = parts.joinToString("   "),
+                            style = MaterialTheme.typography.labelLarge.copy(fontFeatureSettings = "tnum"),
+                            color = Color(0xFF9CA3AF),
+                        )
+                    }
+                }
 
                 Spacer(Modifier.height(2.dp))
 
                 // PC Media & Audio Dock Card
-                if (device.online && (deckState != null || activeSummary != null)) {
+                if (style.media && device.online && (deckState != null || activeSummary != null)) {
                     val isPlaying = activeSummary?.playing ?: (deckState?.playing == true)
                     val outName = deckState?.outputDevices?.firstOrNull { it.isDefault }?.name
                         ?: deckState?.outputDevices?.firstOrNull()?.name
@@ -412,7 +461,7 @@ fun DeskScreen(
                             }
                         }
                     }
-                } else if (!device.online && device.canWake) {
+                } else if (style.media && !device.online && device.canWake) {
                     FilledTonalButton(onClick = { core.wake(device.id) }) {
                         Text(stringResource(R.string.action_wake_pc))
                     }
@@ -501,13 +550,15 @@ private fun DeskActionButton(
 }
 
 @Composable
-private fun DeskClockDisplay() {
+private fun DeskClockDisplay(style: DeskStyle) {
     var nowMs by remember { mutableLongStateOf(System.currentTimeMillis()) }
-    LaunchedEffect(Unit) {
+    // Without seconds shown, waking once a minute is enough.
+    val step = if (style.seconds) 1_000L else 60_000L
+    LaunchedEffect(step) {
         while (true) {
             val current = System.currentTimeMillis()
             nowMs = current
-            delay((1_000L - (current % 1_000L)).coerceIn(100L, 1_000L))
+            delay((step - (current % step)).coerceIn(100L, step))
         }
     }
 
@@ -534,24 +585,28 @@ private fun DeskClockDisplay() {
             fontSize = 84.sp,
             lineHeight = 88.sp,
             fontWeight = FontWeight.Light,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = style.fontFamily,
             color = Color(0xFFF3F4F6),
         )
-        Text(
-            text = secText,
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Normal,
-            fontFamily = FontFamily.Monospace,
-            color = Color(0xFF9CA3AF),
-            modifier = Modifier.padding(bottom = 12.dp, start = 4.dp),
-        )
+        if (style.seconds) {
+            Text(
+                text = secText,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Normal,
+                fontFamily = style.fontFamily,
+                color = Color(0xFF9CA3AF),
+                modifier = Modifier.padding(bottom = 12.dp, start = 4.dp),
+            )
+        }
     }
 
-    Text(
-        text = dateText,
-        style = MaterialTheme.typography.titleMedium,
-        color = Color(0xFF9CA3AF),
-    )
+    if (style.date) {
+        Text(
+            text = dateText,
+            style = MaterialTheme.typography.titleMedium,
+            color = Color(0xFF9CA3AF),
+        )
+    }
 }
 
 

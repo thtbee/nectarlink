@@ -1361,6 +1361,17 @@ pub struct CallSim {
     pub is_default: bool,
 }
 
+/// One of a PC's screens, for picking the one to view (`mirror.displays`, #442).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct PcDisplay {
+    /// What `start_pc_mirror`'s `display` takes.
+    pub id: u32,
+    pub width: u32,
+    pub height: u32,
+    /// The PC's main screen.
+    pub primary: bool,
+}
+
 /// One call in this phone's call history (docs/protocol/calls.md).
 #[derive(Clone, PartialEq, Eq, uniffi::Record)]
 pub struct CallLogEntry {
@@ -2591,7 +2602,7 @@ fn parse_id(id: &str) -> Result<DeviceId> {
 
 // ---- Foreign interfaces (implemented in Kotlin) ----
 
-/// Why the phone didn't wrap or unwrap a PC's unlock key (ADR 0009).
+/// Why the phone declined a PC unlock operation.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
 pub enum UnlockRefusal {
     /// The owner said no, or didn't confirm in time.
@@ -2931,6 +2942,26 @@ pub trait Platform: Send + Sync {
     /// Unlock the PC with this phone: delete the Keystore keys kept for `pc`
     /// (for `user`, or all of them).
     fn unlock_forget(&self, pc: String, user: Option<String>);
+    /// Enroll a biometric-bound Linux unlock key and return the uncompressed P-256 point.
+    fn linux_unlock_enroll(
+        &self,
+        pc: String,
+        pc_name: String,
+        user_name: String,
+        uid: u32,
+        timeout_ms: u64,
+        attempt: Arc<LinuxUnlockAttempt>,
+    ) -> Result<Vec<u8>, UnlockRefusal>;
+    /// Prompt using the confirmed enrollment, then return a DER ECDSA signature.
+    fn linux_unlock_sign(
+        &self,
+        pc: String,
+        uid: u32,
+        transcript: Vec<u8>,
+        attempt: Arc<LinuxUnlockAttempt>,
+    ) -> Result<Vec<u8>, UnlockRefusal>;
+    /// Forget one Linux account or all Linux unlock keys for this paired PC.
+    fn linux_unlock_forget(&self, pc: String, uid: Option<u32>);
     /// A PC asked to list a folder in this phone's storage (`""` is root).
     fn storage_list(&self, path: String) -> Result<Vec<StorageEntry>, StorageFailure>;
     /// A PC asked to open a file in this phone's storage for ranged reading.
@@ -3449,6 +3480,39 @@ impl core::Platform for PlatformAdapter {
     fn unlock_forget(&self, pc: &core::DeviceId, user: Option<&str>) {
         self.0.unlock_forget(pc.to_string(), user.map(str::to_owned));
     }
+    fn linux_unlock_enroll(
+        &self,
+        pc: &core::DeviceId,
+        ask: &core::linux_unlock::Ask,
+        attempt: &core::linux_unlock::Attempt,
+    ) -> Result<Vec<u8>, core::unlock::KeyRefusal> {
+        let timeout_ms = u64::try_from(ask.timeout.as_millis()).unwrap_or(u64::MAX);
+        Ok(self.0.linux_unlock_enroll(
+            pc.to_string(),
+            ask.pc_name.clone(),
+            ask.user_name.clone(),
+            ask.uid,
+            timeout_ms,
+            Arc::new(LinuxUnlockAttempt(attempt.clone())),
+        )?)
+    }
+    fn linux_unlock_sign(
+        &self,
+        pc: &core::DeviceId,
+        uid: u32,
+        transcript: &[u8],
+        attempt: &core::linux_unlock::Attempt,
+    ) -> Result<Vec<u8>, core::unlock::KeyRefusal> {
+        Ok(self.0.linux_unlock_sign(
+            pc.to_string(),
+            uid,
+            transcript.to_vec(),
+            Arc::new(LinuxUnlockAttempt(attempt.clone())),
+        )?)
+    }
+    fn linux_unlock_forget(&self, pc: &core::DeviceId, uid: Option<u32>) {
+        self.0.linux_unlock_forget(pc.to_string(), uid);
+    }
     fn set_phone_toggle(&self, id: &str, value: &core::PhoneToggleValue) -> Result<(), String> {
         let value = match value {
             core::PhoneToggleValue::Bool(on) => PhoneToggleValue::Bool { on: *on },
@@ -3596,6 +3660,21 @@ pub enum RelayEditResult {
     Duplicate,
     Limit,
     Failed,
+}
+
+/// Cancellation of a single Linux unlock or enrollment on the phone.
+#[derive(Debug, uniffi::Object)]
+pub struct LinuxUnlockAttempt(core::linux_unlock::Attempt);
+
+#[uniffi::export]
+impl LinuxUnlockAttempt {
+    pub fn is_cancelled(&self) -> bool {
+        self.0.is_cancelled()
+    }
+
+    pub async fn wait_cancelled(&self) {
+        self.0.cancelled().await;
+    }
 }
 
 /// The NectarLink engine. One per app process.
@@ -4619,6 +4698,7 @@ impl NectarlinkNode {
         fps: u32,
         bitrate: u32,
         watch: Option<String>,
+        display: Option<u32>,
     ) -> Result<()> {
         let id = parse_id(&pc_id)?;
         let node = self.node.clone();
@@ -4633,8 +4713,25 @@ impl NectarlinkNode {
             screen_off: false,
             watch,
             sound_only: false,
+            display,
         };
         self.run(async move { Ok(node.mirror_start(id, options).await?) }).await
+    }
+
+    /// A paired PC's screens, the main one first, to pick the one to view;
+    /// empty from a PC that only shares its main one (#442).
+    pub async fn pc_displays(&self, pc_id: String) -> Result<Vec<PcDisplay>> {
+        let id = parse_id(&pc_id)?;
+        let node = self.node.clone();
+        self.run(async move {
+            Ok(node
+                .mirror_displays(id)
+                .await?
+                .into_iter()
+                .map(|d| PcDisplay { id: d.id, width: d.width, height: d.height, primary: d.primary })
+                .collect())
+        })
+        .await
     }
 
     /// Asks a paired PC for a fresh keyframe on its screen stream (`mirror.keyframe`).
@@ -5186,6 +5283,33 @@ pub fn theme_scheme_from_seed(seed_rgb: u32) -> FfiThemeScheme {
 #[uniffi::export]
 pub fn install_id_from(platform_id: String) -> Option<String> {
     core::install_id_from(&platform_id)
+}
+
+/// What's new (#461), kept in `dir` (the app's data folder): at start, after
+/// an update or on a first install, so the dot shows when an update brought
+/// something not seen yet.
+#[uniffi::export]
+pub fn whats_new_note_start(dir: String, updated: bool) {
+    nectarlink_core::whats_new::note_start(std::path::Path::new(&dir), updated);
+}
+
+/// Whether What's new has something not seen yet (the dot).
+#[uniffi::export]
+pub fn whats_new_pending(dir: String) -> bool {
+    nectarlink_core::whats_new::pending(std::path::Path::new(&dir))
+}
+
+/// What's new as JSON: `{version, mode, newCount, groups: [{title, items,
+/// more}], url}`, one short line per change.
+#[uniffi::export]
+pub fn whats_new_json(dir: String) -> String {
+    nectarlink_core::whats_new::json(std::path::Path::new(&dir))
+}
+
+/// What's new was opened: the dot goes, and what it showed stays to show again.
+#[uniffi::export]
+pub fn whats_new_mark_seen(dir: String) {
+    nectarlink_core::whats_new::mark_seen(std::path::Path::new(&dir));
 }
 
 /// Sends core logs to the platform log (logcat on Android). Call once,

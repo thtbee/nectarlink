@@ -24,6 +24,12 @@ pub mod types {
     pub const UNLOCK_REQUEST: &str = "unlock.request";
     pub const UNLOCK_RELEASE: &str = "unlock.release";
     pub const UNLOCK_FORGET: &str = "unlock.forget";
+    pub const LINUX_UNLOCK_ENROLL: &str = "unlock.linux.v1.enroll";
+    pub const LINUX_UNLOCK_ENROLLED: &str = "unlock.linux.v1.enrolled";
+    pub const LINUX_UNLOCK_SIGN: &str = "unlock.linux.v1.sign";
+    pub const LINUX_UNLOCK_SIGNED: &str = "unlock.linux.v1.signed";
+    pub const LINUX_UNLOCK_FORGET: &str = "unlock.linux.v1.forget";
+    pub const LINUX_UNLOCK_CANCEL: &str = "unlock.linux.v1.cancel";
 
     pub const PAIR_REQUEST: &str = "pair.request";
     pub const PAIR_ACCEPT: &str = "pair.accept";
@@ -97,6 +103,8 @@ pub mod types {
     /// PC → phone: uninstall this app (`AppUninstall`); answered `ok` once it's gone.
     pub const MIRROR_APP_UNINSTALL: &str = "mirror.apps.uninstall";
     pub const MIRROR_NOTICE: &str = "mirror.notice";
+    /// Phone → PC: its screens (an empty `MirrorDisplays` asks; answered with one).
+    pub const MIRROR_DISPLAYS: &str = "mirror.displays";
     pub const POINTER_ENTER: &str = "pointer.enter";
     pub const POINTER_MOVE: &str = "pointer.move";
     pub const POINTER_WHERE: &str = "pointer.where";
@@ -1433,6 +1441,11 @@ pub mod mirror {
     pub const NOTICE_INPUT_BLOCKED: &str = "input_blocked";
     /// `mirror.notice`: the PC could not start or continue sharing its screen.
     pub const NOTICE_PC_CAPTURE_FAILED: &str = "pc_capture_failed";
+    /// Offered by PCs that list their screens (`mirror.displays`) and share
+    /// the one a phone picks (`MirrorStart::display`).
+    pub const DISPLAYS: &str = "mirror.displays";
+    /// Screens in a `mirror.displays` answer, at most.
+    pub const MAX_DISPLAYS: usize = 16;
 }
 
 /// Whether `name` looks like an Android package name.
@@ -1481,6 +1494,10 @@ pub struct MirrorStart {
     /// phone that offers [`mirror::SOUND`]). The PC plays it without a window.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub sound_only: bool,
+    /// Which of the PC's screens to share (an id from `mirror.displays`), sent
+    /// to a PC that offers [`mirror::DISPLAYS`]; its main one when `None`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display: Option<u32>,
 }
 
 impl MirrorStart {
@@ -1559,6 +1576,37 @@ pub struct MirrorNotice {
 impl MirrorNotice {
     pub fn is_valid(&self) -> bool {
         (1..=32).contains(&self.code.len()) && self.code.bytes().all(|b| b.is_ascii_lowercase() || b == b'_')
+    }
+}
+
+/// One of a PC's screens (`mirror.displays`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MirrorDisplay {
+    /// What `MirrorStart::display` names it by; stable while the PC's screens stay as they are.
+    pub id: u32,
+    /// Its size in pixels.
+    pub width: u32,
+    pub height: u32,
+    /// The PC's main screen.
+    #[serde(default)]
+    pub primary: bool,
+}
+
+/// Answer to `mirror.displays` (an empty body asks): the PC's screens, the
+/// main one first.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MirrorDisplays {
+    #[serde(default)]
+    pub displays: Vec<MirrorDisplay>,
+}
+
+impl MirrorDisplays {
+    pub fn is_valid(&self) -> bool {
+        self.displays.len() <= mirror::MAX_DISPLAYS
+            && self
+                .displays
+                .iter()
+                .all(|d| d.width > 0 && d.height > 0 && d.width <= 65_536 && d.height <= 65_536)
     }
 }
 
@@ -4907,8 +4955,160 @@ pub struct UnlockForget {
     pub user: Option<String>,
 }
 
+// ---- Linux session unlock (docs/protocol/linux-unlock.md) ----
+
+pub mod linux_unlock {
+    pub const CAP_PC: &str = "unlock.linux.pc";
+    pub const CAP_KEY: &str = "unlock.linux.key";
+    pub const DOMAIN: &[u8] = b"nectarlink/linux-unlock/v1\0";
+}
+
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LinuxUnlockEnroll {
+    pub pc: DeviceId,
+    pub phone: DeviceId,
+    pub uid: u32,
+    pub user_name: String,
+}
+
+impl std::fmt::Debug for LinuxUnlockEnroll {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LinuxUnlockEnroll").finish_non_exhaustive()
+    }
+}
+
+impl LinuxUnlockEnroll {
+    pub fn is_valid(&self) -> bool {
+        self.uid != 0 && unlock::name_ok(&self.user_name) && !self.user_name.trim().is_empty()
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LinuxUnlockEnrolled {
+    #[serde(with = "serde_bytes")]
+    pub public_key: Vec<u8>,
+}
+
+impl std::fmt::Debug for LinuxUnlockEnrolled {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LinuxUnlockEnrolled").finish_non_exhaustive()
+    }
+}
+
+impl LinuxUnlockEnrolled {
+    /// Canonical uncompressed P-256 point encoding.
+    pub fn is_valid(&self) -> bool {
+        self.public_key.len() == 65 && self.public_key[0] == 0x04
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LinuxUnlockChallenge {
+    pub pc: DeviceId,
+    pub phone: DeviceId,
+    pub uid: u32,
+    #[serde(with = "serde_bytes")]
+    pub nonce: [u8; 32],
+}
+
+impl LinuxUnlockChallenge {
+    /// Canonical transcript for P-256/SHA-256, independent of the CBOR envelope.
+    pub fn signing_bytes(&self) -> Vec<u8> {
+        let mut bytes = Vec::with_capacity(linux_unlock::DOMAIN.len() + 100);
+        bytes.extend_from_slice(linux_unlock::DOMAIN);
+        bytes.extend_from_slice(self.pc.as_bytes());
+        bytes.extend_from_slice(self.phone.as_bytes());
+        bytes.extend_from_slice(&self.uid.to_be_bytes());
+        bytes.extend_from_slice(&self.nonce);
+        bytes
+    }
+}
+
+impl std::fmt::Debug for LinuxUnlockChallenge {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LinuxUnlockChallenge").finish_non_exhaustive()
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LinuxUnlockSigned {
+    #[serde(with = "serde_bytes")]
+    pub signature: Vec<u8>,
+}
+
+impl std::fmt::Debug for LinuxUnlockSigned {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LinuxUnlockSigned").finish_non_exhaustive()
+    }
+}
+
+impl LinuxUnlockSigned {
+    /// Size and tag for the DER SEQUENCE of two P-256 integers.
+    /// The PAM verifier checks the DER contents and the signature itself.
+    pub fn is_valid(&self) -> bool {
+        (8..=72).contains(&self.signature.len()) && self.signature[0] == 0x30
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum LinuxUnlockForget {
+    User { uid: u32 },
+    All,
+}
+
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn linux_unlock_enrollment_requires_a_non_root_account() {
+        let request = LinuxUnlockEnroll {
+            pc: DeviceId([1; 32]),
+            phone: DeviceId([2; 32]),
+            uid: 0,
+            user_name: "root".into(),
+        };
+        assert!(!request.is_valid());
+        assert!(LinuxUnlockEnroll { uid: 1000, user_name: "bee".into(), ..request }.is_valid());
+    }
+
+    #[test]
+    fn linux_unlock_signs_the_fixed_v1_transcript() {
+        let challenge = LinuxUnlockChallenge {
+            pc: DeviceId([0x11; 32]),
+            phone: DeviceId([0xe2; 32]),
+            uid: 0x0102_0304,
+            nonce: [0xa3; 32],
+        };
+        let expected = b"nectarlink/linux-unlock/v1\0\
+            \x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\
+            \x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\
+            \xe2\xe2\xe2\xe2\xe2\xe2\xe2\xe2\xe2\xe2\xe2\xe2\xe2\xe2\xe2\xe2\
+            \xe2\xe2\xe2\xe2\xe2\xe2\xe2\xe2\xe2\xe2\xe2\xe2\xe2\xe2\xe2\xe2\
+            \x01\x02\x03\x04\
+            \xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3\
+            \xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3";
+        assert_eq!(challenge.signing_bytes(), expected.as_slice());
+        let decoded: LinuxUnlockChallenge =
+            crate::Envelope::new(types::LINUX_UNLOCK_SIGN, &challenge).unwrap().body().unwrap();
+        assert_eq!(decoded, challenge);
+    }
+
+    #[test]
+    fn linux_unlock_rejects_a_challenge_with_a_short_nonce() {
+        #[derive(Serialize)]
+        struct ShortNonce {
+            pc: DeviceId,
+            phone: DeviceId,
+            uid: u32,
+            #[serde(with = "serde_bytes")]
+            nonce: [u8; 31],
+        }
+        let short = ShortNonce { pc: DeviceId([1; 32]), phone: DeviceId([2; 32]), uid: 1000, nonce: [3; 31] };
+        let envelope = crate::Envelope::new(types::LINUX_UNLOCK_SIGN, &short).unwrap();
+
+        assert!(envelope.body::<LinuxUnlockChallenge>().is_err());
+    }
+
     #[test]
     fn update_hints_take_known_channels_and_plain_versions_only() {
         let hint = |channel: &str, version: &str| {
@@ -4935,6 +5135,7 @@ mod tests {
             screen_off: false,
             watch: None,
             sound_only: true,
+            display: None,
         };
         assert!(sound.is_valid());
         assert!(!MirrorStart { audio: false, ..sound.clone() }.is_valid(), "the sound is the point");
@@ -6280,6 +6481,7 @@ mod tests {
             screen_off: false,
             watch: Some("Chrome".into()),
             sound_only: false,
+            display: None,
         };
         assert!(screen.is_valid());
         // Watching is of the PC's screen session only, never with an app.
@@ -6290,6 +6492,18 @@ mod tests {
         assert!(!MirrorStart { watch: Some(String::new()), ..screen.clone() }.is_valid());
         // Older PCs and phones leave it out.
         let plain = MirrorStart { watch: None, ..screen };
+        // A screen of the PC to view travels as `display`; older PCs ignore it.
+        let on_second = MirrorStart { display: Some(1), ..plain.clone() };
+        assert!(on_second.is_valid());
+        let env = crate::Envelope::new(types::MIRROR_START, &on_second).unwrap();
+        assert_eq!(env.body::<MirrorStart>().unwrap().display, Some(1));
+        let many = MirrorDisplays {
+            displays: (0..=mirror::MAX_DISPLAYS as u32)
+                .map(|id| MirrorDisplay { id, width: 1920, height: 1080, primary: id == 0 })
+                .collect(),
+        };
+        assert!(!many.is_valid(), "at most MAX_DISPLAYS");
+        assert!(MirrorDisplays { displays: many.displays[..2].to_vec() }.is_valid());
         let mut bytes = Vec::new();
         ciborium::into_writer(&plain, &mut bytes).unwrap();
         let back: MirrorStart = ciborium::from_reader(bytes.as_slice()).unwrap();

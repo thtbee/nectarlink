@@ -100,7 +100,16 @@ class ConnectionService : LifecycleService() {
             var decider = PauseDecider()
             var foreground: BankingPause.Foreground? = null
             while (true) {
+                if (BankingPause.apps(context).isEmpty()) {
+                    // Nothing chosen: wait for a choice rather than look every 15 s.
+                    foreground = null
+                    decider = PauseDecider()
+                    BankingPause.awaitAppsChange(context)
+                    continue
+                }
                 if (!BankingPause.isReady(context)) {
+                    // Chosen, but a permission is missing: Android doesn't say when it's
+                    // granted, so look again now and then.
                     foreground = null
                     decider = PauseDecider()
                     delay(BANKING_IDLE_MS)
@@ -224,13 +233,19 @@ class ConnectionService : LifecycleService() {
     }.isSuccess
 
     /** What the ongoing notification says. */
-    private data class Status(val connected: List<String>, val paired: Int, val noNetwork: Boolean) {
+    private data class Status(
+        val connected: List<String>,
+        val paired: Int,
+        val noNetwork: Boolean,
+        val pause: app.nectarlink.android.core.DialingPause?,
+    ) {
         companion object {
             fun of(state: CoreState) = Status(
                 state.devices.filter { it.online }.map { it.name },
                 state.devices.size,
                 // Not trying to reach PCs then (#397), so it shouldn't look like it is.
                 noNetwork = !state.hasNetwork && !state.awayMode,
+                pause = state.dialingPause.takeIf { !state.awayMode },
             )
         }
     }
@@ -245,6 +260,10 @@ class ConnectionService : LifecycleService() {
             )
             status.paired == 0 -> getString(R.string.notification_not_paired)
             status.noNetwork -> getString(R.string.notification_waiting_network)
+            status.pause == app.nectarlink.android.core.DialingPause.GaveUp ->
+                getString(R.string.notification_stopped_looking)
+            status.pause == app.nectarlink.android.core.DialingPause.UnknownNetwork ->
+                getString(R.string.notification_unknown_network)
             else -> getString(R.string.notification_waiting)
         }
         val builder = NotificationCompat.Builder(this, CHANNEL_CONNECTION)
