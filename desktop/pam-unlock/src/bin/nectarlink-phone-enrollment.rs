@@ -38,10 +38,11 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             let groups =
                 fingerprint.as_bytes().chunks(8).map(std::str::from_utf8).collect::<Result<Vec<_>, _>>()?;
             writeln!(tty, "Public key SHA-256 {}", groups.join(" "))?;
-            write!(tty, "Enter the unspaced fingerprint from your phone to authorize enrollment: ")?;
+            write!(tty, "Enter the fingerprint from your phone to authorize enrollment: ")?;
             tty.flush()?;
             let mut confirmation = String::new();
             BufReader::new(&tty).take(128).read_line(&mut confirmation)?;
+            confirmation.retain(|character| character != ' ');
             store.enroll(&enrollment, confirmation.trim())?;
             writeln!(tty, "Phone unlock enrollment saved.")?;
         }

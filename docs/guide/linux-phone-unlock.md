@@ -20,7 +20,7 @@ account requisite libpam_nectarlink_phone_unlock.so
 account include system-auth
 ```
 
-For other PAM configurations, start with the [service template](../../desktop/pam-unlock/nectarlink-phone-lock). Keep the module's `auth` and `account` entries and match the password service's pre-auth lockout and account policy.
+For other PAM configurations, start with the [service template](../../desktop/pam-unlock/nectarlink-phone-lock). Keep NectarLink's `auth` and `account` entries and match the password service's pre-auth lockout policy. The template uses `account required pam_unix.so` to check local account expiry for lockers that call `pam_acct_mgmt`. Replace that line with your distribution's account include when needed to match the password service's account policy.
 
 Install the two artifacts and your configured service as root. Fedora x86-64 uses `/usr/lib64/security`. Debian on x86-64 uses `/usr/lib/x86_64-linux-gnu/security`. On immutable distributions with a read-only module directory, use the distribution's supported image or package layering mechanism to install the PAM module.
 
@@ -40,7 +40,7 @@ The desktop listens in the session's `XDG_RUNTIME_DIR`. The PAM service defaults
 1. Restart the desktop app after installing the PAM service. Pair the phone. Enable **Unlock this PC with the phone** in the desktop's device settings and **Unlock this PC with your fingerprint** on Android. Allow NectarLink notifications on Android so you can open an unlock prompt when the app is in the background.
 2. Run `nectarlink-desktop --linux-unlock-devices` as the user whose session you want to unlock. Find the phone's device ID.
 3. Run `nectarlink-desktop --linux-unlock-enroll PHONE_DEVICE_ID > enrollment.json`. Verify the displayed PC and account on the phone, then approve with your biometric.
-4. Run `sudo nectarlink-phone-enrollment enroll < enrollment.json`. Check that the grouped key fingerprint on the PC matches the fingerprint shown by the Android app. Enter the unspaced **fingerprint from the phone** at the terminal prompt. Delete the candidate file after installation if you no longer need it.
+4. Run `sudo nectarlink-phone-enrollment enroll < enrollment.json`. Check that the grouped key fingerprints match on the PC and Android. Enter the **fingerprint from the phone** at the terminal prompt. Spaces between groups are optional. Delete the candidate file after installation if you no longer need it.
 
 The system stores one enrollment per Linux UID. To replace it, repeat enrollment with the new phone and confirm its key fingerprint. After renaming the PC or Linux account, repeat steps 3 and 4 to confirm the updated names and compare fingerprints again. The phone keeps its existing key if the key is still usable. To remove an enrollment, run `sudo nectarlink-phone-enrollment revoke "$(id -u)"` and turn off the unlock permission on both devices.
 

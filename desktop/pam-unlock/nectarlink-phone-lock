@@ -4,4 +4,5 @@
 # auth requisite pam_faillock.so preauth silent
 auth required libpam_nectarlink_phone_unlock.so
 account requisite libpam_nectarlink_phone_unlock.so
-# Include the password stack's account policy for lockers that call pam_acct_mgmt.
+# Replace this line with the distribution's account include if needed.
+account required pam_unix.so

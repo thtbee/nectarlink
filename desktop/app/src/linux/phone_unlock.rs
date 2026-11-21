@@ -143,7 +143,7 @@ pub fn start() -> io::Result<()> {
         .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
         .open(path.with_extension("lock"))?;
     let lock_meta = lock.metadata()?;
-    if !lock_meta.is_file() || lock_meta.uid() != uid() || lock_meta.mode() & 0o777 != 0o600 {
+    if !lock_meta.is_file() || lock_meta.uid() != uid() || lock_meta.mode() & 0o7777 != 0o600 {
         return Err(io::Error::new(io::ErrorKind::PermissionDenied, "invalid phone unlock socket lock"));
     }
     // SAFETY: the fd stays open until the listener task exits.

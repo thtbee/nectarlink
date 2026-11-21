@@ -11,6 +11,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.hardware.biometrics.BiometricManager
 import android.hardware.biometrics.BiometricPrompt
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.CancellationSignal
@@ -35,6 +36,7 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import javax.crypto.Cipher
+import kotlin.random.Random
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
@@ -70,6 +72,7 @@ object UnlockPrompts {
     private const val CHANNEL = "unlock_requests"
     private const val TAG = "unlock_req"
 
+    @RequiresApi(Build.VERSION_CODES.R)
     internal class Pending(
         val pcName: String,
         val userName: String,
@@ -84,7 +87,8 @@ object UnlockPrompts {
     }
 
     private val pending = ConcurrentHashMap<Int, Pending>()
-    private val ids = AtomicInteger()
+    // A task can remain in Recents across process restarts.
+    private val ids = AtomicInteger(Random.nextInt(Int.MAX_VALUE / 2))
 
     internal fun pending(id: Int): Pending? = pending[id]
 
@@ -112,6 +116,7 @@ object UnlockPrompts {
         attempt,
     )?.signature
 
+    @RequiresApi(Build.VERSION_CODES.R)
     private fun ask(
         context: Context,
         request: Pending,
@@ -139,10 +144,14 @@ object UnlockPrompts {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.R)
     private fun show(context: Context, id: Int, request: Pending) {
+        // Give each request its own task so an open comparison can't intercept the next prompt.
         val open = Intent(context, UnlockPromptActivity::class.java)
+            .setData(Uri.fromParts("nectarlink-unlock", id.toString(), null))
             .putExtra(UnlockPromptActivity.EXTRA_ID, id)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NEW_DOCUMENT or Intent.FLAG_ACTIVITY_NO_ANIMATION)
+        if (request.confirmed == null) open.addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
         // Straight to the prompt when Android lets this app open a screen now (the app is in
         // front, may display over other apps, or is the PC's companion app); the notification
         // otherwise. Android drops a blocked start silently, so when it may well have worked the
@@ -157,6 +166,7 @@ object UnlockPrompts {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.R)
     private fun notify(context: Context, id: Int, request: Pending, open: Intent) {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
             PackageManager.PERMISSION_GRANTED
@@ -201,6 +211,7 @@ class UnlockPromptActivity : ComponentActivity() {
 
     private val comparison by lazy { ViewModelProvider(this)[EnrollmentComparison::class.java] }
     private var fingerprintDialog: AlertDialog? = null
+    private var cancelPrompt: (() -> Unit)? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -247,6 +258,10 @@ class UnlockPromptActivity : ComponentActivity() {
             finish()
             return
         }
+        cancelPrompt = {
+            request.cancellationSignal.cancel()
+            request.result.complete(null)
+        }
         runCatching {
             prompt.authenticate(
                 request.crypto,
@@ -290,7 +305,8 @@ class UnlockPromptActivity : ComponentActivity() {
                 return@launch
             }
             val message = getString(
-                R.string.linux_unlock_confirm_fingerprint, presentation.pcName, presentation.userName, fingerprint,
+                R.string.linux_unlock_confirm_fingerprint, presentation.pcName, presentation.userName,
+                fingerprint.chunked(8).joinToString(" "),
             )
             fingerprintDialog = AlertDialog.Builder(this@UnlockPromptActivity)
                 .setTitle(R.string.linux_unlock_key_fingerprint)
@@ -299,6 +315,14 @@ class UnlockPromptActivity : ComponentActivity() {
                 .setOnDismissListener { finish() }
                 .show()
             fingerprintDialog?.findViewById<TextView>(android.R.id.message)?.setTextIsSelectable(true)
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (comparison.presentation == null && !isFinishing) {
+            cancelPrompt?.invoke()
+            finish()
         }
     }
 
