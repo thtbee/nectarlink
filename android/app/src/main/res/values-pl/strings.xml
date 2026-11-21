@@ -690,6 +690,8 @@
     <string name="settings_seed_ocean">Ocean</string>
     <string name="settings_seed_sage">Szałwia</string>
     <string name="settings_seed_black">Czerń</string>
+    <string name="settings_home_card_color">Kolor karty na ekranie głównym</string>
+    <string name="settings_home_card_color_default">Zgodnie z motywem</string>
     <string name="settings_amoled">Czysta czerń (AMOLED)</string>
     <string name="settings_amoled_hint">Całkowicie czarne tła (#000000) na ekranach OLED.</string>
 

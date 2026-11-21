@@ -76,6 +76,21 @@ class ThemeAndLocalizationTest {
         }
     }
 
+    @Test
+    fun `Bloom Home card color follows the theme by default and resolves a saved preset in both modes`() {
+        val default = Appearance(theme = "bloom")
+        assertEquals(null, default.bloomHomeCardPalette(dark = false))
+        assertEquals(null, Preferences.sanitizeAppearance(default.copy(homeCardSeed = "artwork")).homeCardSeed)
+
+        for ((name, preset) in Tokens.bloomSeeds) {
+            val appearance = Preferences.sanitizeAppearance(default.copy(homeCardSeed = name))
+            assertEquals(name, appearance.homeCardSeed)
+            assertEquals(preset.light, appearance.bloomHomeCardPalette(dark = false))
+            assertEquals(preset.dark, appearance.bloomHomeCardPalette(dark = true))
+            assertEquals(null, appearance.copy(theme = "glass").bloomHomeCardPalette(dark = true))
+        }
+    }
+
     private fun resolveResDir(): File {
         val candidates = listOf(
             File("src/main/res"),

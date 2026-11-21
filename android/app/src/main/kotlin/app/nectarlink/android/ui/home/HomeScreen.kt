@@ -123,6 +123,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.nectarlink.android.sms.PhoneSms
 import app.nectarlink.android.ui.guide.GuideHighlightTarget
+import app.nectarlink.android.ui.theme.LocalBloomHomeCardPalette
 import app.nectarlink.android.ui.theme.LocalGlassTheme
 import app.nectarlink.android.ui.theme.LocalReducedMotion
 import app.nectarlink.android.ui.theme.bentoWell
@@ -1438,8 +1439,11 @@ private fun PcCard(
         if (tree != null) onSendFolder(device.id, tree)
     }
     val isGlass = LocalGlassTheme.current
+    val cardPalette = LocalBloomHomeCardPalette.current
+    val ink = cardPalette?.onPrimaryContainer ?: MaterialTheme.colorScheme.onPrimaryContainer
+    val sectionLabelColor = ink.copy(alpha = if (cardPalette == null) 0.68f else 0.78f)
     androidx.compose.runtime.CompositionLocalProvider(
-        androidx.compose.material3.LocalContentColor provides MaterialTheme.colorScheme.onPrimaryContainer,
+        androidx.compose.material3.LocalContentColor provides ink,
     ) {
         Column(
             modifier = Modifier
@@ -1447,14 +1451,13 @@ private fun PcCard(
                 .liquidGlassCard(
                     cornerRadius = 28.dp,
                     isGlass = isGlass,
-                    baseColor = MaterialTheme.colorScheme.primaryContainer,
+                    baseColor = cardPalette?.primaryContainer ?: MaterialTheme.colorScheme.primaryContainer,
                     tintColor = MaterialTheme.colorScheme.primary,
                     outlineColor = if (isGlass) MaterialTheme.colorScheme.outlineVariant else Color.Transparent,
                 )
                 .padding(22.dp),
         ) {
             val context = LocalContext.current
-            val ink = MaterialTheme.colorScheme.onPrimaryContainer
             val primaryBtn = ButtonDefaults.buttonColors(
                 disabledContainerColor = ink.copy(alpha = 0.08f),
                 disabledContentColor = ink.copy(alpha = 0.38f),
@@ -1467,7 +1470,11 @@ private fun PcCard(
             )
             val outlined = ButtonDefaults.outlinedButtonColors(contentColor = ink, disabledContentColor = ink.copy(alpha = 0.38f))
             val outline = BorderStroke(1.dp, ink.copy(alpha = if (device.online) 0.45f else 0.15f))
-            val statusDotColor = if (device.online) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+            val statusDotColor = if (device.online) {
+                cardPalette?.primary ?: MaterialTheme.colorScheme.primary
+            } else {
+                cardPalette?.outline ?: MaterialTheme.colorScheme.outline
+            }
 
             // The status keeps room to be read: with large fonts the buttons move
             // to a line of their own rather than squeeze it a letter at a time.
@@ -1579,7 +1586,7 @@ private fun PcCard(
                 Text(
                     text = stringResource(R.string.home_section_screen),
                     style = MaterialTheme.typography.labelSmall,
-                    color = ink.copy(alpha = 0.68f),
+                    color = sectionLabelColor,
                     modifier = Modifier.padding(start = 2.dp),
                 )
                 Row(
@@ -1657,7 +1664,7 @@ private fun PcCard(
                 Text(
                     text = stringResource(R.string.home_section_transfer),
                     style = MaterialTheme.typography.labelSmall,
-                    color = ink.copy(alpha = 0.68f),
+                    color = sectionLabelColor,
                     modifier = Modifier.padding(start = 2.dp, top = 2.dp),
                 )
                 Column(
@@ -1775,7 +1782,7 @@ private fun PcCard(
                 Text(
                     text = stringResource(R.string.home_section_system),
                     style = MaterialTheme.typography.labelSmall,
-                    color = ink.copy(alpha = 0.68f),
+                    color = sectionLabelColor,
                     modifier = Modifier.padding(start = 2.dp, top = 2.dp),
                 )
                 Row(

@@ -44,6 +44,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 val LocalReducedMotion = compositionLocalOf { false }
 val LocalGlassTheme = compositionLocalOf { false }
 val LocalAmoledTheme = compositionLocalOf { false }
+internal val LocalBloomHomeCardPalette = compositionLocalOf<Palette?> { null }
 
 /** True when Android's "Remove animations" (animator duration scale 0) is enabled. */
 @Composable
@@ -74,7 +75,15 @@ data class Appearance(
     val amoled: Boolean = false,
     /** Hive's comb breathes and pulses (still with reduced motion or battery saver). */
     val combMotion: Boolean = true,
+    /** A Bloom preset for the Home device cards, or null to follow the theme. */
+    val homeCardSeed: String? = null,
 )
+
+internal fun Appearance.bloomHomeCardPalette(dark: Boolean): Palette? {
+    if (theme != "bloom") return null
+    val preset = Tokens.bloomSeeds[homeCardSeed] ?: return null
+    return if (dark) preset.dark else preset.light
+}
 
 private fun hslTone(hue: Float, sat: Float, lightness: Float): Color {
     val argb = ColorUtils.HSLToColor(
@@ -457,6 +466,7 @@ fun NectarlinkTheme(
         LocalReducedMotion provides reducedMotion,
         LocalGlassTheme provides glass,
         LocalAmoledTheme provides amoledActive,
+        LocalBloomHomeCardPalette provides appearance.bloomHomeCardPalette(dark),
         LocalHiveTheme provides hive,
     ) {
         MaterialTheme(

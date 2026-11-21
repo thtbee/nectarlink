@@ -77,6 +77,7 @@ class Preferences(context: Context) {
             dynamicColor = prefs.getBoolean(DYNAMIC, defaults.dynamicColor),
             amoled = prefs.getBoolean(AMOLED, defaults.amoled),
             combMotion = prefs.getBoolean(COMB_MOTION, defaults.combMotion),
+            homeCardSeed = prefs.getString(HOME_CARD_SEED, defaults.homeCardSeed),
         )
     }
 
@@ -101,6 +102,7 @@ class Preferences(context: Context) {
             putBoolean(DYNAMIC, next.dynamicColor)
             putBoolean(AMOLED, next.amoled)
             putBoolean(COMB_MOTION, next.combMotion)
+            putString(HOME_CARD_SEED, next.homeCardSeed)
         }
         _appearance.value = next
     }
@@ -172,6 +174,7 @@ class Preferences(context: Context) {
         private const val DYNAMIC = "dynamic_color"
         private const val AMOLED = "amoled_black"
         private const val COMB_MOTION = "comb_motion"
+        private const val HOME_CARD_SEED = "home_card_seed"
         private const val HIVE_INVITE_ANSWERED = "hive_invite_answered_version"
         private const val TOUCHPAD_SENSITIVITY = "touchpad_sensitivity"
         private const val SUGGEST_CLIPBOARD_ACTIONS = "suggest_clipboard_actions"
@@ -197,6 +200,7 @@ class Preferences(context: Context) {
             dynamicColor: Boolean = true,
             amoled: Boolean = false,
             combMotion: Boolean = true,
+            homeCardSeed: String? = null,
         ): Appearance {
             val defaults = Appearance()
             val safeTheme = theme?.takeIf { it in VALID_THEMES } ?: defaults.theme
@@ -209,6 +213,7 @@ class Preferences(context: Context) {
                 dynamicColor = dynamicColor,
                 amoled = amoled,
                 combMotion = combMotion,
+                homeCardSeed = homeCardSeed?.takeIf { it in Tokens.bloomSeeds },
             )
         }
 
@@ -220,6 +225,7 @@ class Preferences(context: Context) {
                 dynamicColor = appearance.dynamicColor,
                 amoled = appearance.amoled,
                 combMotion = appearance.combMotion,
+                homeCardSeed = appearance.homeCardSeed,
             )
 
         fun isSuggestClipboardActionsEnabled(context: Context): Boolean =

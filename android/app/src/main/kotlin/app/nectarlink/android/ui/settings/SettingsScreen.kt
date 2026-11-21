@@ -11,6 +11,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -27,6 +28,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -65,6 +68,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
@@ -400,16 +404,7 @@ fun SettingsScreen(
                             ) {
                                 Tokens.bloomSeeds.forEach { (name, seed) ->
                                     val isSelected = (!appearance.dynamicColor || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) && appearance.seed == name
-                                    val seedLabel = stringResource(
-                                        when (name) {
-                                            "honey" -> R.string.settings_seed_honey
-                                            "lavender" -> R.string.settings_seed_lavender
-                                            "ocean" -> R.string.settings_seed_ocean
-                                            "sage" -> R.string.settings_seed_sage
-                                            "black" -> R.string.settings_seed_black
-                                            else -> R.string.settings_seed_honey
-                                        },
-                                    )
+                                    val seedLabel = stringResource(bloomSeedLabel(name))
                                     val isBlackSeed = name == "black"
                                     val borderColor = when {
                                         isSelected -> MaterialTheme.colorScheme.onSurface
@@ -492,6 +487,12 @@ fun SettingsScreen(
                                     }
                                 }
                             }
+                        }
+                    }
+                    if (appearance.theme == "bloom") {
+                        SettingRowDivider()
+                        HomeCardColorSetting(appearance.homeCardSeed) { seed ->
+                            onAppearance { it.copy(homeCardSeed = seed) }
                         }
                     }
                 }
@@ -1932,6 +1933,62 @@ private fun Section(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             content()
+        }
+    }
+}
+
+private fun bloomSeedLabel(seed: String?) = when (seed) {
+    null -> R.string.settings_home_card_color_default
+    "black" -> R.string.settings_seed_black
+    "lavender" -> R.string.settings_seed_lavender
+    "ocean" -> R.string.settings_seed_ocean
+    "sage" -> R.string.settings_seed_sage
+    else -> R.string.settings_seed_honey
+}
+
+@Composable
+private fun HomeCardColorSetting(seed: String?, onSelect: (String?) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    val title = stringResource(R.string.settings_home_card_color)
+    val current = stringResource(bloomSeedLabel(seed))
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(title, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleSmall)
+        Box {
+            OutlinedButton(
+                onClick = { expanded = true },
+                modifier = Modifier.semantics {
+                    contentDescription = title
+                    stateDescription = current
+                },
+            ) {
+                Text(current)
+            }
+            DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                (listOf(null) + Tokens.bloomSeeds.keys).forEach { option ->
+                    val color = Tokens.bloomSeeds[option]?.color ?: MaterialTheme.colorScheme.primaryContainer
+                    DropdownMenuItem(
+                        text = { Text(stringResource(bloomSeedLabel(option))) },
+                        leadingIcon = {
+                            Surface(
+                                modifier = Modifier.size(18.dp),
+                                shape = CircleShape,
+                                color = color,
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                            ) {}
+                        },
+                        trailingIcon = { RadioButton(selected = option == seed, onClick = null) },
+                        modifier = Modifier.semantics { selected = option == seed },
+                        onClick = {
+                            onSelect(option)
+                            expanded = false
+                        },
+                    )
+                }
+            }
         }
     }
 }

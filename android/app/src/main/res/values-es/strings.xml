@@ -684,6 +684,8 @@
     <string name="settings_seed_ocean">Océano</string>
     <string name="settings_seed_sage">Salvia</string>
     <string name="settings_seed_black">Negro</string>
+    <string name="settings_home_card_color">Color de la tarjeta de inicio</string>
+    <string name="settings_home_card_color_default">Según el tema</string>
     <string name="settings_amoled">Negro puro (AMOLED)</string>
     <string name="settings_amoled_hint">Superficies de negro puro #000000 para pantallas OLED.</string>
 
