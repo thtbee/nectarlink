@@ -122,7 +122,31 @@ pub fn start() -> io::Result<()> {
     crate::core_host::spawn(async move {
         let _lock = lock;
         let requests = std::sync::Arc::new(tokio::sync::Semaphore::new(1));
-        while let Ok((stream, _)) = listener.accept().await {
+        loop {
+            let (stream, _) = match listener.accept().await {
+                Ok(accepted) => accepted,
+                Err(error)
+                    if matches!(
+                        error.kind(),
+                        io::ErrorKind::Interrupted | io::ErrorKind::ConnectionAborted
+                    ) =>
+                {
+                    continue;
+                }
+                Err(error)
+                    if matches!(
+                        error.raw_os_error(),
+                        Some(libc::EMFILE | libc::ENFILE | libc::ENOMEM | libc::ENOBUFS)
+                    ) =>
+                {
+                    tokio::time::sleep(Duration::from_millis(250)).await;
+                    continue;
+                }
+                Err(error) => {
+                    tracing::warn!(%error, "phone unlock listener stopped");
+                    break;
+                }
+            };
             if !stream.peer_cred().is_ok_and(|cred| cred.uid() == uid()) {
                 continue;
             }

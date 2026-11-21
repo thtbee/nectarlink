@@ -318,11 +318,12 @@ internal class PhonePlatform(
 
     override fun unlockForget(pc: String, user: String?) = UnlockKeys.forget(pc, user)
 
-    override fun linuxUnlockEnroll(pc: String, pcName: String, userName: String, uid: UInt): ByteArray {
+    override fun linuxUnlockEnroll(pc: String, pcName: String, userName: String, uid: UInt, timeoutMs: ULong): ByteArray {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R || !UnlockKeys.supported(context)) {
             throw UnlockRefusal.Unsupported()
         }
-        return LinuxUnlockKeys.enroll(context, pc, pcName, userName, uid, ENROLL_WAIT_MS)
+        val waitMs = timeoutMs.coerceAtMost(ENROLL_WAIT_MS.toULong()).toLong()
+        return LinuxUnlockKeys.enroll(context, pc, pcName, userName, uid, waitMs)
     }
 
     override fun linuxUnlockSign(pc: String, uid: UInt, transcript: ByteArray): ByteArray {

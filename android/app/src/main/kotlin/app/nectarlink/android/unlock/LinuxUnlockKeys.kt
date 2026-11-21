@@ -4,6 +4,7 @@ package app.nectarlink.android.unlock
 import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Build
+import android.os.SystemClock
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyInfo
 import android.security.keystore.KeyPermanentlyInvalidatedException
@@ -22,6 +23,8 @@ import java.security.spec.ECGenParameterSpec
 import java.security.spec.ECPoint
 import java.util.UUID
 import java.util.concurrent.CompletableFuture
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asExecutor
 import org.json.JSONObject
 
 internal fun encodeLinuxUnlockPublicKey(point: ECPoint): ByteArray {
@@ -52,13 +55,23 @@ internal object LinuxUnlockKeys {
     @RequiresApi(Build.VERSION_CODES.R)
     @SuppressLint("ApplySharedPref")
     fun enroll(context: Context, pc: String, pcName: String, userName: String, uid: UInt, timeoutMs: Long): ByteArray {
+        if (timeoutMs <= 0) throw UnlockRefusal.Declined()
+        val startedAt = SystemClock.elapsedRealtime()
+        fun remainingMs(): Long {
+            val remaining = timeoutMs - (SystemClock.elapsedRealtime() - startedAt)
+            if (remaining <= 0) throw UnlockRefusal.Declined()
+            return remaining
+        }
+
         val account = accountPrefix(pc, uid)
         val confirmed = CompletableFuture<String?>()
         var stagedAlias: String? = null
+        var staleAliases = emptyList<String>()
         try {
             val prefs = prefs(context)
             val previous: String?
             val (alias, signature, publicKey) = synchronized(this) {
+                remainingMs()
                 val store = keyStore()
                 previous = prefs.getString(account, null)
                 val record = previous?.let(::JSONObject)
@@ -77,9 +90,10 @@ internal object LinuxUnlockKeys {
                     Triple(alias, signature, encodeLinuxUnlockPublicKey(publicKey.w))
                 }
             }
-            val authorized = UnlockPrompts.askToSign(context, pcName, userName, signature, timeoutMs, confirmed)
+            val authorized = UnlockPrompts.askToSign(context, pcName, userName, signature, remainingMs(), confirmed)
                 ?: throw UnlockRefusal.Declined()
-            synchronized(this) {
+            val fingerprint = synchronized(this) {
+                remainingMs()
                 val store = keyStore()
                 if (!store.containsAlias(alias) || prefs.getString(account, null) != previous) {
                     throw UnlockRefusal.KeyGone()
@@ -87,21 +101,37 @@ internal object LinuxUnlockKeys {
                 // Finish a separate signing operation before accepting the enrollment.
                 authorized.update(enrollmentProof)
                 authorized.sign()
+                val fingerprint = MessageDigest.getInstance("SHA-256").digest(publicKey)
+                    .joinToString("") { "%02x".format(it) }
+                remainingMs()
                 if (stagedAlias != null) {
+                    staleAliases = store.aliases().toList().filter { it.startsWith(account) && it != alias }
                     val record = JSONObject().put("alias", alias).put("pc", pcName).put("user", userName)
-                    if (!prefs.edit().putString(account, record.toString()).commit()) {
+                    remainingMs()
+                    try {
+                        if (!prefs.edit().putString(account, record.toString()).commit()) {
+                            throw UnlockRefusal.Unsupported()
+                        }
+                        remainingMs()
+                    } catch (err: Exception) {
                         prefs.edit().putString(account, previous).commit()
-                        throw UnlockRefusal.Unsupported()
+                        throw err
                     }
                     stagedAlias = null
-                    store.aliases().toList().filter { it.startsWith(account) && it != alias }.forEach {
-                        runCatching { store.deleteEntry(it) }
-                    }
+                }
+                fingerprint
+            }
+            confirmed.complete(fingerprint)
+            if (staleAliases.isNotEmpty()) {
+                // Aliases in this snapshot are never reused after committing their replacement.
+                val aliasesToDelete = staleAliases
+                runCatching {
+                    CompletableFuture.runAsync({
+                        val store = keyStore()
+                        aliasesToDelete.forEach { runCatching { store.deleteEntry(it) } }
+                    }, Dispatchers.IO.asExecutor())
                 }
             }
-            confirmed.complete(
-                MessageDigest.getInstance("SHA-256").digest(publicKey).joinToString("") { "%02x".format(it) },
-            )
             return publicKey
         } catch (err: Exception) {
             if (err is UnlockRefusal) throw err

@@ -3795,6 +3795,8 @@ async fn linux_unlock_round_trip_binds_the_paired_devices_and_account() {
     assert_eq!(asks[0].pc_name, "Desktop");
     assert_eq!(asks[0].user_name, "bee");
     assert_eq!(asks[0].uid, challenge.uid);
+    assert!(!asks[0].timeout.is_zero());
+    assert!(asks[0].timeout < Duration::from_secs(90));
     let key = UnparsedPublicKey::new(&ECDSA_P256_SHA256_ASN1, key);
     let signature = with_timeout("Linux unlock signing", pc.node.linux_unlock_sign(challenge)).await.unwrap();
     key.verify(&challenge.signing_bytes(), &signature).unwrap();
@@ -3847,7 +3849,16 @@ async fn linux_unlock_round_trip_binds_the_paired_devices_and_account() {
         resume.send(()).unwrap();
     });
     assert!(matches!(pending, Err(Error::Denied)));
-    assert!(matches!(pc.node.linux_unlock_sign(challenge).await, Err(Error::NotFound)));
+    let after_cleanup = with_timeout("phone finishes deleting the old key", async {
+        loop {
+            match pc.node.linux_unlock_sign(challenge).await {
+                Err(Error::Denied) => tokio::time::sleep(Duration::from_millis(25)).await,
+                result => break result,
+            }
+        }
+    })
+    .await;
+    assert!(matches!(after_cleanup, Err(Error::NotFound)));
 
     enroll().await.unwrap();
     let (started, wait_started) = tokio::sync::oneshot::channel();

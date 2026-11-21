@@ -40,6 +40,7 @@ pub struct Ask {
     pub pc_name: String,
     pub user_name: String,
     pub uid: u32,
+    pub timeout: Duration,
 }
 
 impl std::fmt::Debug for Ask {
@@ -184,7 +185,6 @@ async fn prompt(
     let answer = tokio::select! {
         biased;
         _ = local_path_lost(shared, session, paths) => {
-            current.revoked.store(true, Ordering::Release);
             return Err(gate_reply(Error::Denied));
         }
         answer = platform_answer => answer,
@@ -247,12 +247,17 @@ async fn respond(shared: &Shared, session: &Session, env: &Envelope) -> Result<E
                 return Err(invalid());
             }
             let pc_name = unlock::shown_name(&shared.peer_name(&peer));
-            let ask = Ask {
-                pc_name: if pc_name.trim().is_empty() { peer.short() } else { pc_name },
-                user_name: req.user_name,
-                uid: req.uid,
-            };
+            let deadline = Instant::now() + ENROLL_TTL;
             let public_key = prompt(shared, session, ENROLL_TTL, move |current| {
+                let timeout = deadline.saturating_duration_since(Instant::now());
+                // Leave time to return the result after Android finishes committing the key.
+                let timeout = timeout.checked_sub(Duration::from_secs(1)).ok_or(KeyRefusal::Declined)?;
+                let ask = Ask {
+                    pc_name: if pc_name.trim().is_empty() { peer.short() } else { pc_name },
+                    user_name: req.user_name,
+                    uid: req.uid,
+                    timeout,
+                };
                 let key = platform.linux_unlock_enroll(&peer, &ask)?;
                 if current.is_revoked() {
                     platform.linux_unlock_forget(&peer, Some(ask.uid));
@@ -323,8 +328,8 @@ pub(crate) async fn enroll(shared: &Shared, session: &Session, uid: u32, user_na
     if !req.is_valid() {
         return Err(Error::Protocol("invalid Linux account label".into()));
     }
-    let reply =
-        request(shared, session, Envelope::new(types::LINUX_UNLOCK_ENROLL, &req)?, ENROLL_TTL).await?;
+    let timeout = ENROLL_TTL + Duration::from_secs(5);
+    let reply = request(shared, session, Envelope::new(types::LINUX_UNLOCK_ENROLL, &req)?, timeout).await?;
     let enrolled: LinuxUnlockEnrolled = reply.expect_body(types::LINUX_UNLOCK_ENROLLED)?;
     if !enrolled.is_valid() {
         return Err(Error::Protocol("invalid Linux public key".into()));

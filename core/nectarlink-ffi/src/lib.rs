@@ -2920,6 +2920,7 @@ pub trait Platform: Send + Sync {
         pc_name: String,
         user_name: String,
         uid: u32,
+        timeout_ms: u64,
     ) -> Result<Vec<u8>, UnlockRefusal>;
     /// Prompt using the confirmed enrollment, then return a DER ECDSA signature.
     fn linux_unlock_sign(&self, pc: String, uid: u32, transcript: Vec<u8>) -> Result<Vec<u8>, UnlockRefusal>;
@@ -3418,7 +3419,14 @@ impl core::Platform for PlatformAdapter {
         pc: &core::DeviceId,
         ask: &core::linux_unlock::Ask,
     ) -> Result<Vec<u8>, core::unlock::KeyRefusal> {
-        Ok(self.0.linux_unlock_enroll(pc.to_string(), ask.pc_name.clone(), ask.user_name.clone(), ask.uid)?)
+        let timeout_ms = u64::try_from(ask.timeout.as_millis()).unwrap_or(u64::MAX);
+        Ok(self.0.linux_unlock_enroll(
+            pc.to_string(),
+            ask.pc_name.clone(),
+            ask.user_name.clone(),
+            ask.uid,
+            timeout_ms,
+        )?)
     }
     fn linux_unlock_sign(
         &self,
