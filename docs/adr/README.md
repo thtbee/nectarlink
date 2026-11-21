@@ -10,4 +10,5 @@
 | 0006 | [Kotlin + Jetpack Compose for the Android app](0006-kotlin-compose-android.md) | Accepted |
 | 0007 | [Licensing](0007-licensing.md) | Accepted |
 | 0008 | [Platforms and distribution](0008-platforms-and-distribution.md) | Accepted |
+| 0009 | [Unlock the PC with the phone](0009-unlock-with-phone.md) | Accepted |
 | 0010 | [Agent access through one action layer](0010-agent-access.md) | Accepted |

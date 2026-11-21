@@ -121,9 +121,9 @@ jobs:
           # Qt 6.12's repository layout needs a current aqtinstall, pinned to a commit so nothing upstream reaches a build unreviewed.
           aqtsource: git+https://github.com/miurahr/aqtinstall.git@5a49f2b391ae8ee1d3c0dd87f8b33c1d49a4deb7
       - name: Clippy
-        run: cargo clippy --locked -p nectarlink-desktop -p nectarlink-vcam -p s1-qt-rust --all-targets -- -D warnings
+        run: cargo clippy --locked -p nectarlink-desktop -p nectarlink-vcam -p nectarlink-credprov -p s1-qt-rust --all-targets -- -D warnings
       - name: Tests
-        run: cargo test --locked -p nectarlink-desktop -p nectarlink-vcam
+        run: cargo test --locked -p nectarlink-desktop -p nectarlink-vcam -p nectarlink-credprov
       - name: QML tests
         shell: pwsh
         run: ./scripts/qml-tests.ps1
@@ -149,7 +149,7 @@ jobs:
           # Qt 6.12's repository layout needs a current aqtinstall, pinned to a commit so nothing upstream reaches a build unreviewed.
           aqtsource: git+https://github.com/miurahr/aqtinstall.git@5a49f2b391ae8ee1d3c0dd87f8b33c1d49a4deb7
       - name: Release build
-        run: cargo build --locked --release -p nectarlink-desktop -p nectarlink-mcp -p nectarlink-vcam
+        run: cargo build --locked --release -p nectarlink-desktop -p nectarlink-mcp -p nectarlink-vcam -p nectarlink-credprov
       - name: Install NSIS
         shell: pwsh
         run: ./scripts/install-nsis.ps1
@@ -302,9 +302,9 @@ jobs:
           cache: true
           aqtsource: git+https://github.com/miurahr/aqtinstall.git@5a49f2b391ae8ee1d3c0dd87f8b33c1d49a4deb7
       - name: Clippy
-        run: cargo clippy --locked -p nectarlink-desktop -p nectarlink-vcam -p s1-qt-rust --all-targets -- -D warnings
+        run: cargo clippy --locked -p nectarlink-desktop -p nectarlink-vcam -p nectarlink-credprov -p s1-qt-rust --all-targets -- -D warnings
       - name: Tests
-        run: cargo test --locked -p nectarlink-desktop -p nectarlink-vcam
+        run: cargo test --locked -p nectarlink-desktop -p nectarlink-vcam -p nectarlink-credprov
       - name: Video adapter fallback
         run: bash desktop/app/tests/linux_video_dispatch_test.sh
       - name: Check without the optional FFmpeg backend
@@ -354,7 +354,7 @@ jobs:
           cache: true
           aqtsource: git+https://github.com/miurahr/aqtinstall.git@5a49f2b391ae8ee1d3c0dd87f8b33c1d49a4deb7
       - name: Release build
-        run: cargo build --locked --release -p nectarlink-desktop -p nectarlink-mcp -p nectarlink-vcam
+        run: cargo build --locked --release -p nectarlink-desktop -p nectarlink-mcp -p nectarlink-vcam -p nectarlink-credprov
 
   linux-install:
     name: Linux packages and install.sh

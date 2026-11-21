@@ -10,7 +10,7 @@ use std::{
     cell::{Cell, RefCell},
     sync::{
         Mutex,
-        atomic::{AtomicIsize, Ordering},
+        atomic::{AtomicBool, AtomicIsize, Ordering},
     },
 };
 
@@ -608,11 +608,47 @@ fn add_icon(hwnd: HWND) {
     }
 }
 
+/// Whether the tray shows the mark in one colour (#479) instead of the
+/// coloured tile.
+static ONE_COLOUR: AtomicBool = AtomicBool::new(false);
+
+/// Picks the coloured or the one-colour icon, and redraws it if the tray is up.
+pub fn set_one_colour(on: bool) {
+    ONE_COLOUR.store(on, Ordering::Release);
+    refresh_icon();
+}
+
+/// Redraws the icon (its style changed, or the taskbar went light or dark).
+fn refresh_icon() {
+    let raw = TRAY_HWND.load(Ordering::Acquire);
+    if raw == 0 {
+        return;
+    }
+    let hwnd = HWND(raw as *mut _);
+    let old = ICON.with(|i| i.replace(create_icon().unwrap_or_default()));
+    let mut data = icon_data(hwnd);
+    data.uFlags = NIF_ICON;
+    // SAFETY: data is fully initialized for this window's icon; the old icon
+    // is ours and no longer shown once the new one is in.
+    unsafe {
+        let _ = Shell_NotifyIconW(NIM_MODIFY, &data);
+        if !old.is_invalid() {
+            let _ = DestroyIcon(old);
+        }
+    }
+}
+
 /// Builds an HICON from the mark rendered at the small-icon size.
 fn create_icon() -> windows::core::Result<HICON> {
     // SAFETY: GetSystemMetrics has no preconditions.
     let size = unsafe { GetSystemMetrics(SM_CXSMICON) }.clamp(16, 64) as usize;
-    let rgba = crate::mark::render(size);
+    let rgba = if ONE_COLOUR.load(Ordering::Acquire) {
+        // Black on a light taskbar, white on a dark one.
+        let ink = if super::taskbar_light() { [0x1c, 0x1b, 0x1f] } else { [0xff, 0xff, 0xff] };
+        crate::mark::render_glyph(size, ink)
+    } else {
+        crate::mark::render(size)
+    };
     // SAFETY: a top-down 32-bit DIB of `size`×`size`; we write exactly
     // size*size*4 bytes into its pixel buffer, then hand both bitmaps to
     // CreateIconIndirect, which copies them, and delete ours.
@@ -773,6 +809,10 @@ unsafe extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lpar
                 || wparam.0 == SPI_SETDESKWALLPAPER
             {
                 emit(TrayEvent::AppearanceChanged);
+            }
+            // The taskbar may have gone light or dark.
+            if area.as_deref() == Some("ImmersiveColorSet") && ONE_COLOUR.load(Ordering::Acquire) {
+                refresh_icon();
             }
             LRESULT(0)
         }

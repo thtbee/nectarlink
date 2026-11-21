@@ -224,6 +224,8 @@ FunctionEnd
   ; Moved aside earlier and no longer loaded.
   Delete "$INSTDIR\*.dll.*.old"
   !insertmacro MoveAsideInUse "nectarlink_vcam.dll"
+  ; LogonUI keeps the unlock credential provider loaded once it has used it.
+  !insertmacro MoveAsideInUse "nectarlink_credprov.dll"
   !insertmacro MoveAsideInUse "vcruntime140.dll"
   !insertmacro MoveAsideInUse "vcruntime140_1.dll"
   !insertmacro MoveAsideInUse "msvcp140.dll"
@@ -531,6 +533,7 @@ Section "Uninstall"
     Delete "$INSTDIR\${EXE}"
     Delete "$INSTDIR\nectarlink-agent.exe"
     !insertmacro MoveAsideInUse "nectarlink_vcam.dll"
+    !insertmacro MoveAsideInUse "nectarlink_credprov.dll"
     Delete "$INSTDIR\AppxManifest.xml"
     RMDir /r "$INSTDIR\Assets"
     Delete "$INSTDIR\sparse-package.log"
@@ -540,5 +543,8 @@ Section "Uninstall"
 
   DeleteRegKey HKLM "${UNINSTALL_KEY}"
   DeleteRegKey HKLM "Software\${APP}"
+  ; Unlock with phone: the lock screen stops offering it with the app gone.
+  DeleteRegKey HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\Credential Providers\{BC7B4BCF-B24C-4C5B-9E55-CB09E19A8799}"
+  DeleteRegKey HKLM "SOFTWARE\Classes\CLSID\{BC7B4BCF-B24C-4C5B-9E55-CB09E19A8799}"
   !insertmacro Progress "done"
 SectionEnd

@@ -94,7 +94,7 @@
     <string name="channel_elevated">Configuración de depuración inalámbrica</string>
     <string name="elevated_title">Elevated</string>
     <string name="elevated_not_set_up">Control táctil en tiempo real, todas las teclas y controles para silenciar, poner en espera y usar el teclado en las llamadas desde tu PC.</string>
-    <string name="elevated_turn_on_wireless">Activar la depuración inalámbrica por sí solo</string>
+    <string name="elevated_turn_on_wireless">Activar automáticamente la depuración inalámbrica</string>
     <string name="elevated_turn_on_wireless_hint">Elevated la necesita, así que la vuelve a activar cuando la encuentra desactivada, en cualquier Wi-Fi. Desactiva esto para activarla tú en Opciones de desarrollador.</string>
     <string name="elevated_waiting">Esperando la depuración inalámbrica. Actívala en Opciones de desarrollador.</string>
     <string name="elevated_starting">Iniciando…</string>
@@ -345,7 +345,7 @@
         <item quantity="other">Conectado a %1$d PC</item>
     </plurals>
     <string name="notification_waiting">Esperando a tu PC</string>
-    <string name="notification_waiting_network">Esperando wifi para llegar a tu PC</string>
+    <string name="notification_waiting_network">Esperando Wi-Fi para conectar con tu PC</string>
     <string name="notification_not_paired">Aún no se ha emparejado con un PC</string>
     <plurals name="transfer_files">
         <item quantity="one">%1$d archivo</item>
@@ -364,6 +364,11 @@
     <string name="settings_remote">Controlar tu PC</string>
     <string name="settings_volume_keys_control_pc">Los botones de volumen controlan tu PC</string>
     <string name="settings_volume_keys_control_pc_hint">Mientras tu PC reproduce música o vídeo, los botones de volumen del teléfono cambian el volumen del PC.</string>
+    <string name="settings_pc_sound_buffer">Búfer del sonido del PC</string>
+    <string name="settings_pc_sound_buffer_hint">Si el sonido del PC se corta con una Wi-Fi saturada, un búfer mayor lo suaviza, con algo más de retraso.</string>
+    <string name="settings_buffer_low">Bajo</string>
+    <string name="settings_buffer_medium">Medio</string>
+    <string name="settings_buffer_high">Alto</string>
     <string name="settings_quiet_while_using_pc">Silencio mientras usas el PC</string>
     <string name="settings_quiet_while_using_pc_hint">El teléfono no suena ni vibra con las notificaciones mientras usas un PC emparejado que las muestra.</string>
     <string name="settings_hide_from_recents">Ocultar de aplicaciones recientes</string>
@@ -453,13 +458,23 @@
     <string name="mic_request_card_text">Permanecerá activo hasta que tú o el PC lo detengáis.</string>
     <string name="mic_pc_toggle">Usar este teléfono como micrófono</string>
     <string name="mic_pc_toggle_hint">Activado de forma predeterminada. Este PC puede solicitar el micrófono. Solo se activa cuando tocas Iniciar.</string>
+    <string name="channel_unlock_requests">Desbloqueo del PC</string>
+    <string name="unlock_enroll_title">¿Dejar que %1$s se desbloquee con este teléfono?</string>
+    <string name="unlock_enroll_text">A partir de ahora tu huella podrá desbloquear %1$s. Se pedirá cada vez.</string>
+    <string name="unlock_request_title">¿Desbloquear %1$s?</string>
+    <string name="unlock_request_text">Como %1$s</string>
+    <string name="unlock_prompt_text">Confirma solo si estás ahora mismo frente a este PC.</string>
+    <string name="unlock_pc_toggle">Desbloquear este PC con tu huella</string>
+    <string name="unlock_pc_toggle_hint">Actívalo aquí y en el PC. Cada desbloqueo pide tu huella.</string>
+    <string name="unlock_prompt_directly_hint">Para que la huella se pida al momento en lugar de con una notificación que tocar, permite que NectarLink se muestre sobre otras apps.</string>
+    <string name="unlock_prompt_directly_action">Permitir</string>
     <string name="mic_pc_toggle_hint_auto">Activado de forma predeterminada. Este PC puede solicitar el micrófono, que se activa de inmediato.</string>
     <string name="start_without_asking_toggle">Iniciar la cámara y el micrófono sin preguntar</string>
     <string name="start_without_asking_hint">Cuando este PC lo solicite, se activarán de inmediato, sin necesidad de tocar el teléfono. Requiere Elevated. Sin él, el teléfono pedirá permiso como siempre.</string>
     <string name="mirror_ask_toggle">Preguntar antes de compartir mi pantalla</string>
     <string name="mirror_ask_hint">Cada vez que este PC quiera ver tu pantalla, esperará a que toques. Sin esto, Elevated la comparte al instante.</string>
     <string name="clip_share_toggle">Compartir mi portapapeles</string>
-    <string name="clip_share_hint">Lo que copias llega solo mientras Elevated está activado. Enviarlo a mano sigue funcionando.</string>
+    <string name="clip_share_hint">Lo que copias se envía automáticamente mientras Elevated está activado. Enviarlo a mano sigue funcionando.</string>
     <string name="clip_accept_toggle">Aceptar su portapapeles</string>
     <string name="clip_accept_hint">Lo que copie ahí llega al portapapeles de este teléfono.</string>
     <string name="recorder_notification_recording">Grabando para %1$s</string>

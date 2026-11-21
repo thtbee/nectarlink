@@ -61,6 +61,11 @@ pub mod qobject {
         #[qproperty(QString, attachment_size, cxx_name = "attachmentSize")]
         /// Non-empty when the staged attachment exceeds the 900 KB MMS limit or is invalid.
         #[qproperty(QString, attachment_error, cxx_name = "attachmentError")]
+        /// The phone's SIMs to text from, when it has two or more (JSON:
+        /// `[{ "id", "label" }]`).
+        #[qproperty(QString, sims)]
+        /// The SIM the open conversation sends on, or "".
+        #[qproperty(QString, sim)]
         type Messages = super::MessagesRust;
     }
 
@@ -125,6 +130,10 @@ pub mod qobject {
         /// What was kept for `key`, or "".
         #[qinvokable]
         fn draft(self: &Messages, key: &QString) -> QString;
+        /// Texts in the open conversation go out on `sim` (an id from `sims`).
+        #[qinvokable]
+        #[cxx_name = "chooseSim"]
+        fn choose_sim(self: &Messages, sim: &QString);
     }
 }
 
@@ -152,6 +161,8 @@ pub struct MessagesRust {
     attachment_name: QString,
     attachment_size: QString,
     attachment_error: QString,
+    sims: QString,
+    sim: QString,
     /// What was last shown, to skip refreshes that change nothing.
     last: Option<messages::View>,
 }
@@ -162,6 +173,7 @@ impl cxx_qt::Initialize for qobject::Messages {
         self.as_mut().set_threads(QString::from("[]"));
         self.as_mut().set_messages(QString::from("[]"));
         self.as_mut().set_available_apps(QString::from("[]"));
+        self.as_mut().set_sims(QString::from("[]"));
         super::subscribe(self.qt_thread(), Changes::MESSAGES, Self::update_view);
         self.update_view();
     }
@@ -205,7 +217,15 @@ impl qobject::Messages {
         self.as_mut().set_attachment_name(QString::from(&view.attachment_name));
         self.as_mut().set_attachment_size(QString::from(&view.attachment_size));
         self.as_mut().set_attachment_error(QString::from(&view.attachment_error));
+        if differs(|v| &v.sims) {
+            self.as_mut().set_sims(QString::from(&view.sims.to_string()));
+        }
+        self.as_mut().set_sim(QString::from(&view.sim));
         self.as_mut().rust_mut().last = Some(view);
+    }
+
+    pub fn choose_sim(&self, sim: &QString) {
+        messages::choose_sim(String::from(sim));
     }
 
     pub fn open(&self, device: &QString) {

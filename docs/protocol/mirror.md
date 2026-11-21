@@ -39,6 +39,7 @@ t = "mirror.start"     id = n   b = { max_size: uint, fps: uint, bitrate: uint, 
                                      ? sound_only: bool }
 t = "mirror.stop"      id = n   b = { ? session: uint }
 t = "mirror.power"              b = { ? stay_awake: bool, ? screen_off: bool }
+t = "mirror.rotate"             b = { ? landscape: bool }
 t = "mirror.keyframe"           b = { ? session: uint }
 t = "mirror.resize"             b = { session: uint, width: uint, height: uint, ? zoom: uint }
 t = "mirror.notice"             b = { ? session: uint, code: text }
@@ -76,6 +77,10 @@ means 0, so PCs and phones that predate sessions work as before.
   message answers `UNSUPPORTED`.
 - `mirror.power` (PC → phone): update `stay_awake` and `screen_off` while
   mirroring the phone's screen (`session` 0). Not answered.
+- `mirror.rotate` (PC → phone): turn the mirrored screen to landscape, or back
+  to portrait. The phone holds that rotation while it's mirrored (with
+  Elevated; without it nothing happens) and lets its own rotation take over
+  again when mirroring ends. Not answered; older phones ignore it.
 - `mirror.keyframe` (PC → phone): the decoder lost its place; send a
   keyframe next. Not answered.
 - `mirror.resize` (PC → phone): resize an app window's display (`session != 0`)

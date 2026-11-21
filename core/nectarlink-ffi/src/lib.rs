@@ -1312,6 +1312,8 @@ pub struct SmsMessage {
     pub status: Option<String>,
     /// Pictures and other attachments, fetched with `sms_part`.
     pub parts: Vec<SmsPart>,
+    /// The SIM it came in on or went out from (an id from `sms_sims`), when known.
+    pub sim: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
@@ -2589,6 +2591,30 @@ fn parse_id(id: &str) -> Result<DeviceId> {
 
 // ---- Foreign interfaces (implemented in Kotlin) ----
 
+/// Why the phone didn't wrap or unwrap a PC's unlock key (ADR 0009).
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
+pub enum UnlockRefusal {
+    /// The owner said no, or didn't confirm in time.
+    #[error("declined")]
+    Declined,
+    /// No strong biometric enrolled, or no secure key storage.
+    #[error("unsupported")]
+    Unsupported,
+    /// The key is gone (a fingerprint was added, or app data cleared).
+    #[error("key gone")]
+    KeyGone,
+}
+
+impl From<UnlockRefusal> for core::unlock::KeyRefusal {
+    fn from(r: UnlockRefusal) -> Self {
+        match r {
+            UnlockRefusal::Declined => core::unlock::KeyRefusal::Declined,
+            UnlockRefusal::Unsupported => core::unlock::KeyRefusal::Unsupported,
+            UnlockRefusal::KeyGone => core::unlock::KeyRefusal::KeyGone,
+        }
+    }
+}
+
 /// Why a notification couldn't be dismissed or its action run.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
 pub enum NotificationFailure {
@@ -2800,6 +2826,8 @@ pub trait Platform: Send + Sync {
     fn mirror_resize_requested(&self, pc_id: String, session: u32, width: u32, height: u32, zoom: u32);
     /// The PC updated `stay_awake` or `screen_off` while mirroring the screen (`session == 0`).
     fn mirror_power_requested(&self, pc_id: String, stay_awake: bool, screen_off: bool);
+    /// The PC wants the mirrored screen in landscape or portrait.
+    fn mirror_rotate_requested(&self, pc_id: String, landscape: bool);
     /// The PC wants the phone's sound sent to it, or left on the phone, while
     /// mirroring the screen.
     fn mirror_sound_requested(&self, pc_id: String, on: bool);
@@ -2859,12 +2887,50 @@ pub trait Platform: Send + Sync {
         body: String,
         attachments: Vec<SmsAttachment>,
     ) -> bool;
+    /// A PC asked which SIMs this phone texts from (#474).
+    fn sms_sims(&self) -> Vec<CallSim>;
+    /// Like `send_sms_with_attachments`, on the SIM `sim` (an id from `sms_sims`).
+    fn sms_send_on(
+        &self,
+        to: Vec<String>,
+        body: String,
+        attachments: Vec<SmsAttachment>,
+        sim: String,
+    ) -> bool;
     /// A PC asked for a message's attachment; null when it's gone.
     fn sms_part(&self, id: String) -> Option<SmsPartData>;
     /// A PC asked to change one of this phone's quick settings (`id`: `"dnd"`,
     /// `"ringer"`, `"flashlight"`, `"volume"`, `"brightness"`, `"wifi"`,
     /// `"bluetooth"`). False if the phone couldn't.
     fn set_phone_toggle(&self, id: String, value: PhoneToggleValue) -> bool;
+    /// Unlock the PC with this phone (ADR 0009), enrolling: ask the owner
+    /// ("Let `pc_name` unlock with your fingerprint for `user_name`?"); after a
+    /// strong biometric, encrypt `key` with a Keystore key for `pc` and `user`
+    /// that needs a strong biometric for every use and is invalidated by a new
+    /// fingerprint. Return it encrypted (IV included). Blocks until answered
+    /// (the core gives up after 90 s).
+    fn unlock_wrap(
+        &self,
+        pc: String,
+        pc_name: String,
+        user_name: String,
+        user: String,
+        key: Vec<u8>,
+    ) -> Result<Vec<u8>, UnlockRefusal>;
+    /// Unlock the PC with this phone: show "Unlock `pc_name` for
+    /// `user_name`?"; after a strong biometric, decrypt `wrapped` with that
+    /// Keystore key and return the key. Blocks until answered (30 s).
+    fn unlock_unwrap(
+        &self,
+        pc: String,
+        pc_name: String,
+        user_name: String,
+        user: String,
+        wrapped: Vec<u8>,
+    ) -> Result<Vec<u8>, UnlockRefusal>;
+    /// Unlock the PC with this phone: delete the Keystore keys kept for `pc`
+    /// (for `user`, or all of them).
+    fn unlock_forget(&self, pc: String, user: Option<String>);
     /// A PC asked to list a folder in this phone's storage (`""` is root).
     fn storage_list(&self, path: String) -> Result<Vec<StorageEntry>, StorageFailure>;
     /// A PC asked to open a file in this phone's storage for ranged reading.
@@ -3055,6 +3121,9 @@ impl core::Platform for PlatformAdapter {
     fn mirror_power_requested(&self, peer: &DeviceId, stay_awake: bool, screen_off: bool) {
         self.0.mirror_power_requested(peer.to_string(), stay_awake, screen_off);
     }
+    fn mirror_rotate_requested(&self, peer: &DeviceId, landscape: bool) {
+        self.0.mirror_rotate_requested(peer.to_string(), landscape);
+    }
     fn mirror_sound_requested(&self, peer: &DeviceId, on: bool) {
         self.0.mirror_sound_requested(peer.to_string(), on);
     }
@@ -3187,6 +3256,7 @@ impl core::Platform for PlatformAdapter {
                     .into_iter()
                     .map(|p| core::SmsPart { id: p.id, mime: p.mime, size: p.size })
                     .collect(),
+                sim: m.sim,
             })
             .collect())
     }
@@ -3205,6 +3275,29 @@ impl core::Platform for PlatformAdapter {
         let att: Vec<SmsAttachment> =
             attachments.iter().cloned().map(|a| SmsAttachment { mime: a.mime, data: a.data }).collect();
         if self.0.send_sms_with_attachments(to.to_vec(), body.to_owned(), att) {
+            Ok(())
+        } else {
+            Err("not sent".into())
+        }
+    }
+    fn sms_sims(&self) -> Result<core::CallSims, String> {
+        let sims = self.0.sms_sims();
+        let default = sims.iter().find(|s| s.is_default).map(|s| s.id.clone());
+        Ok(core::CallSims {
+            sims: sims.into_iter().map(|s| core::CallSim { id: s.id, label: s.label }).collect(),
+            default,
+        })
+    }
+    fn send_sms_on(
+        &self,
+        to: &[String],
+        body: &str,
+        attachments: &[core::SmsAttachment],
+        sim: &str,
+    ) -> Result<(), String> {
+        let att: Vec<SmsAttachment> =
+            attachments.iter().cloned().map(|a| SmsAttachment { mime: a.mime, data: a.data }).collect();
+        if self.0.sms_send_on(to.to_vec(), body.to_owned(), att, sim.to_owned()) {
             Ok(())
         } else {
             Err("not sent".into())
@@ -3324,6 +3417,37 @@ impl core::Platform for PlatformAdapter {
             .into_iter()
             .map(|t| core::PhotoThumb { id: t.id, data: t.data })
             .collect())
+    }
+    fn unlock_wrap(
+        &self,
+        pc: &core::DeviceId,
+        ask: &core::unlock::Ask,
+        key: &[u8],
+    ) -> Result<Vec<u8>, core::unlock::KeyRefusal> {
+        Ok(self.0.unlock_wrap(
+            pc.to_string(),
+            ask.pc_name.clone(),
+            ask.user_name.clone(),
+            ask.user.clone(),
+            key.to_vec(),
+        )?)
+    }
+    fn unlock_unwrap(
+        &self,
+        pc: &core::DeviceId,
+        ask: &core::unlock::Ask,
+        wrapped: &[u8],
+    ) -> Result<Vec<u8>, core::unlock::KeyRefusal> {
+        Ok(self.0.unlock_unwrap(
+            pc.to_string(),
+            ask.pc_name.clone(),
+            ask.user_name.clone(),
+            ask.user.clone(),
+            wrapped.to_vec(),
+        )?)
+    }
+    fn unlock_forget(&self, pc: &core::DeviceId, user: Option<&str>) {
+        self.0.unlock_forget(pc.to_string(), user.map(str::to_owned));
     }
     fn set_phone_toggle(&self, id: &str, value: &core::PhoneToggleValue) -> Result<(), String> {
         let value = match value {

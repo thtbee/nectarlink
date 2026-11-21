@@ -38,6 +38,13 @@ Item {
             return ({})
         }
     }
+    // Apps pinned to the top (#477), in the order they were pinned.
+    readonly property var pinnedPkgs: {
+        Preferences.pinsRevision
+        try { return JSON.parse(Preferences.pinnedApps(deviceId)) } catch (e) { return [] }
+    }
+    readonly property var pinned: pinnedPkgs.map(pkg => apps.find(a => a.pkg === pkg)).filter(a => a !== undefined)
+    function isPinned(app) { return app && pinnedPkgs.indexOf(app.pkg) >= 0 }
     readonly property string query: search.text.trim().toLocaleLowerCase()
     readonly property var shown: query.length === 0 ? apps
         : apps.filter(a => a.label.toLocaleLowerCase().indexOf(query) >= 0 || a.pkg.indexOf(query) >= 0)
@@ -229,17 +236,38 @@ Item {
 
             header: Column {
                 width: grid.width
-                visible: page.query.length === 0 && page.recent.length > 0
+                visible: page.query.length === 0 && (page.recent.length > 0 || page.pinned.length > 0)
                 height: visible ? implicitHeight : 0
                 spacing: 8
                 bottomPadding: 8
 
                 Txt {
+                    visible: page.pinned.length > 0
+                    role: "label"
+                    muted: true
+                    text: qsTr("Pinned")
+                }
+                Flow {
+                    visible: page.pinned.length > 0
+                    width: parent.width
+                    Repeater {
+                        model: page.pinned
+                        delegate: AppCell {
+                            required property var modelData
+                            app: modelData
+                            width: grid.cellWidth
+                        }
+                    }
+                }
+                Divider { visible: page.pinned.length > 0 && page.recent.length > 0 }
+                Txt {
+                    visible: page.recent.length > 0
                     role: "label"
                     muted: true
                     text: qsTr("Recent")
                 }
                 Row {
+                    visible: page.recent.length > 0
                     width: parent.width
                     clip: true
                     spacing: 0
@@ -367,6 +395,17 @@ Item {
                 onClicked: {
                     appActions.close()
                     page.launch(page.actionApp)
+                }
+            }
+            Button {
+                width: parent.width
+                variant: "tonal"
+                iconPath: Icons.pin
+                text: page.isPinned(page.actionApp) ? qsTr("Unpin") : qsTr("Pin to the top")
+                onClicked: {
+                    const app = page.actionApp
+                    appActions.close()
+                    Preferences.setAppPinned(page.deviceId, app.pkg, !page.isPinned(app))
                 }
             }
             // A shortcut that opens it straight in a window (#370).

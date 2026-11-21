@@ -12,6 +12,11 @@ class InputServerCommandsTest {
         assertTrue(InputServer.isAllowedCommand("svc wifi enable"))
         assertTrue(InputServer.isAllowedCommand("hotspot on"))
         assertTrue(InputServer.isAllowedCommand("settings put system screen_brightness 128"))
+        assertTrue(InputServer.isAllowedCommand("settings put system accelerometer_rotation 0"))
+        assertTrue(InputServer.isAllowedCommand("settings put system user_rotation 1"))
+        assertFalse(InputServer.isAllowedCommand("settings put system user_rotation 4"))
+        assertFalse(InputServer.isAllowedCommand("settings put system accelerometer_rotation 1; reboot"))
+        assertFalse(InputServer.isAllowedCommand("settings put system user_rotation 1 && reboot"))
         assertTrue(InputServer.isAllowedCommand(COMPILE_APP_COMMAND))
     }
 

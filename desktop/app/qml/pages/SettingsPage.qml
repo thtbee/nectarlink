@@ -187,7 +187,8 @@ Item {
             : Qt.platform.os === "osx" ? qsTr("Finder integration") : qsTr("File manager integration"),
         remote_input: qsTr("Remote mouse, keyboard & Deck"),
         commands: qsTr("Run Deck shell commands"),
-        remote_files: qsTr("Remote PC file access")
+        remote_files: qsTr("Remote PC file access"),
+        unlock: qsTr("Unlock this PC with the phone")
     })
 
     readonly property var toggleIcons: ({
@@ -210,14 +211,16 @@ Item {
         storage: Icons.folder,
         remote_input: Icons.deck,
         commands: Icons.terminal,
-        remote_files: Icons.globe
+        remote_files: Icons.globe,
+        unlock: Icons.lock
     })
 
     readonly property var toggleDescriptions: ({
         pc_mirror: qsTr("Allow this phone to view this PC's screen."),
         call_audio: qsTr("Move a call's sound to this PC: its speakers and microphone."),
         commands: qsTr("Only enable for a phone you trust."),
-        remote_files: qsTr("Allow this phone to browse and download shared PC files over mobile data.")
+        remote_files: qsTr("Allow this phone to browse and download shared PC files over mobile data."),
+        unlock: qsTr("Unlock the lock screen with your fingerprint on the phone. Off by default; asks for an administrator once.")
     })
 
     readonly property var toggleGroups: [
@@ -261,7 +264,9 @@ Item {
     readonly property var allGroupedKeys: [
         "notifications", "messages", "calls", "call_audio", "contacts",
         "clipboard", "files", "photos", "recordings", "storage", "remote_files",
-        "media", "toggles", "mirroring", "pc_mirror", "webcam", "pc_actions", "remote_input", "commands"
+        "media", "toggles", "mirroring", "pc_mirror", "webcam", "pc_actions", "remote_input", "commands",
+        // Its own row at the top of the card.
+        "unlock"
     ]
 
     FolderDialog {
@@ -1051,6 +1056,24 @@ Item {
                             }
                         }
 
+                        Divider { width: parent.width; visible: Qt.platform.os === "windows" }
+
+                        ListRow {
+                            width: parent.width
+                            visible: Qt.platform.os === "windows"
+                            iconPath: Icons.palette
+                            title: qsTr("Tray icon")
+                            description: qsTr("One color turns white or black to match the taskbar.")
+                            Segmented {
+                                options: [
+                                    { value: "colour", label: qsTr("Color") },
+                                    { value: "one", label: qsTr("One color") }
+                                ]
+                                value: Preferences.trayOneColour ? "one" : "colour"
+                                onPicked: (val) => Preferences.trayOneColour = val === "one"
+                            }
+                        }
+
                         Divider { width: parent.width }
 
                         // Row 2: Nectar Island | Battery alerts
@@ -1200,6 +1223,59 @@ Item {
                                     }
                                 }
                             }
+
+                            // Wayland puts windows where it likes: the pill is dragged there instead.
+                            Divider { width: parent.width; visible: islandPositionRow.visible }
+
+                            // #472: so it doesn't sit over another app's own bar.
+                            ListRow {
+                                id: islandPositionRow
+                                visible: !Qt.platform.pluginName.startsWith("wayland")
+                                width: parent.width
+                                title: qsTr("Island position")
+                                description: qsTr("Where the pill sits along the top of the screen.")
+                                Segmented {
+                                    options: [
+                                        { value: "left", label: qsTr("Left") },
+                                        { value: "center", label: qsTr("Center") },
+                                        { value: "right", label: qsTr("Right") }
+                                    ]
+                                    value: Preferences.nectarIslandPosition
+                                    onPicked: (val) => Preferences.nectarIslandPosition = val
+                                }
+                            }
+
+                            Divider { width: parent.width }
+
+                            // #325: dark always, or light when the app is.
+                            ListRow {
+                                width: parent.width
+                                title: qsTr("Island look")
+                                description: qsTr("Always dark, or light and dark with the app.")
+                                Segmented {
+                                    options: [
+                                        { value: "dark", label: qsTr("Dark") },
+                                        { value: "theme", label: qsTr("Like the app") }
+                                    ]
+                                    value: Preferences.nectarIslandLook
+                                    onPicked: (val) => Preferences.nectarIslandLook = val
+                                }
+                            }
+
+                            Divider { width: parent.width; visible: Preferences.nectarIslandMedia }
+
+                            // #472: Spotify, a browser, any player Windows' media controls know.
+                            ListRow {
+                                width: parent.width
+                                visible: Preferences.nectarIslandMedia
+                                title: qsTr("This PC's players too")
+                                description: qsTr("Also show music and videos playing on this PC. With more than one, a button switches between them.")
+                                Toggle {
+                                    label: qsTr("This PC's players too")
+                                    checked: Preferences.nectarIslandPcMedia
+                                    onToggled: (on) => Preferences.nectarIslandPcMedia = on
+                                }
+                            }
                         }
 
                         // Sub-row: Full charge alert target (100% or 80% Protect battery)
@@ -1208,6 +1284,20 @@ Item {
                             visible: Preferences.batteryAlerts
                             width: parent.width
                             spacing: 0
+
+                            Divider { width: parent.width }
+
+                            ListRow {
+                                width: parent.width
+                                iconPath: Icons.battery
+                                title: qsTr("Low battery at")
+                                description: qsTr("Alert once when a phone gets down to this level.")
+                                Segmented {
+                                    options: [5, 10, 15, 20, 30].map(v => ({ value: v, label: v + "%" }))
+                                    value: Preferences.batteryLowThreshold
+                                    onPicked: (val) => Preferences.batteryLowThreshold = val
+                                }
+                            }
 
                             Divider { width: parent.width }
 
@@ -1579,6 +1669,119 @@ Item {
                                     }
                                 }
                             }
+                            // Unlock with phone (#36): Windows, with a phone that can keep the key
+                            // behind its fingerprint (only then does the core list the switch).
+                            ListRow {
+                                id: unlockRow
+                                readonly property var item: deviceCard.toggles.find(t => t.name === "unlock")
+                                width: parent.width
+                                visible: Qt.platform.os === "windows" && item !== undefined
+                                iconPath: Icons.lock
+                                title: qsTr("Unlock this PC with the phone")
+                                description: page.toggleDescriptions.unlock
+                                Toggle {
+                                    label: qsTr("Unlock this PC with the phone")
+                                    checked: unlockRow.item !== undefined && unlockRow.item.on
+                                    onToggled: (on) => AppController.setDeviceToggle(deviceCard.deviceId, "unlock", on)
+                                }
+                            }
+                            // Unlock with phone (#36): set up with the Windows password once the switch is on.
+                            Column {
+                                id: unlockSetup
+                                readonly property bool switchOn: deviceCard.toggles.some(t => t.name === "unlock" && t.on)
+                                property bool done: switchOn && AppController.togglesRevision >= 0 && AppController.unlockSetUp(deviceCard.deviceId)
+                                property bool busy: false
+                                property string message: ""
+                                visible: Qt.platform.os === "windows" && switchOn
+                                width: parent.width
+                                // Lined up with the row's text above (icon 20 + 14).
+                                leftPadding: 34
+                                bottomPadding: 8
+                                spacing: 8
+                                Connections {
+                                    target: AppController
+                                    function onUnlockResult(device, result) {
+                                        if (device !== deviceCard.deviceId)
+                                            return
+                                        unlockSetup.busy = false
+                                        unlockPassword.text = ""
+                                        const messages = {
+                                            done: qsTr("Done. On the lock screen, pick Unlock with phone, then confirm on the phone."),
+                                            wrong_password: qsTr("That isn't this account's Windows password."),
+                                            declined: qsTr("Not confirmed on the phone."),
+                                            phone_away: qsTr("The phone isn't connected on this network."),
+                                            phone_cant: qsTr("Turn on Unlock this PC with your fingerprint for this PC on the phone too."),
+                                            failed: qsTr("Couldn't set it up. Try again."),
+                                            registered: "",
+                                            register_failed: qsTr("Windows didn't allow it. Turn it off and on to try again.")
+                                        }
+                                        unlockSetup.message = messages[result] !== undefined ? messages[result] : ""
+                                        unlockSetup.done = AppController.unlockSetUp(deviceCard.deviceId)
+                                    }
+                                }
+                                Txt {
+                                    width: parent.width - unlockSetup.leftPadding
+                                    wrapMode: Text.WordWrap
+                                    role: "bodySmall"
+                                    muted: true
+                                    text: unlockSetup.done
+                                        ? qsTr("Set up for this Windows account. Type the password again here if you change it.")
+                                        : qsTr("Type this account's Windows password once. It's kept locked with a key only the phone has, and the phone asks for your fingerprint every time.")
+                                }
+                                Row {
+                                    spacing: 8
+                                    Rectangle {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: 220
+                                        height: 32
+                                        radius: Theme.radiusSm
+                                        color: Theme.surfaceContainerHighest
+                                        border.width: unlockPassword.activeFocus ? 2 : 1
+                                        border.color: unlockPassword.activeFocus ? Theme.primary : Theme.outlineVariant
+                                        TextInput {
+                                            id: unlockPassword
+                                            anchors.fill: parent
+                                            anchors.leftMargin: 8
+                                            anchors.rightMargin: 8
+                                            verticalAlignment: TextInput.AlignVCenter
+                                            color: Theme.surfaceContent
+                                            selectionColor: Theme.primaryContainer
+                                            selectedTextColor: Theme.primaryContainerContent
+                                            font.pixelSize: 12
+                                            echoMode: TextInput.Password
+                                            passwordCharacter: "\u2022"
+                                            enabled: !unlockSetup.busy
+                                            Accessible.name: qsTr("Windows password")
+                                            onAccepted: unlockSetUpButton.clicked()
+                                            Txt {
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                visible: unlockPassword.text.length === 0 && !unlockPassword.activeFocus
+                                                role: "bodySmall"
+                                                muted: true
+                                                text: qsTr("Windows password")
+                                            }
+                                        }
+                                    }
+                                    Button {
+                                        id: unlockSetUpButton
+                                        size: "sm"
+                                        text: unlockSetup.busy ? qsTr("Confirm on the phone…") : (unlockSetup.done ? qsTr("Update") : qsTr("Set up"))
+                                        enabled: !unlockSetup.busy && unlockPassword.text.length > 0
+                                        onClicked: {
+                                            unlockSetup.busy = true
+                                            unlockSetup.message = ""
+                                            AppController.setUpUnlock(deviceCard.deviceId, unlockPassword.text)
+                                        }
+                                    }
+                                }
+                                Txt {
+                                    visible: unlockSetup.message.length > 0
+                                    width: parent.width - unlockSetup.leftPadding
+                                    wrapMode: Text.WordWrap
+                                    role: "bodySmall"
+                                    text: unlockSetup.message
+                                }
+                            }
                             Repeater {
                                 model: page.toggleGroups
                                 delegate: Column {
@@ -1721,6 +1924,7 @@ Item {
                                     }
                                 }
                             }
+
                         }
                     }
                 }
@@ -1831,6 +2035,25 @@ Item {
                                 label: qsTr("Mute this PC while a phone watches")
                                 checked: Preferences.muteWhileWatched
                                 onToggled: (on) => Preferences.muteWhileWatched = on
+                            }
+                        }
+
+                        Divider { width: parent.width }
+
+                        // #321: more buffer survives a busy Wi-Fi, less is closer to live.
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.speaker
+                            title: qsTr("Phone sound buffer")
+                            description: qsTr("If phone sound on this PC skips on a busy Wi-Fi, a bigger buffer smooths it out, with a little more delay.")
+                            Segmented {
+                                options: [
+                                    { value: 40, label: qsTr("Low") },
+                                    { value: 100, label: qsTr("Medium") },
+                                    { value: 200, label: qsTr("High") }
+                                ]
+                                value: Preferences.phoneSoundBufferMs
+                                onPicked: (val) => Preferences.phoneSoundBufferMs = val
                             }
                         }
 

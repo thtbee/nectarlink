@@ -382,6 +382,9 @@ pub trait Platform: Send + Sync + 'static {
     /// mirroring its screen.
     fn mirror_sound_requested(&self, _peer: &nectarlink_protocol::DeviceId, _on: bool) {}
 
+    /// The PC wants this phone's mirrored screen in landscape or portrait.
+    fn mirror_rotate_requested(&self, _peer: &nectarlink_protocol::DeviceId, _landscape: bool) {}
+
     /// The PC changed `stay_awake` or `screen_off` while mirroring this phone's
     /// screen (`session == 0`).
     fn mirror_power_requested(
@@ -433,6 +436,24 @@ pub trait Platform: Send + Sync + 'static {
         } else {
             Err("MMS attachments are not supported on this device".into())
         }
+    }
+
+    /// The SIMs this phone texts from, and the one it uses without asking
+    /// (a PC asked; offered as `sms.sims`).
+    fn sms_sims(&self) -> Result<nectarlink_protocol::messages::CallSims, String> {
+        Ok(Default::default())
+    }
+
+    /// Like [`send_sms_with_attachments`](Self::send_sms_with_attachments),
+    /// on the SIM `sim` (an id from [`sms_sims`](Self::sms_sims)).
+    fn send_sms_on(
+        &self,
+        to: &[String],
+        body: &str,
+        attachments: &[crate::SmsAttachment],
+        _sim: &str,
+    ) -> Result<(), String> {
+        self.send_sms_with_attachments(to, body, attachments)
     }
 
     /// A picture in a message: its type and bytes.
@@ -542,6 +563,35 @@ pub trait Platform: Send + Sync + 'static {
     /// `tile` has been validated against the current Deck layout and the
     /// required per-device toggles (`remote_input`, plus `commands` for
     /// `run_command` tiles). `Err` holds a reason for logs.
+    /// Unlock the PC with this phone (ADR 0009), enrolling: after asking its
+    /// owner, and only with a strong biometric, wrap `key` with a key kept in
+    /// the phone's secure hardware for `pc` and `user` and return it wrapped.
+    /// Blocks while the owner answers (up to [`crate::unlock::ENROLL_TTL`]).
+    fn unlock_wrap(
+        &self,
+        _pc: &nectarlink_protocol::DeviceId,
+        _ask: &crate::unlock::Ask,
+        _key: &[u8],
+    ) -> Result<Vec<u8>, crate::unlock::KeyRefusal> {
+        Err(crate::unlock::KeyRefusal::Unsupported)
+    }
+
+    /// Unlock the PC with this phone: after the owner's strong biometric,
+    /// unwrap `wrapped` and return the key. Blocks while the owner answers (up
+    /// to [`crate::unlock::REQUEST_TTL`]).
+    fn unlock_unwrap(
+        &self,
+        _pc: &nectarlink_protocol::DeviceId,
+        _ask: &crate::unlock::Ask,
+        _wrapped: &[u8],
+    ) -> Result<Vec<u8>, crate::unlock::KeyRefusal> {
+        Err(crate::unlock::KeyRefusal::Unsupported)
+    }
+
+    /// Unlock the PC with this phone: delete the keys kept for `pc` (for
+    /// `user`, or all of them).
+    fn unlock_forget(&self, _pc: &nectarlink_protocol::DeviceId, _user: Option<&str>) {}
+
     fn deck_press(&self, _from: &nectarlink_protocol::DeviceId, _tile: &str) -> Result<(), String> {
         Err("this device has no deck actions".into())
     }
