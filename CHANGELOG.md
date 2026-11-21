@@ -338,6 +338,11 @@ change things that need a step from you, and its notes say so.
   that app: the icon opens it in a window, starting NectarLink first if needed. Thanks to
   [@ososuosos](https://github.com/ososuosos)
   ([#465](https://github.com/thtbee/nectarlink/discussions/465)).
+- **Hide the toolbar on mirroring and app windows.** Its new last button, or Ctrl+Shift+T,
+  hides it in every window so it no longer covers the app's top corner; Ctrl+Shift+T or
+  the new switch in Settings brings it back. Thanks to
+  [@JohnDoeXA](https://github.com/JohnDoeXA)
+  ([#475](https://github.com/thtbee/nectarlink/discussions/475)).
 
 ### Fixed
 
