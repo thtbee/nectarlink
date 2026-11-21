@@ -1134,7 +1134,16 @@ object Elevated {
                         client.injectKey(targetDisplay, KeyEvent.KEYCODE_PASTE, 0)
             }
             is MirrorInputEvent.Gamepad ->
-                client.injectGamepad(targetDisplay, event.buttons, event.lx, event.ly, event.rx, event.ry, event.lt, event.rt)
+                client.injectGamepad(
+                    targetDisplay,
+                    event.buttons.toInt(),
+                    event.lx.toInt(),
+                    event.ly.toInt(),
+                    event.rx.toInt(),
+                    event.ry.toInt(),
+                    event.lt.toInt(),
+                    event.rt.toInt(),
+                )
         }
     }
 
