@@ -337,6 +337,10 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **The PC's log keeps your details out and stays small.** It no longer writes your Windows
+  user name inside folder paths, network addresses (only their kind, like "home network"),
+  or values it doesn't know are safe. It also keeps to about 2 MB while NectarLink runs,
+  where it used to grow until the next start. Logs from earlier versions are deleted once.
 - **App windows take input while the phone is locked on Xiaomi phones.** HyperOS doesn't
   let NectarLink make the virtual device app windows normally run on, and on the plain
   display it falls back to, Android drops input once the phone sleeps. Now the phone stays
