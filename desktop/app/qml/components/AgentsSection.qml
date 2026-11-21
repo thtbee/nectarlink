@@ -53,6 +53,18 @@ Column {
         shownLabel = label
         shownName = name
         byHand = ""
+        Qt.callLater(revealConnect)
+    }
+    // Scrolls the page up to the connect card, which sits above the list of
+    // agents (Connect is usually pressed with the card out of view).
+    function revealConnect() {
+        let flick = section.parent
+        while (flick && !(flick.contentItem && flick.contentY !== undefined))
+            flick = flick.parent
+        if (!flick || !connectCard.visible)
+            return
+        const y = connectCard.mapToItem(flick.contentItem, 0, 0).y - Theme.gutter
+        flick.contentY = Math.max(0, Math.min(y, flick.contentHeight - flick.height))
     }
     // A name as an agent's label: lowercase letters, digits and hyphens.
     function slug(name) {
@@ -200,6 +212,7 @@ Column {
     }
 
     Card {
+        id: connectCard
         width: parent.width
         visible: Preferences.agentAccessEnabled && section.shownLabel.length > 0
         Column {
