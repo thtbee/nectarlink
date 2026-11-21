@@ -29,6 +29,7 @@ nectarlink-adb.workspace = true
 nectarlink-core.workspace = true
 nectarlink-actions.workspace = true
 nectarlink-vcam.workspace = true
+percent-encoding = "2.3"
 qrcode.workspace = true
 rand.workspace = true
 serde.workspace = true

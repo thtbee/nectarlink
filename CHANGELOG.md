@@ -425,6 +425,12 @@ change things that need a step from you, and its notes say so.
   the new switch in Settings brings it back. Thanks to
   [@JohnDoeXA](https://github.com/JohnDoeXA)
   ([#475](https://github.com/thtbee/nectarlink/discussions/475)).
+- **Phone number links open in NectarLink.** Click a phone number on the PC (a `tel:` link
+  in a browser, an email or another app) and pick NectarLink in the list Windows shows: the
+  Calls page opens with the number filled in, ready for you to press **Call**. NectarLink
+  doesn't make itself the default. Thanks to
+  [@w-rakeeb](https://github.com/w-rakeeb)
+  ([#509](https://github.com/thtbee/nectarlink/issues/509)).
 
 ### Fixed
 

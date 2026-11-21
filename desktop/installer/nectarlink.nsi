@@ -51,6 +51,8 @@ SetCompressor /SOLID zlib
 !define SETUP_EXE "Nectarlink Setup.exe"
 !define UNINSTALL_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP}"
 !define FIREWALL_RULE "Nectarlink"
+!define CAPABILITIES_KEY "Software\${APP}\Capabilities"
+!define TEL_PROGID "NectarLink.Tel"
 
 Name "${DISPLAY}"
 OutFile "${OUTFILE}"
@@ -473,6 +475,17 @@ Section "Install"
 
   WriteRegStr HKLM "Software\${APP}" "InstallDir" "$INSTDIR"
   WriteRegDWORD HKLM "Software\${APP}" "AdminOnlyFolder" $AdminOnly
+  ; Offer NectarLink in the Windows tel: picker without selecting a default.
+  WriteRegStr HKLM "Software\Classes\${TEL_PROGID}" "" "${DISPLAY}"
+  WriteRegStr HKLM "Software\Classes\${TEL_PROGID}" "URL Protocol" ""
+  WriteRegStr HKLM "Software\Classes\${TEL_PROGID}\DefaultIcon" "" '"$INSTDIR\${EXE}",0'
+  WriteRegStr HKLM "Software\Classes\${TEL_PROGID}\shell\open\command" "" '"$INSTDIR\${EXE}" --tel "%1"'
+  WriteRegStr HKLM "${CAPABILITIES_KEY}" "ApplicationName" "${DISPLAY}"
+  WriteRegStr HKLM "${CAPABILITIES_KEY}" "ApplicationDescription" "Open telephone links in the NectarLink dialer."
+  WriteRegStr HKLM "${CAPABILITIES_KEY}\UrlAssociations" "tel" "${TEL_PROGID}"
+  WriteRegStr HKLM "Software\RegisteredApplications" "${DISPLAY}" "${CAPABILITIES_KEY}"
+  System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
+
   WriteRegStr HKLM "${UNINSTALL_KEY}" "DisplayName" "${DISPLAY}"
   WriteRegStr HKLM "${UNINSTALL_KEY}" "DisplayVersion" "${DISPLAY_VERSION}"
   WriteRegStr HKLM "${UNINSTALL_KEY}" "Publisher" "The NectarLink contributors"
@@ -541,6 +554,9 @@ Section "Uninstall"
     Delete "$INSTDIR\uninstall.exe"
   ${EndIf}
 
+  DeleteRegValue HKLM "Software\RegisteredApplications" "${DISPLAY}"
+  DeleteRegKey HKLM "Software\Classes\${TEL_PROGID}"
+  System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
   DeleteRegKey HKLM "${UNINSTALL_KEY}"
   DeleteRegKey HKLM "Software\${APP}"
   ; Unlock with phone: the lock screen stops offering it with the app gone.

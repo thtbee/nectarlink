@@ -771,20 +771,25 @@ pub(crate) fn show_offline_queued_toast(device: DeviceId, item_id: Option<String
 }
 
 /// Opens the Calls page dialer with `number` filled in (without placing the call).
-pub(crate) fn open_dialer(device: DeviceId, number: &str) {
+pub(crate) fn open_dialer(device: Option<DeviceId>, number: &str) {
     let number = number.trim().to_owned();
     if number.is_empty() {
         return;
     }
-    let idx = core_host::host().hub.read(|s| {
-        s.devices
-            .iter()
-            .position(|d| d.id == device && matches!(d.link, LinkState::Online { .. }))
-            .or_else(|| s.devices.iter().position(|d| matches!(d.link, LinkState::Online { .. })))
-            .or_else(|| s.devices.iter().position(|d| d.id == device))
+    let idx = device.and_then(|device| {
+        core_host::host().hub.read(|s| {
+            s.devices
+                .iter()
+                .position(|d| d.id == device && matches!(d.link, LinkState::Online { .. }))
+                .or_else(|| s.devices.iter().position(|d| matches!(d.link, LinkState::Online { .. })))
+                .or_else(|| s.devices.iter().position(|d| d.id == device))
+        })
     });
     if let Some(qt) = controller() {
         let _ = qt.queue(move |mut object| {
+            // No device given (a telephone link): the selected one, unless
+            // it's offline and another isn't.
+            let idx = idx.or_else(|| online_instead_of(*object.current_device()));
             if let Some(idx) = idx {
                 object.as_mut().set_current_device(idx as i32);
             }
@@ -793,6 +798,17 @@ pub(crate) fn open_dialer(device: DeviceId, number: &str) {
             object.activate_requested();
         });
     }
+}
+
+/// The first online device, when the one at `current` isn't online.
+fn online_instead_of(current: i32) -> Option<usize> {
+    core_host::host().hub.read(|s| {
+        let selected = s.devices.get(current.max(0) as usize);
+        if selected.is_some_and(|d| matches!(d.link, LinkState::Online { .. })) {
+            return None;
+        }
+        s.devices.iter().position(|d| matches!(d.link, LinkState::Online { .. }))
+    })
 }
 
 /// Explains a failed command in a sentence the user understands.
@@ -1644,7 +1660,7 @@ impl qobject::AppController {
             }
             PaletteUiAction::OpenDialer { device_id, number } => {
                 if let Ok(dev) = device_id.parse::<DeviceId>() {
-                    open_dialer(dev, &number);
+                    open_dialer(Some(dev), &number);
                 }
             }
             PaletteUiAction::OpenHandoffFilePicker { device_index } => {

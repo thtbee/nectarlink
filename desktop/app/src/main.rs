@@ -294,6 +294,8 @@ struct Options {
     share: Option<win::share_target::SharedPayload>,
     /// `--task <action>`: Windows taskbar Jump List task.
     task: Option<String>,
+    /// Windows call picker invocation: --tel <uri>.
+    tel: Option<Result<String, ()>>,
     /// Ask the running app to quit (the installer, before an update).
     quit: bool,
     /// Quit the running app and undo what it set up in Windows (the
@@ -374,6 +376,12 @@ fn parse_options_from<I: IntoIterator<Item = std::ffi::OsString>>(iter: I) -> Op
             Some("--data-dir") => {
                 in_share = false;
                 options.data_dir = args.next().map(PathBuf::from);
+            }
+            Some("--tel") => {
+                let number = args.next().and_then(|uri| launch::telephone_number(uri.to_str()?));
+                // The URI is terminal: never interpret pieces of it as app flags.
+                let tel = number.filter(|_| args.next().is_none()).ok_or(());
+                return Options { tel: Some(tel), data_dir: options.data_dir, ..Options::default() };
             }
             Some("--minimized") => {
                 in_share = false;
@@ -615,6 +623,9 @@ fn run_setup_window(mode: setup::Mode) -> ExitCode {
 
 fn main() -> ExitCode {
     let options = parse_options();
+    if matches!(options.tel, Some(Err(()))) {
+        return ExitCode::FAILURE;
+    }
     if options.version {
         println!("nectarlink-desktop {}", env!("CARGO_PKG_VERSION"));
         return ExitCode::SUCCESS;
@@ -726,6 +737,8 @@ fn main() -> ExitCode {
         Request::Quit
     } else if let Some((device, paths)) = options.send_to.clone() {
         Request::Send { device, paths }
+    } else if let Some(Ok(number)) = options.tel {
+        Request::OpenDialer { number }
     } else if let Some(shared) = share_payload {
         Request::Share { files: shared.files, url: shared.url, text: shared.text }
     } else if let Some(action) = options.task.clone() {
@@ -892,19 +905,6 @@ fn main() -> ExitCode {
             (None, false) => {}
         }
     }
-    // Requests left while no instance was running, then this launch's own.
-    for waiting in launch::drain(&data_dir) {
-        if matches!(
-            waiting,
-            Request::Send { .. } | Request::Share { .. } | Request::TaskNotify { .. } | Request::Task { .. }
-        ) {
-            send_to::handle(waiting);
-        }
-    }
-    if matches!(request, Request::Send { .. } | Request::Share { .. } | Request::Task { .. }) {
-        send_to::handle(request);
-    }
-
     if options.ui_check {
         bridge::native::ffi::prepare_qt_for_ui_check();
     } else {
@@ -933,6 +933,31 @@ fn main() -> ExitCode {
     bridge::native::ffi::apply_app_icon();
     bridge::native::ffi::stay_out_of_session_restore();
 
+    let mut engine = QQmlApplicationEngine::new();
+    if let Some(mut engine) = engine.as_mut() {
+        bridge::native::ffi::register_qml_app_engine(engine.as_mut());
+        engine.load(&QUrl::from("qrc:/qt/qml/app/nectarlink/qml/App.qml"));
+    }
+    // Requests left while no instance was running, then this launch's own.
+    for waiting in launch::drain(&data_dir) {
+        if matches!(
+            waiting,
+            Request::Send { .. }
+                | Request::Share { .. }
+                | Request::TaskNotify { .. }
+                | Request::Task { .. }
+                | Request::OpenDialer { .. }
+        ) {
+            send_to::handle(waiting);
+        }
+    }
+    if matches!(
+        request,
+        Request::Send { .. } | Request::Share { .. } | Request::Task { .. } | Request::OpenDialer { .. }
+    ) {
+        send_to::handle(request);
+    }
+
     if let Some(instance) = instance {
         let data_dir = data_dir.clone();
         instance.watch(move || {
@@ -944,11 +969,6 @@ fn main() -> ExitCode {
         });
     }
 
-    let mut engine = QQmlApplicationEngine::new();
-    if let Some(mut engine) = engine.as_mut() {
-        bridge::native::ffi::register_qml_app_engine(engine.as_mut());
-        engine.load(&QUrl::from("qrc:/qt/qml/app/nectarlink/qml/App.qml"));
-    }
     if options.ui_check {
         std::thread::spawn(|| {
             std::thread::sleep(Duration::from_secs(UI_CHECK_SECONDS));
@@ -1010,6 +1030,19 @@ mod tests {
     use std::ffi::OsString;
 
     use super::*;
+
+    #[test]
+    fn parse_options_keeps_tel_activation_separate_from_other_commands() {
+        let parse = |args: &[&str]| parse_options_from(args.iter().copied().map(OsString::from));
+        let opts = parse(&["--data-dir", "preview", "--tel", "tel:%2B1-202-555-0100"]);
+        assert_eq!(opts.data_dir, Some(PathBuf::from("preview")));
+        assert_eq!(opts.tel, Some(Ok("+12025550100".into())));
+        assert!(!opts.minimized);
+        let malformed = parse(&["--tel", "tel:2025550100", "--quit"]);
+        assert_eq!(malformed.tel, Some(Err(())));
+        assert!(!malformed.quit);
+        assert_eq!(parse(&["--tel"]).tel, Some(Err(())));
+    }
 
     #[test]
     fn parse_options_recognizes_share_flag() {

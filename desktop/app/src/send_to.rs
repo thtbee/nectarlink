@@ -213,6 +213,7 @@ pub fn handle(request: Request) {
         Request::Send { device, paths } => send(device, paths),
         Request::Share { files, url, text } => share(files, url, text),
         Request::TaskNotify { device, task } => task_notify(device, task),
+        Request::OpenDialer { number } => crate::bridge::app::open_dialer(None, &number),
         Request::Task { action } => crate::bridge::app::handle_jump_task(&action),
     }
 }
