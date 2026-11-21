@@ -571,7 +571,7 @@ pub fn serve() {
     }
     let started = std::thread::Builder::new().name("unlock-pipe".into()).spawn(|| {
         if let Err(e) = run_pipe() {
-            tracing::warn!("unlock pipe stopped: {e}");
+            tracing::warn!(error = %e, "unlock pipe stopped");
         }
         SERVING.store(false, Ordering::SeqCst);
     });
@@ -799,7 +799,7 @@ pub async fn enroll(phone: DeviceId, password: String) -> Enrolled {
         return Enrolled::WrongPassword;
     }
     if let Ok(Err(e)) = checked {
-        tracing::warn!("couldn't check the Windows password here: {e}");
+        tracing::warn!(error = %e, "couldn't check the Windows password here");
     }
     let (Some(node), Some(sid)) = (crate::core_host::node(), current_user_sid()) else {
         wire::wipe(&mut bytes);
@@ -814,7 +814,7 @@ pub async fn enroll(phone: DeviceId, password: String) -> Enrolled {
     let secret = match sealed {
         Ok(sealed) => Secret::new(sealed),
         Err(e) => {
-            tracing::warn!("couldn't seal the unlock password: {e}");
+            tracing::warn!(error = %e, "couldn't seal the unlock password");
             return Enrolled::Failed;
         }
     };

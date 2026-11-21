@@ -961,7 +961,7 @@ pub fn run_elevated(channel: Option<&str>) -> ExitCode {
     if let Some(channel) = channel.and_then(Channel::parse) {
         *CHANNEL.lock().unwrap_or_else(|e| e.into_inner()) = Some(channel);
     }
-    let log = |message: &str| tracing::info!("{message}");
+    let log = |message: &str| tracing::info!(step = %message, "update");
     install_latest(&log, true)
 }
 
