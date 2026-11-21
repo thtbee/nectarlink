@@ -46,6 +46,7 @@ capability is missing.
 | `notify.show` | Shows a paired phone's or tablet's notifications ([notifications service](notifications.md)) | app update |
 | `sms.read` | Lists conversations and messages ([messages](sms.md)) | SMS permission |
 | `sms.send` | Sends texts when a PC asks ([messages](sms.md)) | SMS permission |
+| `sms.sims` | Lists the SIMs it texts from and sends on the one a PC picks ([messages](sms.md)) | SMS and phone permissions |
 | `call.state` | Reports incoming and ongoing calls ([calls](calls.md)) | phone permission |
 | `call.control` | Answers, declines and silences calls when a PC asks ([calls](calls.md)) | phone permission |
 | `call.incall` | Mutes, holds and presses keys on the call in progress ([calls](calls.md)) | Elevated, Android 12+ |

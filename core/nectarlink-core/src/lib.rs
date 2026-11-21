@@ -46,6 +46,7 @@ mod store;
 pub mod timeline;
 pub mod toggles;
 mod transfer;
+pub mod unlock;
 pub mod usb;
 pub mod webcam;
 
@@ -99,8 +100,8 @@ pub use nectarlink_protocol::{
         AudioOutputDevice, Battery, CLIP_MAX_BYTES, CallControls, CallLogEntry, CallSim, CallSims, CallState,
         CameraCaptureCancel, CameraCaptureMode, CameraCaptureOk, CameraCaptureRequest,
         CameraCaptureResultMeta, Contact, ContactNumber, DeviceInfo, DeviceKind, LivePoint, LiveSegment,
-        MediaPlayer, MirrorAudioConfig, MirrorConfig, MirrorInput, MirrorPower, MirrorResize, MirrorStart,
-        Notification, NotificationAction, NotificationChatMessage, NotificationConversation,
+        MediaPlayer, MirrorAudioConfig, MirrorConfig, MirrorInput, MirrorPower, MirrorResize, MirrorRotate,
+        MirrorStart, Notification, NotificationAction, NotificationChatMessage, NotificationConversation,
         NotificationLive, PcAudioSet, PcWakeInfo, PhoneApp, PhoneToggleSet, PhoneToggleValue, PhoneToggles,
         PhotoAlbum, PhotoItem, PhotoNew as Photo, PhotoThumb, PointerAt, PointerEdge, PointerMove,
         PointerScreen, PowerLevel, ScreenCorners, ScreenRect, ScreenShape, SmsAttachment, SmsMessage,
@@ -139,7 +140,7 @@ pub use nectarlink_protocol::{
         ringer_modes, screen_limits,
         sms::{
             MAX_ATTACHMENT_BYTES as SMS_MAX_ATTACHMENT_BYTES, MAX_ATTACHMENTS as SMS_MAX_ATTACHMENTS,
-            READ as SMS_READ, SEND as SMS_SEND, SHOW as SMS_SHOW,
+            READ as SMS_READ, SEND as SMS_SEND, SHOW as SMS_SHOW, SIMS as SMS_SIMS,
         },
         storage::{MOUNT as STORAGE_MOUNT, READ as STORAGE_READ, WRITE as STORAGE_WRITE},
         task_notify, toggle_ids,

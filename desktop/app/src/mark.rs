@@ -110,6 +110,53 @@ pub fn render(size: usize) -> Vec<u8> {
     out
 }
 
+/// The mark in one colour, for the tray (#479): the two loops and the drop
+/// only, no tile, a little larger so it fills the square like other tray
+/// icons. Straight-alpha RGBA, `size`×`size`.
+// Only the Windows tray draws it; the build script and the other systems
+// compile this file too.
+#[allow(dead_code)]
+pub fn render_glyph(size: usize, color: [u8; 3]) -> Vec<u8> {
+    // Without the tile the loops span about 80 of the 100 units; scale them
+    // up to about 96 and draw them bolder, so they read at 16 px.
+    const SCALE: f32 = 1.18;
+    let stroke = if size <= 32 { 13.0 } else { 11.6 };
+    let drop = if size <= 32 { 9.6 } else { 9.0 };
+    let unit = 100.0 / size as f32;
+    let left = polyline(&LEFT_LOOP);
+    let right = polyline(&RIGHT_LOOP);
+    let (sin, cos) = (-TILT.to_radians()).sin_cos();
+    let mut out = vec![0u8; size * size * 4];
+    for py in 0..size {
+        for px in 0..size {
+            let mut inside = 0usize;
+            for sy in 0..SS {
+                for sx in 0..SS {
+                    let x = (px as f32 + (sx as f32 + 0.5) / SS as f32) * unit;
+                    let y = (py as f32 + (sy as f32 + 0.5) / SS as f32) * unit;
+                    // Back into the design grid, then undo the tilt.
+                    let (dx, dy) = ((x - 50.0) / SCALE, (y - 50.0) / SCALE);
+                    let (ux, uy) = (50.0 + dx * cos - dy * sin, 50.0 + dx * sin + dy * cos);
+                    let half = stroke / 2.0;
+                    if (dx * dx + dy * dy).sqrt() <= drop
+                        || distance_to(&left, (ux, uy)) <= half
+                        || distance_to(&right, (ux, uy)) <= half
+                    {
+                        inside += 1;
+                    }
+                }
+            }
+            if inside == 0 {
+                continue;
+            }
+            let i = (py * size + px) * 4;
+            out[i..i + 3].copy_from_slice(&color);
+            out[i + 3] = ((inside as f32 / (SS * SS) as f32) * 255.0).round() as u8;
+        }
+    }
+    out
+}
+
 fn mix(a: [f32; 3], b: [f32; 3], t: f32) -> [f32; 3] {
     [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]
 }
@@ -194,6 +241,21 @@ mod tests {
         let left = (8..56).any(|x| light(pixel(&img, size, x, 64)) || light(pixel(&img, size, x, 70)));
         let right = (72..120).any(|x| light(pixel(&img, size, x, 64)) || light(pixel(&img, size, x, 58)));
         assert!(left && right);
+    }
+
+    #[test]
+    fn the_glyph_is_one_colour_on_nothing() {
+        for size in [16, 20, 24, 32] {
+            let img = render_glyph(size, [255, 255, 255]);
+            assert_eq!(pixel(&img, size, 0, 0)[3], 0, "corner at {size}");
+            let c = size / 2;
+            assert_eq!(pixel(&img, size, c, c), [255, 255, 255, 255], "drop at {size}");
+            assert!(img.chunks(4).all(|p| p[3] == 0 || p[..3] == [255, 255, 255]));
+            // Both loops: something drawn in the left and the right third.
+            let drawn =
+                |x0: usize, x1: usize| (0..size).any(|y| (x0..x1).any(|x| pixel(&img, size, x, y)[3] > 128));
+            assert!(drawn(0, size / 3) && drawn(size * 2 / 3, size), "loops at {size}");
+        }
     }
 
     #[test]

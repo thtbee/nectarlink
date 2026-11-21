@@ -596,7 +596,30 @@ const MIGRATIONS: &[&str] = &[
         ON send_queue(status, next_retry_ms ASC, expires_at ASC);",
     // v8: a device's install-stable ID, the only key used to merge re-paired entries
     "ALTER TABLE peers ADD COLUMN install_id TEXT;",
+    // v9: unlock the PC with a phone (ADR 0009): per phone and Windows user, the
+    // password sealed under a key only the phone holds, and that key as the
+    // phone wrapped it. Neither opens anything on its own.
+    "CREATE TABLE unlock_vault (
+        peer        BLOB NOT NULL REFERENCES peers(id) ON DELETE CASCADE,
+        user        TEXT NOT NULL,
+        user_name   TEXT NOT NULL,
+        nonce       BLOB NOT NULL,
+        sealed      BLOB NOT NULL,
+        wrapped     BLOB NOT NULL,
+        enrolled_at INTEGER NOT NULL,
+        PRIMARY KEY (peer, user)
+    ) STRICT;",
 ];
+
+/// One Windows user enrolled to unlock with a phone (ADR 0009).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UnlockEntry {
+    pub user: String,
+    pub user_name: String,
+    pub sealed: crate::unlock::Sealed,
+    pub wrapped: Vec<u8>,
+    pub enrolled_at: i64,
+}
 
 /// A paired device as stored on disk.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1006,6 +1029,84 @@ impl Store {
             )?;
             self.toggle_cache().remove(id);
             Ok(())
+        })
+    }
+
+    /// Keeps `entry` for `peer`, replacing an earlier one for the same user.
+    pub fn save_unlock(&self, peer: &DeviceId, entry: &UnlockEntry) -> Result<()> {
+        self.with(|c| {
+            c.execute(
+                "INSERT INTO unlock_vault (peer, user, user_name, nonce, sealed, wrapped, enrolled_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+                 ON CONFLICT(peer, user) DO UPDATE SET user_name = excluded.user_name,
+                    nonce = excluded.nonce, sealed = excluded.sealed, wrapped = excluded.wrapped,
+                    enrolled_at = excluded.enrolled_at",
+                params![
+                    peer.as_bytes().as_slice(),
+                    entry.user,
+                    entry.user_name,
+                    entry.sealed.nonce.as_slice(),
+                    entry.sealed.ciphertext,
+                    entry.wrapped,
+                    entry.enrolled_at
+                ],
+            )?;
+            Ok(())
+        })
+    }
+
+    /// What's kept to unlock `user` with `peer`.
+    pub fn unlock_entry(&self, peer: &DeviceId, user: &str) -> Result<Option<UnlockEntry>> {
+        Ok(self.unlock_entries_where(peer, Some(user))?.into_iter().next())
+    }
+
+    /// Every user enrolled to unlock with `peer`.
+    pub fn unlock_entries(&self, peer: &DeviceId) -> Result<Vec<UnlockEntry>> {
+        self.unlock_entries_where(peer, None)
+    }
+
+    fn unlock_entries_where(&self, peer: &DeviceId, user: Option<&str>) -> Result<Vec<UnlockEntry>> {
+        self.with(|c| {
+            let mut stmt = c.prepare(
+                "SELECT user, user_name, nonce, sealed, wrapped, enrolled_at FROM unlock_vault
+                 WHERE peer = ?1 AND (?2 IS NULL OR user = ?2) ORDER BY user_name",
+            )?;
+            let rows = stmt.query_map(params![peer.as_bytes().as_slice(), user], |r| {
+                let nonce: Vec<u8> = r.get(2)?;
+                Ok((r.get(0)?, r.get(1)?, nonce, r.get(3)?, r.get(4)?, r.get(5)?))
+            })?;
+            let mut out = Vec::new();
+            for row in rows {
+                let (user, user_name, nonce, ciphertext, wrapped, enrolled_at): (
+                    String,
+                    String,
+                    Vec<u8>,
+                    Vec<u8>,
+                    Vec<u8>,
+                    i64,
+                ) = row?;
+                // A row that isn't whole can't open anything: skip it.
+                let Ok(nonce) = <[u8; ring::aead::NONCE_LEN]>::try_from(nonce.as_slice()) else { continue };
+                out.push(UnlockEntry {
+                    user,
+                    user_name,
+                    sealed: crate::unlock::Sealed { nonce, ciphertext },
+                    wrapped,
+                    enrolled_at,
+                });
+            }
+            Ok(out)
+        })
+    }
+
+    /// Drops what's kept to unlock with `peer`, for `user` or for everyone.
+    /// Returns how many users it was.
+    pub fn remove_unlock(&self, peer: &DeviceId, user: Option<&str>) -> Result<usize> {
+        self.with(|c| {
+            c.execute(
+                "DELETE FROM unlock_vault WHERE peer = ?1 AND (?2 IS NULL OR user = ?2)",
+                params![peer.as_bytes().as_slice(), user],
+            )
         })
     }
 
@@ -2874,9 +2975,11 @@ fn cleanup_peers(
                 continue;
             }
             let stale_str = row.id.to_string();
+            // Unlocking with the phone is never carried over: the new identity is turned
+            // on for it again by hand (ADR 0009).
             let _ = conn.execute(
                 "INSERT OR IGNORE INTO peer_toggles (peer, toggle, enabled)
-                 SELECT ?1, toggle, enabled FROM peer_toggles WHERE peer = ?2",
+                 SELECT ?1, toggle, enabled FROM peer_toggles WHERE peer = ?2 AND toggle <> 'unlock'",
                 params![winner_id.as_bytes().as_slice(), row.id.as_bytes().as_slice()],
             );
             let _ = conn.execute(
@@ -3713,6 +3816,7 @@ mod tests {
         store.upsert_peer(&old, &phone, 100).unwrap();
         store.set_toggle(&old, "clipboard", false).unwrap();
         store.set_toggle(&old, "remote_input", true).unwrap();
+        store.set_toggle(&old, "unlock", true).unwrap();
         store.upsert_peer(&new, &phone, 200).unwrap();
         let ids: Vec<DeviceId> = store.list_peers().unwrap().into_iter().map(|p| p.id).collect();
         assert_eq!(ids, vec![new], "the new pairing wins");
@@ -3726,6 +3830,7 @@ mod tests {
             Some(true),
             "enabled toggle is preserved across re-pairing"
         );
+        assert_eq!(store.toggle(&new, "unlock").unwrap(), None, "unlocking is turned on again by hand");
 
         // An online peer in skip_ids is not deleted when another peer claims the same install_id.
         let online_new = DeviceId([0x05; 32]);

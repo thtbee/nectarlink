@@ -96,7 +96,11 @@ fn set_reg_sz(key: HKEY, name: Option<&str>, value: &str) -> Result<(), String> 
     Ok(())
 }
 
-fn create_and_set(root: HKEY, subkey: &str, values: &[(Option<&str>, &str)]) -> Result<(), String> {
+pub(crate) fn create_and_set(
+    root: HKEY,
+    subkey: &str,
+    values: &[(Option<&str>, &str)],
+) -> Result<(), String> {
     let mut hkey = HKEY::default();
     let status = unsafe {
         RegCreateKeyExW(

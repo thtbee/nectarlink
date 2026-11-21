@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package app.nectarlink.android.core
 
+import app.nectarlink.android.unlock.UnlockKeys
+import app.nectarlink.android.unlock.UnlockPrompts
+import app.nectarlink.core.UnlockRefusal
 import android.app.PendingIntent
 import android.app.RemoteInput
 import android.content.Context
@@ -56,6 +59,10 @@ import app.nectarlink.core.WebcamOptions
  * What the core asks of the phone: ring it, and act on its notifications
  * for a PC (dismiss, reply, run an action).
  */
+/** How long the owner has to agree to enrolling, and to an unlock (inside the core's 90 s and 30 s). */
+private const val ENROLL_WAIT_MS = 85_000L
+private const val UNLOCK_WAIT_MS = 28_000L
+
 internal class PhonePlatform(
     context: Context,
     private val ringer: Ringer,
@@ -200,6 +207,8 @@ internal class PhonePlatform(
 
     override fun mirrorSoundRequested(pcId: String, on: Boolean) = MirrorService.setSound(pcId, on)
 
+    override fun mirrorRotateRequested(pcId: String, landscape: Boolean) = MirrorService.rotate(pcId, landscape)
+
     override fun mirrorStopRequested(pcId: String, session: UInt) {
         if (session != SCREEN) return appWindows.close(pcId, session)
         onKeyboardFromPc(pcId, false)
@@ -278,6 +287,38 @@ internal class PhonePlatform(
 
     override fun micRequested(pcId: String): Boolean = onMic(pcId)
 
+    // ---- Unlock the PC with this phone (ADR 0009) ----
+
+    override fun unlockWrap(pc: String, pcName: String, userName: String, user: String, key: ByteArray): ByteArray {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R || !UnlockKeys.supported(context)) {
+            throw UnlockRefusal.Unsupported()
+        }
+        val cipher = runCatching { UnlockKeys.newWrapCipher(pc, user) }.getOrElse { throw UnlockRefusal.Unsupported() }
+        val authorized = UnlockPrompts.ask(context, pcName, userName, enroll = true, cipher, ENROLL_WAIT_MS)
+        if (authorized == null) {
+            UnlockKeys.forget(pc, user)
+            throw UnlockRefusal.Declined()
+        }
+        return runCatching { UnlockKeys.wrapped(authorized, authorized.doFinal(key)) }
+            .getOrElse { throw UnlockRefusal.Declined() }
+    }
+
+    override fun unlockUnwrap(pc: String, pcName: String, userName: String, user: String, wrapped: ByteArray): ByteArray {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) throw UnlockRefusal.Unsupported()
+        val cipher = try {
+            UnlockKeys.unwrapCipher(pc, user, wrapped)
+        } catch (_: UnlockKeys.KeyGone) {
+            throw UnlockRefusal.KeyGone()
+        }
+        val authorized = UnlockPrompts.ask(context, pcName, userName, enroll = false, cipher, UNLOCK_WAIT_MS)
+            ?: throw UnlockRefusal.Declined()
+        // A key that doesn't decrypt it (a changed copy on the PC) gives nothing back.
+        return runCatching { authorized.doFinal(UnlockKeys.ciphertext(wrapped)) }
+            .getOrElse { throw UnlockRefusal.KeyGone() }
+    }
+
+    override fun unlockForget(pc: String, user: String?) = UnlockKeys.forget(pc, user)
+
     override fun micStopRequested(pcId: String) {
         onMicStop(pcId)
         app.nectarlink.android.mic.MicService.stop(context, pcId)
@@ -327,6 +368,11 @@ internal class PhonePlatform(
 
     override fun sendSmsWithAttachments(to: List<String>, body: String, attachments: List<SmsAttachment>): Boolean =
         sms().send(to, body, attachments)
+
+    override fun smsSims(): List<app.nectarlink.core.CallSim> = sms().sims()
+
+    override fun smsSendOn(to: List<String>, body: String, attachments: List<SmsAttachment>, sim: String): Boolean =
+        sms().send(to, body, attachments, sim)
 
     override fun smsPart(id: String): SmsPartData? = sms().part(id)
 

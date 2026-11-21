@@ -19,6 +19,11 @@ pub mod types {
     pub const EVENT_UPDATE: &str = "event.update";
     pub const DEVICE_RING: &str = "device.ring";
     pub const DEVICE_RING_STOPPED: &str = "device.ring_stopped";
+    pub const UNLOCK_ENROLL: &str = "unlock.enroll";
+    pub const UNLOCK_WRAPPED: &str = "unlock.wrapped";
+    pub const UNLOCK_REQUEST: &str = "unlock.request";
+    pub const UNLOCK_RELEASE: &str = "unlock.release";
+    pub const UNLOCK_FORGET: &str = "unlock.forget";
 
     pub const PAIR_REQUEST: &str = "pair.request";
     pub const PAIR_ACCEPT: &str = "pair.accept";
@@ -76,9 +81,11 @@ pub mod types {
     pub const SMS_SEND: &str = "sms.send";
     pub const SMS_PART: &str = "sms.part";
     pub const SMS_CHANGED: &str = "sms.changed";
+    pub const SMS_SIMS: &str = "sms.sims";
     pub const MIRROR_START: &str = "mirror.start";
     pub const MIRROR_STOP: &str = "mirror.stop";
     pub const MIRROR_POWER: &str = "mirror.power";
+    pub const MIRROR_ROTATE: &str = "mirror.rotate";
     pub const MIRROR_SOUND: &str = "mirror.sound";
     /// Phone → PC: play my sound (#398). The PC starts its phone sound as
     /// if its user had turned it on; answered `ok`.
@@ -1515,6 +1522,16 @@ pub struct MirrorPower {
     pub screen_off: bool,
 }
 
+/// Body of `mirror.rotate`: turn the mirrored phone's screen (`session ==
+/// SCREEN`) to landscape or back to portrait (#473). The phone keeps it there
+/// while it's mirrored, then lets its own rotation take over again. Phones
+/// from before this ignore it.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MirrorRotate {
+    #[serde(default)]
+    pub landscape: bool,
+}
+
 /// Body of `mirror.sound`: send the phone's sound to the PC, or leave it on the
 /// phone, while mirroring its screen. Phones from before this ignore it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -2214,6 +2231,9 @@ pub mod sms {
     pub const SEND: &str = "sms.send";
     /// Offered by PCs that show text messages.
     pub const SHOW: &str = "sms.show";
+    /// Offered by phones that list the SIMs they text from (`sms.sims`) and
+    /// send on the one a PC picks (`sms.send`'s `sim`).
+    pub const SIMS: &str = "sms.sims";
     /// Most conversations or messages in one answer.
     pub const MAX_PAGE: u32 = 100;
     /// A text sent from a PC: at most this many bytes.
@@ -2293,6 +2313,10 @@ pub struct SmsMessage {
     pub status: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub parts: Vec<SmsPart>,
+    /// The SIM it came in on or went out from (an id from `sms.sims`), when
+    /// the phone knows.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sim: Option<String>,
 }
 
 /// Never prints numbers or text (protocol v0 §11).
@@ -2380,6 +2404,10 @@ pub struct SmsSend {
     /// Optional image attachment(s) to send as MMS.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub attachments: Vec<SmsAttachment>,
+    /// The SIM to send on (an id from `sms.sims`); the phone's default when
+    /// missing. Phones from before this send on their default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sim: Option<String>,
 }
 
 /// Never prints numbers or text (protocol v0 §11).
@@ -2389,13 +2417,15 @@ impl std::fmt::Debug for SmsSend {
             .field("to", &self.to.len())
             .field("bytes", &self.body.len())
             .field("attachments", &self.attachments.len())
+            .field("sim", &self.sim)
             .finish()
     }
 }
 
 impl SmsSend {
     pub fn is_valid(&self) -> bool {
-        (1..=sms::MAX_RECIPIENTS).contains(&self.to.len())
+        self.sim.as_deref().is_none_or(is_valid_sim_id)
+            && (1..=sms::MAX_RECIPIENTS).contains(&self.to.len())
             && self.to.iter().all(|a| (1..=64).contains(&a.trim().len()))
             && (!self.body.trim().is_empty() || !self.attachments.is_empty())
             && self.body.len() <= sms::MAX_SEND_BYTES
@@ -4728,6 +4758,155 @@ impl StorageChanged {
     }
 }
 
+// ---- Unlock the PC with the phone (docs/protocol/unlock.md) ----
+
+pub mod unlock {
+    /// Offered by a phone that can hold a PC's key behind a strong biometric.
+    pub const CAP_KEY: &str = "unlock.key";
+    /// Offered by a PC that can unlock its locked session with a phone.
+    pub const CAP_PC: &str = "unlock.pc";
+    /// The per-device toggle on both sides, off by default.
+    pub const TOGGLE: &str = "unlock";
+    /// Bytes in the key `K`.
+    pub const KEY_LEN: usize = 32;
+    /// Bytes in a request ID.
+    pub const REQUEST_LEN: usize = 16;
+    /// Largest wrapped key accepted (AES-GCM of 32 bytes plus IV and tag fits
+    /// easily; room for a format byte).
+    pub const MAX_WRAPPED: usize = 256;
+    /// Longest PC or user name shown on the phone, in UTF-8 bytes.
+    pub const MAX_NAME: usize = 128;
+    /// Longest Windows security identifier (`S-1-5-21-…`).
+    pub const MAX_USER: usize = 184;
+
+    pub(crate) fn name_ok(s: &str) -> bool {
+        !s.is_empty() && s.len() <= MAX_NAME && !s.chars().any(char::is_control)
+    }
+
+    pub(crate) fn user_ok(s: &str) -> bool {
+        !s.is_empty() && s.len() <= MAX_USER && s.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-')
+    }
+
+    /// Whether `s` looks like a Windows security identifier.
+    pub fn user_ok_pub(s: &str) -> bool {
+        user_ok(s)
+    }
+}
+
+/// `unlock.enroll` (PC to phone): wrap `key` behind the phone owner's
+/// biometric for this PC and Windows user.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UnlockEnroll {
+    pub pc_name: String,
+    pub user_name: String,
+    /// The Windows user's security identifier.
+    pub user: String,
+    #[serde(with = "serde_bytes")]
+    pub key: Vec<u8>,
+}
+
+impl UnlockEnroll {
+    pub fn is_valid(&self) -> bool {
+        unlock::name_ok(&self.pc_name)
+            && unlock::name_ok(&self.user_name)
+            && unlock::user_ok(&self.user)
+            && self.key.len() == unlock::KEY_LEN
+    }
+}
+
+/// Never prints the key.
+impl std::fmt::Debug for UnlockEnroll {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("UnlockEnroll")
+            .field("pc_name", &self.pc_name)
+            .field("user_name", &self.user_name)
+            .field("user", &self.user)
+            .finish_non_exhaustive()
+    }
+}
+
+/// `unlock.wrapped` (phone to PC, the answer to `unlock.enroll`).
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UnlockWrapped {
+    #[serde(with = "serde_bytes")]
+    pub wrapped: Vec<u8>,
+}
+
+impl UnlockWrapped {
+    pub fn is_valid(&self) -> bool {
+        !self.wrapped.is_empty() && self.wrapped.len() <= unlock::MAX_WRAPPED
+    }
+}
+
+impl std::fmt::Debug for UnlockWrapped {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "UnlockWrapped({} bytes)", self.wrapped.len())
+    }
+}
+
+/// `unlock.request` (PC to phone): someone at the locked PC asked to unlock it.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UnlockRequest {
+    #[serde(with = "serde_bytes")]
+    pub request: Vec<u8>,
+    pub pc_name: String,
+    pub user_name: String,
+    pub user: String,
+    #[serde(with = "serde_bytes")]
+    pub wrapped: Vec<u8>,
+}
+
+impl UnlockRequest {
+    pub fn is_valid(&self) -> bool {
+        self.request.len() == unlock::REQUEST_LEN
+            && unlock::name_ok(&self.pc_name)
+            && unlock::name_ok(&self.user_name)
+            && unlock::user_ok(&self.user)
+            && !self.wrapped.is_empty()
+            && self.wrapped.len() <= unlock::MAX_WRAPPED
+    }
+}
+
+impl std::fmt::Debug for UnlockRequest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("UnlockRequest")
+            .field("pc_name", &self.pc_name)
+            .field("user_name", &self.user_name)
+            .field("user", &self.user)
+            .finish_non_exhaustive()
+    }
+}
+
+/// `unlock.release` (phone to PC, the answer to `unlock.request`): the
+/// unwrapped key, after the owner's biometric.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UnlockRelease {
+    #[serde(with = "serde_bytes")]
+    pub request: Vec<u8>,
+    #[serde(with = "serde_bytes")]
+    pub key: Vec<u8>,
+}
+
+impl UnlockRelease {
+    pub fn is_valid(&self) -> bool {
+        self.request.len() == unlock::REQUEST_LEN && self.key.len() == unlock::KEY_LEN
+    }
+}
+
+impl std::fmt::Debug for UnlockRelease {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("UnlockRelease")
+    }
+}
+
+/// `unlock.forget` (either way): drop what's kept for this pair, or only for
+/// `user`.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UnlockForget {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub user: Option<String>,
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -5437,10 +5616,27 @@ mod tests {
 
     #[test]
     fn texts_to_send_are_checked() {
-        let send =
-            SmsSend { to: vec!["+15550100".into()], body: "On my way".into(), attachments: Vec::new() };
+        let send = SmsSend {
+            to: vec!["+15550100".into()],
+            body: "On my way".into(),
+            attachments: Vec::new(),
+            sim: None,
+        };
         assert!(send.is_valid());
         assert!(!format!("{send:?}").contains("way"));
+        // On a SIM the phone listed (#474); an empty or control-character id isn't one.
+        assert!(SmsSend { sim: Some("2".into()), ..send.clone() }.is_valid());
+        assert!(!SmsSend { sim: Some(String::new()), ..send.clone() }.is_valid());
+        assert!(!SmsSend { sim: Some("1\n".into()), ..send.clone() }.is_valid());
+        // A phone from before SIMs reads a PC's text with one as it always did.
+        let env = Envelope::new(types::SMS_SEND, &SmsSend { sim: Some("2".into()), ..send.clone() }).unwrap();
+        #[derive(Deserialize)]
+        struct Old {
+            to: Vec<String>,
+            body: String,
+        }
+        let old: Old = env.body().unwrap();
+        assert_eq!((old.to, old.body.as_str()), (send.to.clone(), "On my way"));
         assert!(!SmsSend { to: vec![], ..send.clone() }.is_valid());
         assert!(!SmsSend { body: "  ".into(), ..send.clone() }.is_valid());
         assert!(!SmsSend { body: "x".repeat(sms::MAX_SEND_BYTES + 1), ..send.clone() }.is_valid());
@@ -6404,6 +6600,7 @@ mod tests {
                 4 => try_decode!(
                     MirrorStart,
                     MirrorPower,
+                    MirrorRotate,
                     MirrorSession,
                     MirrorResize,
                     PhoneApp,

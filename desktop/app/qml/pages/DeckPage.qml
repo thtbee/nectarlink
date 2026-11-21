@@ -26,6 +26,9 @@ Item {
     readonly property var currentPage: pagesList[Math.min(currentPageIndex, Math.max(0, pagesList.length - 1))] || { id: "main", name: qsTr("Main"), tiles: [] }
     readonly property var currentTiles: currentPage.tiles || []
     property int draggedTileIndex: -1
+    // Where the dragged tile lands on release. The move happens only then:
+    // changing the tiles mid-drag rebuilds the Repeater and ends the drag.
+    property int dropTargetIndex: -1
 
     onPagesListChanged: {
         if (currentPageIndex >= pagesList.length)
@@ -374,6 +377,7 @@ Item {
                         }
 
                         readonly property bool isBeingDragged: page.draggedTileIndex === index
+                        readonly property bool isDropTarget: page.draggedTileIndex >= 0 && page.dropTargetIndex === index
                         readonly property bool highlighted: page.isTileHighlighted(modelData.kind)
 
                         Rectangle {
@@ -383,8 +387,8 @@ Item {
                             color: Theme.graphite
                                 ? (tileHover.hovered ? Theme.surfaceContainer : "transparent")
                                 : (tileHover.hovered ? Theme.surfaceContainerHigh : Theme.tileColor)
-                            border.width: isBeingDragged || Theme.focusVisible(tileSlot) ? 2 : (Theme.graphite ? 1 : 0)
-                            border.color: isBeingDragged || Theme.focusVisible(tileSlot)
+                            border.width: isBeingDragged || isDropTarget || Theme.focusVisible(tileSlot) ? 2 : (Theme.graphite ? 1 : 0)
+                            border.color: isBeingDragged || isDropTarget || Theme.focusVisible(tileSlot)
                                 ? Theme.primary
                                 : (tileSlot.highlighted ? Theme.surfaceContent : Theme.outlineVariant)
                             scale: isBeingDragged ? Theme.pressScale : 1.0
@@ -525,25 +529,28 @@ Item {
                                         const inGrid = tileSlot.mapToItem(tileGrid, mouse.x, mouse.y)
                                         const col = Math.floor(inGrid.x / (tileGrid.cellWidth + tileGrid.spacing))
                                         const row = Math.floor(inGrid.y / (tileSlot.height + tileGrid.spacing))
-                                        if (col >= 0 && col < tileGrid.columns && row >= 0) {
-                                            const targetIdx = row * tileGrid.columns + col
-                                            if (targetIdx >= 0 && targetIdx < page.currentTiles.length && targetIdx !== tileSlot.index) {
-                                                DeckController.moveTile(page.currentPage.id, tileSlot.index, targetIdx)
-                                                page.draggedTileIndex = targetIdx
-                                            }
-                                        }
+                                        const targetIdx = row * tileGrid.columns + col
+                                        const inside = col >= 0 && col < tileGrid.columns && row >= 0
+                                            && targetIdx < page.currentTiles.length
+                                        page.dropTargetIndex = inside && targetIdx !== tileSlot.index ? targetIdx : -1
                                     }
                                 }
                                 onReleased: {
                                     if (!dragging) {
                                         page.openEditTile(tileSlot.modelData)
+                                    } else if (page.dropTargetIndex >= 0) {
+                                        // Takes the tile out and puts it back in at the target,
+                                        // so the tiles in between shift over by one.
+                                        DeckController.moveTile(page.currentPage.id, tileSlot.index, page.dropTargetIndex)
                                     }
                                     dragging = false
                                     page.draggedTileIndex = -1
+                                    page.dropTargetIndex = -1
                                 }
                                 onCanceled: {
                                     dragging = false
                                     page.draggedTileIndex = -1
+                                    page.dropTargetIndex = -1
                                 }
                             }
                         }

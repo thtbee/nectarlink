@@ -114,6 +114,7 @@ fun SettingsScreen(
     updater: AppUpdater,
     onSetStorageEnabled: (pcId: String, enabled: Boolean) -> Unit = { _, _ -> },
     onSetMicEnabled: (pcId: String, enabled: Boolean) -> Unit = { _, _ -> },
+    onSetUnlockEnabled: (pcId: String, enabled: Boolean) -> Unit = { _, _ -> },
     onSetClipboardAccepted: (deviceId: String, on: Boolean) -> Unit = { _, _ -> },
     startWithoutAsking: Set<String> = emptySet(),
     onSetStartWithoutAsking: (pcId: String, on: Boolean) -> Unit = { _, _ -> },
@@ -125,6 +126,8 @@ fun SettingsScreen(
     onSetSuggestClipboardActions: (Boolean) -> Unit = {},
     volumeKeysControlPc: Boolean = true,
     onSetVolumeKeysControlPc: (Boolean) -> Unit = {},
+    pcSoundBufferMs: Int = 40,
+    onSetPcSoundBufferMs: (Int) -> Unit = {},
     quietWhileUsingPc: Boolean = false,
     onSetQuietWhileUsingPc: (Boolean) -> Unit = {},
     hideFromRecents: Boolean = false,
@@ -571,6 +574,52 @@ fun SettingsScreen(
                                         modifier = Modifier.semantics { contentDescription = micToggleTitle },
                                     )
                                 }
+                                if (app.nectarlink.android.unlock.UnlockKeys.supported(context)) {
+                                    val unlockTitle = stringResource(R.string.unlock_pc_toggle)
+                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                                        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                                            Text(unlockTitle, style = MaterialTheme.typography.bodyMedium)
+                                            Text(
+                                                stringResource(R.string.unlock_pc_toggle_hint),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                        Switch(
+                                            checked = device.unlockEnabled,
+                                            onCheckedChange = { enabled -> onSetUnlockEnabled(device.id, enabled) },
+                                            colors = app.nectarlink.android.ui.theme.nectarSwitchColors(),
+                                            modifier = Modifier.semantics { contentDescription = unlockTitle },
+                                        )
+                                    }
+                                    // Android opens the fingerprint prompt from the background only for
+                                    // apps that may show over other apps; without it, a notification to tap.
+                                    var promptsDirectly by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
+                                    androidx.lifecycle.compose.LifecycleResumeEffect(Unit) {
+                                        promptsDirectly = Settings.canDrawOverlays(context)
+                                        onPauseOrDispose { }
+                                    }
+                                    if (device.unlockEnabled && !promptsDirectly) {
+                                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                                            Text(
+                                                stringResource(R.string.unlock_prompt_directly_hint),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.weight(1f).padding(end = 12.dp),
+                                            )
+                                            TextButton(onClick = {
+                                                runCatching {
+                                                    context.startActivity(
+                                                        Intent(
+                                                            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                                            Uri.parse("package:${context.packageName}"),
+                                                        ),
+                                                    )
+                                                }
+                                            }) { Text(stringResource(R.string.unlock_prompt_directly_action)) }
+                                        }
+                                    }
+                                }
                                 val autoStartTitle = stringResource(R.string.start_without_asking_toggle)
                                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                                     Column(Modifier.weight(1f).padding(end = 12.dp)) {
@@ -935,6 +984,23 @@ fun SettingsScreen(
                             modifier = Modifier.semantics { contentDescription = volumeKeysTitle },
                         )
                     }
+                    SettingRowDivider()
+                    // #321: more buffer survives a busy Wi-Fi, less is closer to live.
+                    Text(stringResource(R.string.settings_pc_sound_buffer), style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        stringResource(R.string.settings_pc_sound_buffer_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Choice(
+                        options = listOf(
+                            "40" to stringResource(R.string.settings_buffer_low),
+                            "100" to stringResource(R.string.settings_buffer_medium),
+                            "200" to stringResource(R.string.settings_buffer_high),
+                        ),
+                        selected = pcSoundBufferMs.toString(),
+                        onSelect = { onSetPcSoundBufferMs(it.toInt()) },
+                    )
                 }
             }
 

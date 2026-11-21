@@ -106,6 +106,62 @@ Item {
             compare(island.primaryLabel, "Transfer complete")
         }
 
+        function player(device, id, title) {
+            MediaList.append({
+                deviceId: device, playerId: id, app: id, title: title, artist: "", art: "",
+                playing: true, canPlay: true, canPause: true, canNext: true, canPrevious: true,
+                duration: 0, position: 0, positionAt: 0
+            })
+        }
+
+        function test_the_pcs_own_players_show_only_when_asked_and_switch_with_a_phones() {
+            MediaList.clear()
+            island.mediaPick = ""
+            player("local", "spotify", "On the PC")
+            compare(island.mode, "idle", "the PC's own players are off by default")
+            Preferences.nectarIslandPcMedia = true
+            compare(island.mode, "media")
+            compare(island.primaryLabel, "On the PC")
+            player("phone1", "music", "On the phone")
+            compare(island.mediaSources, 2)
+            compare(island.primaryLabel, "On the phone", "a phone's comes first")
+            island.nextMediaSource()
+            compare(island.primaryLabel, "On the PC")
+            island.nextMediaSource()
+            compare(island.primaryLabel, "On the phone")
+            // The one picked stops: the other shows.
+            island.nextMediaSource()
+            MediaList.setProperty(0, "playing", false)
+            compare(island.primaryLabel, "On the phone")
+            Preferences.nectarIslandPcMedia = false
+            MediaList.clear()
+        }
+
+        function test_it_sits_left_center_or_right() {
+            const center = island.x
+            Preferences.nectarIslandPosition = "left"
+            verify(island.x < center)
+            Preferences.nectarIslandPosition = "right"
+            verify(island.x > center)
+            Preferences.nectarIslandPosition = "center"
+            compare(island.x, center)
+        }
+
+        function test_a_notification_says_which_app_it_is_from() {
+            NotificationList.latestApp = "Signal"
+            NotificationList.latestTitle = "Sam"
+            NotificationList.count = 1
+            compare(island.mode, "notification")
+            compare(island.primaryLabel, "Sam")
+            compare(island.secondaryLabel, "Signal")
+            NotificationList.count = 3
+            compare(island.secondaryLabel, "Signal · 3 notification(s)")
+            NotificationList.count = 0
+            NotificationList.latestApp = ""
+            NotificationList.latestTitle = ""
+            compare(island.mode, "idle")
+        }
+
         function test_the_banner_goes_away() {
             setStatus(start("a", "holiday.mp4"), "failed")
             tryCompare(island, "mode", "idle", 5000)

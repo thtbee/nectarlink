@@ -220,6 +220,12 @@ pub fn compute_capabilities(
     if crate::win::vcam::is_registered() {
         caps.push(nectarlink_core::WEBCAM_ADDON_VCAM.into());
     }
+    // Unlock with phone: only once the credential provider is in place.
+    #[cfg(windows)]
+    if crate::win::unlock::is_registered() {
+        caps.push(nectarlink_core::unlock::PC.into());
+        crate::win::unlock::serve();
+    }
     caps
 }
 

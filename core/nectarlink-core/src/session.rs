@@ -88,8 +88,31 @@ pub(crate) fn is_tailnet_ip(ip: std::net::IpAddr) -> bool {
     }
 }
 
+/// Returns true if `ip` is on a network of this place only: a private or link-local
+/// IPv4 address, a link-local or unique-local IPv6 one, or loopback. Unlike
+/// [`is_lan_ip`], tailnet addresses and carrier CGNAT (`100.64.0.0/10`) don't count:
+/// they reach a device anywhere, over mobile data too.
+pub(crate) fn is_private_lan_ip(ip: std::net::IpAddr) -> bool {
+    if is_tailnet_ip(ip) {
+        return false;
+    }
+    match ip.to_canonical() {
+        std::net::IpAddr::V4(v4) => v4.is_private() || v4.is_link_local() || v4.is_loopback(),
+        std::net::IpAddr::V6(v6) => v6.is_loopback() || v6.is_unicast_link_local() || v6.is_unique_local(),
+    }
+}
+
+/// Returns true if `a` and `b` are on the same subnet as far as can be told without
+/// the interface's prefix: the same `/64` for IPv6, the same `/24` for IPv4.
+pub(crate) fn is_same_subnet(a: std::net::IpAddr, b: std::net::IpAddr) -> bool {
+    match (a.to_canonical(), b.to_canonical()) {
+        (std::net::IpAddr::V4(a), std::net::IpAddr::V4(b)) => a.octets()[..3] == b.octets()[..3],
+        (std::net::IpAddr::V6(a), std::net::IpAddr::V6(b)) => is_same_ipv6_subnet(a, b),
+        _ => false,
+    }
+}
+
 /// Returns true if two IPv6 addresses share the same `/64` subnet prefix.
-#[cfg(test)]
 pub(crate) fn is_same_ipv6_subnet(a: std::net::Ipv6Addr, b: std::net::Ipv6Addr) -> bool {
     a.segments()[..4] == b.segments()[..4]
 }
@@ -361,6 +384,20 @@ impl Session {
         }
     }
 
+    /// The address of the path the connection uses now, when that's a direct IP path
+    /// (not a relay, not the USB tunnel). `None` while no path is selected.
+    pub(crate) fn selected_direct_addr(&self) -> Option<std::net::SocketAddr> {
+        let paths = self.conn.paths();
+        let selected = paths.iter().find(|p| p.is_selected())?;
+        if selected.is_relay() {
+            return None;
+        }
+        match selected.remote_addr() {
+            iroh::TransportAddr::Ip(addr) if !self.is_usb_addr(addr) => Some(*addr),
+            _ => None,
+        }
+    }
+
     /// The peer's direct IP addresses currently in use, for reconnecting later.
     pub fn remote_ip_addrs(&self) -> Vec<std::net::SocketAddr> {
         self.conn
@@ -599,6 +636,9 @@ fn is_background_rpc(t: &str) -> bool {
             | types::STORAGE_RENAME
             | types::STORAGE_DELETE
             | types::WAKE_RELAY
+            // The phone's owner answers a biometric prompt.
+            | types::UNLOCK_ENROLL
+            | types::UNLOCK_REQUEST
     )
 }
 
@@ -692,6 +732,7 @@ async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: Envelope) -> 
         t if (t.starts_with("deck.") || t == types::PC_AUDIO_SET)
             && crate::deck::handle(shared, session, &env).await? => {}
         t if t.starts_with("storage.") && crate::storage::handle(shared, session, &env).await? => {}
+        t if t.starts_with("unlock.") && crate::unlock::handle(shared, session, &env).await? => {}
         t if (t == types::FILES_RESUME || t == types::FILES_CANCEL)
             && crate::transfer::handle_control(shared, peer, &env).await? => {}
         types::WAKE_RELAY => {
@@ -884,8 +925,50 @@ fn received_bytes(session: &Session) -> u64 {
 
 #[cfg(test)]
 mod tests {
-    use super::{is_lan_ip, is_lan_peer_ip, is_same_ipv6_subnet, is_tailnet_ip, pcm_frame_ok};
+    use super::{
+        is_lan_ip, is_lan_peer_ip, is_private_lan_ip, is_same_ipv6_subnet, is_same_subnet, is_tailnet_ip,
+        pcm_frame_ok,
+    };
     use std::net::{IpAddr, Ipv6Addr, SocketAddr};
+
+    #[test]
+    fn private_lan_ip_leaves_out_tailnet_cgnat_and_wan() {
+        for ok in [
+            "127.0.0.1",
+            "10.1.2.3",
+            "172.16.0.9",
+            "192.168.1.20",
+            "169.254.3.4",
+            "::1",
+            "fe80::1",
+            "fd00::5",
+        ] {
+            assert!(is_private_lan_ip(ok.parse().unwrap()), "expected {ok} to be private");
+        }
+        for no in [
+            "100.64.0.1",
+            "100.100.100.100",
+            "100.127.255.254",
+            "fd7a:115c:a1e0::1",
+            "8.8.8.8",
+            "2001:4860::8888",
+            "::ffff:100.64.0.1",
+        ] {
+            assert!(!is_private_lan_ip(no.parse().unwrap()), "expected {no} not to be private");
+        }
+        assert!(is_private_lan_ip("::ffff:192.168.1.2".parse().unwrap()));
+    }
+
+    #[test]
+    fn same_subnet_compares_v4_24_and_v6_64() {
+        let ip = |s: &str| s.parse::<IpAddr>().unwrap();
+        assert!(is_same_subnet(ip("203.0.113.5"), ip("203.0.113.200")));
+        assert!(!is_same_subnet(ip("203.0.113.5"), ip("203.0.114.5")));
+        assert!(is_same_subnet(ip("2001:db8:1:2::a"), ip("2001:db8:1:2:ffff::1")));
+        assert!(!is_same_subnet(ip("2001:db8:1:2::a"), ip("2001:db8:1:3::a")));
+        assert!(is_same_subnet(ip("::ffff:203.0.113.5"), ip("203.0.113.9")));
+        assert!(!is_same_subnet(ip("203.0.113.5"), ip("2001:db8::1")));
+    }
 
     #[test]
     fn lan_ip_accepts_private_local_and_tailnet_and_rejects_wan() {

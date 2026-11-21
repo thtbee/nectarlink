@@ -46,11 +46,15 @@
         tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <!-- Unlock with phone: open the fingerprint prompt from the background instead of a notification to tap. -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
     <!-- Scanning the pairing QR code. -->
     <uses-permission android:name="android.permission.CAMERA" />
     <!-- Find my phone. -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Unlock a PC with this phone: the fingerprint prompt (ADR 0009). Granted at install. -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <!-- Asking to run unrestricted in the background: phones such as Samsung's
          otherwise freeze the app, and PCs can't reach it. -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
@@ -352,6 +356,15 @@
             android:name=".mic.MicService"
             android:exported="false"
             android:foregroundServiceType="microphone" />
+
+        <!-- Shows the biometric prompt for unlocking a PC (ADR 0009); nothing else. -->
+        <activity
+            android:name=".unlock.UnlockPromptActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
 
         <activity
             android:name=".mic.MicStartActivity"
