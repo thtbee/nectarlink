@@ -122,6 +122,8 @@ internal class PhonePlatform(
     override fun mediaCommand(player: String, action: MediaAction, position: ULong?) =
         media.command(player, action, position)
 
+    override fun adbMayBeConnected(): Boolean = app.nectarlink.android.usb.AdbState.mayBeConnected(context)
+
     override fun openLink(fromId: String, url: String): Boolean = onLink(fromId, url)
 
     override fun watchOffered(
@@ -211,6 +213,8 @@ internal class PhonePlatform(
     }
 
     override fun mirrorSoundRequested(pcId: String, on: Boolean) = MirrorService.setSound(pcId, on)
+
+    override fun mirrorRotateRequested(pcId: String, landscape: Boolean) = MirrorService.rotate(pcId, landscape)
 
     override fun mirrorStopRequested(pcId: String, session: UInt) {
         if (session != SCREEN) return appWindows.close(pcId, session)
@@ -371,6 +375,11 @@ internal class PhonePlatform(
 
     override fun sendSmsWithAttachments(to: List<String>, body: String, attachments: List<SmsAttachment>): Boolean =
         sms().send(to, body, attachments)
+
+    override fun smsSims(): List<app.nectarlink.core.CallSim> = sms().sims()
+
+    override fun smsSendOn(to: List<String>, body: String, attachments: List<SmsAttachment>, sim: String): Boolean =
+        sms().send(to, body, attachments, sim)
 
     override fun smsPart(id: String): SmsPartData? = sms().part(id)
 

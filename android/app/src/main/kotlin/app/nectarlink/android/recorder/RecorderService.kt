@@ -184,7 +184,7 @@ class RecorderService : Service() {
             AudioFormat.ENCODING_PCM_16BIT,
         ).coerceAtLeast(FRAME_SAMPLES * 2 * 4)
 
-        val audioRecord = runCatching {
+        fun newRecorder(): AudioRecord? = runCatching {
             AudioRecord(
                 MediaRecorder.AudioSource.MIC,
                 SAMPLE_RATE,
@@ -193,6 +193,8 @@ class RecorderService : Service() {
                 minBuf,
             )
         }.getOrNull()
+        var audioRecord = newRecorder()
+        var recorderRestarts = 0
 
         var codec: MediaCodec? = null
         var muxer: MediaMuxer? = null
@@ -297,6 +299,14 @@ class RecorderService : Service() {
                     Thread.sleep(20L)
                     pcmShorts.fill(0)
                     FRAME_SAMPLES
+                }
+                // The audio server restarted: this recorder is gone for good and
+                // would record silence to the end, but a new one works.
+                if (read == AudioRecord.ERROR_DEAD_OBJECT && recorderRestarts < MAX_RECORDER_RESTARTS) {
+                    recorderRestarts++
+                    Log.i(TAG, "the microphone went away; opening it again")
+                    runCatching { audioRecord?.release() }
+                    audioRecord = newRecorder()
                 }
                 val count = if (read > 0) read else {
                     Thread.sleep(20L)
@@ -437,6 +447,7 @@ class RecorderService : Service() {
         private const val CHANNELS = 1
         private const val BIT_RATE = 128_000
         private const val FRAME_SAMPLES = 1024
+        private const val MAX_RECORDER_RESTARTS = 3
 
         private const val ACTION_START = "app.nectarlink.android.recorder.START"
         private const val ACTION_PAUSE = "app.nectarlink.android.recorder.PAUSE"

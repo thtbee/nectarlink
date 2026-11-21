@@ -295,6 +295,9 @@ struct Options {
     widget_provider: bool,
     /// The update task's job, as SYSTEM (`--update-service`, see `updater`).
     update_service: bool,
+    /// The same after the administrator prompt, with no task: the channel
+    /// to follow (`--update-elevated <channel>`, see `updater`).
+    update_elevated: Option<String>,
     /// The installer's window (`--setup --installer <setup.exe>`, see `setup`).
     setup: Option<PathBuf>,
     /// The uninstaller's window (`--remove [--installed <folder>]`).
@@ -367,6 +370,11 @@ fn parse_options_from<I: IntoIterator<Item = std::ffi::OsString>>(iter: I) -> Op
             Some(updater::SERVICE_ARG) => {
                 in_share = false;
                 options.update_service = true;
+            }
+            Some(updater::ELEVATED_ARG) => {
+                in_share = false;
+                options.update_elevated =
+                    Some(args.next().and_then(|a| a.into_string().ok()).unwrap_or_default());
             }
             Some(updater::UPDATED_ARG) => {
                 in_share = false;
@@ -556,6 +564,9 @@ fn main() -> ExitCode {
     if options.update_service {
         return updater::run_service();
     }
+    if let Some(channel) = &options.update_elevated {
+        return updater::run_elevated(Some(channel.as_str()));
+    }
     if options.register_vcam {
         return match win::vcam::register_hklm() {
             Ok(()) => ExitCode::SUCCESS,
@@ -735,16 +746,25 @@ fn main() -> ExitCode {
         updater::set_auto(settings.auto_update);
         updater::set_auto_install(settings.install_updates);
         // Kept from the first run: going by the version alone, a nightly install
-        // would leave Nightly as soon as it took a release.
-        let channel = version::Channel::parse(&settings.update_channel).unwrap_or_else(|| {
-            let own = updater::channel();
-            let mut saved = settings::Settings::load(&data_dir);
-            saved.update_channel = own.as_str().into();
-            if let Err(e) = saved.save(&data_dir) {
-                tracing::warn!(error = %e, "can't save settings");
+        // would leave Nightly as soon as it took a release. Where the update
+        // task installs for everyone on this PC, it follows one channel, the
+        // last one anyone picked: that's the one this account shows and
+        // follows too, rather than set it back to its own at every start.
+        // (The task is only asked about when the two differ.)
+        let mine = version::Channel::parse(&settings.update_channel);
+        let pc = updater::machine_channel().filter(|pc| mine != Some(*pc) && updater::task_installs());
+        let channel = match (pc, mine) {
+            (None, Some(mine)) => mine,
+            (pc, _) => {
+                let channel = pc.unwrap_or_else(updater::channel);
+                let mut saved = settings::Settings::load(&data_dir);
+                saved.update_channel = channel.as_str().into();
+                if let Err(e) = saved.save(&data_dir) {
+                    tracing::warn!(error = %e, "can't save settings");
+                }
+                channel
             }
-            own
-        });
+        };
         updater::set_channel(channel);
         updater::start();
         match (updated_from, options.updated) {
@@ -908,6 +928,16 @@ mod tests {
         assert!(!opts.minimized);
         assert_eq!(opts.data_dir, Some(PathBuf::from(r"C:\Temp\nectarlink-test")));
         assert!(!parse_options_from(["--minimized"].into_iter().map(OsString::from)).ui_check);
+    }
+
+    #[test]
+    fn parse_options_recognizes_the_elevated_update_flag() {
+        let opts = parse_options_from([updater::ELEVATED_ARG, "nightly"].into_iter().map(OsString::from));
+        assert_eq!(opts.update_elevated.as_deref(), Some("nightly"));
+        assert!(!opts.update_service);
+        assert!(
+            parse_options_from(["--minimized"].into_iter().map(OsString::from)).update_elevated.is_none()
+        );
     }
 
     #[test]

@@ -354,6 +354,11 @@
     <string name="settings_remote">PCを操作する</string>
     <string name="settings_volume_keys_control_pc">音量ボタンでPCを操作</string>
     <string name="settings_volume_keys_control_pc_hint">PCで音楽や動画を再生している間、スマートフォンの音量ボタンでPCの音量を変更できます。</string>
+    <string name="settings_pc_sound_buffer">PCのサウンドのバッファー</string>
+    <string name="settings_pc_sound_buffer_hint">Wi-Fiが混んでいてPCの音が途切れる場合、バッファーを大きくすると、少し遅れが増える代わりに滑らかになります。</string>
+    <string name="settings_buffer_low">低</string>
+    <string name="settings_buffer_medium">中</string>
+    <string name="settings_buffer_high">高</string>
     <string name="settings_quiet_while_using_pc">PCの使用中は通知音を鳴らさない</string>
     <string name="settings_quiet_while_using_pc_hint">通知を表示するペアリング済みのPCを使用している間、スマートフォン側では通知音やバイブレーションを鳴らしません。</string>
     <string name="settings_hide_from_recents">最近使ったアプリから隠す</string>

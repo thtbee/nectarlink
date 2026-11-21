@@ -46,6 +46,11 @@ pub mod qobject {
         #[qproperty(QString, apps, READ, NOTIFY)]
         /// Non-empty when a recent dismissal can be undone in the feed.
         #[qproperty(QString, undo_label, cxx_name = "undoLabel", READ, NOTIFY)]
+        /// The newest notification's app name, title and app icon (a file
+        /// URL or ""), for the Island (#325).
+        #[qproperty(QString, latest_app, cxx_name = "latestApp")]
+        #[qproperty(QString, latest_title, cxx_name = "latestTitle")]
+        #[qproperty(QString, latest_icon, cxx_name = "latestIcon")]
         type NotificationList = super::NotificationListRust;
     }
 
@@ -184,6 +189,9 @@ pub struct NotificationListRust {
     history_enabled: bool,
     apps: QString,
     undo_label: QString,
+    latest_app: QString,
+    latest_title: QString,
+    latest_icon: QString,
     rows: Vec<Row>,
 }
 
@@ -394,6 +402,20 @@ fn build_rows(s: &AppState) -> Vec<Row> {
     rows
 }
 
+/// The newest notification that isn't a live one (a timer, a download):
+/// its app's name, its title and the app's icon.
+fn latest(rows: &[Row]) -> (String, String, String) {
+    rows.iter()
+        .filter(|r| r.view.notification.live.is_none())
+        .max_by_key(|r| r.view.notification.when)
+        .map(|r| {
+            let n = &r.view.notification;
+            let app = if n.app_name.trim().is_empty() { n.app.clone() } else { n.app_name.clone() };
+            (app, n.title.clone().unwrap_or_default(), r.icon_url.clone())
+        })
+        .unwrap_or_default()
+}
+
 fn key_of(row: &Row) -> (DeviceId, String) {
     (row.view.device, row.view.notification.key.clone())
 }
@@ -448,6 +470,11 @@ impl qobject::NotificationList {
                 }
             }
         }
+        // Before the count: the Island shows these when the count goes up.
+        let (app, title, icon) = latest(&self.rows);
+        self.as_mut().set_latest_app(QString::from(&app));
+        self.as_mut().set_latest_title(QString::from(&title));
+        self.as_mut().set_latest_icon(QString::from(&icon));
         let count: i32 = self.rows.iter().filter(|r| r.group_index == 0).map(|r| r.group_count).sum();
         self.set_count(count);
     }

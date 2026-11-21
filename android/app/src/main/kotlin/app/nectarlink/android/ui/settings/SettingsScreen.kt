@@ -126,6 +126,8 @@ fun SettingsScreen(
     onSetSuggestClipboardActions: (Boolean) -> Unit = {},
     volumeKeysControlPc: Boolean = true,
     onSetVolumeKeysControlPc: (Boolean) -> Unit = {},
+    pcSoundBufferMs: Int = 40,
+    onSetPcSoundBufferMs: (Int) -> Unit = {},
     quietWhileUsingPc: Boolean = false,
     onSetQuietWhileUsingPc: (Boolean) -> Unit = {},
     hideFromRecents: Boolean = false,
@@ -986,6 +988,23 @@ fun SettingsScreen(
                             modifier = Modifier.semantics { contentDescription = volumeKeysTitle },
                         )
                     }
+                    SettingRowDivider()
+                    // #321: more buffer survives a busy Wi-Fi, less is closer to live.
+                    Text(stringResource(R.string.settings_pc_sound_buffer), style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        stringResource(R.string.settings_pc_sound_buffer_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Choice(
+                        options = listOf(
+                            "40" to stringResource(R.string.settings_buffer_low),
+                            "100" to stringResource(R.string.settings_buffer_medium),
+                            "200" to stringResource(R.string.settings_buffer_high),
+                        ),
+                        selected = pcSoundBufferMs.toString(),
+                        onSelect = { onSetPcSoundBufferMs(it.toInt()) },
+                    )
                 }
             }
 

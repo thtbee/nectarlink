@@ -80,7 +80,9 @@ class CallAudioService : Service() {
                     ) {
                         return@launch
                     }
-                    val input = call.socket.inputStream
+                    // The PC plays the call now; the phone's copy goes quiet (#133).
+                    CallEarpiece.quiet(this@CallAudioService)
+                    val input = call.socket.getInputStream()
                     val chunk = ByteArray(CallAudio.CHUNK_BYTES)
                     var samples = 0L
                     while (true) {
@@ -117,6 +119,7 @@ class CallAudioService : Service() {
         }
         call?.let { runCatching { it.socket.close() } }
         if (last) {
+            CallEarpiece.end(this)
             ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
             stopSelf()
         }

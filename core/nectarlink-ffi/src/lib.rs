@@ -1312,6 +1312,8 @@ pub struct SmsMessage {
     pub status: Option<String>,
     /// Pictures and other attachments, fetched with `sms_part`.
     pub parts: Vec<SmsPart>,
+    /// The SIM it came in on or went out from (an id from `sms_sims`), when known.
+    pub sim: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
@@ -2747,6 +2749,10 @@ pub trait Platform: Send + Sync {
         action: MediaAction,
         position: Option<u64>,
     ) -> Result<(), MediaFailure>;
+    /// Whether a computer could be reaching this phone through adb right now
+    /// (USB debugging on with a cable in, or wireless debugging on). Pairing
+    /// over the USB tunnel without pairing mode is taken only then.
+    fn adb_may_be_connected(&self) -> bool;
     /// A paired PC sent a web link (http or https, checked) to open.
     /// False if it couldn't be shown.
     fn open_link(&self, from_id: String, url: String) -> bool;
@@ -2820,6 +2826,8 @@ pub trait Platform: Send + Sync {
     fn mirror_resize_requested(&self, pc_id: String, session: u32, width: u32, height: u32, zoom: u32);
     /// The PC updated `stay_awake` or `screen_off` while mirroring the screen (`session == 0`).
     fn mirror_power_requested(&self, pc_id: String, stay_awake: bool, screen_off: bool);
+    /// The PC wants the mirrored screen in landscape or portrait.
+    fn mirror_rotate_requested(&self, pc_id: String, landscape: bool);
     /// The PC wants the phone's sound sent to it, or left on the phone, while
     /// mirroring the screen.
     fn mirror_sound_requested(&self, pc_id: String, on: bool);
@@ -2878,6 +2886,16 @@ pub trait Platform: Send + Sync {
         to: Vec<String>,
         body: String,
         attachments: Vec<SmsAttachment>,
+    ) -> bool;
+    /// A PC asked which SIMs this phone texts from (#474).
+    fn sms_sims(&self) -> Vec<CallSim>;
+    /// Like `send_sms_with_attachments`, on the SIM `sim` (an id from `sms_sims`).
+    fn sms_send_on(
+        &self,
+        to: Vec<String>,
+        body: String,
+        attachments: Vec<SmsAttachment>,
+        sim: String,
     ) -> bool;
     /// A PC asked for a message's attachment; null when it's gone.
     fn sms_part(&self, id: String) -> Option<SmsPartData>;
@@ -3031,6 +3049,9 @@ impl core::Platform for PlatformAdapter {
     ) -> Result<(), core::MediaError> {
         Ok(self.0.media_command(player.to_owned(), action.into(), position)?)
     }
+    fn adb_may_be_connected(&self) -> bool {
+        self.0.adb_may_be_connected()
+    }
     fn open_link(&self, from: &DeviceId, url: &str) -> Result<(), String> {
         if self.0.open_link(from.to_string(), url.to_owned()) { Ok(()) } else { Err("not shown".into()) }
     }
@@ -3099,6 +3120,9 @@ impl core::Platform for PlatformAdapter {
     }
     fn mirror_power_requested(&self, peer: &DeviceId, stay_awake: bool, screen_off: bool) {
         self.0.mirror_power_requested(peer.to_string(), stay_awake, screen_off);
+    }
+    fn mirror_rotate_requested(&self, peer: &DeviceId, landscape: bool) {
+        self.0.mirror_rotate_requested(peer.to_string(), landscape);
     }
     fn mirror_sound_requested(&self, peer: &DeviceId, on: bool) {
         self.0.mirror_sound_requested(peer.to_string(), on);
@@ -3232,6 +3256,7 @@ impl core::Platform for PlatformAdapter {
                     .into_iter()
                     .map(|p| core::SmsPart { id: p.id, mime: p.mime, size: p.size })
                     .collect(),
+                sim: m.sim,
             })
             .collect())
     }
@@ -3250,6 +3275,29 @@ impl core::Platform for PlatformAdapter {
         let att: Vec<SmsAttachment> =
             attachments.iter().cloned().map(|a| SmsAttachment { mime: a.mime, data: a.data }).collect();
         if self.0.send_sms_with_attachments(to.to_vec(), body.to_owned(), att) {
+            Ok(())
+        } else {
+            Err("not sent".into())
+        }
+    }
+    fn sms_sims(&self) -> Result<core::CallSims, String> {
+        let sims = self.0.sms_sims();
+        let default = sims.iter().find(|s| s.is_default).map(|s| s.id.clone());
+        Ok(core::CallSims {
+            sims: sims.into_iter().map(|s| core::CallSim { id: s.id, label: s.label }).collect(),
+            default,
+        })
+    }
+    fn send_sms_on(
+        &self,
+        to: &[String],
+        body: &str,
+        attachments: &[core::SmsAttachment],
+        sim: &str,
+    ) -> Result<(), String> {
+        let att: Vec<SmsAttachment> =
+            attachments.iter().cloned().map(|a| SmsAttachment { mime: a.mime, data: a.data }).collect();
+        if self.0.sms_send_on(to.to_vec(), body.to_owned(), att, sim.to_owned()) {
             Ok(())
         } else {
             Err("not sent".into())
@@ -3626,9 +3674,12 @@ impl NectarlinkNode {
                     tracing::error!("the app's event listener failed on an event; carrying on");
                 }
             };
+            // What the app was given, so after a lag it gets only what it missed.
+            let mut given = core::Resync::new();
             loop {
                 match events.recv().await {
                     Ok(event) => {
+                        given.note(&event);
                         if let Some(ev) = Event::from_node(event) {
                             deliver(ev);
                         }
@@ -3652,6 +3703,12 @@ impl NectarlinkNode {
                             }
                         }
                         deliver(Event::QueueChanged);
+                        // Transfers, rings and pairing only ever come as events.
+                        for event in given.missed(node_for_events.latest_state()) {
+                            if let Some(ev) = Event::from_node(event) {
+                                deliver(ev);
+                            }
+                        }
                     }
                     Err(RecvError::Closed) => return,
                 }

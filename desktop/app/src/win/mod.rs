@@ -204,6 +204,16 @@ pub fn system_dark() -> bool {
     ) == Some(0)
 }
 
+/// Whether the taskbar is light (Windows mode set to Light), for a
+/// one-colour tray icon that has to stand out on it.
+pub fn taskbar_light() -> bool {
+    reg_dword(
+        HKEY_CURRENT_USER,
+        r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize",
+        "SystemUsesLightTheme",
+    ) == Some(1)
+}
+
 /// Whether the user turned off animations in Windows settings.
 pub fn reduce_motion() -> bool {
     let mut enabled = BOOL(1);

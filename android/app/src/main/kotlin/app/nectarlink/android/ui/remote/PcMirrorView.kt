@@ -481,6 +481,21 @@ private fun RailButton(
     }
 }
 
+/** A key in the full-screen overlay row: white text, its own description for TalkBack. */
+@Composable
+private fun OverlayKey(label: String, description: String = label, onClick: () -> Unit) {
+    TextButton(
+        onClick = onClick,
+        colors = ButtonDefaults.textButtonColors(contentColor = Color.White),
+        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+        modifier = Modifier
+            .height(36.dp)
+            .semantics { contentDescription = description },
+    ) {
+        Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+    }
+}
+
 /** A button label on one line that shrinks to fit, rather than cut a word off, on narrow phones or with large fonts. */
 @Composable
 private fun FitLabel(text: String) {
@@ -1481,6 +1496,27 @@ fun PcMirrorView(
                                     style = MaterialTheme.typography.labelLarge,
                                     maxLines = 1,
                                 )
+                            }
+                            // The same keys as the side rails in landscape (#306).
+                            OverlayKey(escLabel, escDescription) {
+                                bumpOverlay()
+                                core.remoteKey(pcId, "escape", onStatus = onStatus)
+                            }
+                            OverlayKey(copyLabel) {
+                                bumpOverlay()
+                                core.remoteKey(pcId, "copy", onStatus = onStatus)
+                            }
+                            OverlayKey(pasteLabel) {
+                                bumpOverlay()
+                                core.remoteKey(pcId, "paste", onStatus = onStatus)
+                            }
+                            OverlayKey(switchWindowLabel) {
+                                bumpOverlay()
+                                core.remoteKey(pcId, "tab", listOf("alt"), onStatus)
+                            }
+                            OverlayKey(undoLabel) {
+                                bumpOverlay()
+                                core.remoteKey(pcId, "undo", onStatus = onStatus)
                             }
                             if (touchpadSensitivity != null) {
                                 TextButton(

@@ -156,6 +156,8 @@ pub(crate) struct Shared {
     pub pairing: PairingState,
     pub cancel: CancellationToken,
     events: broadcast::Sender<NodeEvent>,
+    /// What an app that fell behind the events needs again (see [`crate::Resync`]).
+    latest: Mutex<crate::resync::LatestState>,
     sessions: Mutex<HashMap<DeviceId, Arc<Session>>>,
     links: Mutex<HashMap<DeviceId, LinkState>>,
     supervisors: Mutex<HashMap<DeviceId, Supervisor>>,
@@ -314,6 +316,7 @@ fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
 
 impl Shared {
     pub fn emit(&self, event: NodeEvent) {
+        lock(&self.latest).note(&event);
         // No subscribers is fine; events are a UI convenience.
         let _ = self.events.send(event);
     }
@@ -1988,6 +1991,7 @@ impl Node {
             pairing: PairingState::default(),
             cancel: CancellationToken::new(),
             events,
+            latest: Mutex::default(),
             sessions: Mutex::new(HashMap::new()),
             links: Mutex::new(HashMap::new()),
             supervisors: Mutex::new(HashMap::new()),
@@ -2248,6 +2252,12 @@ impl Node {
     /// Subscribes to node events. Each subscriber gets its own stream.
     pub fn events(&self) -> broadcast::Receiver<NodeEvent> {
         self.shared.events.subscribe()
+    }
+
+    /// The latest transfer states, rings and pairing step, as events: for an
+    /// app that fell behind [`Node::events`], through [`crate::Resync`].
+    pub fn latest_state(&self) -> Vec<NodeEvent> {
+        lock(&self.shared.latest).snapshot()
     }
 
     /// This device's direct addresses (for diagnostics and tests).
@@ -3287,6 +3297,12 @@ impl Node {
         crate::mirror::power(&self.shared, &session, stay_awake, screen_off).await
     }
 
+    /// Turns a mirrored phone's screen to landscape or portrait (#473).
+    pub async fn mirror_rotate(&self, peer: DeviceId, landscape: bool) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::mirror::rotate(&self.shared, &session, landscape).await
+    }
+
     /// Sends a mirrored phone's sound to this PC, or leaves it on the phone.
     pub async fn mirror_sound(&self, peer: DeviceId, on: bool) -> Result<()> {
         let session = self.connected(&peer)?;
@@ -3590,7 +3606,7 @@ impl Node {
     /// Sends a text through a paired phone.
     pub async fn sms_send(&self, peer: DeviceId, to: Vec<String>, body: String) -> Result<()> {
         let session = self.connected(&peer)?;
-        crate::sms::send(&self.shared, &session, to, body, Vec::new()).await
+        crate::sms::send(&self.shared, &session, to, body, Vec::new(), None).await
     }
 
     /// Sends a text (no attachments) through a paired phone.
@@ -3601,7 +3617,29 @@ impl Node {
         body: String,
     ) -> Result<()> {
         let session = self.connected(peer.borrow())?;
-        crate::sms::send(&self.shared, &session, to, body, Vec::new()).await
+        crate::sms::send(&self.shared, &session, to, body, Vec::new(), None).await
+    }
+
+    /// The SIMs a paired phone texts from (#474), to pick one for
+    /// [`send_sms_on`](Self::send_sms_on); none from a phone that doesn't
+    /// list them.
+    pub async fn sms_sims(&self, peer: DeviceId) -> Result<crate::CallSims> {
+        let session = self.connected(&peer)?;
+        crate::sms::sims(&self.shared, &session).await
+    }
+
+    /// Sends a text or MMS through a paired phone on the SIM `sim` (an id
+    /// from [`sms_sims`](Self::sms_sims)), or on its default when `None`.
+    pub async fn send_sms_on(
+        &self,
+        peer: DeviceId,
+        to: Vec<String>,
+        body: String,
+        attachments: Vec<crate::SmsAttachment>,
+        sim: Option<String>,
+    ) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::sms::send(&self.shared, &session, to, body, attachments, sim).await
     }
 
     /// Sends a text or MMS with optional image attachments through a paired phone.
@@ -3613,7 +3651,7 @@ impl Node {
         attachments: Vec<crate::SmsAttachment>,
     ) -> Result<()> {
         let session = self.connected(peer.borrow())?;
-        crate::sms::send(&self.shared, &session, to, body, attachments).await
+        crate::sms::send(&self.shared, &session, to, body, attachments, None).await
     }
 
     /// Alias for [`Node::send_sms_with_attachments`].

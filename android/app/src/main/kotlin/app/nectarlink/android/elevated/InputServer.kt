@@ -80,6 +80,10 @@ object InputServer {
     @Volatile private var serverSocket: ServerSocket? = null
     @Volatile private var controlOut: java.io.Writer? = null
     @Volatile private var displayTurnedOff = false
+    /** The phone was asleep and was woken, dark, for app windows (#483): it sleeps again after them. */
+    @Volatile private var wokenForWindows = false
+    private var lastWokenForWindows = 0L
+    private const val WAKE_SETTLE_MS = 2_000L
     @Volatile private var savedBrightness: Int? = null
 
     /** The only fixed shell commands the app may run through the helper. */
@@ -103,6 +107,9 @@ object InputServer {
 
 
     private const val BRIGHTNESS_PREFIX = "settings put system screen_brightness "
+    // Rotate from the PC (#473): held while mirrored, then put back.
+    private const val AUTO_ROTATE_PREFIX = "settings put system accelerometer_rotation "
+    private const val ROTATION_PREFIX = "settings put system user_rotation "
     private const val UNINSTALL_PREFIX = "pm uninstall "
     // Release and debug builds alike: neither may uninstall the other.
     private const val OWN_PACKAGE = "app.nectarlink"
@@ -110,7 +117,7 @@ object InputServer {
 
     /**
      * Whether the app may run [cmd] through the helper: one of [allowedCommands],
-     * a screen brightness, or uninstalling another app (a PC asked, D349), never
+     * a screen brightness, the screen's rotation, or uninstalling another app (a PC asked, D349), never
      * NectarLink itself.
      */
     internal fun isAllowedCommand(cmd: String): Boolean {
@@ -118,6 +125,12 @@ object InputServer {
         if (cmd.startsWith(BRIGHTNESS_PREFIX)) {
             val v = cmd.removePrefix(BRIGHTNESS_PREFIX).toIntOrNull()
             return v != null && v in 0..255
+        }
+        if (cmd.startsWith(AUTO_ROTATE_PREFIX)) {
+            return cmd.removePrefix(AUTO_ROTATE_PREFIX) in setOf("0", "1")
+        }
+        if (cmd.startsWith(ROTATION_PREFIX)) {
+            return cmd.removePrefix(ROTATION_PREFIX) in setOf("0", "1", "2", "3")
         }
         if (cmd.startsWith(UNINSTALL_PREFIX)) {
             val pkg = cmd.removePrefix(UNINSTALL_PREFIX)
@@ -394,8 +407,12 @@ object InputServer {
             client.tcpNoDelay = true
             client.soTimeout = AUTH_TIMEOUT_MS
             val reader = client.inputStream.bufferedReader()
+            var given = runCatching { reader.nextLine(MAX_TOKEN_CHARS) }.getOrNull() ?: return
+            // The app first checks this is the helper it started (HelperProof).
+            if (runCatching { HelperProof.answerIfChallenge(given, token, client.getOutputStream()) }.getOrElse { return }) {
+                given = runCatching { reader.nextLine(MAX_TOKEN_CHARS) }.getOrNull() ?: return
+            }
             // Compared in constant time: the token is the only key.
-            val given = runCatching { reader.nextLine(MAX_TOKEN_CHARS) }.getOrNull() ?: return
             if (!MessageDigest.isEqual(given.toByteArray(), token.toByteArray())) return
             val first = runCatching { reader.nextLine(MAX_LINE_CHARS) }.getOrNull()
             client.soTimeout = 0
@@ -759,17 +776,48 @@ object InputServer {
         } finally {
             windows.remove(window)
             window.stop()
+            if (windows.isEmpty()) sleepAfterWindows()
         }
     }
 
     /**
      * Wakes the phone for a window on a plain display, which sleeps with it
-     * (#152). WAKEUP does nothing to a phone that's awake; a panel turned
-     * off for the PC goes back off.
+     * (#152) and takes no input while it's asleep (#483). WAKEUP does nothing
+     * to a phone that's awake. A phone that was asleep stays dark: its own
+     * screen goes off at once and it stays locked, so it looks asleep while
+     * the window works. Asleep again while dark means its power button was
+     * pressed to see it, so then it lights up as usual. A panel turned off
+     * for the PC goes back off.
      */
+    @Synchronized
     private fun wakeForWindow() {
+        // Each window checks on its own, and waking takes a moment to show.
+        val now = android.os.SystemClock.uptimeMillis()
+        if (now - lastWokenForWindows < WAKE_SETTLE_MS) return
+        val wasAsleep = UserActivity.interactive()?.invoke() == false
+        if (wasAsleep) lastWokenForWindows = now
         runCatching { Runtime.getRuntime().exec(arrayOf("input", "keyevent", "KEYCODE_WAKEUP")).waitFor() }
-        if (displayTurnedOff) runCatching { setDisplayPower(false) }
+        when {
+            wokenForWindows && wasAsleep -> {
+                wokenForWindows = false
+                runCatching { setDisplayPower(true) }
+            }
+            displayTurnedOff -> runCatching { setDisplayPower(false) }
+            wasAsleep -> {
+                wokenForWindows = true
+                runCatching { setDisplayPower(false) }
+            }
+        }
+    }
+
+    /** The last window closed: a phone woken for windows goes back to sleep, as it was. */
+    @Synchronized
+    private fun sleepAfterWindows() {
+        if (!wokenForWindows) return
+        wokenForWindows = false
+        // The panel's own power first, or it would stay off the next time the phone wakes.
+        runCatching { setDisplayPower(true) }
+        runCatching { Runtime.getRuntime().exec(arrayOf("input", "keyevent", "KEYCODE_SLEEP")).waitFor() }
     }
 
     private val PACKAGE = Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+")

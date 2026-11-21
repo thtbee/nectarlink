@@ -148,6 +148,9 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "setScreenOff"]
         fn set_screen_off(self: &Mirror, key: &QString, on: bool);
+        /// Turns the mirrored phone to landscape or back to portrait.
+        #[qinvokable]
+        fn rotate(self: &Mirror, key: &QString, landscape: bool);
         /// Keeps `device`'s screen off from the start of each mirroring or app window.
         #[qinvokable]
         #[cxx_name = "setKeepScreenOff"]
@@ -546,6 +549,12 @@ impl qobject::Mirror {
     pub fn set_screen_off(&self, key: &QString, on: bool) {
         if let Some(window) = Window::parse(&String::from(key)) {
             mirror::set_screen_off(window, on);
+        }
+    }
+
+    pub fn rotate(&self, key: &QString, landscape: bool) {
+        if let Some(window) = Window::parse(&String::from(key)) {
+            mirror::rotate(window, landscape);
         }
     }
 

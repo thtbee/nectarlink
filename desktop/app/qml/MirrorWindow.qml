@@ -675,7 +675,7 @@ Window {
         color: Qt.rgba(0, 0, 0, 0.68)
         visible: win.phase === "showing" && video.frameSize.width > 0
         readonly property bool toolbarHasFocus: flexibleBtn.activeFocus || lockBtn.activeFocus || copyShotBtn.activeFocus || saveShotBtn.activeFocus
-            || recordBtn.activeFocus || stayAwakeBtn.activeFocus || screenOffBtn.activeFocus || soundBtn.activeFocus
+            || recordBtn.activeFocus || stayAwakeBtn.activeFocus || screenOffBtn.activeFocus || rotateBtn.activeFocus || soundBtn.activeFocus
             || backBtn.activeFocus || homeBtn.activeFocus || recentsBtn.activeFocus
         // Only while it's wanted: it sits over the app's own top bar (#340).
         // Recording and a dark phone screen show in the window's title instead.
@@ -748,6 +748,15 @@ Window {
                     ? qsTr("Turn phone screen back on")
                     : qsTr("Turn phone screen off while mirroring")
                 onClicked: Mirror.setScreenOff(win.mirrorKey, !(win.info.screenOff === true))
+            }
+            IconButton {
+                id: rotateBtn
+                // The phone's screen only, and with Elevated (the phone turns itself).
+                visible: win.canControl && !win.info.app
+                iconPath: Icons.rotate
+                iconColor: "white"
+                label: win.frame.width > win.frame.height ? qsTr("Turn the phone to portrait") : qsTr("Turn the phone to landscape")
+                onClicked: Mirror.rotate(win.mirrorKey, !(win.frame.width > win.frame.height))
             }
             IconButton {
                 id: lockBtn
