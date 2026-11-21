@@ -771,17 +771,19 @@ pub(crate) fn show_offline_queued_toast(device: DeviceId, item_id: Option<String
 }
 
 /// Opens the Calls page dialer with `number` filled in (without placing the call).
-pub(crate) fn open_dialer(device: DeviceId, number: &str) {
+pub(crate) fn open_dialer(device: Option<DeviceId>, number: &str) {
     let number = number.trim().to_owned();
     if number.is_empty() {
         return;
     }
-    let idx = core_host::host().hub.read(|s| {
-        s.devices
-            .iter()
-            .position(|d| d.id == device && matches!(d.link, LinkState::Online { .. }))
-            .or_else(|| s.devices.iter().position(|d| matches!(d.link, LinkState::Online { .. })))
-            .or_else(|| s.devices.iter().position(|d| d.id == device))
+    let idx = device.and_then(|device| {
+        core_host::host().hub.read(|s| {
+            s.devices
+                .iter()
+                .position(|d| d.id == device && matches!(d.link, LinkState::Online { .. }))
+                .or_else(|| s.devices.iter().position(|d| matches!(d.link, LinkState::Online { .. })))
+                .or_else(|| s.devices.iter().position(|d| d.id == device))
+        })
     });
     if let Some(qt) = controller() {
         let _ = qt.queue(move |mut object| {
@@ -1644,7 +1646,7 @@ impl qobject::AppController {
             }
             PaletteUiAction::OpenDialer { device_id, number } => {
                 if let Ok(dev) = device_id.parse::<DeviceId>() {
-                    open_dialer(dev, &number);
+                    open_dialer(Some(dev), &number);
                 }
             }
             PaletteUiAction::OpenHandoffFilePicker { device_index } => {

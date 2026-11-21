@@ -431,7 +431,7 @@ pub fn run_last_suggestion() {
         ClipKind::WebLink => crate::win::shell::open_url(&suggestion.target),
         ClipKind::StreetAddress => crate::win::shell::open_maps(&suggestion.target),
         ClipKind::PhoneNumber => {
-            open_dialer(device, &suggestion.target);
+            open_dialer(Some(device), &suggestion.target);
             Ok(())
         }
         ClipKind::TrackingNumber => {

@@ -2546,6 +2546,7 @@ dependencies = [
  "nectarlink-core",
  "nectarlink-protocol",
  "nectarlink-vcam",
+ "percent-encoding",
  "pkg-config",
  "qrcode",
  "rand",

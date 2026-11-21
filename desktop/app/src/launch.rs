@@ -44,10 +44,31 @@ pub enum Request {
         device: Option<String>,
         task: nectarlink_core::TaskNotify,
     },
+    /// Show the dialer with a number from a Windows telephone link.
+    OpenDialer { number: String },
     /// Run a taskbar Jump List task (`--task <action>`).
     Task { action: String },
     /// Quit.
     Quit,
+}
+
+/// Accept ordinary telephone numbers without guessing how to dial URI parameters.
+pub fn telephone_number(uri: &str) -> Option<String> {
+    let (scheme, subscriber) = uri.split_once(':')?;
+    if !scheme.eq_ignore_ascii_case("tel") {
+        return None;
+    }
+    let decoded = percent_encoding::percent_decode_str(subscriber).decode_utf8().ok()?;
+    let mut number = String::new();
+    for ch in decoded.chars() {
+        match ch {
+            '0'..='9' => number.push(ch),
+            '+' if number.is_empty() => number.push(ch),
+            ' ' | '-' | '.' | '(' | ')' => {}
+            _ => return None,
+        }
+    }
+    number.bytes().any(|b| b.is_ascii_digit()).then_some(number)
 }
 
 fn dir(data_dir: &Path) -> PathBuf {
@@ -108,6 +129,31 @@ pub fn drain(data_dir: &Path) -> Vec<Request> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn telephone_links_preserve_the_destination() {
+        for (uri, expected) in [
+            ("tel:+1-202-555-0100", "+12025550100"),
+            ("TEL:%2B880%20(2).555-0100", "+88025550100"),
+            ("tel:020 555 0100", "0205550100"),
+        ] {
+            assert_eq!(telephone_number(uri).as_deref(), Some(expected));
+        }
+        for uri in [
+            "https:5550100",
+            "tel:+",
+            "tel://5550100",
+            "tel:1+2",
+            "tel:123;phone-context=+1",
+            "tel:+12025550100;ext=12",
+            "tel:5550100%0a",
+            "tel:5550100%22",
+            "tel:555%ZZ",
+            "tel:*123%23",
+        ] {
+            assert_eq!(telephone_number(uri), None, "{uri}");
+        }
+    }
 
     fn send(n: u8) -> Request {
         Request::Send {
