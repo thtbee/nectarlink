@@ -337,6 +337,10 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **NectarLink starts on Windows installs without `cldapi.dll`.** Some trimmed Windows
+  builds remove the Cloud Files API, and the app stopped with "cldapi.dll was not found".
+  It now starts there, with the phone folders in File Explorer off. Thanks to
+  [@Akbardaging](https://github.com/Akbardaging) ([#499](https://github.com/thtbee/nectarlink/issues/499)).
 - **The PC's log keeps your details out and stays small.** It no longer writes your Windows
   user name inside folder paths, network addresses (only their kind, like "home network"),
   or values it doesn't know are safe. It also keeps to about 2 MB while NectarLink runs,
