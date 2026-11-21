@@ -48,7 +48,8 @@ if (-not $version) { throw "can't read the version from Cargo.toml" }
 $numeric = ($version -split '[-+]')[0]
 # Their fourth number orders builds of one version, as Android's version code
 # does: a nightly 1.2.3-nightly.N is N, the release 999, after its nightlies.
-$build = if ($version -match '-nightly\.(\d+)$') { [int]$Matches[1] } elseif ($version -notmatch '-') { 999 } else { 0 }
+# A canary (+canary.<commit>) is its nightly's number.
+$build = if ($version -match '-nightly\.(\d+)(\+canary\.[0-9a-f]+)?$') { [int]$Matches[1] } elseif ($version -notmatch '-') { 999 } else { 0 }
 if ($build -lt 0 -or $build -gt 999) { throw "nightly number in $version must be 1 to 998" }
 
 # ---- Target Architecture & Build Paths ----

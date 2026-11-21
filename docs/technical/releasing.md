@@ -69,6 +69,25 @@ before `1.2.3`. So a nightly install moves to the release when it's out, and
 a phone can't go from a nightly back to an older release without
 reinstalling.
 
+### Canary
+
+`canary.yml` builds `main` as it is, for people who want to try what landed
+before a nightly. It runs after each push to `main` that CI passed, when the
+apps changed (not for docs, `.github/` or `tools/report-worker/` alone), and
+only from a commit CI built and tested. GitHub keeps at most one canary
+waiting behind the running one, and a newer push replaces it, so builds
+never pile up. Start one by hand with `gh workflow run Canary` (`-f force=true`
+builds even when nothing changed).
+
+A canary is the pre-release under the tag `canary`, replaced each time, with
+fixed file names (`Nectarlink-canary-x64-setup.exe`, the APK, the DMG and the
+Linux packages), so a download link keeps working. Its release notes start
+with a warning that it's untested. No feed points at it and the apps never
+offer it: its version is the last nightly's with build metadata,
+`1.2.3-nightly.N+canary.<commit>`, which orders like that nightly. So it
+installs over that nightly (same key, same Android `versionCode`), and the
+next nightly or release updates it as usual.
+
 ## Signing
 
 **Android.** Release builds are signed with the key in the
