@@ -3820,7 +3820,8 @@ async fn a_phone_unlocks_its_pc_only_as_enrolled_and_with_its_biometric() {
         assert!(tokio::time::Instant::now() < deadline, "the PC kept the sealed password");
         tokio::time::sleep(Duration::from_millis(20)).await;
     }
-    assert!(
+    // The phone forgets its keys on a task of its own, so it may finish after the PC.
+    let forgot = || {
         phone
             .platform
             .unlock_forgotten
@@ -3828,7 +3829,11 @@ async fn a_phone_unlocks_its_pc_only_as_enrolled_and_with_its_biometric() {
             .unwrap()
             .iter()
             .any(|(pc, user)| *pc == pc_id && user.is_none())
-    );
+    };
+    while !forgot() {
+        assert!(tokio::time::Instant::now() < deadline, "the phone kept its keys");
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
 }
 
 #[tokio::test(flavor = "multi_thread")]
