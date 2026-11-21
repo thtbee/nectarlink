@@ -59,7 +59,7 @@ pub fn relaunch(data_dir: &Path, device: DeviceId, pkg: &str) -> Option<(String,
     let exe = std::env::current_exe().ok()?;
     let command = format!("\"{}\" {} {}", exe.display(), crate::win::jumplist::ARG, task(&device, pkg));
     let icon = crate::icons::existing(data_dir, pkg)
-        .and_then(|png| imp::write_ico(data_dir, pkg, &png).ok())
+        .and_then(|png| imp::current_ico(data_dir, pkg, &png))
         .map(|ico| format!("{},0", ico.display()))
         .unwrap_or_default();
     Some((command, icon))
@@ -99,6 +99,17 @@ mod imp {
         };
         shortcut::write_with_icon(&path, &link, ico.as_deref()).map_err(|e| e.to_string())?;
         Ok(path)
+    }
+
+    /// The `.ico` for `png`, written only when it's missing or older than
+    /// the app's icon: the taskbar asks each time a window changes.
+    pub(super) fn current_ico(data_dir: &Path, pkg: &str, png_path: &Path) -> Option<PathBuf> {
+        let ico = data_dir.join("cache").join("shortcut-icons").join(format!("{pkg}.ico"));
+        let modified = |p: &Path| std::fs::metadata(p).and_then(|m| m.modified()).ok();
+        match (modified(&ico), modified(png_path)) {
+            (Some(ico_at), Some(png_at)) if ico_at >= png_at => Some(ico),
+            _ => write_ico(data_dir, pkg, png_path).ok(),
+        }
     }
 
     /// The app's PNG icon as a one-image `.ico` (an ICO may hold a PNG as

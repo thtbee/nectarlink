@@ -334,6 +334,10 @@ change things that need a step from you, and its notes say so.
 - **More keys in full screen on a phone held upright.** Esc, Copy, Paste, Switch window and
   Undo join the row of buttons that shows on a tap, like the side buttons in landscape.
   Thanks to [@cxigit](https://github.com/cxigit) ([#306](https://github.com/thtbee/nectarlink/issues/306)).
+- **Pin a phone app to the taskbar.** Pinning an app window's taskbar button now pins
+  that app: the icon opens it in a window, starting NectarLink first if needed. Thanks to
+  [@ososuosos](https://github.com/ososuosos)
+  ([#465](https://github.com/thtbee/nectarlink/discussions/465)).
 
 ### Fixed
 

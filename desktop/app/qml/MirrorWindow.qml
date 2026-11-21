@@ -370,7 +370,7 @@ Window {
             const relaunch = Mirror.relaunch(win.info.device || "", win.info.pkg)
             if (relaunch.length === 0) return ""
             const r = JSON.parse(relaunch)
-            r.name = win.info.title || win.info.pkg
+            r.name = (win.info.title || win.info.pkg).replace(/^@+/, "")
             return JSON.stringify(r)
         }
         focus: true
