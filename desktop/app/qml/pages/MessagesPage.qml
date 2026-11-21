@@ -926,10 +926,29 @@ Item {
                 }
             }
 
+            // Which SIM it goes out on, when the phone has more than one (#474).
+            // A click moves to the next; the phone's label says which is which.
+            Chip {
+                id: simChip
+                readonly property var sims: { try { return JSON.parse(Messages.sims || "[]") } catch (e) { return [] } }
+                readonly property int current: Math.max(0, sims.findIndex(s => s.id === Messages.sim))
+                readonly property string fullLabel: sims.length > 0 ? sims[current].label : ""
+                visible: sims.length > 1 && !composer.isChat && !composer.groupSms
+                anchors.left: attachButton.visible ? attachButton.right : parent.left
+                anchors.leftMargin: 4
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: 9
+                interactive: !Messages.sending
+                // "SIM 1 · Airtel" shows as "SIM 1"; a label without a slot as it is.
+                text: fullLabel.split(" · ")[0]
+                Accessible.name: qsTr("Sending from %1. Switch SIM").arg(fullLabel)
+                onClicked: Messages.chooseSim(sims[(current + 1) % sims.length].id)
+            }
+
             Flickable {
                 id: inputScroll
-                anchors.left: attachButton.visible ? attachButton.right : parent.left
-                anchors.leftMargin: attachButton.visible ? 4 : 18
+                anchors.left: simChip.visible ? simChip.right : (attachButton.visible ? attachButton.right : parent.left)
+                anchors.leftMargin: simChip.visible || attachButton.visible ? 4 : 18
                 anchors.right: sendButton.left
                 anchors.rightMargin: 8
                 anchors.top: parent.top

@@ -336,6 +336,33 @@ class MirrorService : Service() {
         }
     }
 
+    /** The phone's own rotation settings before the PC turned it, to put back. */
+    private var ownRotation: Pair<Int, Int>? = null
+
+    /** Holds the screen in landscape or portrait while it's mirrored. */
+    private fun holdRotation(landscape: Boolean) {
+        if (!app.nectarlink.android.elevated.Elevated.running) return
+        val resolver = contentResolver
+        if (ownRotation == null) {
+            ownRotation = Pair(
+                android.provider.Settings.System.getInt(resolver, android.provider.Settings.System.ACCELEROMETER_ROTATION, 1),
+                android.provider.Settings.System.getInt(resolver, android.provider.Settings.System.USER_ROTATION, 0),
+            )
+        }
+        val elevated = app.nectarlink.android.elevated.Elevated
+        elevated.runCommand("settings put system accelerometer_rotation 0")
+        elevated.runCommand("settings put system user_rotation ${if (landscape) 1 else 0}")
+    }
+
+    /** Lets the phone's own rotation take over again. */
+    private fun releaseRotation() {
+        val (auto, rotation) = ownRotation ?: return
+        ownRotation = null
+        val elevated = app.nectarlink.android.elevated.Elevated
+        elevated.runCommand("settings put system user_rotation ${rotation.coerceIn(0, 3)}")
+        elevated.runCommand("settings put system accelerometer_rotation ${if (auto != 0) 1 else 0}")
+    }
+
     private fun applyPower() {
         val active = streaming(
             screen = encoder != null && projection != null,
@@ -407,6 +434,7 @@ class MirrorService : Service() {
     }
 
     private fun stopSharing() {
+        releaseRotation()
         stayAwake = false
         screenOff = false
         soundOnly = false
@@ -433,6 +461,7 @@ class MirrorService : Service() {
     }
 
     override fun onDestroy() {
+        releaseRotation()
         stopSharing()
         scope.cancel()
         super.onDestroy()
@@ -550,6 +579,12 @@ class MirrorService : Service() {
          */
         internal fun streaming(screen: Boolean, elevatedScreen: Boolean, sound: Boolean): Boolean =
             screen || elevatedScreen || sound
+
+        /** The PC turned the mirrored screen (#473); needs Elevated. */
+        fun rotate(pcId: String, landscape: Boolean) {
+            val service = current ?: return
+            service.main.post { if (service.pcId == pcId) service.holdRotation(landscape) }
+        }
 
         fun setPower(pcId: String, stayAwake: Boolean, screenOff: Boolean) {
             val service = current ?: return

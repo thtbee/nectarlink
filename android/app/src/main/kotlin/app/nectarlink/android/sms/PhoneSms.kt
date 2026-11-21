@@ -2,6 +2,7 @@
 package app.nectarlink.android.sms
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import android.database.ContentObserver
@@ -15,9 +16,12 @@ import android.os.Looper
 import android.provider.ContactsContract
 import android.provider.Telephony
 import android.telephony.SmsManager
+import android.telephony.SubscriptionManager
 import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import app.nectarlink.android.calls.PhoneCalls
+import app.nectarlink.core.CallSim
 import app.nectarlink.core.SmsAttachment
 import app.nectarlink.core.SmsMessage
 import app.nectarlink.core.SmsPart
@@ -140,9 +144,10 @@ internal class PhoneSms(context: Context, private val onChange: () -> Unit) {
     private fun sms(thread: Long, before: Long?, limit: Int): List<SmsMessage> {
         val columns = arrayOf(
             Telephony.Sms._ID, Telephony.Sms.ADDRESS, Telephony.Sms.BODY, Telephony.Sms.DATE, Telephony.Sms.TYPE,
+            Telephony.Sms.SUBSCRIPTION_ID,
         )
         val (selection, args) = page(Telephony.Sms.THREAD_ID, Telephony.Sms.DATE, thread, before)
-        return resolver.query(Telephony.Sms.CONTENT_URI, columns, selection, args, "${Telephony.Sms.DATE} DESC")?.use { c ->
+        return queryWithSim(Telephony.Sms.CONTENT_URI, columns, selection, args, "${Telephony.Sms.DATE} DESC")?.use { c ->
             buildList {
                 while (size < limit && c.moveToNext()) {
                     val type = c.getInt(4)
@@ -156,12 +161,25 @@ internal class PhoneSms(context: Context, private val onChange: () -> Unit) {
                             outgoing = type != Telephony.Sms.MESSAGE_TYPE_INBOX,
                             status = sentStatus(type),
                             parts = emptyList(),
+                            sim = simAt(c, 5),
                         ),
                     )
                 }
             }
         }.orEmpty()
     }
+
+    /**
+     * [columns] with the SIM column last; some phones' message stores don't
+     * have it, and then it's asked for without.
+     */
+    private fun queryWithSim(uri: Uri, columns: Array<String>, selection: String, args: Array<String>, order: String): Cursor? =
+        runCatching { resolver.query(uri, columns, selection, args, order) }
+            .getOrElse { resolver.query(uri, columns.dropLast(1).toTypedArray(), selection, args, order) }
+
+    /** The SIM a message came in on or went out from, when the store says. */
+    private fun simAt(c: Cursor, column: Int): String? =
+        if (column < c.columnCount && !c.isNull(column)) c.getInt(column).takeIf { it >= 0 }?.toString() else null
 
     private fun sentStatus(type: Int): String? = when (type) {
         Telephony.Sms.MESSAGE_TYPE_SENT -> "sent"
@@ -171,10 +189,10 @@ internal class PhoneSms(context: Context, private val onChange: () -> Unit) {
     }
 
     private fun mms(thread: Long, before: Long?, limit: Int): List<SmsMessage> {
-        val columns = arrayOf(Telephony.Mms._ID, Telephony.Mms.DATE, Telephony.Mms.MESSAGE_BOX)
+        val columns = arrayOf(Telephony.Mms._ID, Telephony.Mms.DATE, Telephony.Mms.MESSAGE_BOX, Telephony.Mms.SUBSCRIPTION_ID)
         // MMS dates are in seconds.
         val (selection, args) = page(Telephony.Mms.THREAD_ID, Telephony.Mms.DATE, thread, before?.div(1000))
-        return resolver.query(Telephony.Mms.CONTENT_URI, columns, selection, args, "${Telephony.Mms.DATE} DESC")?.use { c ->
+        return queryWithSim(Telephony.Mms.CONTENT_URI, columns, selection, args, "${Telephony.Mms.DATE} DESC")?.use { c ->
             buildList {
                 while (size < limit && c.moveToNext()) {
                     val id = c.getLong(0)
@@ -196,6 +214,7 @@ internal class PhoneSms(context: Context, private val onChange: () -> Unit) {
                                 else -> null
                             },
                             parts = parts,
+                            sim = simAt(c, 3),
                         ),
                     )
                 }
@@ -267,9 +286,37 @@ internal class PhoneSms(context: Context, private val onChange: () -> Unit) {
 
     // ---- Sending ----
 
-    /** Sends a text or MMS to each recipient; Android keeps it in Sent. */
-    fun send(to: List<String>, body: String, attachments: List<SmsAttachment> = emptyList()): Boolean =
-        send(context, to, body, attachments)
+    /**
+     * Sends a text or MMS to each recipient, on the SIM [sim] (an id from
+     * [sims]) or the phone's default; Android keeps it in Sent.
+     */
+    fun send(to: List<String>, body: String, attachments: List<SmsAttachment> = emptyList(), sim: String? = null): Boolean =
+        send(context, to, body, attachments, sim)
+
+    /**
+     * The SIMs this phone texts from (#474), as "SIM 1 · Orange", and the one
+     * it uses without asking. Empty without Phone access.
+     */
+    @SuppressLint("MissingPermission")
+    fun sims(): List<CallSim> {
+        if (!canListSims(context)) return emptyList()
+        return runCatching {
+            val subscriptions = context.getSystemService(SubscriptionManager::class.java) ?: return emptyList()
+            val default = SubscriptionManager.getDefaultSmsSubscriptionId()
+            subscriptions.activeSubscriptionInfoList.orEmpty().sortedBy { it.simSlotIndex }.map { info ->
+                val label = PhoneCalls.simLabelOf(
+                    info.simSlotIndex.takeIf { it >= 0 }?.plus(1),
+                    info.displayName?.toString(),
+                    info.carrierName?.toString(),
+                    info.subscriptionId.toString(),
+                ).take(MAX_SIM_LABEL)
+                CallSim(id = info.subscriptionId.toString(), label = label, isDefault = info.subscriptionId == default)
+            }
+        }.getOrElse {
+            Log.w(TAG, "can't list the SIMs", it)
+            emptyList()
+        }
+    }
 
     private inline fun <T> guarded(fallback: T, block: () -> T): T = try {
         block()
@@ -328,6 +375,7 @@ internal class PhoneSms(context: Context, private val onChange: () -> Unit) {
         // MMS address types (PduHeaders.FROM and TO).
         private const val PDU_FROM = 137
         private const val PDU_TO = 151
+        private const val MAX_SIM_LABEL = 64
 
         val permissions: Array<String> = arrayOf(
             Manifest.permission.READ_SMS,
@@ -341,6 +389,28 @@ internal class PhoneSms(context: Context, private val onChange: () -> Unit) {
         fun canRead(context: Context) = granted(context, Manifest.permission.READ_SMS)
 
         fun canSend(context: Context) = granted(context, Manifest.permission.SEND_SMS)
+
+        /** Whether the SIMs can be listed to pick one for a text (Phone access). */
+        fun canListSims(context: Context) =
+            context.packageManager.hasSystemFeature(PackageManager.FEATURE_TELEPHONY) &&
+                granted(context, Manifest.permission.READ_PHONE_STATE)
+
+        /** The SmsManager for SIM [sim] (a subscription ID), or the default one. */
+        private fun managerFor(context: Context, sim: String?): SmsManager {
+            val default = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                context.getSystemService(SmsManager::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                SmsManager.getDefault()
+            }
+            val subId = sim?.toIntOrNull()?.takeIf { it >= 0 } ?: return default
+            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                default.createForSubscriptionId(subId)
+            } else {
+                @Suppress("DEPRECATION")
+                SmsManager.getSmsManagerForSubscriptionId(subId)
+            }
+        }
 
         fun hasAll(context: Context) = permissions.all { granted(context, it) }
 
@@ -373,12 +443,16 @@ internal class PhoneSms(context: Context, private val onChange: () -> Unit) {
             }.getOrDefault(false)
         }
 
-        /** Sends an SMS or MMS (when `attachments` is non-empty) to `to`. */
+        /**
+         * Sends an SMS or MMS (when `attachments` is non-empty) to `to`, on
+         * SIM [sim] (a subscription ID) or the phone's default.
+         */
         fun send(
             context: Context,
             to: List<String>,
             body: String,
             attachments: List<SmsAttachment> = emptyList(),
+            sim: String? = null,
         ): Boolean = try {
             if (!granted(context, Manifest.permission.SEND_SMS)) {
                 false
@@ -387,12 +461,7 @@ internal class PhoneSms(context: Context, private val onChange: () -> Unit) {
                 if (recipients.isEmpty()) {
                     false
                 } else {
-                    val manager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        context.getSystemService(SmsManager::class.java)
-                    } else {
-                        @Suppress("DEPRECATION")
-                        SmsManager.getDefault()
-                    }
+                    val manager = managerFor(context, sim)
                     if (attachments.isEmpty()) {
                         if (body.isBlank()) {
                             false

@@ -368,6 +368,11 @@
     <string name="settings_remote">Sterowanie komputerem</string>
     <string name="settings_volume_keys_control_pc">Przyciski głośności sterują komputerem</string>
     <string name="settings_volume_keys_control_pc_hint">Gdy komputer odtwarza muzykę lub film, przyciski głośności telefonu zmieniają głośność komputera.</string>
+    <string name="settings_pc_sound_buffer">Bufor dźwięku z komputera</string>
+    <string name="settings_pc_sound_buffer_hint">Jeśli dźwięk z komputera przerywa przy obciążonym Wi-Fi, większy bufor go wygładzi, kosztem nieco większego opóźnienia.</string>
+    <string name="settings_buffer_low">Niski</string>
+    <string name="settings_buffer_medium">Średni</string>
+    <string name="settings_buffer_high">Wysoki</string>
     <string name="settings_quiet_while_using_pc">Cisza podczas korzystania z komputera</string>
     <string name="settings_quiet_while_using_pc_hint">Telefon nie odtwarza dźwięków powiadomień ani nie wibruje, gdy korzystasz ze sparowanego komputera, który je wyświetla.</string>
     <string name="settings_hide_from_recents">Ukryj na liście ostatnich aplikacji</string>

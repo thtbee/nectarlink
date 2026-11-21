@@ -345,6 +345,11 @@
     <string name="settings_remote">控制你的电脑</string>
     <string name="settings_volume_keys_control_pc">音量键控制电脑</string>
     <string name="settings_volume_keys_control_pc_hint">电脑播放音乐或视频时，手机的音量键会调节电脑的音量。</string>
+    <string name="settings_pc_sound_buffer">电脑声音缓冲</string>
+    <string name="settings_pc_sound_buffer_hint">如果 Wi-Fi 繁忙时电脑的声音断断续续，加大缓冲可以让它更流畅，但延迟会稍长一些。</string>
+    <string name="settings_buffer_low">低</string>
+    <string name="settings_buffer_medium">中</string>
+    <string name="settings_buffer_high">高</string>
     <string name="settings_quiet_while_using_pc">使用电脑时手机保持安静</string>
     <string name="settings_quiet_while_using_pc_hint">当你正在使用显示通知的已配对电脑时，手机收到通知不响铃也不振动。</string>
     <string name="settings_hide_from_recents">在最近任务中隐藏</string>

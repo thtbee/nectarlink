@@ -360,6 +360,11 @@
     <string name="settings_remote">Control your PC</string>
     <string name="settings_volume_keys_control_pc">Volume buttons control your PC</string>
     <string name="settings_volume_keys_control_pc_hint">While your PC plays music or video, your phone\'s volume buttons change the PC\'s volume.</string>
+    <string name="settings_pc_sound_buffer">PC sound buffer</string>
+    <string name="settings_pc_sound_buffer_hint">If the PC\'s sound skips on a busy Wi-Fi, a bigger buffer smooths it out, with a little more delay.</string>
+    <string name="settings_buffer_low">Low</string>
+    <string name="settings_buffer_medium">Medium</string>
+    <string name="settings_buffer_high">High</string>
     <string name="settings_quiet_while_using_pc">Quiet while you use the PC</string>
     <string name="settings_quiet_while_using_pc_hint">Your phone skips its own sound and vibration for notifications while you\'re using a paired PC that shows them.</string>
     <string name="settings_hide_from_recents">Hide from recent apps</string>

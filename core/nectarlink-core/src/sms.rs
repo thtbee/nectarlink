@@ -8,8 +8,8 @@ use std::sync::Arc;
 use nectarlink_protocol::{
     DeviceId, Envelope, ErrorCode, MAX_FRAME_LEN,
     messages::{
-        SmsAttachment, SmsChanged, SmsMessage, SmsMessages, SmsMessagesGet, SmsPartData, SmsPartGet, SmsSend,
-        SmsThread, SmsThreads, SmsThreadsGet, sms, types,
+        CallSims, SmsAttachment, SmsChanged, SmsMessage, SmsMessages, SmsMessagesGet, SmsPartData,
+        SmsPartGet, SmsSend, SmsThread, SmsThreads, SmsThreadsGet, calls, sms, types,
     },
 };
 
@@ -76,15 +76,39 @@ pub(crate) async fn messages(
     Ok(messages)
 }
 
+/// The SIMs `session`'s phone texts from, to pick one for [`send`]; none from
+/// a phone that doesn't list them.
+pub(crate) async fn sims(shared: &Shared, session: &Session) -> Result<CallSims> {
+    allowed(shared, &session.peer)?;
+    if !peer_offers(shared, session, sms::SIMS) {
+        return Ok(CallSims::default());
+    }
+    let env = Envelope::new(types::SMS_SIMS, &CallSims::default())?;
+    let sims: CallSims =
+        session.request(env, crate::session::REQUEST_TIMEOUT).await?.expect_body(types::SMS_SIMS)?;
+    if !sims.is_valid() {
+        return Err(Error::Protocol("invalid SIM list".into()));
+    }
+    Ok(sims)
+}
+
+fn peer_offers(shared: &Shared, session: &Session, cap: &str) -> bool {
+    shared.store.get_peer(&session.peer).ok().flatten().is_some_and(|record| record.caps.contains(cap))
+}
+
+/// Sends a text through `session`'s phone, on `sim` (an id from [`sims`]) or
+/// its default.
 pub(crate) async fn send(
     shared: &Shared,
     session: &Session,
     to: Vec<String>,
     body: String,
     attachments: Vec<SmsAttachment>,
+    sim: Option<String>,
 ) -> Result<()> {
     allowed(shared, &session.peer)?;
-    let send = SmsSend { to, body, attachments };
+    let sim = sim.filter(|_| peer_offers(shared, session, sms::SIMS));
+    let send = SmsSend { to, body, attachments, sim };
     if !send.is_valid() {
         let any_oversized = send.attachments.iter().any(|a| a.data.len() > sms::MAX_ATTACHMENT_BYTES);
         return Err(
@@ -129,7 +153,8 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
         }
         return Ok(true);
     }
-    if ![types::SMS_THREADS, types::SMS_MESSAGES, types::SMS_SEND, types::SMS_PART].contains(&env.t.as_str())
+    if ![types::SMS_THREADS, types::SMS_MESSAGES, types::SMS_SEND, types::SMS_PART, types::SMS_SIMS]
+        .contains(&env.t.as_str())
     {
         return Ok(false);
     }
@@ -149,7 +174,11 @@ async fn answer(shared: &Arc<Shared>, session: &Session, env: &Envelope) -> Resu
     if !shared.toggle_on(&session.peer, TOGGLE) {
         return Ok(Envelope::error(ErrorCode::Denied, "messages are off for this device"));
     }
-    let needs = if env.t == types::SMS_SEND { sms::SEND } else { sms::READ };
+    let needs = match env.t.as_str() {
+        types::SMS_SEND => sms::SEND,
+        types::SMS_SIMS => sms::SIMS,
+        _ => sms::READ,
+    };
     if !shared.offers_locally(needs) {
         return Ok(Envelope::error(ErrorCode::Unsupported, "this phone doesn't share messages"));
     }
@@ -184,10 +213,25 @@ async fn answer(shared: &Arc<Shared>, session: &Session, env: &Envelope) -> Resu
             if !send.is_valid() {
                 return Ok(Envelope::error(ErrorCode::BadMessage, "invalid text"));
             }
+            // A SIM only from a phone that lists them; one that doesn't sends on its default.
+            let sim = send.sim.clone().filter(|_| shared.offers_locally(sms::SIMS));
             blocking(Box::new(move || {
-                platform
-                    .send_sms_with_attachments(&send.to, &send.body, &send.attachments)
-                    .map(|()| Envelope::empty(types::OK))
+                match sim {
+                    Some(sim) => platform.send_sms_on(&send.to, &send.body, &send.attachments, &sim),
+                    None => platform.send_sms_with_attachments(&send.to, &send.body, &send.attachments),
+                }
+                .map(|()| Envelope::empty(types::OK))
+            }))
+            .await
+        }
+        types::SMS_SIMS => {
+            blocking(Box::new(move || {
+                let mut sims = platform.sms_sims()?;
+                sims.sims.truncate(calls::MAX_SIMS);
+                if !sims.is_valid() {
+                    return Err("the phone's SIM list didn't check out".to_owned());
+                }
+                Envelope::new(types::SMS_SIMS, &sims).map_err(|e| e.to_string())
             }))
             .await
         }
@@ -245,6 +289,7 @@ mod tests {
             outgoing: false,
             status: None,
             parts: Vec::new(),
+            sim: None,
         };
         let wrap = |messages| Envelope::new(types::SMS_MESSAGES, &SmsMessages { messages });
         assert!(fit(vec![message], wrap).is_err());
@@ -262,6 +307,7 @@ mod tests {
             outgoing: false,
             status: None,
             parts: Vec::new(),
+            sim: None,
         };
         let env = fit((0..100).map(message).collect(), |messages| {
             Envelope::new(types::SMS_MESSAGES, &SmsMessages { messages })

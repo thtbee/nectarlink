@@ -32,11 +32,25 @@ use windows::Win32::{
 
 /// Sound packets waiting for the player thread, at most.
 const QUEUE: usize = 64;
-/// How much sound is gathered before playing (and again after a stall).
-const START_MS: u32 = 40;
-/// More than this waiting, and the oldest is dropped down to [`TRIM_TO_MS`].
-const MOST_MS: u32 = 200;
-const TRIM_TO_MS: u32 = 60;
+/// How much sound waits: gathered before playing (and again after a stall),
+/// the most that may pile up, and what a pile-up is cut back to. All three
+/// come from one buffer size (#321), so the cut always leaves more than the
+/// start: a burst can't leave a waiting player stuck under it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Sizes {
+    start_ms: u32,
+    most_ms: u32,
+    trim_to_ms: u32,
+}
+
+impl Sizes {
+    /// From the buffer setting; 40 ms gives the old 40 / 200 / 60.
+    fn for_buffer(start_ms: u32) -> Sizes {
+        let start_ms = start_ms.clamp(20, 500);
+        let trim_to_ms = start_ms + (start_ms / 2).max(20);
+        Sizes { start_ms, most_ms: trim_to_ms + 140, trim_to_ms }
+    }
+}
 /// The device's buffer.
 const DEVICE_BUFFER: Duration = Duration::from_millis(40);
 
@@ -115,6 +129,7 @@ impl Player {
 /// The jitter buffer, in bytes of interleaved 16-bit samples.
 #[derive(Debug)]
 struct Jitter {
+    sizes: Sizes,
     bytes: VecDeque<u8>,
     /// Bytes in one sample frame.
     frame: usize,
@@ -128,9 +143,10 @@ struct Jitter {
 }
 
 impl Jitter {
-    fn new(rate: u32, channels: u16) -> Jitter {
+    fn new(rate: u32, channels: u16, sizes: Sizes) -> Jitter {
         let frame = 2 * usize::from(channels);
         Jitter {
+            sizes,
             bytes: VecDeque::new(),
             frame,
             per_ms: frame * rate as usize / 1000,
@@ -142,8 +158,8 @@ impl Jitter {
 
     fn push(&mut self, data: &[u8]) {
         self.bytes.extend(data);
-        if self.bytes.len() > self.per_ms * MOST_MS as usize {
-            let keep = self.per_ms * TRIM_TO_MS as usize;
+        if self.bytes.len() > self.per_ms * self.sizes.most_ms as usize {
+            let keep = self.per_ms * self.sizes.trim_to_ms as usize;
             // Whole frames only, or the channels swap.
             let drop = (self.bytes.len() - keep) / self.frame * self.frame;
             self.bytes.drain(..drop);
@@ -154,7 +170,7 @@ impl Jitter {
     /// Fills `out` (whole frames): sound when there is some, silence when
     /// gathering or stalled.
     fn fill(&mut self, out: &mut [u8]) {
-        if self.waiting && self.bytes.len() >= self.per_ms * START_MS as usize {
+        if self.waiting && self.bytes.len() >= self.per_ms * self.sizes.start_ms as usize {
             self.waiting = false;
         }
         let mut n = 0;
@@ -239,7 +255,8 @@ fn render(
         client.SetEventHandle(event)?;
         let size = client.GetBufferSize()?;
         let output: IAudioRenderClient = client.GetService()?;
-        let mut jitter = Jitter::new(rate, channels);
+        let mut jitter =
+            Jitter::new(rate, channels, Sizes::for_buffer(crate::settings::phone_sound_buffer_ms()));
         client.Start()?;
         tracing::debug!(rate, channels, frames = size, "playing a phone's sound");
         let result = loop {
@@ -316,7 +333,7 @@ mod tests {
 
     #[test]
     fn plays_once_enough_has_come() {
-        let mut jitter = Jitter::new(48_000, 2);
+        let mut jitter = Jitter::new(48_000, 2, Sizes::for_buffer(40));
         let mut out = vec![9u8; 10 * MS];
         jitter.push(&vec![1; 30 * MS]);
         jitter.fill(&mut out);
@@ -328,7 +345,7 @@ mod tests {
 
     #[test]
     fn a_stall_is_silence_then_gathers_again() {
-        let mut jitter = Jitter::new(48_000, 2);
+        let mut jitter = Jitter::new(48_000, 2, Sizes::for_buffer(40));
         jitter.push(&vec![1; 45 * MS]);
         let mut out = vec![9u8; 50 * MS];
         jitter.fill(&mut out);
@@ -342,11 +359,50 @@ mod tests {
 
     #[test]
     fn a_pile_up_drops_the_oldest_whole_frames() {
-        let mut jitter = Jitter::new(48_000, 2);
+        let mut jitter = Jitter::new(48_000, 2, Sizes::for_buffer(40));
         jitter.push(&vec![1; 150 * MS]);
         jitter.push(&vec![2; 60 * MS]);
-        assert_eq!(jitter.bytes.len(), TRIM_TO_MS as usize * MS);
+        assert_eq!(jitter.bytes.len(), 60 * MS);
         assert_eq!(jitter.bytes.len() % 4, 0, "whole frames");
         assert!(jitter.bytes.iter().all(|&b| b == 2), "the newest stays");
+    }
+
+    #[test]
+    fn the_default_buffer_keeps_the_old_sizes() {
+        assert_eq!(Sizes::for_buffer(40), Sizes { start_ms: 40, most_ms: 200, trim_to_ms: 60 });
+    }
+
+    #[test]
+    fn every_buffer_cuts_back_above_its_start() {
+        for ms in [0, 20, 40, 100, 200, 500, 2000] {
+            let s = Sizes::for_buffer(ms);
+            assert!(s.trim_to_ms > s.start_ms && s.most_ms > s.trim_to_ms, "{ms}: {s:?}");
+        }
+    }
+
+    #[test]
+    fn a_big_buffer_waits_survives_a_burst_runs_dry_and_refills() {
+        let sizes = Sizes::for_buffer(200);
+        let mut jitter = Jitter::new(48_000, 2, sizes);
+        let mut out = vec![9u8; 10 * MS];
+        // Waiting: not enough yet, silence.
+        jitter.push(&vec![1; 150 * MS]);
+        jitter.fill(&mut out);
+        assert!(out.iter().all(|&b| b == 0), "still gathering");
+        // A burst over the limit: cut back, and still enough to start.
+        jitter.push(&vec![2; (sizes.most_ms as usize + 50) * MS]);
+        assert_eq!(jitter.bytes.len(), sizes.trim_to_ms as usize * MS);
+        jitter.fill(&mut out);
+        assert!(out.iter().all(|&b| b == 2), "plays right after the cut");
+        // Runs dry: silence, then gathers the whole start again.
+        let mut drain = vec![9u8; sizes.most_ms as usize * MS];
+        jitter.fill(&mut drain);
+        assert!(jitter.waiting);
+        jitter.push(&vec![3; (sizes.start_ms as usize - 10) * MS]);
+        jitter.fill(&mut out);
+        assert!(out.iter().all(|&b| b == 0), "not yet");
+        jitter.push(&vec![3; 10 * MS]);
+        jitter.fill(&mut out);
+        assert!(out.iter().all(|&b| b == 3), "refilled");
     }
 }

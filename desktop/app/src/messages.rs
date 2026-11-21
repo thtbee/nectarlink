@@ -13,8 +13,8 @@ use std::{
 };
 
 use nectarlink_core::{
-    ChatMessageRecord, ChatThreadRecord, DeviceId, Error, LinkState, NodeEvent, SmsAttachment, SmsMessage,
-    SmsPart, SmsThread,
+    CallSims, ChatMessageRecord, ChatThreadRecord, DeviceId, Error, LinkState, NodeEvent, SmsAttachment,
+    SmsMessage, SmsPart, SmsThread,
 };
 use serde_json::{Value, json};
 
@@ -114,8 +114,39 @@ struct State {
     /// When each conversation was last read here, by thread ID. Android lets only
     /// the default SMS app mark texts read, so the phone keeps counting them.
     seen: HashMap<String, i64>,
+    /// The SIMs the phone texts from (#474), once asked.
+    sims: CallSims,
+    sims_loaded: bool,
+    /// The SIM picked here, by conversation ("" for a new one).
+    chosen_sims: HashMap<String, String>,
     /// Bumped when the phone changes, so late answers are dropped.
     generation: u64,
+}
+
+impl State {
+    /// The SIM a text in the open conversation goes out on: the one picked
+    /// here, else the one the conversation last used, else the phone's
+    /// default, else the first. `None` with fewer than two SIMs.
+    fn sim(&self) -> Option<String> {
+        let sims = &self.sims.sims;
+        if sims.len() < 2 {
+            return None;
+        }
+        let listed = |id: &&str| sims.iter().any(|s| s.id == *id);
+        let key = self.thread.as_deref().unwrap_or_default();
+        self.chosen_sims
+            .get(key)
+            .map(String::as_str)
+            .filter(listed)
+            .or_else(|| {
+                // Messages are newest first.
+                self.thread.as_ref()?;
+                self.messages.iter().find_map(|m| m.sim.as_deref().filter(listed))
+            })
+            .or(self.sims.default.as_deref().filter(listed))
+            .or(sims.first().map(|s| s.id.as_str()))
+            .map(str::to_owned)
+    }
 }
 
 /// How many conversations [`State::recent`] keeps.
@@ -275,6 +306,11 @@ pub struct View {
     pub attachment_name: String,
     pub attachment_size: String,
     pub attachment_error: String,
+    /// The phone's SIMs to text from, when it has two or more:
+    /// `[{ "id", "label" }]`.
+    pub sims: Value,
+    /// The one the open conversation sends on, or "".
+    pub sim: String,
 }
 
 pub fn view() -> View {
@@ -380,8 +416,25 @@ pub fn view() -> View {
             attachment_name,
             attachment_size,
             attachment_error,
+            sims: if s.sims.sims.len() < 2 {
+                json!([])
+            } else {
+                Value::Array(
+                    s.sims.sims.iter().map(|sim| json!({ "id": sim.id, "label": sim.label })).collect(),
+                )
+            },
+            sim: s.sim().unwrap_or_default(),
         }
     })
+}
+
+/// Texts in the open conversation (or a new one) go out on `sim` from now on.
+pub fn choose_sim(sim: String) {
+    state(|s| {
+        let key = s.thread.clone().unwrap_or_default();
+        s.chosen_sims.insert(key, sim);
+    });
+    changed();
 }
 
 /// Who a conversation is with: contact names, or numbers.
@@ -620,9 +673,25 @@ pub fn load_threads() {
             Ok(threads) => save_photos(device, threads),
             Err(_) => HashMap::new(),
         };
+        // Which SIMs it texts from, asked once per phone shown.
+        let sims = if result.is_ok() && !state(|s| s.sims_loaded) {
+            match node.sms_sims(device).await {
+                Ok(sims) => Some(sims),
+                Err(e) => {
+                    tracing::debug!(error = %e, "can't list the phone's SIMs for texts");
+                    None
+                }
+            }
+        } else {
+            None
+        };
         state(|s| {
             if s.generation != generation {
                 return;
+            }
+            if let Some(sims) = sims {
+                s.sims = sims;
+                s.sims_loaded = true;
             }
             match result {
                 Ok(threads) => {
@@ -1270,12 +1339,13 @@ pub fn send_to(to: Vec<String>, body: String) {
     let now = now_ms();
     let seq = NEXT_LOCAL.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let local_id = format!("local:{now}:{seq}");
-    let Some((device, attachments)) = state(|s| {
+    let Some((device, attachments, sim)) = state(|s| {
         let valid_att =
             s.staged_attachment.as_ref().filter(|a| a.error.is_empty() && !a.data.is_empty()).cloned();
         if body.trim().is_empty() && valid_att.is_none() {
             return None;
         }
+        let sim = s.sim();
         s.staged_attachment = None;
         s.sending = true;
         s.compose_to = None;
@@ -1303,21 +1373,18 @@ pub fn send_to(to: Vec<String>, body: String) {
                     outgoing: true,
                     status: Some("pending".into()),
                     parts,
+                    sim: sim.clone(),
                 },
             );
         }
-        Some((s.device?, attachments))
+        Some((s.device?, attachments, sim))
     }) else {
         return;
     };
     changed();
     let Some(node) = core_host::node() else { return };
     core_host::spawn(async move {
-        let result = if attachments.is_empty() {
-            node.sms_send(device, to.clone(), body).await
-        } else {
-            node.send_sms_with_attachments(device, to.clone(), body, attachments).await
-        };
+        let result = node.send_sms_on(device, to.clone(), body, attachments, sim).await;
         state(|s| {
             s.sending = false;
             if result.is_err() {
@@ -1468,6 +1535,48 @@ fn open_pending() {
 #[cfg(test)]
 mod tests {
     #[test]
+    fn a_text_goes_out_on_the_sim_picked_then_the_conversations_then_the_default() {
+        let sim = |id: &str| nectarlink_core::CallSim { id: id.into(), label: format!("SIM {id}") };
+        let message = |sim: Option<&str>| super::SmsMessage {
+            id: "m".into(),
+            thread: "t".into(),
+            address: "a".into(),
+            body: "b".into(),
+            date: 1,
+            outgoing: false,
+            status: None,
+            parts: Vec::new(),
+            sim: sim.map(Into::into),
+        };
+        // One SIM, or none listed: nothing to pick.
+        let mut s = super::State {
+            sims: super::CallSims { sims: vec![sim("1")], default: Some("1".into()) },
+            ..Default::default()
+        };
+        assert_eq!(s.sim(), None);
+
+        s.sims = super::CallSims { sims: vec![sim("1"), sim("2")], default: None };
+        assert_eq!(s.sim().as_deref(), Some("1"), "the first, with no default");
+        s.sims.default = Some("2".into());
+        assert_eq!(s.sim().as_deref(), Some("2"), "the phone's default");
+
+        // In a conversation, the SIM its newest message used, skipping ones that don't say.
+        s.thread = Some("t".into());
+        s.messages = vec![message(None), message(Some("1")), message(Some("2"))];
+        assert_eq!(s.sim().as_deref(), Some("1"));
+        // A SIM that's gone since doesn't count.
+        s.messages = vec![message(Some("9"))];
+        assert_eq!(s.sim().as_deref(), Some("2"));
+
+        // Picked here wins, for that conversation only.
+        s.chosen_sims.insert("t".into(), "1".into());
+        assert_eq!(s.sim().as_deref(), Some("1"));
+        s.thread = None;
+        s.messages.clear();
+        assert_eq!(s.sim().as_deref(), Some("2"), "a new conversation has its own");
+    }
+
+    #[test]
     fn recent_conversations_are_bounded_and_keep_the_latest() {
         let mut s = super::State::default();
         let message = |id: &str| super::SmsMessage {
@@ -1479,6 +1588,7 @@ mod tests {
             outgoing: false,
             status: None,
             parts: Vec::new(),
+            sim: None,
         };
         for i in 0..(super::RECENT_CONVERSATIONS + 3) {
             super::remember_recent(&mut s, i.to_string(), vec![message("m")]);

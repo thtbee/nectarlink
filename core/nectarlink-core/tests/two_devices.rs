@@ -318,6 +318,7 @@ impl Platform for RecordingPlatform {
             outgoing: date % 2 == 0,
             status: None,
             parts: vec![nectarlink_core::SmsPart { id: "p1".into(), mime: "image/jpeg".into(), size: 3 }],
+            sim: None,
         };
         let newest = before.unwrap_or(100);
         Ok((0..newest).rev().take(limit as usize).map(message).collect())
@@ -336,6 +337,19 @@ impl Platform for RecordingPlatform {
             return self.sms_send(to, body);
         }
         self.mms_sent.lock().unwrap().push((to.to_vec(), body.to_owned(), attachments.to_vec()));
+        Ok(())
+    }
+    fn sms_sims(&self) -> Result<nectarlink_core::CallSims, String> {
+        Ok(nectarlink_core::CallSims { default: Some("1".into()), ..self.call_sims()? })
+    }
+    fn send_sms_on(
+        &self,
+        to: &[String],
+        body: &str,
+        _attachments: &[nectarlink_core::SmsAttachment],
+        sim: &str,
+    ) -> Result<(), String> {
+        self.texts.lock().unwrap().push((to.to_vec(), format!("{body} on {sim}")));
         Ok(())
     }
     fn sms_part(&self, id: &str) -> Result<(String, Vec<u8>), String> {
@@ -2859,6 +2873,38 @@ async fn the_pc_reads_and_sends_texts_through_the_phone() {
         [(vec!["+15550100".to_owned()], "On my way".to_owned())]
     );
     assert!(matches!(pc.node.sms_send(phone_id, vec![], "x".into()).await, Err(Error::Protocol(_))));
+
+    // A phone that doesn't list its SIMs has none to pick, and a SIM named
+    // anyway isn't sent: it texts on its default (#474).
+    assert_eq!(with_timeout("no sims", pc.node.sms_sims(phone_id)).await.unwrap(), Default::default());
+    let on_sim = |sim: &str| {
+        pc.node.send_sms_on(phone_id, vec!["+15550100".into()], "Hi".into(), Vec::new(), Some(sim.into()))
+    };
+    with_timeout("text on a sim", on_sim("2")).await.unwrap();
+    assert_eq!(phone.platform.texts.lock().unwrap().last().map(|t| t.1.as_str()), Some("Hi"));
+
+    // With `sms.sims`, the PC sees them and the phone texts on the one picked.
+    phone
+        .node
+        .update_power(
+            PowerLevel::NotApplicable,
+            vec![
+                nectarlink_core::SMS_READ.into(),
+                nectarlink_core::SMS_SEND.into(),
+                nectarlink_core::SMS_SIMS.into(),
+            ],
+        )
+        .await;
+    let sims = loop {
+        let sims = with_timeout("sims", pc.node.sms_sims(phone_id)).await.unwrap();
+        if !sims.sims.is_empty() {
+            break sims;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    };
+    assert_eq!((sims.sims.len(), sims.default.as_deref()), (2, Some("1")));
+    with_timeout("text on sim 2", on_sim("2")).await.unwrap();
+    assert_eq!(phone.platform.texts.lock().unwrap().last().map(|t| t.1.as_str()), Some("Hi on 2"));
 
     // The phone says what changed.
     phone.node.sms_changed(Some("1".into())).await;
