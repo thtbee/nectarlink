@@ -24,6 +24,7 @@ mod events;
 pub mod features;
 pub mod handoff;
 mod identity;
+pub mod linux_unlock;
 pub mod localsend;
 mod media;
 pub mod mic;

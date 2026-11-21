@@ -1,0 +1,4 @@
+#%PAM-1.0
+# If the locker uses pam_faillock, apply its preauth policy here too.
+# auth requisite pam_faillock.so preauth silent
+auth required libpam_nectarlink_phone_unlock.so

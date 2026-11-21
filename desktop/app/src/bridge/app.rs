@@ -1829,13 +1829,15 @@ impl qobject::AppController {
     pub fn device_toggles(&self, device: &QString) -> QList<QVariant> {
         let mut list = QList::default();
         let (Some(id), Some(node)) = (super::parse_device(device), core_host::node()) else { return list };
+        #[cfg(target_os = "linux")]
+        let unlock_supported = crate::win::phone_unlock::available()
+            && node.peer_offers(id, nectarlink_core::linux_unlock::KEY);
+        #[cfg(not(target_os = "linux"))]
+        let unlock_supported = cfg!(windows) && node.peer_offers(id, nectarlink_core::unlock::KEY);
         for (name, on) in node.device_toggles(id).unwrap_or_default() {
-            // Set on the phone (#453); the PC keeps taking the clipboard. Unlock
-            // with phone: on Windows, with a phone that can keep the key behind
-            // a fingerprint.
+            // Clipboard receive is controlled from the phone (#453).
             if name == "clipboard_receive"
-                || (name == nectarlink_core::unlock::TOGGLE
-                    && !(cfg!(windows) && node.peer_offers(id, nectarlink_core::unlock::KEY)))
+                || (name == nectarlink_core::unlock::TOGGLE && !unlock_supported)
             {
                 continue;
             }

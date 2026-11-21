@@ -226,6 +226,10 @@ pub fn compute_capabilities(
         caps.push(nectarlink_core::unlock::PC.into());
         crate::win::unlock::serve();
     }
+    #[cfg(target_os = "linux")]
+    if crate::win::phone_unlock::available() {
+        caps.push(nectarlink_protocol::messages::linux_unlock::CAP_PC.into());
+    }
     caps
 }
 

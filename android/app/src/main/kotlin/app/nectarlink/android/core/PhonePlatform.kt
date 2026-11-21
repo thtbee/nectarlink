@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package app.nectarlink.android.core
 
+import app.nectarlink.android.unlock.LinuxUnlockKeys
 import app.nectarlink.android.unlock.UnlockKeys
 import app.nectarlink.android.unlock.UnlockPrompts
 import app.nectarlink.core.UnlockRefusal
@@ -316,6 +317,20 @@ internal class PhonePlatform(
     }
 
     override fun unlockForget(pc: String, user: String?) = UnlockKeys.forget(pc, user)
+
+    override fun linuxUnlockEnroll(pc: String, pcName: String, userName: String, uid: UInt): ByteArray {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R || !UnlockKeys.supported(context)) {
+            throw UnlockRefusal.Unsupported()
+        }
+        return LinuxUnlockKeys.enroll(context, pc, pcName, userName, uid, ENROLL_WAIT_MS)
+    }
+
+    override fun linuxUnlockSign(pc: String, uid: UInt, transcript: ByteArray): ByteArray {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) throw UnlockRefusal.Unsupported()
+        return LinuxUnlockKeys.sign(context, pc, uid, transcript, UNLOCK_WAIT_MS)
+    }
+
+    override fun linuxUnlockForget(pc: String, uid: UInt?) = LinuxUnlockKeys.forget(context, pc, uid)
 
     override fun micStopRequested(pcId: String) {
         onMicStop(pcId)

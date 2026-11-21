@@ -133,6 +133,8 @@ windows = { workspace = true, features = [
 libc = "0.2"
 
 [target.'cfg(target_os = "linux")'.dependencies]
+nectarlink-protocol.workspace = true
+tokio = { workspace = true, features = ["net"] }
 # The Wayland portal code's errors (linux/screen_portal.rs).
 anyhow.workspace = true
 zbus.workspace = true

@@ -294,7 +294,7 @@ pub enum KeyRefusal {
 }
 
 impl KeyRefusal {
-    fn reply(&self) -> Envelope {
+    pub(crate) fn reply(&self) -> Envelope {
         match self {
             KeyRefusal::Declined => Envelope::error(ErrorCode::Denied, "declined"),
             KeyRefusal::Unsupported => Envelope::error(ErrorCode::Unsupported, "no strong biometric"),
@@ -329,7 +329,7 @@ fn pc_name(shared: &Shared) -> String {
 }
 
 /// `name` without control characters, short enough for a prompt.
-fn shown_name(name: &str) -> String {
+pub(crate) fn shown_name(name: &str) -> String {
     name.chars().filter(|c| !c.is_control()).take(unlock::MAX_NAME / 4).collect()
 }
 

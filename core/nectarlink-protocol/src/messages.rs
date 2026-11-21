@@ -24,6 +24,11 @@ pub mod types {
     pub const UNLOCK_REQUEST: &str = "unlock.request";
     pub const UNLOCK_RELEASE: &str = "unlock.release";
     pub const UNLOCK_FORGET: &str = "unlock.forget";
+    pub const LINUX_UNLOCK_ENROLL: &str = "unlock.linux.v1.enroll";
+    pub const LINUX_UNLOCK_ENROLLED: &str = "unlock.linux.v1.enrolled";
+    pub const LINUX_UNLOCK_SIGN: &str = "unlock.linux.v1.sign";
+    pub const LINUX_UNLOCK_SIGNED: &str = "unlock.linux.v1.signed";
+    pub const LINUX_UNLOCK_FORGET: &str = "unlock.linux.v1.forget";
 
     pub const PAIR_REQUEST: &str = "pair.request";
     pub const PAIR_ACCEPT: &str = "pair.accept";
@@ -4882,8 +4887,148 @@ pub struct UnlockForget {
     pub user: Option<String>,
 }
 
+// ---- Linux session unlock (docs/protocol/linux-unlock.md) ----
+
+pub mod linux_unlock {
+    pub const CAP_PC: &str = "unlock.linux.pc";
+    pub const CAP_KEY: &str = "unlock.linux.key";
+    pub const DOMAIN: &[u8] = b"nectarlink/linux-unlock/v1\0";
+}
+
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LinuxUnlockEnroll {
+    pub pc: DeviceId,
+    pub phone: DeviceId,
+    pub uid: u32,
+    pub user_name: String,
+}
+
+impl std::fmt::Debug for LinuxUnlockEnroll {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LinuxUnlockEnroll").finish_non_exhaustive()
+    }
+}
+
+impl LinuxUnlockEnroll {
+    pub fn is_valid(&self) -> bool {
+        unlock::name_ok(&self.user_name) && !self.user_name.trim().is_empty()
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LinuxUnlockEnrolled {
+    #[serde(with = "serde_bytes")]
+    pub public_key: Vec<u8>,
+}
+
+impl std::fmt::Debug for LinuxUnlockEnrolled {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LinuxUnlockEnrolled").finish_non_exhaustive()
+    }
+}
+
+impl LinuxUnlockEnrolled {
+    /// Canonical uncompressed P-256 point encoding.
+    pub fn is_valid(&self) -> bool {
+        self.public_key.len() == 65 && self.public_key[0] == 0x04
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LinuxUnlockChallenge {
+    pub pc: DeviceId,
+    pub phone: DeviceId,
+    pub uid: u32,
+    #[serde(with = "serde_bytes")]
+    pub nonce: [u8; 32],
+}
+
+impl LinuxUnlockChallenge {
+    /// Canonical transcript for P-256/SHA-256, independent of the CBOR envelope.
+    pub fn signing_bytes(&self) -> Vec<u8> {
+        let mut bytes = Vec::with_capacity(linux_unlock::DOMAIN.len() + 100);
+        bytes.extend_from_slice(linux_unlock::DOMAIN);
+        bytes.extend_from_slice(self.pc.as_bytes());
+        bytes.extend_from_slice(self.phone.as_bytes());
+        bytes.extend_from_slice(&self.uid.to_be_bytes());
+        bytes.extend_from_slice(&self.nonce);
+        bytes
+    }
+}
+
+impl std::fmt::Debug for LinuxUnlockChallenge {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LinuxUnlockChallenge").finish_non_exhaustive()
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LinuxUnlockSigned {
+    #[serde(with = "serde_bytes")]
+    pub signature: Vec<u8>,
+}
+
+impl std::fmt::Debug for LinuxUnlockSigned {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LinuxUnlockSigned").finish_non_exhaustive()
+    }
+}
+
+impl LinuxUnlockSigned {
+    /// Size and tag for the DER SEQUENCE of two P-256 integers.
+    /// The PAM verifier checks the DER contents and the signature itself.
+    pub fn is_valid(&self) -> bool {
+        (8..=72).contains(&self.signature.len()) && self.signature[0] == 0x30
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum LinuxUnlockForget {
+    User { uid: u32 },
+    All,
+}
+
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn linux_unlock_signs_the_fixed_v1_transcript() {
+        let challenge = LinuxUnlockChallenge {
+            pc: DeviceId([0x11; 32]),
+            phone: DeviceId([0xe2; 32]),
+            uid: 0x0102_0304,
+            nonce: [0xa3; 32],
+        };
+        let expected = b"nectarlink/linux-unlock/v1\0\
+            \x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\
+            \x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\x11\
+            \xe2\xe2\xe2\xe2\xe2\xe2\xe2\xe2\xe2\xe2\xe2\xe2\xe2\xe2\xe2\xe2\
+            \xe2\xe2\xe2\xe2\xe2\xe2\xe2\xe2\xe2\xe2\xe2\xe2\xe2\xe2\xe2\xe2\
+            \x01\x02\x03\x04\
+            \xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3\
+            \xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3\xa3";
+        assert_eq!(challenge.signing_bytes(), expected.as_slice());
+        let decoded: LinuxUnlockChallenge =
+            crate::Envelope::new(types::LINUX_UNLOCK_SIGN, &challenge).unwrap().body().unwrap();
+        assert_eq!(decoded, challenge);
+    }
+
+    #[test]
+    fn linux_unlock_rejects_a_challenge_with_a_short_nonce() {
+        #[derive(Serialize)]
+        struct ShortNonce {
+            pc: DeviceId,
+            phone: DeviceId,
+            uid: u32,
+            #[serde(with = "serde_bytes")]
+            nonce: [u8; 31],
+        }
+        let short = ShortNonce { pc: DeviceId([1; 32]), phone: DeviceId([2; 32]), uid: 1000, nonce: [3; 31] };
+        let envelope = crate::Envelope::new(types::LINUX_UNLOCK_SIGN, &short).unwrap();
+
+        assert!(envelope.body::<LinuxUnlockChallenge>().is_err());
+    }
+
     #[test]
     fn update_hints_take_known_channels_and_plain_versions_only() {
         let hint = |channel: &str, version: &str| {

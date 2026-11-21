@@ -289,6 +289,11 @@ struct Options {
     register_unlock: bool,
     #[cfg(windows)]
     unregister_unlock: bool,
+    /// Start the optional Linux phone unlock relay in a disposable test profile.
+    #[cfg(target_os = "linux")]
+    linux_phone_unlock: bool,
+    #[cfg(target_os = "linux")]
+    linux_unlock_request: Option<Result<win::phone_unlock::Request, &'static str>>,
     /// Elevated helper (Windows): register the sparse package and exit (#84).
     register_package: bool,
     /// Out-of-process Windows 11 Widget Board COM server (`--widget-provider`).
@@ -324,6 +329,25 @@ fn parse_options_from<I: IntoIterator<Item = std::ffi::OsString>>(iter: I) -> Op
     let mut args = iter.into_iter();
     while let Some(arg) = args.next() {
         match arg.to_str() {
+            #[cfg(target_os = "linux")]
+            Some("--linux-phone-unlock") => {
+                in_share = false;
+                options.linux_phone_unlock = true;
+            }
+            #[cfg(target_os = "linux")]
+            Some("--linux-unlock-devices") => {
+                in_share = false;
+                options.linux_unlock_request = Some(Ok(win::phone_unlock::Request::Devices {}));
+            }
+            #[cfg(target_os = "linux")]
+            Some("--linux-unlock-enroll") => {
+                in_share = false;
+                let phone = args.next().and_then(|arg| arg.to_str()?.parse().ok());
+                options.linux_unlock_request = Some(
+                    phone.map(|phone| win::phone_unlock::Request::Enroll { phone })
+                        .ok_or("usage: nectarlink-desktop --linux-unlock-enroll <device-id>"),
+                );
+            }
             Some("--data-dir") => {
                 in_share = false;
                 options.data_dir = args.next().map(PathBuf::from);
@@ -542,6 +566,26 @@ fn main() -> ExitCode {
         println!("nectarlink-desktop {}", env!("CARGO_PKG_VERSION"));
         return ExitCode::SUCCESS;
     }
+    #[cfg(target_os = "linux")]
+    if let Some(request) = options.linux_unlock_request {
+        let request = match request {
+            Ok(request) => request,
+            Err(error) => {
+                eprintln!("{error}");
+                return ExitCode::FAILURE;
+            }
+        };
+        return match win::phone_unlock::run_cli(request) {
+            Ok(reply) => {
+                println!("{reply}");
+                ExitCode::SUCCESS
+            }
+            Err(error) => {
+                eprintln!("nectarlink: phone unlock: {error}");
+                ExitCode::FAILURE
+            }
+        };
+    }
     if let Some(installer) = options.setup.clone().filter(|p| !p.as_os_str().is_empty()) {
         return run_setup_window(setup::Mode::Install { installer });
     }
@@ -666,6 +710,17 @@ fn main() -> ExitCode {
     if let Err(e) = core_host::start(data_dir.clone(), Arc::new(DesktopPlatform)) {
         tracing::error!(error = %e, "can't start the core runtime");
         return ExitCode::FAILURE;
+    }
+    #[cfg(target_os = "linux")]
+    if options.linux_phone_unlock || win::phone_unlock::configured() {
+        match win::phone_unlock::start() {
+            Ok(()) => core_host::spawn(async {
+                if core_host::wait_for_node().await.is_some() {
+                    core_host::refresh_capabilities();
+                }
+            }),
+            Err(error) => tracing::warn!(%error, "couldn't start phone unlock socket"),
+        }
     }
     // The node starts in the background, so wait for it: the beacon carries
     // its device ID.

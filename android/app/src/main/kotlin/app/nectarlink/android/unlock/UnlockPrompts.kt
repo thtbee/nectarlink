@@ -2,26 +2,28 @@
 package app.nectarlink.android.unlock
 
 import android.Manifest
+import android.app.AlertDialog
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.hardware.biometrics.BiometricManager
-import android.hardware.biometrics.BiometricPrompt
 import android.os.Build
 import android.os.Bundle
-import android.os.CancellationSignal
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
-import androidx.activity.ComponentActivity
+import android.widget.TextView
 import androidx.annotation.RequiresApi
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
 import app.nectarlink.android.R
+import java.security.Signature
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
@@ -32,7 +34,7 @@ import javax.crypto.Cipher
 /**
  * Asks the phone's owner to use a PC's unlock key (ADR 0009): a high-priority notification
  * that opens [UnlockPromptActivity], which shows Android's biometric prompt naming the PC
- * and the Windows user. The caller (the core's thread) waits for the answer.
+ * and its account. The core's thread waits for the authorized crypto operation.
  */
 object UnlockPrompts {
     private const val CHANNEL = "unlock_requests"
@@ -42,11 +44,12 @@ object UnlockPrompts {
         val pcName: String,
         val userName: String,
         val enroll: Boolean,
-        val cipher: Cipher,
+        val crypto: BiometricPrompt.CryptoObject,
+        val confirmed: CompletableFuture<String?>?,
     ) {
-        val result = CompletableFuture<Cipher?>()
+        val result = CompletableFuture<BiometricPrompt.CryptoObject?>()
         val showing = AtomicBoolean(false)
-        @Volatile var cancel: CancellationSignal? = null
+        @Volatile var cancel: (() -> Unit)? = null
     }
 
     private val pending = ConcurrentHashMap<Int, Pending>()
@@ -59,16 +62,34 @@ object UnlockPrompts {
      * the owner declined or didn't answer.
      */
     @RequiresApi(Build.VERSION_CODES.R)
-    fun ask(context: Context, pcName: String, userName: String, enroll: Boolean, cipher: Cipher, timeoutMs: Long): Cipher? {
+    fun ask(context: Context, pcName: String, userName: String, enroll: Boolean, cipher: Cipher, timeoutMs: Long): Cipher? =
+        ask(context, Pending(pcName, userName, enroll, BiometricPrompt.CryptoObject(cipher), null), timeoutMs)?.cipher
+
+    @RequiresApi(Build.VERSION_CODES.R)
+    fun askToSign(
+        context: Context,
+        pcName: String,
+        userName: String,
+        signature: Signature,
+        timeoutMs: Long,
+        confirmed: CompletableFuture<String?>? = null,
+    ): Signature? = ask(
+        context,
+        Pending(pcName, userName, confirmed != null, BiometricPrompt.CryptoObject(signature), confirmed),
+        timeoutMs,
+    )?.signature
+
+    private fun ask(context: Context, request: Pending, timeoutMs: Long): BiometricPrompt.CryptoObject? {
         val id = ids.incrementAndGet()
-        val request = Pending(pcName, userName, enroll, cipher)
         pending[id] = request
         try {
             show(context, id, request)
             return runCatching { request.result.get(timeoutMs, TimeUnit.MILLISECONDS) }.getOrNull()
         } finally {
             pending.remove(id)
-            request.cancel?.cancel()
+            if (request.result.complete(null)) {
+                Handler(Looper.getMainLooper()).post { request.cancel?.invoke() }
+            }
             runCatching { NotificationManagerCompat.from(context).cancel(TAG, id) }
         }
     }
@@ -122,7 +143,7 @@ object UnlockPrompts {
 }
 
 /** Shows the biometric prompt for one [UnlockPrompts] request, then closes. */
-class UnlockPromptActivity : ComponentActivity() {
+class UnlockPromptActivity : FragmentActivity() {
     companion object {
         const val EXTRA_ID = "unlock_request"
     }
@@ -131,44 +152,43 @@ class UnlockPromptActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val request = UnlockPrompts.pending(intent.getIntExtra(EXTRA_ID, -1))
         // Gone (answered, timed out) or already on screen from the other way in.
-        if (request == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.R || !request.showing.compareAndSet(false, true)) {
+        if (request == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
             finish()
             return
         }
-        prompt(request)
+        val first = request.showing.compareAndSet(false, true)
+        if ((!first && savedInstanceState == null) || request.result.isDone) {
+            finish()
+            return
+        }
+        prompt(request, first)
     }
 
-    @RequiresApi(Build.VERSION_CODES.R)
-    private fun prompt(request: UnlockPrompts.Pending) {
+    private fun prompt(request: UnlockPrompts.Pending, first: Boolean) {
         val title = if (request.enroll) {
             getString(R.string.unlock_enroll_title, request.pcName)
         } else {
             getString(R.string.unlock_request_title, request.pcName)
         }
-        val description = if (request.enroll) {
-            getString(R.string.unlock_enroll_text, request.pcName)
-        } else {
-            getString(R.string.unlock_prompt_text)
+        val description = when {
+            request.confirmed != null -> getString(R.string.linux_unlock_enroll_text)
+            request.enroll -> getString(R.string.unlock_enroll_text, request.pcName)
+            else -> getString(R.string.unlock_prompt_text)
         }
-        val executor = ContextCompat.getMainExecutor(this)
-        val prompt = BiometricPrompt.Builder(this)
+        val info = BiometricPrompt.PromptInfo.Builder()
             .setTitle(title)
             .setSubtitle(getString(R.string.unlock_request_text, request.userName))
             .setDescription(description)
             .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG)
-            // Face unlock must still be confirmed with a tap: nothing unlocks by just looking.
             .setConfirmationRequired(true)
-            .setNegativeButton(getString(R.string.action_cancel), executor) { _, _ -> done(request, null) }
+            .setNegativeButtonText(getString(R.string.action_cancel))
             .build()
-        val cancel = CancellationSignal()
-        request.cancel = cancel
-        prompt.authenticate(
-            BiometricPrompt.CryptoObject(request.cipher),
-            cancel,
-            executor,
+        val prompt = BiometricPrompt(
+            this,
+            ContextCompat.getMainExecutor(this),
             object : BiometricPrompt.AuthenticationCallback() {
                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                    done(request, result.cryptoObject?.cipher)
+                    done(request, result.cryptoObject)
                 }
 
                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
@@ -176,10 +196,41 @@ class UnlockPromptActivity : ComponentActivity() {
                 }
             },
         )
+        request.cancel = {
+            prompt.cancelAuthentication()
+            finish()
+        }
+        if (request.result.isDone) {
+            finish()
+        } else if (first) {
+            runCatching { prompt.authenticate(info, request.crypto) }.onFailure { done(request, null) }
+        }
     }
 
-    private fun done(request: UnlockPrompts.Pending, cipher: Cipher?) {
-        request.result.complete(cipher)
-        finish()
+    private fun done(request: UnlockPrompts.Pending, crypto: BiometricPrompt.CryptoObject?) {
+        if (!request.result.complete(crypto)) return
+        if (crypto?.signature != null && request.confirmed != null) {
+            request.confirmed.thenAccept { fingerprint ->
+                runOnUiThread {
+                    if (isFinishing || isDestroyed) return@runOnUiThread
+                    if (fingerprint == null) finish()
+                    else showEnrollmentFingerprint(request, fingerprint)
+                }
+            }
+        } else {
+            finish()
+        }
+    }
+
+    private fun showEnrollmentFingerprint(request: UnlockPrompts.Pending, fingerprint: String) {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.linux_unlock_key_fingerprint)
+            .setMessage(
+                getString(R.string.linux_unlock_confirm_fingerprint, request.pcName, request.userName, fingerprint),
+            )
+            .setPositiveButton(android.R.string.ok, null)
+            .setOnDismissListener { finish() }
+            .show()
+            .findViewById<TextView>(android.R.id.message)?.setTextIsSelectable(true)
     }
 }

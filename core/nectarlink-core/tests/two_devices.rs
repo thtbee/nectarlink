@@ -22,6 +22,7 @@ const WAIT: Duration = Duration::from_secs(20);
 
 type MmsRecord = (Vec<String>, String, Vec<nectarlink_core::SmsAttachment>);
 type RichClipboardRecord = (String, Option<String>, Option<String>);
+type LinuxSigningPause = (tokio::sync::oneshot::Sender<()>, std::sync::mpsc::Receiver<()>);
 
 #[derive(Debug, Default)]
 struct RecordingPlatform {
@@ -67,6 +68,9 @@ struct RecordingPlatform {
     unlock_asks: Mutex<Vec<nectarlink_core::unlock::Ask>>,
     unlock_answer: Mutex<FakeKeystore>,
     unlock_forgotten: Mutex<Vec<(nectarlink_core::DeviceId, Option<String>)>>,
+    linux_unlock_asks: Mutex<Vec<nectarlink_core::linux_unlock::Ask>>,
+    linux_unlock_keys: Mutex<std::collections::HashMap<(nectarlink_core::DeviceId, u32), Vec<u8>>>,
+    linux_signing_pause: Mutex<Option<LinuxSigningPause>>,
     phone_toggles: Mutex<Vec<(String, nectarlink_core::PhoneToggleValue)>>,
     deck_presses: Mutex<Vec<String>>,
     pc_audio_changes: Mutex<Vec<(Option<u8>, Option<bool>)>>,
@@ -617,6 +621,53 @@ impl Platform for RecordingPlatform {
             FakeKeystore::KeyGone => Err(nectarlink_core::unlock::KeyRefusal::KeyGone),
         }
     }
+    fn linux_unlock_enroll(
+        &self,
+        pc: &nectarlink_core::DeviceId,
+        ask: &nectarlink_core::linux_unlock::Ask,
+    ) -> Result<Vec<u8>, nectarlink_core::unlock::KeyRefusal> {
+        use ring::signature::{ECDSA_P256_SHA256_ASN1_SIGNING, EcdsaKeyPair, KeyPair};
+
+        self.linux_unlock_asks.lock().unwrap().push(ask.clone());
+        let rng = ring::rand::SystemRandom::new();
+        let pkcs8 = EcdsaKeyPair::generate_pkcs8(&ECDSA_P256_SHA256_ASN1_SIGNING, &rng).unwrap();
+        let key = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_ASN1_SIGNING, pkcs8.as_ref(), &rng).unwrap();
+        self.linux_unlock_keys.lock().unwrap().insert((*pc, ask.uid), pkcs8.as_ref().to_vec());
+        Ok(key.public_key().as_ref().to_vec())
+    }
+
+    fn linux_unlock_sign(
+        &self,
+        pc: &nectarlink_core::DeviceId,
+        uid: u32,
+        transcript: &[u8],
+    ) -> Result<Vec<u8>, nectarlink_core::unlock::KeyRefusal> {
+        use nectarlink_core::unlock::KeyRefusal;
+        use ring::signature::{ECDSA_P256_SHA256_ASN1_SIGNING, EcdsaKeyPair};
+
+        if matches!(*self.unlock_answer.lock().unwrap(), FakeKeystore::Declines) {
+            return Err(KeyRefusal::Declined);
+        }
+        let keys = self.linux_unlock_keys.lock().unwrap();
+        let pkcs8 = keys.get(&(*pc, uid)).ok_or(KeyRefusal::KeyGone)?;
+        let rng = ring::rand::SystemRandom::new();
+        let key = EcdsaKeyPair::from_pkcs8(&ECDSA_P256_SHA256_ASN1_SIGNING, pkcs8, &rng).unwrap();
+        let signature = key.sign(&rng, transcript).unwrap().as_ref().to_vec();
+        drop(keys);
+        let pause = self.linux_signing_pause.lock().unwrap().take();
+        if let Some((started, resume)) = pause {
+            started.send(()).unwrap();
+            resume.recv_timeout(WAIT).unwrap();
+        }
+        Ok(signature)
+    }
+
+    fn linux_unlock_forget(&self, pc: &nectarlink_core::DeviceId, uid: Option<u32>) {
+        self.linux_unlock_keys.lock().unwrap().retain(|(enrolled_pc, enrolled_uid), _| {
+            enrolled_pc != pc || uid.is_some_and(|u| u != *enrolled_uid)
+        });
+    }
+
     fn unlock_forget(&self, pc: &nectarlink_core::DeviceId, user: Option<&str>) {
         self.unlock_forgotten.lock().unwrap().push((*pc, user.map(str::to_owned)));
     }
@@ -3693,6 +3744,163 @@ async fn gamepad_goes_to_pcs_that_offer_it_reliably_or_by_datagram() {
     // A button the Xbox layout doesn't have never leaves the phone.
     let bad = PadState { buttons: 0x0800, ..PadState::default() };
     assert!(phone.node.remote_pad(pc_id, bad).await.is_err());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn linux_unlock_round_trip_binds_the_paired_devices_and_account() {
+    use nectarlink_core::DeviceId;
+    use nectarlink_protocol::{
+        LinuxUnlockChallenge,
+        messages::linux_unlock::{CAP_KEY, CAP_PC},
+    };
+    use ring::signature::{ECDSA_P256_SHA256_ASN1, UnparsedPublicKey};
+
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[CAP_PC]).await;
+    let mut phone = device_with("Pixel", DeviceKind::Phone, &["unlock.key"]).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+    let challenge = LinuxUnlockChallenge { pc: pc_id, phone: phone_id, uid: 1000, nonce: [0x45; 32] };
+
+    assert!(matches!(pc.node.linux_unlock_sign(challenge).await, Err(Error::Unsupported)));
+    phone.node.update_power(PowerLevel::Basic, vec![CAP_KEY.into()]).await;
+    with_timeout("Linux phone capability", async {
+        while !pc.node.peer_offers(phone_id, CAP_KEY) {
+            tokio::time::sleep(Duration::from_millis(25)).await;
+        }
+    })
+    .await;
+
+    let enroll = || pc.node.linux_unlock_enroll(phone_id, challenge.uid, "bee");
+    assert!(matches!(enroll().await, Err(Error::Denied)));
+    pc.node.set_device_toggle(phone_id, "unlock", true).unwrap();
+    assert!(matches!(enroll().await, Err(Error::Denied)));
+    assert!(phone.platform.linux_unlock_asks.lock().unwrap().is_empty());
+    phone.node.set_device_toggle(pc_id, "unlock", true).unwrap();
+    assert!(matches!(pc.node.linux_unlock_sign(challenge).await, Err(Error::NotFound)));
+    assert!(matches!(
+        pc.node.linux_unlock_enroll(phone_id, challenge.uid, "bad\nlabel").await,
+        Err(Error::Protocol(_))
+    ));
+
+    let key = with_timeout("Linux unlock enrollment", enroll()).await.unwrap();
+    let asks = phone.platform.linux_unlock_asks.lock().unwrap().clone();
+    assert_eq!(asks.len(), 1);
+    assert_eq!(asks[0].pc_name, "Desktop");
+    assert_eq!(asks[0].user_name, "bee");
+    assert_eq!(asks[0].uid, challenge.uid);
+    let key = UnparsedPublicKey::new(&ECDSA_P256_SHA256_ASN1, key);
+    let signature = with_timeout("Linux unlock signing", pc.node.linux_unlock_sign(challenge)).await.unwrap();
+    key.verify(&challenge.signing_bytes(), &signature).unwrap();
+
+    for other in [
+        LinuxUnlockChallenge { pc: DeviceId([0xab; 32]), ..challenge },
+        LinuxUnlockChallenge { phone: DeviceId([0xcd; 32]), ..challenge },
+        LinuxUnlockChallenge { uid: 1001, ..challenge },
+        LinuxUnlockChallenge { nonce: [0x46; 32], ..challenge },
+    ] {
+        assert!(key.verify(&other.signing_bytes(), &signature).is_err());
+    }
+    let mut other_domain = challenge.signing_bytes();
+    other_domain[0] ^= 1;
+    assert!(key.verify(&other_domain, &signature).is_err());
+    let mut bad_signature = signature;
+    *bad_signature.last_mut().unwrap() ^= 1;
+    assert!(key.verify(&challenge.signing_bytes(), &bad_signature).is_err());
+    assert!(matches!(
+        pc.node.linux_unlock_sign(LinuxUnlockChallenge { pc: phone_id, ..challenge }).await,
+        Err(Error::Denied)
+    ));
+    assert!(matches!(
+        pc.node.linux_unlock_sign(LinuxUnlockChallenge { uid: 1001, ..challenge }).await,
+        Err(Error::NotFound)
+    ));
+
+    *phone.platform.unlock_answer.lock().unwrap() = FakeKeystore::Declines;
+    assert!(matches!(pc.node.linux_unlock_sign(challenge).await, Err(Error::Denied)));
+    *phone.platform.unlock_answer.lock().unwrap() = FakeKeystore::Works;
+    pc.node.linux_unlock_forget(phone_id, challenge.uid).await.unwrap();
+    assert!(matches!(pc.node.linux_unlock_sign(challenge).await, Err(Error::NotFound)));
+
+    enroll().await.unwrap();
+    let (started, wait_started) = tokio::sync::oneshot::channel();
+    let (resume, wait_resume) = std::sync::mpsc::channel();
+    *phone.platform.linux_signing_pause.lock().unwrap() = Some((started, wait_resume));
+    let (pending, ()) = tokio::join!(pc.node.linux_unlock_sign(challenge), async {
+        with_timeout("phone started signing", wait_started).await.unwrap();
+        let another = LinuxUnlockChallenge { nonce: [0x47; 32], ..challenge };
+        assert!(matches!(pc.node.linux_unlock_sign(another).await, Err(Error::Denied)));
+        phone.node.set_device_toggle(pc_id, "unlock", false).unwrap();
+        with_timeout("phone removes key when disabled", async {
+            while !phone.platform.linux_unlock_keys.lock().unwrap().is_empty() {
+                tokio::time::sleep(Duration::from_millis(25)).await;
+            }
+        })
+        .await;
+        phone.node.set_device_toggle(pc_id, "unlock", true).unwrap();
+        resume.send(()).unwrap();
+    });
+    assert!(matches!(pending, Err(Error::Denied)));
+    assert!(matches!(pc.node.linux_unlock_sign(challenge).await, Err(Error::NotFound)));
+    phone.node.set_device_toggle(pc_id, "unlock", false).unwrap();
+    assert!(matches!(pc.node.linux_unlock_sign(challenge).await, Err(Error::Denied)));
+
+    phone.node.set_reconnect(pc_id, false).unwrap();
+    wait_for(&mut pc, "offline phone", |e| match e {
+        NodeEvent::LinkChanged { device, link: LinkState::Offline { .. } } if *device == phone_id => Some(()),
+        _ => None,
+    })
+    .await;
+    assert!(matches!(pc.node.linux_unlock_sign(challenge).await, Err(Error::Offline)));
+    pc.node.unpair(phone_id).await.unwrap();
+    assert!(matches!(pc.node.linux_unlock_sign(challenge).await, Err(Error::NotPaired)));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn linux_unlock_over_a_usb_only_session() {
+    use nectarlink_core::ConnectionPath;
+    use nectarlink_protocol::{
+        LinuxUnlockChallenge,
+        messages::linux_unlock::{CAP_KEY, CAP_PC},
+    };
+    use ring::signature::{ECDSA_P256_SHA256_ASN1, UnparsedPublicKey};
+
+    let mut phone = start_usb_device("Pixel", DeviceKind::Phone, Some(0), &[CAP_KEY]).await;
+    let mut pc = start_usb_device("Desktop", DeviceKind::Desktop, None, &[CAP_PC]).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+    let usb_port = phone.node.usb_port().unwrap();
+    pc.node.connect_usb_tunnel(([127, 0, 0, 1], usb_port).into()).await.unwrap();
+
+    for dev in [&mut pc, &mut phone] {
+        wait_for(dev, "USB pairing prompt", |e| match e {
+            NodeEvent::Pairing(PairingEvent::SasCode { .. }) => Some(()),
+            _ => None,
+        })
+        .await;
+        dev.node.pairing_confirm(true).unwrap();
+    }
+    wait_online(&mut pc, phone_id).await;
+    wait_online(&mut phone, pc_id).await;
+    assert!(matches!(
+        pc.node.paired_devices().unwrap()[0].link,
+        LinkState::Online { path: ConnectionPath::Usb, .. }
+    ));
+
+    pc.node.set_device_toggle(phone_id, "unlock", true).unwrap();
+    phone.node.set_device_toggle(pc_id, "unlock", true).unwrap();
+    let challenge = LinuxUnlockChallenge { pc: pc_id, phone: phone_id, uid: 1000, nonce: [0x45; 32] };
+    let key = pc.node.linux_unlock_enroll(phone_id, challenge.uid, "bee").await.unwrap();
+    let signature = pc.node.linux_unlock_sign(challenge).await.unwrap();
+    UnparsedPublicKey::new(&ECDSA_P256_SHA256_ASN1, key)
+        .verify(&challenge.signing_bytes(), &signature)
+        .unwrap();
+
+    pc.node.unpair(phone_id).await.unwrap();
+    wait_for(&mut phone, "PC unpaired", |e| match e {
+        NodeEvent::DeviceRemoved(device) if *device == pc_id => Some(()),
+        _ => None,
+    })
+    .await;
+    assert!(phone.platform.linux_unlock_keys.lock().unwrap().is_empty());
 }
 
 #[tokio::test(flavor = "multi_thread")]

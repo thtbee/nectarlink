@@ -450,6 +450,9 @@
     <string name="channel_unlock_requests">PC entsperren</string>
     <string name="unlock_enroll_title">%1$s mit diesem Telefon entsperren lassen?</string>
     <string name="unlock_enroll_text">Ab jetzt kann dein Fingerabdruck %1$s entsperren. Er wird jedes Mal abgefragt.</string>
+    <string name="linux_unlock_enroll_text">Vergleiche nach der Bestätigung den Fingerabdruck des Linux-Entsperrschlüssels auf beiden Geräten.</string>
+    <string name="linux_unlock_key_fingerprint">Fingerabdruck des Linux-Entsperrschlüssels</string>
+    <string name="linux_unlock_confirm_fingerprint">Vergleiche diesen SHA-256-Fingerabdruck für %1$s (%2$s) mit dem auf deinem PC, bevor du bestätigst.\n\n%3$s</string>
     <string name="unlock_request_title">%1$s entsperren?</string>
     <string name="unlock_request_text">Als %1$s</string>
     <string name="unlock_prompt_text">Bestätige nur, wenn du gerade an diesem PC bist.</string>

@@ -442,6 +442,9 @@
     <string name="channel_unlock_requests">Разблокировка ПК</string>
     <string name="unlock_enroll_title">Разрешить разблокировать %1$s этим телефоном?</string>
     <string name="unlock_enroll_text">Теперь отпечаток пальца сможет разблокировать %1$s. Он запрашивается каждый раз.</string>
+    <string name="linux_unlock_enroll_text">После одобрения сравните отпечаток ключа разблокировки Linux на обоих устройствах.</string>
+    <string name="linux_unlock_key_fingerprint">Отпечаток ключа разблокировки Linux</string>
+    <string name="linux_unlock_confirm_fingerprint">Перед подтверждением сравните этот отпечаток SHA-256 для %1$s (%2$s) с отпечатком на компьютере.\n\n%3$s</string>
     <string name="unlock_request_title">Разблокировать %1$s?</string>
     <string name="unlock_request_text">Пользователь: %1$s</string>
     <string name="unlock_prompt_text">Подтверждайте, только если вы сейчас у этого ПК.</string>

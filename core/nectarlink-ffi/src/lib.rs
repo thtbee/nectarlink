@@ -2589,7 +2589,7 @@ fn parse_id(id: &str) -> Result<DeviceId> {
 
 // ---- Foreign interfaces (implemented in Kotlin) ----
 
-/// Why the phone didn't wrap or unwrap a PC's unlock key (ADR 0009).
+/// Why the phone declined a PC unlock operation.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, uniffi::Error)]
 pub enum UnlockRefusal {
     /// The owner said no, or didn't confirm in time.
@@ -2913,6 +2913,23 @@ pub trait Platform: Send + Sync {
     /// Unlock the PC with this phone: delete the Keystore keys kept for `pc`
     /// (for `user`, or all of them).
     fn unlock_forget(&self, pc: String, user: Option<String>);
+    /// Enroll a biometric-bound Linux unlock key and return the uncompressed P-256 point.
+    fn linux_unlock_enroll(
+        &self,
+        pc: String,
+        pc_name: String,
+        user_name: String,
+        uid: u32,
+    ) -> Result<Vec<u8>, UnlockRefusal>;
+    /// Prompt using the confirmed enrollment, then return a DER ECDSA signature.
+    fn linux_unlock_sign(
+        &self,
+        pc: String,
+        uid: u32,
+        transcript: Vec<u8>,
+    ) -> Result<Vec<u8>, UnlockRefusal>;
+    /// Forget one Linux account or all Linux unlock keys for this paired PC.
+    fn linux_unlock_forget(&self, pc: String, uid: Option<u32>);
     /// A PC asked to list a folder in this phone's storage (`""` is root).
     fn storage_list(&self, path: String) -> Result<Vec<StorageEntry>, StorageFailure>;
     /// A PC asked to open a file in this phone's storage for ranged reading.
@@ -3400,6 +3417,29 @@ impl core::Platform for PlatformAdapter {
     }
     fn unlock_forget(&self, pc: &core::DeviceId, user: Option<&str>) {
         self.0.unlock_forget(pc.to_string(), user.map(str::to_owned));
+    }
+    fn linux_unlock_enroll(
+        &self,
+        pc: &core::DeviceId,
+        ask: &core::linux_unlock::Ask,
+    ) -> Result<Vec<u8>, core::unlock::KeyRefusal> {
+        Ok(self.0.linux_unlock_enroll(
+            pc.to_string(),
+            ask.pc_name.clone(),
+            ask.user_name.clone(),
+            ask.uid,
+        )?)
+    }
+    fn linux_unlock_sign(
+        &self,
+        pc: &core::DeviceId,
+        uid: u32,
+        transcript: &[u8],
+    ) -> Result<Vec<u8>, core::unlock::KeyRefusal> {
+        Ok(self.0.linux_unlock_sign(pc.to_string(), uid, transcript.to_vec())?)
+    }
+    fn linux_unlock_forget(&self, pc: &core::DeviceId, uid: Option<u32>) {
+        self.0.linux_unlock_forget(pc.to_string(), uid);
     }
     fn set_phone_toggle(&self, id: &str, value: &core::PhoneToggleValue) -> Result<(), String> {
         let value = match value {

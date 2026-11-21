@@ -452,6 +452,10 @@
     <string name="channel_unlock_requests">Unlocking your PC</string>
     <string name="unlock_enroll_title">Let %1$s unlock with this phone?</string>
     <string name="unlock_enroll_text">From now on your fingerprint can unlock %1$s. It asks for it every time.</string>
+    <string name="app_name_linux_unlock_debug" translatable="false">NectarLink (Linux Unlock)</string>
+    <string name="linux_unlock_enroll_text">After approving, compare the Linux unlock key fingerprint on both devices.</string>
+    <string name="linux_unlock_key_fingerprint">Linux unlock key fingerprint</string>
+    <string name="linux_unlock_confirm_fingerprint">Compare this SHA-256 fingerprint for %1$s (%2$s) with the one on your PC before confirming.\n\n%3$s</string>
     <string name="unlock_request_title">Unlock %1$s?</string>
     <string name="unlock_request_text">As %1$s</string>
     <string name="unlock_prompt_text">Only confirm if you\'re at this PC right now.</string>

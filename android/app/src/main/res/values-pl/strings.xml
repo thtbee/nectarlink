@@ -460,6 +460,9 @@
     <string name="channel_unlock_requests">Odblokowywanie komputera</string>
     <string name="unlock_enroll_title">Pozwolić odblokowywać %1$s tym telefonem?</string>
     <string name="unlock_enroll_text">Od teraz odcisk palca może odblokować %1$s. Za każdym razem trzeba go potwierdzić.</string>
+    <string name="linux_unlock_enroll_text">Po zatwierdzeniu porównaj odcisk klucza odblokowywania Linuksa na obu urządzeniach.</string>
+    <string name="linux_unlock_key_fingerprint">Odcisk klucza odblokowywania Linuksa</string>
+    <string name="linux_unlock_confirm_fingerprint">Przed potwierdzeniem porównaj ten odcisk SHA-256 dla %1$s (%2$s) z odciskiem wyświetlonym na komputerze.\n\n%3$s</string>
     <string name="unlock_request_title">Odblokować %1$s?</string>
     <string name="unlock_request_text">Jako %1$s</string>
     <string name="unlock_prompt_text">Potwierdź tylko, jeśli jesteś teraz przy tym komputerze.</string>

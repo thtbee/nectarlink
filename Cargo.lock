@@ -2544,6 +2544,7 @@ dependencies = [
  "nectarlink-actions",
  "nectarlink-adb",
  "nectarlink-core",
+ "nectarlink-protocol",
  "nectarlink-vcam",
  "pkg-config",
  "qrcode",
@@ -2589,6 +2590,19 @@ dependencies = [
  "rmcp",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "nectarlink-pam-unlock"
+version = "0.1.5"
+dependencies = [
+ "libc",
+ "nectarlink-protocol",
+ "ring",
+ "rustix",
+ "serde",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]

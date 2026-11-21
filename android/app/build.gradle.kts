@@ -28,6 +28,12 @@ val appVersionCode: Int = run {
     major * 10_000_000 + minor * 100_000 + patch * 1_000 + build
 }
 
+// Opt in with -Pnectarlink.isolatedDebug=true to pair and test beside the installed app.
+val isolatedDebug = providers.gradleProperty("nectarlink.isolatedDebug").map(String::toBoolean).orElse(false)
+
+val rustAbis: List<String> =
+    (findProperty("nectarlink.abis") as String?)?.split(",")?.map(String::trim) ?: listOf("arm64-v8a", "x86_64")
+
 android {
     namespace = "app.nectarlink.android"
     compileSdk = 37
@@ -37,8 +43,12 @@ android {
         applicationId = "app.nectarlink"
         minSdk = 26
         targetSdk = 37
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         versionCode = appVersionCode
         versionName = appVersion
+        manifestPlaceholders["appLabel"] = "@string/app_name"
+        manifestPlaceholders["pairingScheme"] = "nectarlink"
+        buildConfigField("String", "PAIRING_SCHEME", "\"nectarlink\"")
     }
 
     // Only the languages the app offers (res/xml/locales_config.xml) go into the APK: a
@@ -73,6 +83,15 @@ android {
     }
 
     buildTypes {
+        debug {
+            if (isolatedDebug.get()) {
+                applicationIdSuffix = ".dev"
+                ndk.abiFilters += rustAbis
+                manifestPlaceholders["appLabel"] = "@string/app_name_linux_unlock_debug"
+                manifestPlaceholders["pairingScheme"] = "nectarlink-dev"
+                buildConfigField("String", "PAIRING_SCHEME", "\"nectarlink-dev\"")
+            }
+        }
         release {
             signingConfig = if (keystore != null) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
             isMinifyEnabled = true
@@ -172,8 +191,6 @@ abstract class BundleFonts : DefaultTask() {
 }
 
 val workspaceDir: Directory = rootProject.layout.projectDirectory.dir("..")
-val rustAbis: List<String> =
-    (findProperty("nectarlink.abis") as String?)?.split(",")?.map(String::trim) ?: listOf("arm64-v8a", "x86_64")
 
 androidComponents {
     onVariants { variant ->
@@ -208,6 +225,8 @@ dependencies {
     implementation(libs.compose.ui.tooling.preview)
     debugImplementation(libs.compose.ui.tooling)
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.biometric)
+    implementation(libs.androidx.fragment)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
@@ -228,4 +247,5 @@ dependencies {
     implementation(libs.jna) { artifact { type = "aar" } }
     testImplementation(libs.junit)
     testImplementation(libs.org.json)
+    androidTestImplementation(libs.androidx.test.runner)
 }

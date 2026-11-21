@@ -6,4 +6,12 @@
       checked for completeness by LocalesTest instead.
     -->
     <issue id="MissingTranslation" severity="ignore" />
+    <!-- RemoteViews widgets use framework ImageViews with android:tint. -->
+    <issue id="UseAppTint">
+        <ignore path="src/main/res/layout/widget_actions_grid.xml" />
+        <ignore path="src/main/res/layout/widget_actions_row.xml" />
+        <ignore path="src/main/res/layout/widget_from_pc.xml" />
+        <ignore path="src/main/res/layout/widget_now_playing.xml" />
+        <ignore path="src/main/res/layout/widget_pc.xml" />
+    </issue>
 </lint>

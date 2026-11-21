@@ -434,6 +434,9 @@
     <string name="channel_unlock_requests">解锁电脑</string>
     <string name="unlock_enroll_title">允许用这部手机解锁 %1$s？</string>
     <string name="unlock_enroll_text">从现在起，你的指纹可以解锁 %1$s。每次都需要指纹。</string>
+    <string name="linux_unlock_enroll_text">批准后，请比对两台设备上显示的 Linux 解锁密钥指纹。</string>
+    <string name="linux_unlock_key_fingerprint">Linux 解锁密钥指纹</string>
+    <string name="linux_unlock_confirm_fingerprint">确认前，请将 %1$s（%2$s）的此 SHA-256 指纹与电脑上显示的指纹进行比对。\n\n%3$s</string>
     <string name="unlock_request_title">解锁 %1$s？</string>
     <string name="unlock_request_text">用户：%1$s</string>
     <string name="unlock_prompt_text">只有在你正坐在这台电脑前时才确认。</string>
