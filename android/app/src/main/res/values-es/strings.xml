@@ -364,6 +364,11 @@
     <string name="settings_remote">Controlar tu PC</string>
     <string name="settings_volume_keys_control_pc">Los botones de volumen controlan tu PC</string>
     <string name="settings_volume_keys_control_pc_hint">Mientras tu PC reproduce música o vídeo, los botones de volumen del teléfono cambian el volumen del PC.</string>
+    <string name="settings_pc_sound_buffer">Búfer del sonido del PC</string>
+    <string name="settings_pc_sound_buffer_hint">Si el sonido del PC se corta con una Wi-Fi saturada, un búfer mayor lo suaviza, con algo más de retraso.</string>
+    <string name="settings_buffer_low">Bajo</string>
+    <string name="settings_buffer_medium">Medio</string>
+    <string name="settings_buffer_high">Alto</string>
     <string name="settings_quiet_while_using_pc">Silencio mientras usas el PC</string>
     <string name="settings_quiet_while_using_pc_hint">El teléfono no suena ni vibra con las notificaciones mientras usas un PC emparejado que las muestra.</string>
     <string name="settings_hide_from_recents">Ocultar de aplicaciones recientes</string>

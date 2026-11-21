@@ -358,6 +358,11 @@
     <string name="settings_remote">Bilgisayarınızı kontrol edin</string>
     <string name="settings_volume_keys_control_pc">Ses düğmeleri bilgisayarınızı kontrol eder</string>
     <string name="settings_volume_keys_control_pc_hint">Bilgisayarınız müzik veya video çalarken telefonunuzun ses düğmeleri bilgisayarın ses düzeyini değiştirir.</string>
+    <string name="settings_pc_sound_buffer">Bilgisayar sesi arabelleği</string>
+    <string name="settings_pc_sound_buffer_hint">Yoğun bir Wi-Fi\'da bilgisayarın sesi kesiliyorsa, daha büyük bir arabellek biraz daha gecikmeyle bunu düzeltir.</string>
+    <string name="settings_buffer_low">Düşük</string>
+    <string name="settings_buffer_medium">Orta</string>
+    <string name="settings_buffer_high">Yüksek</string>
     <string name="settings_quiet_while_using_pc">Bilgisayarı kullanırken sessiz</string>
     <string name="settings_quiet_while_using_pc_hint">Bildirimleri gösteren eşleştirilmiş bir bilgisayarı kullanırken telefonunuz bildirimler için ses çıkarmaz ve titremez.</string>
     <string name="settings_hide_from_recents">Son uygulamalardan gizle</string>
