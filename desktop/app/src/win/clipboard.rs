@@ -383,17 +383,37 @@ fn write_text(text: &str, html: Option<&str>, rtf: Option<&str>, private: bool) 
 /// clipboard: as a bitmap with alpha, which every app pastes, and also as
 /// PNG when it is one, which keeps it exact for apps that read PNG.
 pub fn write_image(mime: &str, bytes: &[u8]) -> Result<(), String> {
+    write_clipboard_image(mime, bytes, false)
+}
+
+/// Keeps images received from a peer in local Windows history.
+pub fn write_received_image(mime: &str, bytes: &[u8]) -> Result<(), String> {
+    write_clipboard_image(mime, bytes, true)
+}
+
+fn write_clipboard_image(mime: &str, bytes: &[u8], received: bool) -> Result<(), String> {
     let owner = window().ok_or("the clipboard watcher isn't running")?;
     let bitmap = super::image::decode(bytes).map_err(|e| e.to_string())?;
     let dib = super::image::dibv5(&bitmap);
-    let reported_clip = if mime == "image/png" {
-        Clip::Image(Image::Png(bytes.to_vec()))
+    let png = if mime == "image/png" {
+        Some(bytes.to_vec())
+    } else if received {
+        super::image::encode_png(&bitmap).ok()
     } else {
-        Clip::Image(Image::Bitmap(dib.clone()))
+        None
     };
-    let mut blocks = vec![(CF_DIBV5, dib)];
-    if mime == "image/png" {
-        blocks.push((format("PNG"), bytes.to_vec()));
+    let reported_clip = match &png {
+        Some(png) => Clip::Image(Image::Png(png.clone())),
+        None => Clip::Image(Image::Bitmap(dib.clone())),
+    };
+    let mut blocks = Vec::with_capacity(4);
+    if let Some(png) = png {
+        blocks.push((format("PNG"), png));
+    }
+    blocks.push((CF_DIBV5, dib));
+    if received {
+        blocks.push((format("CanIncludeInClipboardHistory"), 1u32.to_le_bytes().to_vec()));
+        blocks.push((format("CanUploadToCloudClipboard"), 0u32.to_le_bytes().to_vec()));
     }
     let _open = Opened::open(Some(owner)).ok_or("the clipboard is busy")?;
     // SAFETY: the clipboard is open.

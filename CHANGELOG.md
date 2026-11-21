@@ -431,6 +431,13 @@ change things that need a step from you, and its notes say so.
   doesn't make itself the default. Thanks to
   [@w-rakeeb](https://github.com/w-rakeeb)
   ([#509](https://github.com/thtbee/nectarlink/issues/509)).
+- **Copy screenshots to the PC.** Turn on **Copy screenshots to PC** in the phone's
+  clipboard settings and each new screenshot goes to the clipboard of the connected PCs you
+  share your clipboard with, ready to paste. It's off by default and needs full photo
+  access. On Windows, images from the phone now show in Win+V history but stay out of cloud
+  clipboard sync. Thanks to
+  [@w-rakeeb](https://github.com/w-rakeeb)
+  ([#508](https://github.com/thtbee/nectarlink/pull/508)).
 
 ### Fixed
 

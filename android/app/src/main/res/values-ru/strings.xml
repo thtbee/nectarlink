@@ -206,6 +206,8 @@
     <string name="settings_clipboard_title">Буфер обмена</string>
     <string name="settings_clipboard_passwords">Синхронизировать скопированные пароли</string>
     <string name="settings_clipboard_passwords_hint">Также передаёт то, что менеджеры паролей помечают личным. Через минуту оно исчезает из буфера обмена ПК и никогда не сохраняется в истории.</string>
+    <string name="settings_clipboard_screenshots">Копировать снимки экрана на ПК</string>
+    <string name="settings_clipboard_screenshots_hint">Новые снимки попадают в буфер обмена подключённых ПК, с которыми вы делитесь буфером обмена. Требуется полный доступ к фото.</string>
     <string name="settings_clipboard_suggestions">Предлагать действия для скопированного текста</string>
     <string name="settings_clipboard_suggestions_hint">Предлагать действия для текста с ПК: открыть ссылку, карту, позвонить, отследить посылку или написать письмо.</string>
     <string name="clip_received_from">Скопировано с %1$s</string>

@@ -209,6 +209,8 @@
 <string name="settings_clipboard_title">Bảng nhớ tạm</string>
 <string name="settings_clipboard_passwords">Đồng bộ mật khẩu đã sao chép</string>
 <string name="settings_clipboard_passwords_hint">Cũng gửi những gì trình quản lý mật khẩu đánh dấu là riêng tư. Nó rời bảng nhớ tạm của PC sau một phút, và không bao giờ được lưu trong lịch sử.</string>
+    <string name="settings_clipboard_screenshots">Sao chép ảnh chụp màn hình sang PC</string>
+    <string name="settings_clipboard_screenshots_hint">Ảnh chụp mới được sao chép vào bảng nhớ tạm của PC đang kết nối mà bạn chia sẻ bảng nhớ tạm. Cần quyền truy cập toàn bộ ảnh.</string>
 <string name="settings_clipboard_suggestions">Gợi ý hành động cho văn bản đã sao chép</string>
 <string name="settings_clipboard_suggestions_hint">Gợi ý hành động cho văn bản từ PC của bạn: mở liên kết, bản đồ, cuộc gọi, bưu kiện và email.</string>
 <string name="clip_received_from">Đã sao chép từ %1$s</string>

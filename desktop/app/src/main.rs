@@ -134,6 +134,9 @@ impl Platform for DesktopPlatform {
         win::clipboard::clear_private(text);
     }
     fn set_clipboard_image(&self, mime: &str, bytes: &[u8]) -> Result<(), String> {
+        #[cfg(windows)]
+        return win::clipboard::write_received_image(mime, bytes);
+        #[cfg(not(windows))]
         win::clipboard::write_image(mime, bytes)
     }
     fn power(&self, action: PowerAction) -> Result<(), String> {
