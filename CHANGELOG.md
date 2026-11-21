@@ -438,6 +438,12 @@ change things that need a step from you, and its notes say so.
   clipboard sync. Thanks to
   [@w-rakeeb](https://github.com/w-rakeeb)
   ([#508](https://github.com/thtbee/nectarlink/pull/508)).
+- **Your own color for the Home card.** On the phone, **Settings › Appearance › Home card
+  color** sets the color of the PC's card on Home, in any theme: one of the presets or any
+  hex color, with the text kept readable on it. **Follow theme** goes back to the theme's
+  own. Thanks to
+  [@w-rakeeb](https://github.com/w-rakeeb)
+  ([#501](https://github.com/thtbee/nectarlink/pull/501)).
 
 ### Fixed
 

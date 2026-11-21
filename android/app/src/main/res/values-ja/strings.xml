@@ -691,6 +691,10 @@
     <string name="settings_seed_ocean">海</string>
     <string name="settings_seed_sage">セージ</string>
     <string name="settings_seed_black">黒</string>
+    <string name="settings_home_card_color">ホームカードの色</string>
+    <string name="settings_home_card_color_default">テーマに合わせる</string>
+    <string name="settings_home_card_color_custom">カスタムカラー</string>
+    <string name="settings_home_card_color_hex">カラーコード（16進数）</string>
     <string name="settings_amoled">純黒（AMOLED）</string>
     <string name="settings_amoled_hint">OLED画面向けの完全な黒（#000000）表示。</string>
 

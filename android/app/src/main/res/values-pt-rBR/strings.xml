@@ -699,6 +699,10 @@
     <string name="settings_seed_ocean">Oceano</string>
     <string name="settings_seed_sage">Sálvia</string>
     <string name="settings_seed_black">Preto</string>
+    <string name="settings_home_card_color">Cor do cartão da tela inicial</string>
+    <string name="settings_home_card_color_default">Seguir tema</string>
+    <string name="settings_home_card_color_custom">Cor personalizada</string>
+    <string name="settings_home_card_color_hex">Cor hexadecimal</string>
     <string name="settings_amoled">Preto puro (AMOLED)</string>
     <string name="settings_amoled_hint">Superfícies escuras realmente pretas (#000000) para telas OLED.</string>
 
