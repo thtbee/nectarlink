@@ -3895,6 +3895,20 @@ Item {
                                 }
                             }
                         }
+                        Divider { width: parent.width; visible: Preferences.localApiEnabled }
+                        ListRow {
+                            width: parent.width
+                            visible: Preferences.localApiEnabled
+                            iconPath: Icons.bell
+                            title: qsTr("Notifications and messages")
+                            description: qsTr("Tools using the API can also read your phones' notifications and conversations. Apps you hide stay hidden.")
+                            Toggle {
+                                anchors.verticalCenter: parent.verticalCenter
+                                label: qsTr("Notifications and messages")
+                                checked: Preferences.localApiPrivate
+                                onToggled: (on) => Preferences.localApiPrivate = on
+                            }
+                        }
                         Divider { width: parent.width }
                         ListRow {
                             width: parent.width

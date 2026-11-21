@@ -8742,7 +8742,7 @@ O que precisa
         <translation>Diagnóstico, Wake-on-LAN, API e versão</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4109"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4123"/>
         <source>Support NectarLink</source>
         <translation>Apoiar o NectarLink</translation>
     </message>
@@ -9128,7 +9128,7 @@ O que precisa
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="976"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4427"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4441"/>
         <source>Language</source>
         <translation>Idioma</translation>
     </message>
@@ -9312,7 +9312,7 @@ O que precisa
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1611"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4533"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4547"/>
         <source>Unpair</source>
         <translation>Desparear</translation>
     </message>
@@ -9346,12 +9346,12 @@ O que precisa
         <location filename="../qml/pages/SettingsPage.qml" line="1919"/>
         <location filename="../qml/pages/SettingsPage.qml" line="2775"/>
         <location filename="../qml/pages/SettingsPage.qml" line="3570"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3960"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4030"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4043"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4073"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3974"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4044"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4057"/>
         <location filename="../qml/pages/SettingsPage.qml" line="4087"/>
         <location filename="../qml/pages/SettingsPage.qml" line="4101"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4115"/>
         <source>Open</source>
         <translation>Abrir</translation>
     </message>
@@ -10299,7 +10299,7 @@ O que precisa
         <location filename="../qml/pages/SettingsPage.qml" line="3617"/>
         <location filename="../qml/pages/SettingsPage.qml" line="3648"/>
         <location filename="../qml/pages/SettingsPage.qml" line="3685"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4578"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4592"/>
         <source>Clear</source>
         <translation>Limpar</translation>
     </message>
@@ -10480,7 +10480,7 @@ O que precisa
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3791"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4318"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4332"/>
         <source>Network interface</source>
         <translation>Interface de rede</translation>
     </message>
@@ -10492,17 +10492,17 @@ O que precisa
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="2379"/>
         <location filename="../qml/pages/SettingsPage.qml" line="3796"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4325"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4339"/>
         <source>System default</source>
         <translation>Padrão do sistema</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4324"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4338"/>
         <source>%1 · Direct (without a VPN)</source>
         <translation>%1 · Direta (sem VPN)</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4348"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4362"/>
         <source>Could not use this network interface.</source>
         <translation>Não foi possível usar esta interface de rede.</translation>
     </message>
@@ -10634,260 +10634,271 @@ O que precisa
         <translation>Servidor HTTP/SSE local (127.0.0.1:%1) para scripts e ferramentas.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3902"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3903"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3907"/>
+        <source>Notifications and messages</source>
+        <translation>Notificações e mensagens</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3904"/>
+        <source>Tools using the API can also read your phones&apos; notifications and conversations. Apps you hide stay hidden.</source>
+        <translation>Ferramentas que usam a API também podem ler as notificações e conversas dos seus celulares. Apps que você oculta continuam ocultos.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3916"/>
         <source>NectarLink %1</source>
         <translation>NectarLink %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3905"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3919"/>
         <source>This PC: %1</source>
         <translation>Este PC: %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3917"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3931"/>
         <source>Update download</source>
         <translation>Download da atualização</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3938"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3952"/>
         <source>Update to %1</source>
         <translation>Atualizar para %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3939"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3971"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3976"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3953"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3985"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3990"/>
         <source>Check for updates</source>
         <translation>Verificar atualizações</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3948"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3962"/>
         <source>Open logs</source>
         <translation>Abrir logs</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3957"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3971"/>
         <source>What&apos;s new</source>
         <translation>Novidades</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3958"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3972"/>
         <source>What changed since your last update.</source>
         <translation>O que mudou desde a sua última atualização.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3990"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4004"/>
         <source>It&apos;s the same for everyone who uses NectarLink on this PC.</source>
         <translation>É o mesmo para todos que usam o NectarLink neste PC.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4007"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4010"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4021"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4024"/>
         <source>Install updates automatically</source>
         <translation>Instalar atualizações automaticamente</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4008"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4022"/>
         <source>When nobody is using the PC and nothing is in progress.</source>
         <translation>Quando ninguém estiver usando o PC e não houver nada em andamento.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4025"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4039"/>
         <source>Setup walkthrough</source>
         <translation>Passo a passo de configuração</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4026"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4040"/>
         <source>Re-open the setup guide.</source>
         <translation>Reabrir o passo a passo de configuração.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4038"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4052"/>
         <source>Features guide</source>
         <translation>Guia de recursos</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4039"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4053"/>
         <source>What each feature needs and where to find it.</source>
         <translation>Do que cada recurso precisa e onde encontrá-lo.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4067"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4081"/>
         <source>Discord</source>
         <translation>Discord</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4068"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4082"/>
         <source>Our server. Ask questions, share ideas and try new builds with others.</source>
         <translation>Nosso servidor. Tire dúvidas, compartilhe ideias e teste versões novas com outras pessoas.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4083"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4097"/>
         <source>Follow me. I post what&apos;s coming to NectarLink and other things I make.</source>
         <translation>Me siga. Eu posto o que vem por aí no NectarLink e outras coisas que faço.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4096"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4110"/>
         <source>GitHub</source>
         <translation>GitHub</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4097"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4111"/>
         <source>Source code, issues and releases.</source>
         <translation>Código-fonte, issues e versões.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4110"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4124"/>
         <source>NectarLink is free and open source. If it makes your days a little easier, you can help keep it going. Thank you!</source>
         <translation>O NectarLink é gratuito e de código aberto. Se ele deixa seus dias um pouco mais fáceis, você pode ajudar a mantê-lo. Obrigado!</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4115"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4129"/>
         <source>Support</source>
         <translation>Apoiar</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4188"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4202"/>
         <source>Sync a folder</source>
         <translation>Sincronizar uma pasta</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4194"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4208"/>
         <source>The phone asks once to let this PC in. NectarLink there also needs All files access, or this folder under Selected folders only.</source>
         <translation>O celular pede uma vez para liberar este PC. O NectarLink de lá também precisa do Acesso a todos os arquivos, ou desta pasta em Somente pastas selecionadas.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4197"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4228"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4211"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4242"/>
         <source>Folder on the phone</source>
         <translation>Pasta no celular</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4233"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4247"/>
         <source>Folder on this PC</source>
         <translation>Pasta neste PC</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4248"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4262"/>
         <source>Choose…</source>
         <translation>Escolher…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4258"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4272"/>
         <source>Phone to PC</source>
         <translation>Do celular para o PC</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4259"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4273"/>
         <source>PC to phone</source>
         <translation>PC para o celular</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4260"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4274"/>
         <source>Both ways</source>
         <translation>Nas duas direções</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4271"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4285"/>
         <source>New and changed files on the PC are copied to the phone. Nothing on the phone comes to the PC, and nothing is deleted.</source>
         <translation>Arquivos novos e alterados no PC são copiados para o celular. Nada do celular vai para o PC, e nada é excluído.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4273"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4287"/>
         <source>Changes on either side are copied to the other. When a file changed on both, both versions are kept.</source>
         <translation>As alterações em qualquer um dos lados são copiadas para o outro. Se um arquivo mudar dos dois lados, as duas versões serão mantidas.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4274"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4288"/>
         <source>New and changed files on the phone are copied to the PC. Nothing on the PC goes to the phone.</source>
         <translation>Arquivos novos e alterados no celular são copiados para o PC. Nada do PC é enviado ao celular.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4280"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4285"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4294"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4299"/>
         <source>Also remove from the PC</source>
         <translation>Remover também do PC</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4280"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4285"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4294"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4299"/>
         <source>Also remove deleted files</source>
         <translation>Remover também arquivos excluídos</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4282"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4296"/>
         <source>A synced file you delete on one side leaves the other. On the PC it goes to the Recycle Bin. On the phone, photos and videos go to its trash where Android has one, and other files are gone for good.</source>
         <translation>Um arquivo sincronizado que você excluir de um lado também é excluído do outro. No PC, ele vai para a Lixeira. No celular, fotos e vídeos vão para a lixeira, quando o Android tem uma, e os outros arquivos são apagados de vez.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4283"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4297"/>
         <source>A synced file you delete on the phone goes to the PC&apos;s Recycle Bin.</source>
         <translation>Um arquivo sincronizado que você excluir no celular vai para a Lixeira do PC.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4296"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4310"/>
         <source>Add</source>
         <translation>Adicionar</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4365"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4379"/>
         <source>Phone&apos;s hotspot network</source>
         <translation>Rede do hotspot do celular</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4373"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4387"/>
         <source>Wi-Fi networks this PC has joined before. Your system keeps their passwords; NectarLink never sees them.</source>
         <translation>Redes Wi-Fi já usadas por este PC. O sistema guarda as senhas; o NectarLink nunca tem acesso a elas.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4374"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4388"/>
         <source>This PC hasn&apos;t saved any Wi-Fi networks yet. Join the phone&apos;s hotspot once from your system Wi-Fi list first.</source>
         <translation>Este PC ainda não salvou nenhuma rede Wi-Fi. Conecte-se uma vez ao hotspot do celular pela lista de redes Wi-Fi do sistema.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4376"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4390"/>
         <source>Wi-Fi networks this PC has joined before. Windows keeps their passwords; NectarLink never sees them.</source>
         <translation>Redes Wi-Fi já usadas por este PC. O Windows guarda as senhas; o NectarLink nunca tem acesso a elas.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4377"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4391"/>
         <source>This PC hasn&apos;t saved any Wi-Fi networks yet. Join the phone&apos;s hotspot once from Windows&apos; Wi-Fi list first.</source>
         <translation>Este PC ainda não salvou nenhuma rede Wi-Fi. Conecte-se uma vez ao hotspot do celular pela lista de redes Wi-Fi do Windows.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4407"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4421"/>
         <source>Don&apos;t join</source>
         <translation>Não conectar</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4350"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4416"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4444"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4479"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4507"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4364"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4430"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4458"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4493"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4521"/>
         <source>Close</source>
         <translation>Fechar</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4490"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4504"/>
         <source>Play the phone&apos;s microphone into</source>
         <translation>Reproduzir o áudio do microfone do celular em</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4520"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4534"/>
         <source>Unpair %1?</source>
         <translation>Desparear %1?</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4526"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4540"/>
         <source>Both devices forget each other. You can pair them again any time.</source>
         <translation>Os dois dispositivos vão esquecer um ao outro. Você pode pareá-los de novo quando quiser.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4294"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4531"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4575"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4611"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4308"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4545"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4589"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4625"/>
         <source>Cancel</source>
         <translation>Cancelar</translation>
     </message>
@@ -10902,62 +10913,62 @@ O que precisa
         <translation>Envia também o que os gerenciadores de senhas marcam como privado. Sai da área de transferência do celular após um minuto, quando o Android permite, e nunca é guardado no histórico.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3973"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3987"/>
         <source>Looks for a new build every couple of hours, and tells your phone.</source>
         <translation>Procura uma versão nova a cada poucas horas e avisa o celular.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3974"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3988"/>
         <source>Looks for a new release twice a day, and tells your phone.</source>
         <translation>Procura uma versão nova duas vezes por dia e avisa o celular.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3985"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3999"/>
         <source>Update channel</source>
         <translation>Canal de atualização</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3987"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4001"/>
         <source>The newest build from every couple of hours, with the latest fixes and features, and sometimes new bugs. Back on Stable, this PC keeps its build until the next release is newer.</source>
         <translation>A versão mais nova, gerada a cada poucas horas, com as últimas correções e recursos, e às vezes bugs novos. Ao voltar para Estável, este PC mantém a versão atual até sair uma versão estável mais nova.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3988"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4002"/>
         <source>Releases, tested and less often.</source>
         <translation>Versões oficiais, testadas e menos frequentes.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3994"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4008"/>
         <source>Stable</source>
         <translation>Estável</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3995"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4009"/>
         <source>Nightly</source>
         <translation>Nightly</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4455"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4469"/>
         <source>Talk on calls through</source>
         <translation>Falar nas chamadas com</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4474"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4488"/>
         <source>No microphone found on this PC.</source>
         <translation>Nenhum microfone encontrado neste PC.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4597"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4611"/>
         <source>Clear all local history &amp; caches?</source>
         <translation>Apagar todo o histórico e os caches locais?</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4606"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4620"/>
         <source>Deletes clipboard history, Timeline, notification history, cached messages, photo thumbnails and transfer history on this PC. Paired devices, settings and downloaded files are kept.</source>
         <translation>Apaga do PC o histórico da área de transferência, a Linha do tempo, o histórico de notificações, as mensagens em cache, as miniaturas de fotos e o histórico de transferências. Os dispositivos pareados, as configurações e os arquivos baixados são mantidos.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4614"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4628"/>
         <source>Clear everything</source>
         <translation>Limpar tudo</translation>
     </message>

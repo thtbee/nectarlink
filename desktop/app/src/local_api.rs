@@ -21,7 +21,10 @@ use std::{
     io::Write,
     net::SocketAddr,
     path::{Path, PathBuf},
-    sync::{Mutex, OnceLock},
+    sync::{
+        Mutex, OnceLock,
+        atomic::{AtomicBool, Ordering},
+    },
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
@@ -186,7 +189,12 @@ pub fn stop() {
     }
 }
 
+/// Whether `GET /v1/notifications` and `GET /v1/messages` answer
+/// (`localApiPrivate`, its own switch, off by default).
+static PRIVATE_ALLOWED: AtomicBool = AtomicBool::new(false);
+
 fn apply_settings(data_dir: &Path, settings: &Settings) {
+    PRIVATE_ALLOWED.store(settings.local_api_enabled && settings.local_api_private, Ordering::Release);
     let port = if settings.local_api_port == 0 { DEFAULT_PORT } else { settings.local_api_port };
     if !settings.local_api_enabled {
         stop();
@@ -505,6 +513,8 @@ async fn route_request(req: HttpRequest) -> (u16, &'static str, Value) {
         ("POST", "/v1/play-on-phone") => handle_post_play_on_phone(&req.body),
         ("POST", "/v1/camera") => handle_post_camera(&req.body),
         ("GET", "/v1/timeline") => handle_get_timeline(&req.query),
+        ("GET", "/v1/notifications") => handle_get_notifications(&req.query),
+        ("GET", "/v1/messages") => handle_get_messages(&req.query).await,
         _ => (404, "Not Found", json!({ "ok": false, "error": "not_found" })),
     }
 }
@@ -809,6 +819,154 @@ fn handle_get_timeline(query: &HashMap<String, String>) -> (u16, &'static str, V
     (200, "OK", json!({ "ok": true, "items": items }))
 }
 
+/// Most notifications in one answer.
+const MAX_NOTIFICATIONS: u32 = 100;
+/// Most SMS conversations asked of each phone.
+const SMS_THREADS: u32 = 60;
+/// How long a phone gets to send its conversation list.
+const SMS_WAIT: std::time::Duration = std::time::Duration::from_secs(5);
+
+/// The answer while reading notifications and messages is turned off.
+fn not_allowed() -> (u16, &'static str, Value) {
+    (403, "Forbidden", json!({ "ok": false, "error": "not_allowed" }))
+}
+
+/// The paired device `?device=` names (an ID, an ID's start, or part of its
+/// name); `Err` when it names none. No `?device=` is `Ok(None)`: all devices.
+fn device_filter(query: &HashMap<String, String>) -> Result<Option<DeviceId>, ()> {
+    let Some(q) = query.get("device").map(|s| s.trim()).filter(|s| !s.is_empty()) else { return Ok(None) };
+    if let Ok(id) = q.parse::<DeviceId>() {
+        return Ok(Some(id));
+    }
+    let lower = q.to_ascii_lowercase();
+    with_state(|s| {
+        s.devices
+            .iter()
+            .find(|d| {
+                d.id.to_string().starts_with(&lower) || d.info.name.to_ascii_lowercase().contains(&lower)
+            })
+            .map(|d| d.id)
+    })
+    .flatten()
+    .map(Some)
+    .ok_or(())
+}
+
+fn unknown_device() -> (u16, &'static str, Value) {
+    (404, "Not Found", json!({ "ok": false, "error": "unknown_device" }))
+}
+
+/// `GET /v1/notifications`: the phone notifications on this PC, newest first
+/// (ongoing ones first, as in the feed). Apps hidden on the PC stay out.
+fn handle_get_notifications(query: &HashMap<String, String>) -> (u16, &'static str, Value) {
+    if !PRIVATE_ALLOWED.load(Ordering::Acquire) {
+        return not_allowed();
+    }
+    let Ok(device) = device_filter(query) else { return unknown_device() };
+    let limit =
+        query.get("limit").and_then(|s| s.parse::<u32>().ok()).unwrap_or(20).clamp(1, MAX_NOTIFICATIONS)
+            as usize;
+    let items = with_state(|s| {
+        s.notifications
+            .iter()
+            .filter(|n| device.is_none_or(|d| n.device == d))
+            .filter(|n| s.app_rule(&n.notification.app) != crate::state::AppRule::Hidden)
+            .take(limit)
+            .map(|n| {
+                let x = &n.notification;
+                json!({
+                    "id": x.key,
+                    "deviceId": n.device.to_string(),
+                    "app": x.app,
+                    "appName": x.app_name,
+                    "title": x.title,
+                    "text": x.text,
+                    "sub": x.sub,
+                    "timestamp": x.when / 1000,
+                    "silent": x.silent,
+                    "ongoing": x.ongoing,
+                })
+            })
+            .collect::<Vec<_>>()
+    })
+    .unwrap_or_default();
+    (200, "OK", json!({ "ok": true, "notifications": items }))
+}
+
+/// `GET /v1/messages`: conversations, newest first, with unread counts: SMS
+/// and MMS from each connected phone, and chats from notifications (WhatsApp,
+/// Signal...) kept on this PC.
+async fn handle_get_messages(query: &HashMap<String, String>) -> (u16, &'static str, Value) {
+    if !PRIVATE_ALLOWED.load(Ordering::Acquire) {
+        return not_allowed();
+    }
+    let Ok(device) = device_filter(query) else { return unknown_device() };
+    let devices = with_state(|s| {
+        s.devices
+            .iter()
+            .filter(|d| device.is_none_or(|id| d.id == id))
+            .map(|d| {
+                (
+                    d.id,
+                    matches!(d.link, LinkState::Online { .. }) && d.info.os.eq_ignore_ascii_case("android"),
+                )
+            })
+            .collect::<Vec<_>>()
+    })
+    .unwrap_or_default();
+    let mut threads: Vec<(i64, Value)> = Vec::new();
+    let mut unread_total: u64 = 0;
+    if let Some(node) = try_node() {
+        for (id, ask_phone) in devices {
+            for t in node.chat_threads(id) {
+                unread_total += u64::from(t.unread);
+                threads.push((
+                    t.updated_ms,
+                    json!({
+                        "id": t.thread_id,
+                        "deviceId": id.to_string(),
+                        "kind": "chat",
+                        "app": t.app,
+                        "appName": if t.app_name.trim().is_empty() { &t.app } else { &t.app_name },
+                        "title": t.title,
+                        "group": t.is_group,
+                        "lastMessage": t.snippet,
+                        "unread": t.unread,
+                        "timestamp": t.updated_ms / 1000,
+                    }),
+                ));
+            }
+            if !ask_phone {
+                continue;
+            }
+            // A phone that doesn't answer in time leaves its SMS out.
+            if let Ok(Ok(list)) = tokio::time::timeout(SMS_WAIT, node.sms_threads(id, SMS_THREADS)).await {
+                for t in list {
+                    unread_total += u64::from(t.unread);
+                    threads.push((
+                        t.date,
+                        json!({
+                            "id": t.id,
+                            "deviceId": id.to_string(),
+                            "kind": "sms",
+                            "app": "",
+                            "appName": "SMS",
+                            "title": crate::messages::title_of(&t),
+                            "group": t.addresses.len() > 1,
+                            "lastMessage": t.snippet,
+                            "unread": t.unread,
+                            "timestamp": t.date / 1000,
+                        }),
+                    ));
+                }
+            }
+        }
+    }
+    threads.sort_by_key(|t| std::cmp::Reverse(t.0));
+    let threads = threads.into_iter().map(|(_, t)| t).collect::<Vec<_>>();
+    (200, "OK", json!({ "ok": true, "unreadTotal": unread_total, "threads": threads }))
+}
+
 /// The token in an `Authorization: Bearer <token>` value.
 pub(crate) fn bearer_token(value: &str) -> Option<&str> {
     let trimmed = value.trim();
@@ -934,7 +1092,35 @@ mod tests {
         assert_eq!(body["ok"], true);
         assert_eq!(body["text"], "hello from local api");
 
-        // 6. Valid POST /v1/ring, POST /v1/camera, POST /v1/notify, POST /v1/send, GET /v1/timeline.
+        // 6. Notifications and messages stay closed until their own switch is on.
+        for path in ["/v1/notifications", "/v1/messages"] {
+            let (code, body) = raw_http_call(
+                addr,
+                &format!("GET {path} HTTP/1.1\r\nHost: 127.0.0.1\r\nAuthorization: Bearer {token}\r\n\r\n"),
+            )
+            .await;
+            assert_eq!(code, 403, "{path}");
+            assert_eq!(body["error"], "not_allowed", "{path}");
+        }
+        // With it on, they answer (nothing paired in tests), and a device that
+        // isn't paired is an error, not every device.
+        PRIVATE_ALLOWED.store(true, Ordering::Release);
+        let get = |path: &str| {
+            format!("GET {path} HTTP/1.1\r\nHost: 127.0.0.1\r\nAuthorization: Bearer {token}\r\n\r\n")
+        };
+        let (code, body) = raw_http_call(addr, &get("/v1/notifications?limit=5")).await;
+        assert_eq!(code, 200);
+        assert_eq!(body["notifications"], json!([]));
+        let (code, body) = raw_http_call(addr, &get("/v1/messages")).await;
+        assert_eq!(code, 200);
+        assert_eq!(body["unreadTotal"], 0);
+        assert_eq!(body["threads"], json!([]));
+        let (code, body) = raw_http_call(addr, &get("/v1/messages?device=nobody")).await;
+        assert_eq!(code, 404);
+        assert_eq!(body["error"], "unknown_device");
+        PRIVATE_ALLOWED.store(false, Ordering::Release);
+
+        // 7. Valid POST /v1/ring, POST /v1/camera, POST /v1/notify, POST /v1/send, GET /v1/timeline.
         let (code, _) = raw_http_call(
             addr,
             &format!(
