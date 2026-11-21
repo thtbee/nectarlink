@@ -168,9 +168,9 @@ jobs:
             "- It installs over the Nightly it's based on (the phone app is signed with the same key). The next Nightly or release updates it as usual." \
             "- Hit a problem? Say it's a canary and give the version above: in an [issue](https://github.com/$GITHUB_REPOSITORY/issues) or the Hive on Discord: https://discord.gg/AA2Dp8PYqf" \
             "" \
-            "$compare" > notes.md
+            "$compare" > ../notes.md
           # The old one goes first; its tag moves to this commit.
           gh release delete canary --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes 2>/dev/null || true
           gh release create canary * \
             --repo "$GITHUB_REPOSITORY" --target "$COMMIT" --prerelease --latest=false \
-            --title "Canary (untested): $VERSION" --notes-file notes.md
+            --title "Canary (untested): $VERSION" --notes-file ../notes.md
