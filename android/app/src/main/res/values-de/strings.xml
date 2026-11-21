@@ -210,6 +210,8 @@
     <string name="settings_clipboard_title">Zwischenablage</string>
     <string name="settings_clipboard_passwords">Kopierte Passwörter synchronisieren</string>
     <string name="settings_clipboard_passwords_hint">Sendet auch, was Passwort-Manager als privat markieren. Es verschwindet nach einer Minute aus der Zwischenablage des PCs und landet nie im Verlauf.</string>
+    <string name="settings_clipboard_screenshots">Screenshots auf den PC kopieren</string>
+    <string name="settings_clipboard_screenshots_hint">Neue Screenshots landen in der Zwischenablage verbundener PCs, mit denen du sie teilst. Erfordert vollständigen Fotozugriff.</string>
     <string name="settings_clipboard_suggestions">Aktionen für kopierten Text vorschlagen</string>
     <string name="settings_clipboard_suggestions_hint">Aktionen für Text von deinem PC vorschlagen: Links öffnen, Karten, Anrufe, Sendungsverfolgung und E-Mail.</string>
     <string name="clip_received_from">Kopiert von %1$s</string>

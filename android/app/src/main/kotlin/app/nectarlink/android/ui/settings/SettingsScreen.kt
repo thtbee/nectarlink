@@ -926,6 +926,8 @@ fun SettingsScreen(
                         )
                     }
                     SettingRowDivider()
+                    ScreenshotClipboardSetting(onAccessChanged)
+                    SettingRowDivider()
                     val suggestionsTitle = stringResource(R.string.settings_clipboard_suggestions)
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                         Column(Modifier.weight(1f).padding(end = 12.dp)) {
@@ -1963,6 +1965,43 @@ private fun Section(
         ) {
             content()
         }
+    }
+}
+
+@Composable
+private fun ScreenshotClipboardSetting(onAccessChanged: () -> Unit) {
+    val context = LocalContext.current
+    var enabled by remember { mutableStateOf(PhoneClipboard.screenshotSyncSince(context) != Long.MAX_VALUE) }
+    var hasAccess by remember { mutableStateOf(RecentPhotos.hasImageAccess(context)) }
+    val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
+        hasAccess = RecentPhotos.hasImageAccess(context)
+        onAccessChanged()
+    }
+    val title = stringResource(R.string.settings_clipboard_screenshots)
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+            Text(title, style = MaterialTheme.typography.titleSmall)
+            Text(
+                stringResource(R.string.settings_clipboard_screenshots_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (enabled && !hasAccess) {
+                TextButton(onClick = { ask.launch(RecentPhotos.imagePermissions) }) {
+                    Text(stringResource(R.string.action_allow))
+                }
+            }
+        }
+        Switch(
+            checked = enabled,
+            onCheckedChange = {
+                enabled = it
+                PhoneClipboard.setScreenshotSync(context, it)
+                if (it && !hasAccess) ask.launch(RecentPhotos.imagePermissions)
+            },
+            colors = app.nectarlink.android.ui.theme.nectarSwitchColors(),
+            modifier = Modifier.semantics { contentDescription = title },
+        )
     }
 }
 

@@ -4120,6 +4120,13 @@ impl NectarlinkNode {
         self.run(async move { Ok(node.send_clipboard_image(id, mime, bytes).await?) }).await
     }
 
+    /// Sends an automatic image to a connected PC without queueing.
+    pub async fn send_clipboard_image_live(&self, id: String, mime: String, bytes: Vec<u8>) -> Result<()> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.send_clipboard_image_live(id, mime, bytes).await?) }).await
+    }
+
     /// Whether the local clipboard history is enabled.
     pub fn clipboard_history_enabled(&self) -> bool {
         self.node.clipboard_history_enabled()

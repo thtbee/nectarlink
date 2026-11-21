@@ -210,6 +210,8 @@
     <string name="settings_clipboard_title">Pano</string>
     <string name="settings_clipboard_passwords">Kopyalanan parolaları eşitle</string>
     <string name="settings_clipboard_passwords_hint">Parola yöneticilerinin özel olarak işaretlediklerini de gönderir. Bir dakika sonra PC\'nin panosundan silinir ve geçmişte hiç tutulmaz.</string>
+    <string name="settings_clipboard_screenshots">Ekran görüntülerini bilgisayara kopyala</string>
+    <string name="settings_clipboard_screenshots_hint">Yeni ekran görüntüleri, panonuzu paylaştığınız bağlı bilgisayarların panosuna kopyalanır. Fotoğraflara tam erişim gerekir.</string>
     <string name="settings_clipboard_suggestions">Kopyalanan metin için eylem öner</string>
     <string name="settings_clipboard_suggestions_hint">Bilgisayarınızdan gelen metin için eylem önerin: bağlantılar, haritalar, aramalar, kargo takibi ve e-posta.</string>
     <string name="clip_received_from">%1$s cihazından kopyalandı</string>

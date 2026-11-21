@@ -37,6 +37,7 @@ object PhoneClipboard {
 
     private const val PREFS = "clipboard"
     private const val SYNC_PASSWORDS = "sync_passwords"
+    private const val SCREENSHOT_SYNC_SINCE = "screenshot_sync_since"
 
     private fun normalizeClipText(s: String): String = s.replace("\r\n", "\n").replace('\r', '\n')
 
@@ -228,6 +229,15 @@ object PhoneClipboard {
 
     fun setSyncPasswords(context: Context, on: Boolean) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(SYNC_PASSWORDS, on).apply()
+    }
+
+    fun screenshotSyncSince(context: Context): Long =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getLong(SCREENSHOT_SYNC_SINCE, Long.MAX_VALUE)
+
+    fun setScreenshotSync(context: Context, on: Boolean) {
+        val editor = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+        if (on) editor.putLong(SCREENSHOT_SYNC_SINCE, System.currentTimeMillis()) else editor.remove(SCREENSHOT_SYNC_SINCE)
+        editor.apply()
     }
 
     /** A password from a PC: marked sensitive, so Android hides it and keyboards don't keep it. */

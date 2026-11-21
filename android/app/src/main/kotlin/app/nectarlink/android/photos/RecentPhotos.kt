@@ -33,18 +33,21 @@ import java.io.ByteArrayOutputStream
 internal class RecentPhotos(
     context: Context,
     private val onPhoto: (Photo) -> Unit,
+    private val onScreenshot: (Uri, Long) -> Unit,
     private val onChanged: () -> Unit = {},
 ) {
     private val context = context.applicationContext
     private val prefs = context.getSharedPreferences("photos", Context.MODE_PRIVATE)
     private val handler = Handler(Looper.getMainLooper())
     private var observer: ContentObserver? = null
+    @Volatile private var watchingSince = Long.MAX_VALUE
     private val check = Runnable { checkExecutor.execute { checkNow() } }
 
     /** Starts watching (when allowed); only photos from now on are new. */
     fun start() {
         if (observer != null || !hasAccess(context)) return
-        if (!prefs.contains(LAST_SEEN)) prefs.edit { putLong(LAST_SEEN, System.currentTimeMillis() / 1000) }
+        watchingSince = System.currentTimeMillis()
+        if (!prefs.contains(LAST_SEEN)) prefs.edit { putLong(LAST_SEEN, watchingSince / 1000) }
         observer = object : ContentObserver(handler) {
             // A new picture changes several rows (pending, then done): wait
             // for it to settle.
@@ -61,6 +64,7 @@ internal class RecentPhotos(
     fun stop() {
         observer?.let { context.contentResolver.unregisterContentObserver(it) }
         observer = null
+        watchingSince = Long.MAX_VALUE
         handler.removeCallbacks(check)
     }
 
@@ -68,7 +72,9 @@ internal class RecentPhotos(
     private fun checkNow() {
         onChanged()
         val lastSeen = prefs.getLong(LAST_SEEN, System.currentTimeMillis() / 1000)
+        val lastId = prefs.getLong(LAST_ID, Long.MAX_VALUE)
         var newest = lastSeen
+        var newestId = lastId
         val columns = arrayOf(
             MediaStore.Images.Media._ID,
             MediaStore.Images.Media.DISPLAY_NAME,
@@ -82,24 +88,21 @@ internal class RecentPhotos(
             context.contentResolver.query(
                 IMAGES_URI,
                 columns,
-                "${MediaStore.Images.Media.DATE_ADDED} > ?$pending",
-                arrayOf(lastSeen.toString()),
-                "${MediaStore.Images.Media.DATE_ADDED} ASC",
+                "(${MediaStore.Images.Media.DATE_ADDED} > ? OR (${MediaStore.Images.Media.DATE_ADDED} = ? AND ${MediaStore.Images.Media._ID} > ?))$pending",
+                arrayOf(lastSeen.toString(), lastSeen.toString(), lastId.toString()),
+                "${MediaStore.Images.Media.DATE_ADDED} ASC, ${MediaStore.Images.Media._ID} ASC",
             )?.use { cursor ->
                 buildList {
                     while (cursor.moveToNext()) {
                         val added = cursor.getLong(3)
-                        newest = maxOf(newest, added)
+                        val id = cursor.getLong(0)
+                        newest = added
+                        newestId = id
                         val album = cursor.getString(5).orEmpty()
-                        add(
-                            Found(
-                                id = cursor.getLong(0),
-                                name = cursor.getString(1) ?: "photo.jpg",
-                                size = cursor.getLong(2),
-                                taken = cursor.getLong(4).takeIf { it > 0 }?.div(1000) ?: added,
-                                screenshot = album.contains("Screenshot", ignoreCase = true),
-                            ),
-                        )
+                        val name = cursor.getString(1) ?: "photo.jpg"
+                        val taken = cursor.getLong(4).takeIf { it > 0 } ?: added * 1000
+                        add(Found(id, name, cursor.getLong(2), taken, album))
+
                     }
                 }
             }.orEmpty()
@@ -107,18 +110,25 @@ internal class RecentPhotos(
             Log.w(TAG, "can't look for new photos", it)
             return
         }
-        if (newest > lastSeen) {
-            prefs.edit { putLong(LAST_SEEN, newest) }
+        if (newest > lastSeen || newestId != lastId) {
+            prefs.edit {
+                putLong(LAST_SEEN, newest)
+                putLong(LAST_ID, newestId)
+            }
+        }
+        val now = System.currentTimeMillis()
+        found.lastOrNull { isFreshScreenshot(it.album, it.name, it.taken, watchingSince, now) }?.let {
+            onScreenshot(ContentUris.withAppendedId(IMAGES_URI, it.id), it.taken)
         }
         // A burst (a camera's burst mode, a downloaded album) isn't news
         // photo by photo: only the latest few.
         for (photo in found.takeLast(MAX_PER_CHECK)) {
             val thumb = encodeThumbnail(context, IMAGES_URI, photo.id, isVideo = false, PREVIEW_PX, MAX_PREVIEW_BYTES) ?: continue
-            onPhoto(Photo(IMAGE_PREFIX + photo.id, photo.name, photo.size.coerceAtLeast(0L).toULong(), photo.taken, photo.screenshot, thumb))
+            onPhoto(Photo(IMAGE_PREFIX + photo.id, photo.name, photo.size.coerceAtLeast(0L).toULong(), photo.taken / 1000, photo.album.contains("Screenshot", ignoreCase = true), thumb))
         }
     }
 
-    private data class Found(val id: Long, val name: String, val size: Long, val taken: Long, val screenshot: Boolean)
+    private data class Found(val id: Long, val name: String, val size: Long, val taken: Long, val album: String)
 
     companion object {
         private const val TAG = "RecentPhotos"
@@ -126,6 +136,7 @@ internal class RecentPhotos(
             Thread(r, "nectarlink-photos-check").apply { isDaemon = true }
         }
         private const val LAST_SEEN = "lastSeen"
+        private const val LAST_ID = "lastId"
         private const val IMAGE_PREFIX = "media:"
         private const val VIDEO_PREFIX = "video:"
         private const val SETTLE_MS = 1500L
@@ -141,6 +152,19 @@ internal class RecentPhotos(
         /** The gallery's order: when taken, or else when last written (as [dateOf]). */
         private val DATE_KEY =
             "COALESCE(${MediaStore.MediaColumns.DATE_TAKEN}, ${MediaStore.MediaColumns.DATE_MODIFIED} * 1000)"
+
+        /** Full access to images is needed to see new screenshots automatically. */
+        val imagePermissions: Array<String> = when {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> arrayOf(
+                Manifest.permission.READ_MEDIA_IMAGES,
+                Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED,
+            )
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU -> arrayOf(Manifest.permission.READ_MEDIA_IMAGES)
+            else -> arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
+        }
+
+        fun hasImageAccess(context: Context): Boolean =
+            ContextCompat.checkSelfPermission(context, imagePermissions.first()) == PackageManager.PERMISSION_GRANTED
 
         /** Permissions to request from the user for photos and videos. */
         val permissions: Array<String> = when {
@@ -411,3 +435,8 @@ internal class RecentPhotos(
     }
 }
 
+// shortcut: standard screenshot names and albums, extend when another OEM layout is verified.
+internal fun isFreshScreenshot(album: String, name: String, taken: Long, since: Long, now: Long): Boolean =
+    taken >= since && now - taken in 0..15_000L &&
+        (album.equals("Screenshots", ignoreCase = true) || album.equals("Screenshot", ignoreCase = true)) &&
+        name.startsWith("Screenshot", ignoreCase = true)

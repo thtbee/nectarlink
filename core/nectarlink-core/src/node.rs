@@ -3042,6 +3042,26 @@ impl Node {
     /// turned the clipboard off for it, and [`Error::TooLarge`] beyond
     /// [`crate::CLIP_MAX_IMAGE_BYTES`].
     pub async fn send_clipboard_image(&self, peer: DeviceId, mime: String, bytes: Vec<u8>) -> Result<()> {
+        self.send_clipboard_image_inner(peer, mime, bytes, true).await
+    }
+
+    /// Sends an automatic clipboard image only over a live session.
+    pub async fn send_clipboard_image_live(
+        &self,
+        peer: DeviceId,
+        mime: String,
+        bytes: Vec<u8>,
+    ) -> Result<()> {
+        self.send_clipboard_image_inner(peer, mime, bytes, false).await
+    }
+
+    async fn send_clipboard_image_inner(
+        &self,
+        peer: DeviceId,
+        mime: String,
+        bytes: Vec<u8>,
+        queue_if_offline: bool,
+    ) -> Result<()> {
         let Some(peer_rec) = self.shared.store.get_peer(&peer)? else {
             return Err(Error::NotPaired);
         };
@@ -3057,6 +3077,10 @@ impl Node {
         }
         if !peer_rec.caps.is_empty() && !peer_rec.caps.iter().any(|c| c == "clip.image") {
             return Err(Error::Unsupported);
+        }
+        if !queue_if_offline {
+            let session = self.connected(&peer)?;
+            return crate::clipboard::send_image(&self.shared, &session, mime, bytes).await;
         }
         let has_queue = self.shared.store.has_active_queue_for_peer(&peer).unwrap_or(false);
         if !has_queue && let Some(session) = self.shared.session(&peer) {

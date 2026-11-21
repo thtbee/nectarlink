@@ -215,6 +215,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 runCatching { node.photoTaken(photo) }.onFailure { Log.i(TAG, "a new photo wasn't announced", it) }
             }
         },
+        onScreenshot = ::onScreenshot,
         onChanged = {
             enqueueNotificationOp { it.photosChanged() }
         },
@@ -1836,6 +1837,20 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     /** Where a copy goes by itself: connected devices this phone shares its clipboard with. */
     private fun autoClipboardTargets(): List<Device> = _state.value.devices.filter {
         it.online && app.nectarlink.android.clipboard.ClipboardPeers.shares(context, it.id)
+    }
+
+    private fun onScreenshot(uri: Uri, takenAtMs: Long) {
+        if (takenAtMs < PhoneClipboard.screenshotSyncSince(context) || !RecentPhotos.hasImageAccess(context)) return
+        val targets = autoClipboardTargets().filter { !it.isAndroid }.map { it.id }.toSet()
+        if (targets.isEmpty()) return
+        runScope?.launch(Dispatchers.IO) {
+            val currentNode = node ?: return@launch
+            val image = (PhoneClipboard.readImage(context, uri) as? PhoneClipboard.ImageResult.Ready)?.image ?: return@launch
+            for (pc in autoClipboardTargets()) {
+                if (takenAtMs < PhoneClipboard.screenshotSyncSince(context)) break
+                if (pc.id in targets) runCatching { currentNode.sendClipboardImageLive(pc.id, image.mime, image.bytes) }
+            }
+        }
     }
 
     private fun targetPcsForSend(pcId: String?): List<Device> {

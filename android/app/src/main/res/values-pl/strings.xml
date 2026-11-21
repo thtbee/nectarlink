@@ -214,6 +214,8 @@
     <string name="settings_clipboard_title">Schowek</string>
     <string name="settings_clipboard_passwords">Synchronizuj skopiowane hasła</string>
     <string name="settings_clipboard_passwords_hint">Wysyła również treści oznaczone przez menedżery haseł jako prywatne. Są usuwane ze schowka komputera po minucie i nigdy nie trafiają do historii.</string>
+    <string name="settings_clipboard_screenshots">Kopiuj zrzuty ekranu na komputer</string>
+    <string name="settings_clipboard_screenshots_hint">Nowe zrzuty trafiają do schowka połączonych komputerów, którym udostępniasz schowek. Wymaga pełnego dostępu do zdjęć.</string>
     <string name="settings_clipboard_suggestions">Proponuj działania dla skopiowanego tekstu</string>
     <string name="settings_clipboard_suggestions_hint">Proponuje działania dla tekstu z komputera: otwieranie linków i map, nawiązywanie rozmów, śledzenie przesyłek i pisanie e-maili.</string>
     <string name="clip_received_from">Skopiowano z %1$s</string>

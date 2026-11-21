@@ -2089,9 +2089,12 @@ async fn clipboard_images_go_both_ways_with_consent() {
     })
     .await;
     let photo = data(40_000, 4);
-    with_timeout("phone to pc", phone.node.send_clipboard_image(pc_id, "image/jpeg".into(), photo.clone()))
-        .await
-        .expect("sent");
+    with_timeout(
+        "phone to pc",
+        phone.node.send_clipboard_image_live(pc_id, "image/jpeg".into(), photo.clone()),
+    )
+    .await
+    .expect("sent");
     assert_eq!(*pc.platform.images.lock().unwrap(), [("image/jpeg".to_owned(), photo)]);
 
     // Only PNG and JPEG, and not too large.
@@ -2115,6 +2118,15 @@ async fn clipboard_images_go_both_ways_with_consent() {
     with_timeout("still connected", pc.node.send_clipboard(phone_id, "x".into()))
         .await
         .expect_err("still off");
+
+    pc.node.shutdown().await;
+    wait_for(&mut phone, "PC offline", |e| match e {
+        NodeEvent::LinkChanged { device, link: LinkState::Offline { .. } } if *device == pc_id => Some(()),
+        _ => None,
+    })
+    .await;
+    assert!(phone.node.send_clipboard_image_live(pc_id, "image/png".into(), data(100, 3)).await.is_err());
+    assert!(phone.node.send_queue(Some(pc_id)).unwrap().is_empty());
 }
 
 #[tokio::test(flavor = "multi_thread")]

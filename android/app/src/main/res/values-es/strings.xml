@@ -213,6 +213,8 @@
     <string name="settings_clipboard_title">Portapapeles</string>
     <string name="settings_clipboard_passwords">Sincronizar contraseñas copiadas</string>
     <string name="settings_clipboard_passwords_hint">También envía lo que los gestores de contraseñas marcan como privado. Se elimina del portapapeles del PC al cabo de un minuto y nunca se guarda en el historial.</string>
+    <string name="settings_clipboard_screenshots">Copiar capturas al PC</string>
+    <string name="settings_clipboard_screenshots_hint">Las capturas nuevas se copian al portapapeles de los ordenadores conectados con los que lo compartes. Requiere acceso completo a las fotos.</string>
     <string name="settings_clipboard_suggestions">Sugerir acciones para texto copiado</string>
     <string name="settings_clipboard_suggestions_hint">Sugiere acciones para el texto de tu PC: abrir enlaces, mapas, llamadas, seguimiento de paquetes y correo electrónico.</string>
     <string name="clip_received_from">Copiado de %1$s</string>

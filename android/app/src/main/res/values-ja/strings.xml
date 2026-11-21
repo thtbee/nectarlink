@@ -209,6 +209,8 @@
     <string name="settings_clipboard_title">クリップボード</string>
     <string name="settings_clipboard_passwords">コピーしたパスワードを同期する</string>
     <string name="settings_clipboard_passwords_hint">また、パスワードマネージャーが非公開としてマークしているものも送信します。1分後にPCのクリップボードから消去され、履歴に残ることはありません。</string>
+    <string name="settings_clipboard_screenshots">スクリーンショットをPCにコピー</string>
+    <string name="settings_clipboard_screenshots_hint">新しいスクリーンショットを、クリップボードを共有している接続中のPCにコピーします。写真へのフルアクセスが必要です。</string>
     <string name="settings_clipboard_suggestions">コピーしたテキストに対するアクションの提案</string>
     <string name="settings_clipboard_suggestions_hint">PCからのテキストに応じた操作を提案します（リンクを開く、マップ、通話、荷物の追跡、メール）。</string>
     <string name="clip_received_from">%1$sからコピーしました</string>
