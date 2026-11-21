@@ -613,6 +613,9 @@ impl AppState {
             | NodeEvent::Call { .. }
             | NodeEvent::CallLogChanged { .. }
             | NodeEvent::ContactsChanged { .. }
+            // crate::report_requests
+            | NodeEvent::DiagLogAsked { .. }
+            | NodeEvent::DiagLog { .. }
             | NodeEvent::SmsChanged { .. }
             | NodeEvent::Mirroring { .. }
             | NodeEvent::MirrorNotice { .. }

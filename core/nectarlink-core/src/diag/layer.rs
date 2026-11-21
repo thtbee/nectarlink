@@ -48,12 +48,15 @@ pub const SAFE_FIELDS: &[&str] = &[
     "from",
     "hotkey",
     "kind",
+    "language",
     "layout",
+    "location",
     "path",
     "peer",
     "reason",
     "retry_in",
     "session",
+    "sig",
     "state",
     "t",
     "trigger",
@@ -67,7 +70,10 @@ pub struct RingLayer {
 }
 
 impl RingLayer {
+    /// The first layer made is the app's own log: what a report includes
+    /// ([`super::ring::active_files`]).
     pub fn new(ring: Arc<RingLog>) -> RingLayer {
+        super::ring::set_active(&ring);
         RingLayer { ring }
     }
 }
@@ -210,7 +216,7 @@ fn write_time(out: &mut String, at: SystemTime) {
 }
 
 /// The date `days` after 1970-01-01 (Howard Hinnant's algorithm).
-fn civil_from_days(days: i64) -> (i64, u32, u32) {
+pub(crate) fn civil_from_days(days: i64) -> (i64, u32, u32) {
     let z = days + 719_468;
     let era = z.div_euclid(146_097);
     let doe = z.rem_euclid(146_097);
@@ -237,6 +243,28 @@ mod tests {
         let subscriber = tracing_subscriber::registry().with(RingLayer::new(ring.clone()));
         tracing::subscriber::with_default(subscriber, f);
         fs::read_to_string(&ring.files()[0]).unwrap()
+    }
+
+    /// Personal details the way real code tends to log them by mistake: none
+    /// may reach the file.
+    #[test]
+    fn canary_personal_details_never_reach_the_log() {
+        let file = "/media/usb/Holiday Photos/CANARY-FILE.jpg";
+        let out = logged(|| {
+            let target = "nectarlink_core::canary";
+            tracing::info!(target: "nectarlink_core::canary", text = "CANARY-NOTE dinner at 7", "notification posted");
+            tracing::info!(target: "nectarlink_core::canary", name = "CANARY-NAME Mum", "contact synced");
+            tracing::info!(target: "nectarlink_core::canary", clip = "CANARY-CLIP hunter2", "clipboard sent");
+            tracing::info!(target: "nectarlink_core::canary", url = "https://CANARY-URL.example/x", "link opened");
+            tracing::info!(target: "nectarlink_core::canary", number = "+447700900123", "sms sent");
+            tracing::warn!(target: "nectarlink_core::canary", error = format!("can't open {file}: denied"), "send failed");
+            tracing::warn!(target: "nectarlink_core::canary", "dialing 203.0.113.77:53319 for {target}");
+            tracing::warn!(target: "iroh::canary", path = "CANARY-THIRD-PARTY", "library line");
+        });
+        for marker in ["CANARY-", "dinner", "Mum", "hunter2", "+4477", "Holiday", "203.0.113.77"] {
+            assert!(!out.contains(marker), "{marker} reached the log:\n{out}");
+        }
+        assert_eq!(out.lines().count(), 8, "{out}");
     }
 
     #[test]

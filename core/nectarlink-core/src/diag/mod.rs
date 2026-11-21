@@ -10,9 +10,15 @@
 //! ([`redact`]). It's kept in two files of a fixed size ([`ring`]), so it
 //! never grows past that however long the app runs.
 
+pub mod crash;
+pub mod health;
+pub mod known;
 pub mod layer;
 pub mod redact;
+pub mod report;
 pub mod ring;
+pub mod send;
+pub mod usage;
 
 pub use layer::RingLayer;
 pub use redact::{addr, init_roots, path, peer};

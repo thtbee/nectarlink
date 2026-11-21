@@ -800,6 +800,7 @@ async fn handle(
             && crate::mirror::handle(shared, session, &env).await? => {}
         t if t.starts_with("webcam.") && crate::webcam::handle(shared, session, &env).await? => {}
         t if t.starts_with("mic.") && crate::mic::handle(shared, session, &env).await? => {}
+        t if t.starts_with("diag.") && crate::diag_ask::handle(shared, session, &env).await? => {}
         t if t.starts_with("elevated.usb") && crate::elevated_usb::handle(shared, session, &env).await? => {}
         t if t.starts_with("camera.capture.")
             && crate::continuity_camera::handle(shared, session, &env).await? => {}

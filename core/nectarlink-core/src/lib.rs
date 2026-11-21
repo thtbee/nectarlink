@@ -17,6 +17,7 @@ mod contacts;
 pub mod continuity_camera;
 pub mod deck;
 pub mod diag;
+mod diag_ask;
 #[cfg(target_os = "linux")]
 pub mod direct_network;
 pub(crate) mod elevated_usb;
@@ -73,6 +74,7 @@ pub use deck::{
     deck_icons, deck_kinds, format_shortcut, is_valid_app_path, is_valid_command, is_valid_deck_id,
     is_valid_http_url, is_valid_shortcut, is_valid_snippet,
 };
+pub use diag_ask::{PeerLog, PeerPart};
 pub use error::{Error, Result, Side};
 pub use events::{
     ConnectionPath, DiscoveredDevice, LinkState, NodeEvent, PairedDevice, PairingEvent, PairingFailure,

@@ -45,6 +45,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -98,7 +99,9 @@ import app.nectarlink.android.ui.webcam.WebcamScreen
 import app.nectarlink.android.webcam.WebcamService
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
     @Volatile
@@ -362,6 +365,7 @@ private sealed interface ScreenRoute {
     data class Failed(val message: String) : ScreenRoute
     data object Walkthrough : ScreenRoute
     data object FeaturesGuide : ScreenRoute
+    data object Report : ScreenRoute
     data object Pairing : ScreenRoute
     data class Webcam(val pcId: String) : ScreenRoute
     data class Recorder(val pcId: String) : ScreenRoute
@@ -397,6 +401,25 @@ private fun App(
     var manualWalkthroughOpen by rememberSaveable { mutableStateOf(false) }
     var activeFirstRunWalkthrough by rememberSaveable { mutableStateOf(false) }
     var featuresGuideOpen by rememberSaveable { mutableStateOf(false) }
+    var reportOpen by rememberSaveable { mutableStateOf(false) }
+    var crashCard by remember { mutableStateOf<app.nectarlink.core.CrashCard?>(null) }
+    var crashSend by remember { mutableStateOf(app.nectarlink.android.ui.settings.CrashSend.Idle) }
+    var crashFixedIn by remember { mutableStateOf<String?>(null) }
+    val crashScope = rememberCoroutineScope()
+    val crashReady = state.status is CoreStatus.Ready
+    LaunchedEffect(crashReady) {
+        if (crashReady) {
+            crashCard = withContext(Dispatchers.IO) {
+                runCatching { app.nectarlink.core.crashCard(app.nectarlink.android.BuildConfig.VERSION_NAME) }.getOrNull()
+            }
+            // Already fixed in a newer version? Then the card offers the update.
+            if (crashCard != null) {
+                crashFixedIn = withContext(Dispatchers.IO) {
+                    runCatching { app.nectarlink.android.diag.Reports.knownFix() }.getOrNull()
+                }
+            }
+        }
+    }
     var pendingHighlightTarget by rememberSaveable { mutableStateOf<GuideHighlightTarget?>(null) }
     var remotePcId by rememberSaveable { mutableStateOf<String?>(null) }
     var remoteInitialMode by rememberSaveable { mutableStateOf(RemoteMode.Touchpad) }
@@ -543,6 +566,7 @@ private fun App(
         state.status is CoreStatus.Failed -> ScreenRoute.Failed(state.status.message)
         showWalkthrough -> ScreenRoute.Walkthrough
         featuresGuideOpen -> ScreenRoute.FeaturesGuide
+        reportOpen -> ScreenRoute.Report
         pairing || state.pairing != PairingState.Idle -> ScreenRoute.Pairing
         webcamDevice != null -> ScreenRoute.Webcam(webcamDevice.id)
         recordDevice != null -> ScreenRoute.Recorder(recordDevice.id)
@@ -698,6 +722,17 @@ private fun App(
                             pairing = true
                         },
                         onAccessChanged = core::refreshNotificationAccess,
+                        modifier = Modifier.fillMaxSize().padding(padding),
+                    )
+                }
+            }
+            ScreenRoute.Report -> {
+                Scaffold(snackbarHost = { SnackbarHost(snackbar) }) { padding ->
+                    app.nectarlink.android.ui.settings.ReportScreen(
+                        state = state,
+                        onAsk = core::reportAsk,
+                        reportLogs = core.reportLogs,
+                        onBack = { reportOpen = false },
                         modifier = Modifier.fillMaxSize().padding(padding),
                     )
                 }
@@ -877,6 +912,53 @@ private fun App(
                             Tab.Home -> saveableStateHolder.SaveableStateProvider("tab_home") {
                                 HomeScreen(
                                     state = state,
+                                    crashCard = crashCard?.let { card ->
+                                        {
+                                            val context = LocalContext.current
+                                            app.nectarlink.android.ui.settings.CrashCardView(
+                                                send = crashSend,
+                                                fixedIn = crashFixedIn,
+                                                onUpdate = {
+                                                    (context.applicationContext as app.nectarlink.android.NectarlinkApplication).updater.checkNow()
+                                                    app.nectarlink.core.crashCardDone()
+                                                    crashCard = null
+                                                },
+                                                onSend = {
+                                                    crashSend = app.nectarlink.android.ui.settings.CrashSend.Sending
+                                                    crashScope.launch {
+                                                        val sent = withContext(Dispatchers.IO) {
+                                                            runCatching {
+                                                                app.nectarlink.android.diag.Reports.sendCrash(context, card, state.devices)
+                                                            }.getOrDefault(false)
+                                                        }
+                                                        crashSend = if (sent) {
+                                                            app.nectarlink.android.ui.settings.CrashSend.Sent
+                                                        } else {
+                                                            app.nectarlink.android.ui.settings.CrashSend.Failed
+                                                        }
+                                                        if (sent) {
+                                                            app.nectarlink.core.crashCardDone()
+                                                            kotlinx.coroutines.delay(2500)
+                                                            crashCard = null
+                                                        }
+                                                    }
+                                                },
+                                                onLookFirst = {
+                                                    app.nectarlink.core.crashCardDone()
+                                                    crashCard = null
+                                                    reportOpen = true
+                                                },
+                                                onNotNow = {
+                                                    app.nectarlink.core.crashCardDone()
+                                                    crashCard = null
+                                                },
+                                                onOff = {
+                                                    app.nectarlink.core.crashCardOff()
+                                                    crashCard = null
+                                                },
+                                            )
+                                        }
+                                    },
                                     onRing = core::ring,
                                     onStopRinging = core::stopRinging,
                                     onPairNew = { pairing = true },
@@ -1063,6 +1145,7 @@ private fun App(
                                     onOpenFeaturesGuide = {
                                         featuresGuideOpen = true
                                     },
+                                    onReportProblem = { reportOpen = true },
                                     highlightTarget = pendingHighlightTarget,
                                     onHighlightConsumed = { pendingHighlightTarget = null },
                                     modifier = Modifier.fillMaxSize(),

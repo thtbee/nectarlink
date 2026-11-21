@@ -8,6 +8,21 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Report a problem.** **Settings › Connection & About › Report a problem** on the PC (and at
+  the bottom of the Connection Doctor) puts what you say went wrong together with what helps
+  find the cause: versions, the Doctor's checks, how features have been doing, recent crashes
+  and the recent log. You read the whole report first and can leave any part out. **Send**
+  files it as an issue for you, no GitHub account needed; **Open on GitHub** fills in a new
+  issue and copies the report to paste into it. The phone has its own **Report a problem** in
+  Settings, and each app asks the other for its details; the other device's log is added only
+  when you tap **Share** on it.
+- **After a crash**, both apps show a small card offering to send a crash report (where in
+  NectarLink it happened and the versions, never the log), once per crash. When a newer version
+  already fixes it, the card offers the update instead. **Don't ask about crashes** turns it
+  off. You also get a notification when someone replies to a report you sent, or closes it.
+- **An anonymous daily count.** Once a day each app sends its version, platform and device
+  model, and how features did, with no ID ([what's sent](docs/guide/privacy-and-security.md)). Crashes are recorded on
+  both apps now, and the phone keeps its own small log.
 - **What's new, in the app.** The sparkle button at the top of the PC app, and on the
   phone's Home, lists what changed since you last looked, in short points by category,
   with a link to the full release notes. A dot on it means something new arrived with an

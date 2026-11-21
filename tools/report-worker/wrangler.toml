@@ -1,0 +1,28 @@
+# The report service. Deploy guide: README.md.
+name = "nectarlink-reports"
+main = "src/index.ts"
+compatibility_date = "2026-11-01"
+workers_dev = true
+preview_urls = false
+
+[vars]
+REPO = "thtbee/nectarlink"
+GITHUB_APP_ID = "5845100"
+GITHUB_INSTALLATION = "183952957"
+POW_BITS = "20"
+DAILY_ISSUES = "50"
+SENDER_DAILY = "5"
+# GITHUB_APP_KEY is a secret: `npx wrangler secret put GITHUB_APP_KEY`.
+
+[[d1_databases]]
+binding = "DB"
+database_name = "nectarlink-reports"
+database_id = "d6989e74-8119-42cf-892e-915d0ae23742"
+migrations_dir = "migrations"
+
+[triggers]
+crons = ["*/15 * * * *"]
+
+[observability]
+enabled = true
+head_sampling_rate = 1

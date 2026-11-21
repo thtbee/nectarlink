@@ -2267,7 +2267,7 @@ mod imp {
         let sender = match runtime.block_on(node.mirror_open(peer)) {
             Ok(sender) => sender,
             Err(error) => {
-                tracing::warn!(%peer, %error, "couldn't open PC mirror stream to phone");
+                tracing::warn!(peer = %peer.short(), %error, "couldn't open PC mirror stream to phone");
                 #[cfg(target_os = "linux")]
                 if wayland.is_some() {
                     drop(wayland);
@@ -2349,9 +2349,9 @@ mod imp {
         let mut window_capture: Option<win::window_capture::WindowCapture> = None;
         let _sound = watched.is_some().then(|| SoundToPhone::start(peer));
         if watched.is_some() {
-            tracing::info!(%peer, fps, bitrate, "streaming a player to the phone");
+            tracing::info!(peer = %peer.short(), fps, bitrate, "streaming a player to the phone");
         } else {
-            tracing::info!(%peer, fps, bitrate, "sharing this PC's screen");
+            tracing::info!(peer = %peer.short(), fps, bitrate, "sharing this PC's screen");
         }
 
         #[cfg(target_os = "linux")]
@@ -2383,7 +2383,7 @@ mod imp {
             if watched.is_some() && place.is_none() {
                 // The player's window can't be found. Not the screen instead:
                 // that would show the phone whatever else is on it.
-                tracing::info!(%peer, "can't find the player's window; stopping");
+                tracing::info!(peer = %peer.short(), "can't find the player's window; stopping");
                 crate::bridge::app::show_message(crate::i18n::tr!(
                     "PcMirror",
                     "Can't find the player's window. Play the video on this PC again, then turn on Play on phone."
@@ -2597,7 +2597,7 @@ mod imp {
             if stats_since.elapsed() >= Duration::from_secs(10) {
                 let secs = stats_since.elapsed().as_secs_f64();
                 tracing::info!(
-                    %peer,
+                    peer = %peer.short(),
                     fps = format!("{:.1}", stats.frames as f64 / secs),
                     kbps = (stats.bytes as f64 * 8.0 / secs / 1000.0) as u64,
                     keyframes = stats.keyframes,
@@ -2628,7 +2628,7 @@ mod imp {
                 return;
             }
         }
-        tracing::info!(%peer, "stopped sharing this PC's screen");
+        tracing::info!(peer = %peer.short(), "stopped sharing this PC's screen");
         sender.close();
         cleanup_session(&stop);
     }
@@ -2636,7 +2636,7 @@ mod imp {
     #[cfg(target_os = "linux")]
     fn finish_failed_capture(peer: DeviceId, stop: &Arc<AtomicBool>, error: &anyhow::Error) {
         if cleanup_session(stop) && !stop.load(Ordering::Acquire) {
-            tracing::warn!(%peer, error = %format_args!("{error:#}"), "Wayland screen sharing stopped");
+            tracing::warn!(peer = %peer.short(), error = %format_args!("{error:#}"), "Wayland screen sharing stopped");
             if let Some(node) = core_host::node() {
                 core_host::spawn(async move {
                     // A retry can take over while resources from the old attempt close.

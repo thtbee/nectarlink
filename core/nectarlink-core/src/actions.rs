@@ -420,14 +420,14 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
         types::PC_WAKE_INFO => {
             let info: PcWakeInfo = env.body()?;
             if !info.is_valid() {
-                tracing::debug!(%peer, "ignoring invalid pc.wake_info");
+                tracing::debug!(peer = %peer.short(), "ignoring invalid pc.wake_info");
                 return Ok(true);
             }
             let info = info.sanitized();
             let stored = (!info.macs.is_empty()).then_some(info);
             let can_wake = stored.is_some();
             if let Err(e) = shared.store.update_wake_info(&peer, stored.as_ref()) {
-                tracing::warn!(%peer, error = %e, "couldn't store wake info");
+                tracing::warn!(peer = %peer.short(), error = %e, "couldn't store wake info");
             }
             shared.emit(NodeEvent::WakeInfoChanged { device: peer, can_wake });
             return Ok(true);

@@ -1,0 +1,33 @@
+name: Report from the app
+description: Opened by Report a problem in NectarLink, with the details filled in.
+labels: [bug, from-app]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. NectarLink copied your report: paste it into the
+        **Report** box below. Everything here is public.
+  - type: input
+    id: area
+    attributes:
+      label: Area
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+    validations:
+      required: true
+  - type: textarea
+    id: report
+    attributes:
+      label: Report
+      description: Paste the report NectarLink copied (Ctrl+V).
+      render: text
+    validations:
+      required: true

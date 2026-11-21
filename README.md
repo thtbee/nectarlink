@@ -184,9 +184,11 @@ in light and dark. In English, German, Turkish, Simplified Chinese, Brazilian Po
   switches. Remote control of the PC, shell commands and phone storage are off
   until you allow them.
 - **The only internet traffic** is the update check against GitHub (which you
-  can turn off), and, if you turn it on, **Connect over mobile data**, which
-  relays encrypted traffic it can't read. Voice typing uses your phone's own
-  speech recognizer, which may use its provider's servers.
+  can turn off), an anonymous daily count (app version, platform and device
+  model, no ID), problem reports you choose to send, and, if you turn it on,
+  **Connect over mobile data**, which relays encrypted traffic it can't read.
+  Voice typing uses your phone's own speech recognizer, which may use its
+  provider's servers.
 
 Details: [Privacy and security](docs/guide/privacy-and-security.md) and the
 [security model](docs/technical/security-model.md).

@@ -251,6 +251,15 @@ pub fn can_install_unattended() -> bool {
 /// or sooner when asked ([`check_soon`]), while automatic checks are on.
 pub fn start() {
     if !can_update() {
+        // No update checks here, but the daily count and a report that
+        // couldn't be sent still go.
+        let _ = std::thread::Builder::new().name("reports".into()).spawn(|| {
+            std::thread::sleep(FIRST_CHECK);
+            loop {
+                crate::bridge::report::follow_up();
+                std::thread::sleep(Duration::from_secs(6 * 3600));
+            }
+        });
         return;
     }
     let spawned = std::thread::Builder::new().name("updates".into()).spawn(|| {
@@ -260,6 +269,7 @@ pub fn start() {
             if AUTO.load(Ordering::Relaxed) {
                 check_now(false);
             }
+            crate::bridge::report::follow_up();
             // While an update waits to install itself, look for a quiet moment.
             let next_check = checked + check_every();
             while let Some(left) = next_check.checked_duration_since(Instant::now()) {
@@ -925,6 +935,7 @@ pub fn run_service() -> ExitCode {
     let log_path =
         std::env::current_exe().ok().and_then(|exe| exe.parent().map(|dir| dir.join("update.log")));
     let log = |message: &str| {
+        // log-ok: the update service's own fixed lines, also written to update.log.
         tracing::info!("{message}");
         if let Some(path) = &log_path {
             let line = format!("{} {message}\n", unix_seconds_now());
@@ -950,7 +961,7 @@ pub fn run_elevated(channel: Option<&str>) -> ExitCode {
     if let Some(channel) = channel.and_then(Channel::parse) {
         *CHANNEL.lock().unwrap_or_else(|e| e.into_inner()) = Some(channel);
     }
-    let log = |message: &str| tracing::info!("{message}");
+    let log = |message: &str| tracing::info!(step = %message, "update");
     install_latest(&log, true)
 }
 

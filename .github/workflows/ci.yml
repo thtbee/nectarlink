@@ -71,6 +71,11 @@ jobs:
       - name: Format
         if: runner.os == 'Linux'
         run: cargo fmt --all --check
+      - name: Log lines keep personal details out
+        if: runner.os == 'Linux'
+        run: |
+          python3 -m unittest discover -s .github/scripts -p 'test_check_log_privacy.py'
+          python3 .github/scripts/check_log_privacy.py
       - name: Clippy
         shell: bash
         run: cargo clippy --locked $CORE_CRATES --all-targets -- -D warnings
@@ -414,6 +419,27 @@ jobs:
           name: nectarlink-android-debug
           path: android/app/build/outputs/apk/debug/*.apk
           retention-days: 14
+
+  report-worker:
+    name: Report service
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tools/report-worker
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: tools/report-worker/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - name: Types
+        run: npx tsc --noEmit
+      - name: Tests (in the Workers runtime)
+        run: npx vitest run
 
   policy:
     name: Licenses and dependencies

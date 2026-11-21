@@ -386,6 +386,10 @@
             android:name=".mic.MicDeclineReceiver"
             android:exported="false" />
 
+        <receiver
+            android:name=".diag.LogAnswerReceiver"
+            android:exported="false" />
+
         <service
             android:name=".webcam.WebcamService"
             android:exported="false"

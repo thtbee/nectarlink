@@ -27,7 +27,8 @@ Item {
         { id: "agents", title: qsTr("AI agents"), icon: Icons.terminal, subtitle: qsTr("Assistants that use your devices") },
         { id: "storage", title: qsTr("Storage & Privacy"), icon: Icons.clipboardList, subtitle: qsTr("History, caches & retention") },
         { id: "connection", title: qsTr("Connection & About"), icon: Icons.wifi, subtitle: qsTr("Doctor, Wake-on-LAN, API & version") },
-        { id: "support", title: qsTr("Community"), icon: Icons.heart, subtitle: qsTr("Discord, news and support") }
+        { id: "support", title: qsTr("Community"), icon: Icons.heart, subtitle: qsTr("Discord, news and support") },
+        { id: "report", title: qsTr("Report a problem"), icon: Icons.warning, subtitle: qsTr("Tell us what went wrong") }
     ]
 
     // The languages the app speaks besides the system's ({ code, name }).
@@ -3962,6 +3963,14 @@ Item {
                                     text: qsTr("Open logs")
                                     onClicked: Qt.openUrlExternally(AppController.logsUrl())
                                 }
+                                Button {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    variant: "outline"
+                                    size: "sm"
+                                    iconPath: Icons.warning
+                                    text: qsTr("Report a problem")
+                                    onClicked: Report.open()
+                                }
                             }
                         }
                         Divider { width: parent.width }
@@ -4129,6 +4138,31 @@ Item {
                                 text: qsTr("Support")
                                 onClicked: Links.open("donate")
                             }
+                        }
+                    }
+                }
+            }
+
+            // ================================================================
+            // REPORT A PROBLEM
+            // ================================================================
+            Column {
+                visible: page.currentSection === "report"
+                width: visible ? parent.width : 0
+                spacing: Theme.gutter
+
+                Card {
+                    width: parent.width
+                    ListRow {
+                        width: parent.width
+                        iconPath: Icons.warning
+                        title: qsTr("Report a problem")
+                        description: qsTr("Tell us what went wrong. You see the whole report before it goes anywhere.")
+                        Button {
+                            variant: "fill"
+                            size: "sm"
+                            text: qsTr("Start")
+                            onClicked: Report.open()
                         }
                     }
                 }

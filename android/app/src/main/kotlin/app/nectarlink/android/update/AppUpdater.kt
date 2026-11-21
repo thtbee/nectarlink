@@ -219,6 +219,8 @@ class AppUpdater(context: Context) {
             _state.value = State.Checking
             val found = withContext(Dispatchers.IO) {
                 runCatching { latest(channel) }.onFailure { Log.i(TAG, "couldn't check for updates", it) }
+                    // A report that couldn't be sent goes now; queued ones learn their issue.
+                    .also { runCatching { app.nectarlink.android.diag.Reports.followUp(context) } }
             }
             // The channel changed while this ran (its own check found this one
             // busy): what was found is for the old one, so check the new one.

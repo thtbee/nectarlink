@@ -160,6 +160,9 @@ internal class PhonePlatform(
 
     override fun callDialOn(number: String, sim: String): Boolean = calls().dialOn(number, sim)
 
+    override fun diagFacts(): app.nectarlink.core.ReportDevice? =
+        runCatching { app.nectarlink.android.diag.Reports.phone(context) }.getOrNull()
+
     override fun contacts(query: String?, offset: UInt, limit: UInt): List<Contact> =
         contacts().list(query, offset.toInt(), limit.toInt())
 

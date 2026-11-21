@@ -177,6 +177,8 @@ import kotlinx.coroutines.withContext
 @Composable
 fun HomeScreen(
     state: CoreState,
+    /** The crash card, when there's a crash to offer to report. */
+    crashCard: (@Composable () -> Unit)? = null,
     onRing: (id: String, on: Boolean) -> Unit,
     onStopRinging: () -> Unit,
     onPairNew: () -> Unit,
@@ -310,6 +312,7 @@ fun HomeScreen(
                 if (state.webcamRequest != null) add("webcam_request")
                 if (state.micRequestFrom?.takeIf { it != micStreamingTo } != null) add("mic_request")
                 if (state.storageRequestedFrom != null) add("storage_request")
+                if (crashCard != null) add("crash_card")
                 add("update_card")
                 if (!backgroundServiceEnabled) add("background_connection_off")
                 if (!state.localNetwork) add("local_network_setup")
@@ -627,6 +630,9 @@ fun HomeScreen(
                     }
                 }
             }
+        }
+        if (crashCard != null) {
+            item(key = "crash_card", contentType = "request") { crashCard() }
         }
         item(key = "update_card", contentType = "update") { UpdateCard(updater) }
         if (!backgroundServiceEnabled) {

@@ -26,6 +26,9 @@ QtObject {
     function noteCommandPaletteShown() {}
     function runCommandPalette(id) {}
     function searchCommandPalette(query) {}
+    property string copied: ""
+    function copyText(text) { copied = text }
+    function checkForUpdates() {}
     function runDoctor() {}
     function doctorFix(id) {}
 }

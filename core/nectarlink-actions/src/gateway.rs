@@ -466,7 +466,7 @@ impl Gateway {
             duration_ms: r.started.elapsed().as_millis() as i64,
         };
         if let Err(e) = self.store.log(&row) {
-            tracing::warn!("agent activity not saved: {e}");
+            tracing::warn!(error = %e, "agent activity not saved");
         }
     }
 }

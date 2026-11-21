@@ -1021,6 +1021,10 @@ NativeWindow {
         }
     }
 
+    CrashCard {
+        eligible: AppController.status === "ready" && !window.showWalkthrough && window.visible
+    }
+
     StarPrompt {
         eligible: AppController.status === "ready" && !window.showWalkthrough && window.active
         onStarred: Links.open("repo")
@@ -1302,6 +1306,22 @@ NativeWindow {
         active: false
         source: active ? "qrc:/qt/qml/app/nectarlink/qml/components/DoctorSheet.qml" : ""
         onLoaded: item.open()
+    }
+    Loader {
+        id: reportLoader
+        anchors.fill: parent
+        active: false
+        source: active ? "qrc:/qt/qml/app/nectarlink/qml/components/ReportSheet.qml" : ""
+        onLoaded: item.open()
+    }
+    Connections {
+        target: Report
+        function onRequested() {
+            if (reportLoader.active && reportLoader.item)
+                reportLoader.item.open()
+            else
+                reportLoader.active = true
+        }
     }
     Connections {
         target: AppController

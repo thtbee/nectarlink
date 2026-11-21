@@ -54,7 +54,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import app.nectarlink.android.ui.AppLanguage
-import app.nectarlink.android.ui.StarNotification
 import androidx.compose.material3.RadioButton
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.ui.res.pluralStringResource
@@ -144,6 +143,7 @@ fun SettingsScreen(
     onOpenRelaySettings: () -> Unit = {},
     onOpenWalkthrough: () -> Unit = {},
     onOpenFeaturesGuide: () -> Unit = {},
+    onReportProblem: () -> Unit = {},
     highlightTarget: GuideHighlightTarget? = null,
     onHighlightConsumed: () -> Unit = {},
     modifier: Modifier = Modifier,
@@ -1235,6 +1235,12 @@ fun SettingsScreen(
                         body = stringResource(R.string.support_body),
                         action = stringResource(R.string.support_action),
                     ) { app.nectarlink.android.ui.Link.open(context, app.nectarlink.android.ui.Link.DONATE) }
+                    SettingRowDivider()
+                    CommunityRow(
+                        title = stringResource(R.string.report_title),
+                        body = stringResource(R.string.report_entry_body),
+                        action = stringResource(R.string.clip_action_open),
+                    ) { onReportProblem() }
                 }
             }
         }

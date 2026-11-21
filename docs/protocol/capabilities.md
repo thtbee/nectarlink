@@ -28,6 +28,7 @@ capability is missing.
 | `clip.image` | Accepts images on its clipboard ([clipboard service](clipboard.md)) | app update |
 | `media.control` | Shares its media players for remote control ([media service](media.md); phone: needs notification access) | phone: notification access · desktop: app update |
 | `media.remote` | Shows and controls other devices' media players | app update |
+| `diag.report` | Answers `diag.ask` with its part of a problem report; shares its log only when its user taps Share ([problem reports](diag.md)) | app update |
 
 > **LocalSend v2.1 LAN interop:** Unpaired LocalSend discovery and file transfer
 > (`224.0.0.167:53317` UDP multicast + HTTP/HTTPS `/api/localsend/v2/*` on TCP

@@ -330,7 +330,7 @@ fn task_notify(device: Option<String>, task: nectarlink_core::TaskNotify) {
                 };
                 for d in targets {
                     if let Err(e) = node.task_notify(Some(d.id), task.clone()).await {
-                        tracing::debug!(device = %d.id, error = %e, "task.notify wasn't delivered");
+                        tracing::debug!(device = %d.id.short(), error = %e, "task.notify wasn't delivered");
                     }
                 }
             }
