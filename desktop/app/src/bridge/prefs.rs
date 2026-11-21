@@ -123,6 +123,8 @@ pub mod qobject {
         #[qproperty(bool, local_api_enabled)]
         /// TCP port for the localhost automation API (default `53320`).
         #[qproperty(i32, local_api_port)]
+        /// The local API may read the phone's notifications and conversations.
+        #[qproperty(bool, local_api_private, cxx_name = "localApiPrivate")]
         /// Path to `<data_dir>/api-token.json` containing the bearer token.
         #[qproperty(QString, local_api_token_path)]
         /// Copy received files (<= 10) to the Windows clipboard as CF_HDROP.
@@ -407,6 +409,7 @@ pub struct PreferencesRust {
     agent_read_only: bool,
     local_api_enabled: bool,
     local_api_port: i32,
+    local_api_private: bool,
     local_api_token_path: QString,
     clipboard_auto_copy_received_files: bool,
     open_shared_files: bool,
@@ -522,6 +525,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_agent_read_only(settings.agent_read_only);
         self.as_mut().set_local_api_enabled(settings.local_api_enabled);
         self.as_mut().set_local_api_port(i32::from(settings.local_api_port));
+        self.as_mut().set_local_api_private(settings.local_api_private);
         let token_path = crate::local_api::token_file_path();
         self.as_mut().set_local_api_token_path(QString::from(&token_path.to_string_lossy().into_owned()));
         self.as_mut().set_clipboard_auto_copy_received_files(settings.clipboard_auto_copy_received_files);
@@ -808,6 +812,14 @@ impl cxx_qt::Initialize for qobject::Preferences {
                 let token_path = crate::local_api::token_file_path();
                 p.as_mut()
                     .set_local_api_token_path(QString::from(&token_path.to_string_lossy().into_owned()));
+                let settings = p.current_settings();
+                let _ = settings.save(&core_host::host().data_dir);
+                crate::local_api::sync_from_settings();
+                save_in_background(settings);
+            })
+            .release();
+        self.as_mut()
+            .on_local_api_private_changed(|p| {
                 let settings = p.current_settings();
                 let _ = settings.save(&core_host::host().data_dir);
                 crate::local_api::sync_from_settings();
@@ -1325,6 +1337,7 @@ impl qobject::Preferences {
                 .ok()
                 .filter(|&port| port > 0)
                 .unwrap_or(crate::settings::DEFAULT_LOCAL_API_PORT),
+            local_api_private: p.local_api_private,
             clipboard_auto_copy_received_files: p.clipboard_auto_copy_received_files,
             open_shared_files: p.open_shared_files,
             sync_wifi_only: p.sync_wifi_only,

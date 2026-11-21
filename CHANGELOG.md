@@ -33,6 +33,12 @@ change things that need a step from you, and its notes say so.
   replying, calling, deleting or shutting down always waits for your OK in NectarLink, and
   every agent's activity is listed there
   ([docs](https://github.com/thtbee/nectarlink/blob/main/docs/guide/ai-agents.md)).
+- **Notifications and messages in the local API.** With **Notifications and messages** on
+  under **Settings › Local automation API** (off by default), `GET /v1/notifications` and
+  `GET /v1/messages` give tools the phone's notifications and conversations with their unread
+  counts, so a Start menu panel or a Stream Deck button can show them. Apps hidden in
+  NectarLink stay hidden. Thanks to [@windcom-acd](https://github.com/windcom-acd)
+  ([#441](https://github.com/thtbee/nectarlink/issues/441)).
 - **Share and accept the clipboard separately, per device.** In the phone's Settings, under
   each paired device: **Share my clipboard with it** decides whether what you copy goes
   there by itself (with Elevated on), and **Accept its clipboard** whether what it copies
