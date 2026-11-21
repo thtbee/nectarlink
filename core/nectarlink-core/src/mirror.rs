@@ -26,8 +26,9 @@ use nectarlink_protocol::{
     DeviceId, Envelope, ErrorCode, PacketKind,
     messages::{
         MirrorAudioConfig, MirrorConfig, MirrorDisplay, MirrorDisplays, MirrorInput, MirrorNotice,
-        MirrorPower, MirrorResize, MirrorRotate, MirrorSession, MirrorSound, MirrorStart, PhoneApp, PhoneApps, PointerAt,
-        PointerEdge, PointerEnter, PointerMove, PointerScreen, StreamHeader, mirror, types,
+        MirrorPower, MirrorResize, MirrorRotate, MirrorSession, MirrorSound, MirrorStart, PhoneApp,
+        PhoneApps, PointerAt, PointerEdge, PointerEnter, PointerMove, PointerScreen, StreamHeader, mirror,
+        types,
     },
     read_video_packet, video_packet_header, write_frame,
 };
