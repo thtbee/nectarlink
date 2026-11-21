@@ -161,6 +161,8 @@
     <string name="transfer_resume">继续</string>
     <string name="transfer_paused_progress">已暂停 · %1$s / %2$s</string>
     <string name="transfer_received_from">来自 %1$s · 位于Download/Nectarlink</string>
+    <string name="transfer_app_received_from">来自 %1$s · 点按即可安装</string>
+    <string name="transfer_install">安装</string>
     <string name="transfer_sent_to">已发送到 %1$s</string>
     <string name="transfer_cancelled">已取消</string>
     <string name="transfer_denied">%1$s 不接受来自本手机的文件。</string>
@@ -331,6 +333,20 @@
     </plurals>
     <string name="notification_waiting">正在等待电脑</string>
     <string name="notification_waiting_network">正在等待 Wi-Fi 以连接你的电脑</string>
+    <string name="reconnect_known_only_title">仅在找到过电脑的网络中</string>
+    <string name="reconnect_known_only_body">仅在曾连接到电脑的 Wi-Fi 中自动寻找你的电脑。在其他网络中，电脑仍可连接到手机。</string>
+    <plurals name="reconnect_known_count">
+        <item quantity="other">目前已记住 %1$d 个网络</item>
+    </plurals>
+    <string name="reconnect_forget">忘记这些网络</string>
+    <string name="reconnect_give_up_title">停止寻找的时间</string>
+    <string name="reconnect_give_up_body">若这段时间内都连不上电脑，手机会停止寻找，直到网络变化或你打开 NectarLink。</string>
+    <string name="reconnect_give_up_never">从不</string>
+    <string name="reconnect_give_up_15_min">15 分钟</string>
+    <string name="reconnect_give_up_1_hour">1 小时</string>
+    <string name="reconnect_give_up_4_hours">4 小时</string>
+    <string name="notification_stopped_looking">已停止寻找你的电脑。打开 NectarLink 可重新寻找</string>
+    <string name="notification_unknown_network">不在此网络中寻找你的电脑</string>
     <string name="notification_not_paired">尚未与电脑配对</string>
     <plurals name="transfer_files">
         <item quantity="one">%1$d 个文件</item>
@@ -1295,6 +1311,22 @@
     <string name="settings_guide_card_body">浏览全部功能、查看实时要求，或直接跳到对应开关。</string>
     <string name="settings_walkthrough_body">重新打开设置向导，处理权限、配对和省电级别。</string>
     <string name="desk_exit">退出桌面模式</string>
+    <string name="desk_customize">自定义</string>
+    <string name="desk_background">背景</string>
+    <string name="desk_background_black">黑色</string>
+    <string name="desk_background_graphite">石墨</string>
+    <string name="desk_background_accent">强调色</string>
+    <string name="desk_font">时钟字体</string>
+    <string name="desk_font_mono">等宽</string>
+    <string name="desk_font_sans">无衬线</string>
+    <string name="desk_font_serif">衬线</string>
+    <string name="desk_show">显示</string>
+    <string name="desk_show_seconds">秒</string>
+    <string name="desk_show_date">日期</string>
+    <string name="desk_show_media">电脑媒体和音量</string>
+    <string name="desk_show_battery">电量</string>
+    <string name="desk_battery_phone">手机 %1$d%%</string>
+    <string name="desk_battery_pc">%1$s %2$d%%</string>
     <string name="desk_media_playing">电脑媒体 · 播放中</string>
     <string name="desk_media_audio">电脑媒体与音频</string>
     <string name="desk_pc_screen">电脑屏幕</string>
@@ -1365,4 +1397,32 @@
     <string name="relay_region_europe">欧洲</string>
     <string name="relay_region_asia_pacific">亚太地区</string>
     <string name="relay_region_custom">自定义</string>
+    <!-- What's new (#461) -->
+    <string name="whats_new_dot">新的变化</string>
+    <string name="whats_new_group_new">新增</string>
+    <string name="whats_new_group_changed">变更</string>
+    <string name="whats_new_group_fixed">修复</string>
+    <string name="whats_new_in_this_version">此版本中</string>
+    <string name="whats_new_more">还有 %1$d 项</string>
+    <string name="whats_new_empty">此版本没有可列出的内容。</string>
+    <string name="whats_new_release_notes">GitHub 上的更新说明</string>
+    <!-- Calls through WhatsApp from the PC (#434) -->
+    <string name="app_call_channel">来自电脑的通话</string>
+    <string name="app_call_title">通过 %2$s 呼叫 %1$s</string>
+    <string name="app_call_text">点按即可开始通话。</string>
+    <!-- Which of the PC's screens to view (#442) -->
+    <string name="pc_mirror_screen">屏幕 %1$d</string>
+    <string name="pc_mirror_screen_desc">正在显示第 %1$d 个屏幕，共 %2$d 个。点按切换到下一个。</string>
+    <!-- Community: Discord, X, GitHub and support -->
+    <string name="community_title">社区</string>
+    <string name="community_discord_title">Discord</string>
+    <string name="community_discord_body">我们的服务器。提问、分享想法，和大家一起试用新版本。</string>
+    <string name="community_x_title">𝕏</string>
+    <string name="community_x_body">关注我。我会在那里发布 NectarLink 接下来的内容和我做的其他东西。</string>
+    <string name="community_github_title">GitHub</string>
+    <string name="community_github_body">源代码、问题和版本发布。</string>
+    <string name="community_invite_title">来 Discord 聊聊</string>
+    <string name="community_invite_text">提问、想法和抢先版本，和制作及使用 NectarLink 的人一起。</string>
+    <string name="community_invite_join">加入 Discord</string>
+    <string name="community_invite_later">以后再说</string>
 </resources>

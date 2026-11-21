@@ -140,6 +140,10 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "setFlexible"]
         fn set_flexible(self: &Mirror, key: &QString, on: bool);
+        /// Swaps light and dark in a window's picture, kept for its app.
+        #[qinvokable]
+        #[cxx_name = "setDark"]
+        fn set_dark(self: &Mirror, key: &QString, on: bool);
         /// Starts or stops MP4 video recording for a mirror window.
         #[qinvokable]
         #[cxx_name = "toggleRecording"]
@@ -295,6 +299,7 @@ impl qobject::Mirror {
                     // Stay awake and screen off: only where the phone's power matters to this window.
                     "powerButtons": power_buttons,
                     "flexible": mirror::flexible(&window),
+                    "dark": mirror::dark(&window),
                     "zoom": mirror::zoom(&window),
                     "notice": mirror::last_notice(&window),
                     "savedX": geom.map(|g| g.x),
@@ -542,6 +547,12 @@ impl qobject::Mirror {
     pub fn set_flexible(&self, key: &QString, on: bool) {
         if let Some(window) = Window::parse(&String::from(key)) {
             mirror::set_flexible(window, on);
+        }
+    }
+
+    pub fn set_dark(&self, key: &QString, on: bool) {
+        if let Some(window) = Window::parse(&String::from(key)) {
+            mirror::set_dark(window, on);
         }
     }
 

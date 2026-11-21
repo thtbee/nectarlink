@@ -81,6 +81,13 @@ fn app_options(quality: Quality, on_relay: bool) -> MirrorStart {
     MirrorStart { max_size: options.max_size.min(OPTIONS.max_size), ..options }
 }
 
+/// The frame rate chosen in Settings (#442). Over the relay it stays at
+/// most 60: more frames there only queue up behind each other.
+fn with_frame_rate(options: MirrorStart, on_relay: bool) -> MirrorStart {
+    let fps = crate::settings::mirror_fps();
+    MirrorStart { fps: if on_relay { fps.min(OPTIONS.fps) } else { fps }, ..options }
+}
+
 fn on_relay(device: &DeviceId) -> bool {
     core_host::host().hub.read(|s| {
         s.devices.iter().any(|d| {
@@ -121,6 +128,7 @@ const OPTIONS: MirrorStart = MirrorStart {
     screen_off: false,
     watch: None,
     sound_only: false,
+    display: None,
 };
 /// A short burst, rather than seconds of old frames behind the user's input.
 const BACKLOG: usize = 8;
@@ -220,6 +228,10 @@ struct SavedWindows {
     /// (Ctrl + mouse wheel); missing is 100.
     #[serde(default)]
     zoom: HashMap<String, u32>,
+    /// `<device>/<pkg>` (or `<device>/#screen`) shown with light and dark
+    /// swapped, for apps with no dark mode of their own.
+    #[serde(default)]
+    dark: HashSet<String>,
 }
 
 impl SavedWindows {
@@ -733,7 +745,8 @@ pub fn toggle_recording(window: Window) {
         show_message(tr!("Mirror", "Couldn't start recording."));
         return;
     }
-    let mut recorder = MirrorRecorder::new(path, width, height, OPTIONS.fps, audio_cfg);
+    let fps = with_frame_rate(OPTIONS, on_relay(&window.device)).fps;
+    let mut recorder = MirrorRecorder::new(path, width, height, fps, audio_cfg);
     recorder.set_codec(codec);
     if let Some(sps_pps) =
         LAST_SPS_PPS.lock().unwrap_or_else(|e| e.into_inner()).as_ref().and_then(|m| m.get(&window))
@@ -889,6 +902,37 @@ pub fn flexible(window: &Window) -> bool {
             let pkg = s.windows.get(window).and_then(|w| w.pkg.clone());
             pkg.is_none_or(|pkg| !s.saved.fixed.contains(&format!("{}/{pkg}", window.device)))
         })
+}
+
+/// What a window's saved choices are kept under: its app, or the screen.
+fn saved_key(s: &State, window: &Window) -> Option<String> {
+    if window.session == MIRROR_SCREEN {
+        return Some(format!("{}/{SCREEN_GEOMETRY}", window.device));
+    }
+    let pkg = s.windows.get(window).and_then(|w| w.pkg.as_deref())?;
+    Some(format!("{}/{pkg}", window.device))
+}
+
+/// Whether a window shows its picture with light and dark swapped.
+pub fn dark(window: &Window) -> bool {
+    state(|s| saved_key(s, window).is_some_and(|key| s.saved.dark.contains(&key)))
+}
+
+/// Swaps light and dark in a window's picture, or stops, for its app (or
+/// the phone's screen) from now on. For apps with no dark mode, like a map
+/// that stays white.
+pub fn set_dark(window: Window, on: bool) {
+    let changed = state(|s| {
+        let Some(key) = saved_key(s, &window) else { return false };
+        let changed = if on { s.saved.dark.insert(key) } else { s.saved.dark.remove(&key) };
+        if changed {
+            s.saved.save();
+        }
+        changed
+    });
+    if changed {
+        core_host::host().hub.changed(Changes::MIRROR);
+    }
 }
 
 /// Turns an app window's flexible display on or off, for its app. Off, the
@@ -1115,7 +1159,8 @@ pub fn start(device: DeviceId) {
         s.windows.insert(window, Shown { phase: Phase::Asking, app: None, pkg: None, restarting: false });
         power(s, &device)
     });
-    let options = screen_options(crate::settings::mirror_quality(), on_relay(&device));
+    let relayed = on_relay(&device);
+    let options = with_frame_rate(screen_options(crate::settings::mirror_quality(), relayed), relayed);
     set_unproven(device, options.max_size != OPTIONS.max_size);
     request(window, MirrorStart { stay_awake, screen_off, ..options });
 }
@@ -1217,7 +1262,8 @@ pub fn start_app(device: DeviceId, pkg: String, label: String) {
     });
     let Some(window) = window else { return };
     let (stay_awake, screen_off) = app_power(&window);
-    let options = app_options(crate::settings::mirror_quality(), on_relay(&device));
+    let relayed = on_relay(&device);
+    let options = with_frame_rate(app_options(crate::settings::mirror_quality(), relayed), relayed);
     ffi::video_clear(&window.key());
     request(
         window,
@@ -1248,7 +1294,8 @@ pub fn reopen(window: Window) {
     });
     let Some(pkg) = pkg else { return };
     let (stay_awake, screen_off) = app_power(&window);
-    let options = app_options(crate::settings::mirror_quality(), on_relay(&window.device));
+    let relayed = on_relay(&window.device);
+    let options = with_frame_rate(app_options(crate::settings::mirror_quality(), relayed), relayed);
     ffi::video_clear(&window.key());
     request(
         window,
@@ -1437,6 +1484,18 @@ mod quality_tests {
     }
 
     #[test]
+    fn the_frame_rate_follows_settings_but_not_past_60_over_the_relay() {
+        crate::settings::set_mirror_fps(120);
+        assert_eq!(with_frame_rate(OPTIONS, false).fps, 120);
+        assert_eq!(with_frame_rate(OPTIONS, true).fps, 60);
+        crate::settings::set_mirror_fps(30);
+        assert_eq!(with_frame_rate(OPTIONS, true).fps, 30);
+        crate::settings::set_mirror_fps(45);
+        assert_eq!(crate::settings::mirror_fps(), 60, "only 30, 60, 90 or 120");
+        assert!(with_frame_rate(app_options(Quality::Smoother, false), false).is_valid());
+    }
+
+    #[test]
     fn only_a_started_stream_with_no_picture_asks_again() {
         assert!(retry_at_balanced(true, true));
         assert!(!retry_at_balanced(false, true), "it showed a picture, or asked for Balanced");
@@ -1538,7 +1597,8 @@ pub fn on_event(event: &NodeEvent) {
                 let (stay_awake, screen_off) = state(|s| power(s, device));
                 set_phase(window, Phase::Asking);
                 set_notice(window, "This phone can't mirror at that quality, so it's using Balanced");
-                request(window, MirrorStart { stay_awake, screen_off, ..OPTIONS });
+                let relayed = on_relay(device);
+                request(window, MirrorStart { stay_awake, screen_off, ..with_frame_rate(OPTIONS, relayed) });
                 return;
             }
             if phase(&window).is_some() {

@@ -15,11 +15,10 @@ whichever way it came:
 | CLI | shell agents and scripts | `nectarlink-agent do <action> --agent <name> --args '{...}'` |
 | HTTP | other apps | `127.0.0.1:53321`, `/v2/...`, bearer token |
 
-**Settings › AI agents** can add NectarLink to Claude Desktop, Cursor, Windsurf,
-Antigravity, Gemini CLI, VS Code, Zed and Codex by editing their settings file
-(the `nectarlink` entry only, keeping the rest as it was, with the old file
-kept as `.nectarlink-backup`), and to Claude Code with `claude mcp add`. Files
-with comments are left alone. The code is `nectarlink_actions::setup`.
+**Settings › AI agents** gives each new agent a prompt to paste into it, which
+has the agent add the `nectarlink` MCP server (or use the CLI) itself and check
+that it works. The prompt is English only and holds the command and the agent's
+name, never a token. NectarLink doesn't edit other apps' settings files.
 
 `nectarlink-agent` is installed next to the app. The agent's name is the one
 added in **Settings › AI agents**; its token is in

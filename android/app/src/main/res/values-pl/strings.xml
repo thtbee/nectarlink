@@ -171,6 +171,8 @@
     <string name="transfer_resume">Wznów</string>
     <string name="transfer_paused_progress">Wstrzymano · %1$s / %2$s</string>
     <string name="transfer_received_from">Z %1$s · w folderze Download/Nectarlink</string>
+    <string name="transfer_app_received_from">Od %1$s · dotknij, aby zainstalować</string>
+    <string name="transfer_install">Zainstaluj</string>
     <string name="transfer_sent_to">Wysłano do %1$s</string>
     <string name="transfer_cancelled">Anulowano</string>
     <string name="transfer_denied">%1$s nie przyjmuje plików z tego telefonu.</string>
@@ -348,6 +350,23 @@
     </plurals>
     <string name="notification_waiting">Oczekiwanie na komputer</string>
     <string name="notification_waiting_network">Czekam na Wi-Fi, by połączyć się z komputerem</string>
+    <string name="reconnect_known_only_title">Tylko w sieciach, w których znaleziono komputer</string>
+    <string name="reconnect_known_only_body">Sam szuka komputerów tylko w sieciach Wi-Fi, w których już się z którymś połączył. W innych komputer nadal może połączyć się z telefonem.</string>
+    <plurals name="reconnect_known_count">
+        <item quantity="one">Na razie %1$d sieć</item>
+        <item quantity="few">Na razie %1$d sieci</item>
+        <item quantity="many">Na razie %1$d sieci</item>
+        <item quantity="other">Na razie %1$d sieci</item>
+    </plurals>
+    <string name="reconnect_forget">Zapomnij je</string>
+    <string name="reconnect_give_up_title">Przestań szukać po</string>
+    <string name="reconnect_give_up_body">Jeśli przez ten czas żaden komputer nie będzie osiągalny, telefon przestanie szukać, aż zmieni się sieć lub otworzysz NectarLink.</string>
+    <string name="reconnect_give_up_never">Nigdy</string>
+    <string name="reconnect_give_up_15_min">15 min</string>
+    <string name="reconnect_give_up_1_hour">1 godz.</string>
+    <string name="reconnect_give_up_4_hours">4 godz.</string>
+    <string name="notification_stopped_looking">Przestano szukać komputera. Otwórz NectarLink, by szukać ponownie</string>
+    <string name="notification_unknown_network">Nie szuka komputera w tej sieci</string>
     <string name="notification_not_paired">Jeszcze nie sparowano z komputerem</string>
     <plurals name="transfer_files">
         <item quantity="one">%1$d plik</item>
@@ -1447,6 +1466,22 @@
     <string name="settings_guide_card_body">Poznaj wszystkie funkcje, sprawdź aktualne wymagania lub przejdź od razu do ich ustawień.</string>
     <string name="settings_walkthrough_body">Otwórz ponownie przewodnik konfiguracji uprawnień, parowania i poziomów zasilania.</string>
     <string name="desk_exit">Wyjdź z trybu biurkowego</string>
+    <string name="desk_customize">Dostosuj</string>
+    <string name="desk_background">Tło</string>
+    <string name="desk_background_black">Czarne</string>
+    <string name="desk_background_graphite">Grafitowe</string>
+    <string name="desk_background_accent">Akcent</string>
+    <string name="desk_font">Czcionka zegara</string>
+    <string name="desk_font_mono">Mono</string>
+    <string name="desk_font_sans">Bezszeryfowa</string>
+    <string name="desk_font_serif">Szeryfowa</string>
+    <string name="desk_show">Pokazuj</string>
+    <string name="desk_show_seconds">Sekundy</string>
+    <string name="desk_show_date">Datę</string>
+    <string name="desk_show_media">Multimedia i głośność komputera</string>
+    <string name="desk_show_battery">Baterię</string>
+    <string name="desk_battery_phone">Telefon %1$d%%</string>
+    <string name="desk_battery_pc">%1$s %2$d%%</string>
     <string name="desk_media_playing">Multimedia na PC · W trakcie odtwarzania</string>
     <string name="desk_media_audio">Multimedia i dźwięk na PC</string>
     <string name="desk_pc_screen">Ekran PC</string>
@@ -1521,6 +1556,34 @@
     <string name="relay_region_europe">Europa</string>
     <string name="relay_region_asia_pacific">Azja i Pacyfik</string>
     <string name="relay_region_custom">Własny</string>
+    <!-- What's new (#461) -->
+    <string name="whats_new_dot">Nowe zmiany</string>
+    <string name="whats_new_group_new">Nowe</string>
+    <string name="whats_new_group_changed">Zmienione</string>
+    <string name="whats_new_group_fixed">Naprawione</string>
+    <string name="whats_new_in_this_version">W tej wersji</string>
+    <string name="whats_new_more">i %1$d więcej</string>
+    <string name="whats_new_empty">Nie ma nic do pokazania dla tej kompilacji.</string>
+    <string name="whats_new_release_notes">Informacje o wersji na GitHubie</string>
+    <!-- Calls through WhatsApp from the PC (#434) -->
+    <string name="app_call_channel">Połączenia z komputera</string>
+    <string name="app_call_title">Zadzwoń do: %1$s przez %2$s</string>
+    <string name="app_call_text">Dotknij, aby rozpocząć połączenie.</string>
+    <!-- Which of the PC's screens to view (#442) -->
+    <string name="pc_mirror_screen">Ekran %1$d</string>
+    <string name="pc_mirror_screen_desc">Ekran %1$d z %2$d. Dotknij, aby przejść do następnego.</string>
+    <!-- Community: Discord, X, GitHub and support -->
+    <string name="community_title">Społeczność</string>
+    <string name="community_discord_title">Discord</string>
+    <string name="community_discord_body">Nasz serwer. Zadawaj pytania, dziel się pomysłami i testuj nowe wersje z innymi.</string>
+    <string name="community_x_title">𝕏</string>
+    <string name="community_x_body">Obserwuj mnie. Piszę o tym, co nadchodzi w NectarLink, i o innych rzeczach, które robię.</string>
+    <string name="community_github_title">GitHub</string>
+    <string name="community_github_body">Kod źródłowy, zgłoszenia i wydania.</string>
+    <string name="community_invite_title">Wpadnij na Discorda</string>
+    <string name="community_invite_text">Pytania, pomysły i wczesne wersje, razem z twórcami i użytkownikami NectarLink.</string>
+    <string name="community_invite_join">Dołącz do Discorda</string>
+    <string name="community_invite_later">Nie teraz</string>
 </resources>
 
 

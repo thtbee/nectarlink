@@ -316,6 +316,12 @@ pub trait Platform: Send + Sync + 'static {
         Err("this device doesn't share its screen".into())
     }
 
+    /// This PC's screens, the main one first, for a phone to pick the one it
+    /// views (`mirror.displays`). None where it can only share the main one.
+    fn mirror_displays(&self) -> Vec<crate::MirrorDisplay> {
+        Vec::new()
+    }
+
     /// The PC stopped watching: stop sharing the screen or app window.
     fn mirror_stop_requested(&self, _peer: &nectarlink_protocol::DeviceId, _session: u32) {}
 

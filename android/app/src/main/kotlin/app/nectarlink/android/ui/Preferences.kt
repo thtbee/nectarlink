@@ -65,6 +65,47 @@ class Preferences(context: Context) {
         _hiveInviteShown.value = false
     }
 
+    /**
+     * The card asking to come chat on Discord: armed by an update, at most
+     * once a month, ending after joining or after three answers
+     * ([CommunityInvite]). Never on a fresh install.
+     */
+    private val _communityInviteShown = MutableStateFlow(
+        prefs.getBoolean(COMMUNITY_ARMED, false) && !prefs.getBoolean(COMMUNITY_DONE, false),
+    )
+    val communityInviteShown: StateFlow<Boolean> = _communityInviteShown.asStateFlow()
+
+    /** When the app opens: once per version, after an update, arms the card if it's due. */
+    fun armCommunityInvite(updated: Boolean, now: Long = System.currentTimeMillis()) {
+        val version = app.nectarlink.android.BuildConfig.VERSION_CODE.toLong()
+        if (prefs.getLong(COMMUNITY_VERSION, -1L) == version) return
+        prefs.edit { putLong(COMMUNITY_VERSION, version) }
+        val due = updated && CommunityInvite.due(
+            done = prefs.getBoolean(COMMUNITY_DONE, false),
+            armed = prefs.getBoolean(COMMUNITY_ARMED, false),
+            count = prefs.getInt(COMMUNITY_COUNT, 0),
+            lastAt = prefs.getLong(COMMUNITY_AT, 0L),
+            now = now,
+        )
+        if (!due) return
+        prefs.edit {
+            putBoolean(COMMUNITY_ARMED, true)
+            putLong(COMMUNITY_AT, now)
+        }
+        _communityInviteShown.value = true
+    }
+
+    /** Answered: joining ends it for good, and so does the third answer. */
+    fun answerCommunityInvite(joined: Boolean) {
+        val count = prefs.getInt(COMMUNITY_COUNT, 0) + 1
+        prefs.edit {
+            putBoolean(COMMUNITY_ARMED, false)
+            putInt(COMMUNITY_COUNT, count)
+            if (joined || count >= CommunityInvite.TIMES) putBoolean(COMMUNITY_DONE, true)
+        }
+        _communityInviteShown.value = false
+    }
+
     private val _walkthrough = MutableStateFlow(loadWalkthrough())
     val walkthrough: StateFlow<WalkthroughPersistence> = _walkthrough.asStateFlow()
 
@@ -173,6 +214,11 @@ class Preferences(context: Context) {
         private const val AMOLED = "amoled_black"
         private const val COMB_MOTION = "comb_motion"
         private const val HIVE_INVITE_ANSWERED = "hive_invite_answered_version"
+        private const val COMMUNITY_VERSION = "community_invite_version"
+        private const val COMMUNITY_ARMED = "community_invite_armed"
+        private const val COMMUNITY_DONE = "community_invite_done"
+        private const val COMMUNITY_COUNT = "community_invite_count"
+        private const val COMMUNITY_AT = "community_invite_at"
         private const val TOUCHPAD_SENSITIVITY = "touchpad_sensitivity"
         private const val SUGGEST_CLIPBOARD_ACTIONS = "suggest_clipboard_actions"
         private const val VOLUME_KEYS_CONTROL_PC = "volume_keys_control_pc"

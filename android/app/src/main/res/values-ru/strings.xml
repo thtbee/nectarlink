@@ -163,6 +163,8 @@
     <string name="transfer_resume">Продолжить</string>
     <string name="transfer_paused_progress">На паузе · %1$s / %2$s</string>
     <string name="transfer_received_from">С %1$s · в Download/Nectarlink</string>
+    <string name="transfer_app_received_from">От %1$s · нажмите, чтобы установить</string>
+    <string name="transfer_install">Установить</string>
     <string name="transfer_sent_to">Отправлено на %1$s</string>
     <string name="transfer_cancelled">Отменено</string>
     <string name="transfer_denied">%1$s не принимает файлы с этого телефона.</string>
@@ -335,6 +337,23 @@
     </plurals>
     <string name="notification_waiting">Ожидание ПК</string>
     <string name="notification_waiting_network">Ждёт Wi-Fi, чтобы подключиться к ПК</string>
+    <string name="reconnect_known_only_title">Только в сетях, где был найден ПК</string>
+    <string name="reconnect_known_only_body">Сам ищет ваши ПК только в тех сетях Wi-Fi, где уже подключался к одному из них. В других сетях ПК всё равно может подключиться к телефону.</string>
+    <plurals name="reconnect_known_count">
+        <item quantity="one">Пока %1$d сеть</item>
+        <item quantity="few">Пока %1$d сети</item>
+        <item quantity="many">Пока %1$d сетей</item>
+        <item quantity="other">Пока %1$d сети</item>
+    </plurals>
+    <string name="reconnect_forget">Забыть</string>
+    <string name="reconnect_give_up_title">Прекратить поиск через</string>
+    <string name="reconnect_give_up_body">Если столько времени ни один ПК недоступен, телефон перестаёт искать, пока не сменится сеть или вы не откроете NectarLink.</string>
+    <string name="reconnect_give_up_never">Никогда</string>
+    <string name="reconnect_give_up_15_min">15 мин</string>
+    <string name="reconnect_give_up_1_hour">1 час</string>
+    <string name="reconnect_give_up_4_hours">4 часа</string>
+    <string name="notification_stopped_looking">Поиск ПК остановлен. Откройте NectarLink, чтобы искать снова</string>
+    <string name="notification_unknown_network">В этой сети ПК не ищется</string>
     <string name="notification_not_paired">Ещё не связан с ПК</string>
     <plurals name="transfer_files">
         <item quantity="one">%1$d файл</item>
@@ -1306,6 +1325,22 @@
     <string name="settings_guide_card_body">Смотрите все функции, проверяйте требования или сразу переходите к их настройкам.</string>
     <string name="settings_walkthrough_body">Снова открыть пошаговую настройку разрешений, связывания и уровней доступа.</string>
     <string name="desk_exit">Выйти из настольного режима</string>
+    <string name="desk_customize">Настроить</string>
+    <string name="desk_background">Фон</string>
+    <string name="desk_background_black">Чёрный</string>
+    <string name="desk_background_graphite">Графит</string>
+    <string name="desk_background_accent">Акцент</string>
+    <string name="desk_font">Шрифт часов</string>
+    <string name="desk_font_mono">Моно</string>
+    <string name="desk_font_sans">Без засечек</string>
+    <string name="desk_font_serif">С засечками</string>
+    <string name="desk_show">Показывать</string>
+    <string name="desk_show_seconds">Секунды</string>
+    <string name="desk_show_date">Дату</string>
+    <string name="desk_show_media">Медиа и громкость ПК</string>
+    <string name="desk_show_battery">Заряд</string>
+    <string name="desk_battery_phone">Телефон %1$d%%</string>
+    <string name="desk_battery_pc">%1$s %2$d%%</string>
     <string name="desk_media_playing">Медиа на ПК · Играет</string>
     <string name="desk_media_audio">Медиа и звук ПК</string>
     <string name="desk_pc_screen">Экран ПК</string>
@@ -1376,4 +1411,32 @@
     <string name="relay_region_europe">Европа</string>
     <string name="relay_region_asia_pacific">Азиатско-Тихоокеанский регион</string>
     <string name="relay_region_custom">Свой</string>
+    <!-- What's new (#461) -->
+    <string name="whats_new_dot">Новые изменения</string>
+    <string name="whats_new_group_new">Новое</string>
+    <string name="whats_new_group_changed">Изменено</string>
+    <string name="whats_new_group_fixed">Исправлено</string>
+    <string name="whats_new_in_this_version">В этой версии</string>
+    <string name="whats_new_more">и ещё %1$d</string>
+    <string name="whats_new_empty">Для этой сборки нечего показать.</string>
+    <string name="whats_new_release_notes">Заметки о выпуске на GitHub</string>
+    <!-- Calls through WhatsApp from the PC (#434) -->
+    <string name="app_call_channel">Звонки с компьютера</string>
+    <string name="app_call_title">Позвонить: %1$s через %2$s</string>
+    <string name="app_call_text">Нажмите, чтобы начать звонок.</string>
+    <!-- Which of the PC's screens to view (#442) -->
+    <string name="pc_mirror_screen">Экран %1$d</string>
+    <string name="pc_mirror_screen_desc">Экран %1$d из %2$d. Нажмите, чтобы перейти к следующему.</string>
+    <!-- Community: Discord, X, GitHub and support -->
+    <string name="community_title">Сообщество</string>
+    <string name="community_discord_title">Discord</string>
+    <string name="community_discord_body">Наш сервер. Задавайте вопросы, делитесь идеями и пробуйте новые сборки вместе с другими.</string>
+    <string name="community_x_title">𝕏</string>
+    <string name="community_x_body">Подписывайтесь. Я пишу о том, что скоро появится в NectarLink, и о других своих проектах.</string>
+    <string name="community_github_title">GitHub</string>
+    <string name="community_github_body">Исходный код, задачи и выпуски.</string>
+    <string name="community_invite_title">Заходите в Discord</string>
+    <string name="community_invite_text">Вопросы, идеи и ранние сборки вместе с теми, кто делает NectarLink и пользуется им.</string>
+    <string name="community_invite_join">Войти в Discord</string>
+    <string name="community_invite_later">Не сейчас</string>
 </resources>

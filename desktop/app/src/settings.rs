@@ -138,6 +138,15 @@ fn default_history_days() -> u32 {
     1
 }
 
+fn default_mirror_fps() -> u32 {
+    60
+}
+
+/// A frame rate the phone is asked for: 30, 60, 90 or 120 (60 otherwise).
+pub fn sane_mirror_fps(fps: u32) -> u32 {
+    if matches!(fps, 30 | 60 | 90 | 120) { fps } else { 60 }
+}
+
 fn default_island_position() -> String {
     "center".into()
 }
@@ -170,7 +179,11 @@ static FORWARD_PC_NOTIFICATIONS: std::sync::atomic::AtomicBool = std::sync::atom
 static AWAY_MODE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 static FLOW_FOLLOW_CLIPBOARD: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
 static MIRROR_QUALITY: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
+static MIRROR_FPS: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(60);
 static SYNC_PASSWORDS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+static KEEP_POPUPS_PAUSED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+/// Held while settings are written, and while they're read for a change.
+static SAVE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 static USB_DEBUGGING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
 static SYNC_WIFI_ONLY: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 static OPEN_SHARED_FILES: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
@@ -196,6 +209,15 @@ pub fn mirror_quality() -> crate::mirror::Quality {
     crate::mirror::Quality::parse(&MIRROR_QUALITY.lock().unwrap_or_else(|e| e.into_inner()))
 }
 
+/// The frame rate mirroring asks the phone for (#442).
+pub fn mirror_fps() -> u32 {
+    MIRROR_FPS.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+pub fn set_mirror_fps(fps: u32) {
+    MIRROR_FPS.store(sane_mirror_fps(fps), std::sync::atomic::Ordering::Relaxed);
+}
+
 pub fn set_mirror_quality(quality: &str) {
     quality.clone_into(&mut MIRROR_QUALITY.lock().unwrap_or_else(|e| e.into_inner()));
 }
@@ -217,6 +239,29 @@ pub fn sync_passwords() -> bool {
 
 pub fn set_sync_passwords(on: bool) {
     SYNC_PASSWORDS.store(on, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// Whether pausing pop-ups lasts until it's resumed, even across restarts (#442).
+pub fn keep_popups_paused() -> bool {
+    KEEP_POPUPS_PAUSED.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+pub fn set_keep_popups_paused(on: bool) {
+    KEEP_POPUPS_PAUSED.store(on, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// Saves whether pop-ups are paused, when that's kept across restarts.
+pub fn remember_popups_paused(paused: bool) {
+    if !keep_popups_paused() {
+        return;
+    }
+    let dir = crate::core_host::host().data_dir.clone();
+    let _ = std::thread::Builder::new().name("save-popups-paused".into()).spawn(move || {
+        // Read and written under one lock, so a toggle can't undo a save in between.
+        if let Err(e) = Settings::update(&dir, |settings| settings.popups_paused = paused) {
+            tracing::warn!(error = %e, "can't save whether pop-ups are paused");
+        }
+    });
 }
 
 pub fn sync_wifi_only() -> bool {
@@ -708,6 +753,12 @@ pub struct Settings {
     /// What password managers mark private also goes to phones.
     #[serde(default, alias = "sync_passwords")]
     pub sync_passwords: bool,
+    /// Pausing pop-ups lasts across restarts until it's resumed (#442).
+    #[serde(default, alias = "keep_popups_paused")]
+    pub keep_popups_paused: bool,
+    /// Whether pop-ups were paused, kept only with `keep_popups_paused`.
+    #[serde(default, alias = "popups_paused")]
+    pub popups_paused: bool,
     /// Use phones' USB debugging (adb) for USB features; off, never ask (#439).
     #[serde(default = "default_true", alias = "usb_debugging")]
     pub usb_debugging: bool,
@@ -718,6 +769,9 @@ pub struct Settings {
     /// value from a newer version can't stop this file from loading.
     #[serde(default, alias = "mirror_quality")]
     pub mirror_quality: String,
+    /// Frames per second for mirroring and app windows: 30, 60, 90 or 120.
+    #[serde(default = "default_mirror_fps", alias = "mirror_fps")]
+    pub mirror_fps: u32,
     /// Send the PC's clipboard to the phone when control moves to it: the mouse
     /// enters the phone's window, or a remote control session starts.
     #[serde(default = "default_true", alias = "flow_follow_clipboard")]
@@ -796,6 +850,18 @@ pub struct Settings {
     /// Minutes the window has been in use, up to when a new install is asked.
     #[serde(default, alias = "star_prompt_minutes")]
     pub star_prompt_minutes: u32,
+    /// The ask to join the Discord server ended: joined, or dismissed three times.
+    #[serde(default)]
+    pub community_prompt_done: bool,
+    /// An update armed the ask, for when the window is next in use.
+    #[serde(default)]
+    pub community_prompt_due: bool,
+    /// How many times it was shown.
+    #[serde(default)]
+    pub community_prompt_count: u32,
+    /// When it was last armed (Unix seconds), so it comes at most once a month.
+    #[serde(default)]
+    pub community_prompt_at: u64,
     /// OBS Studio's WebSocket port, for `obs:` Deck commands.
     pub obs_port: u16,
     /// OBS's WebSocket password, encrypted with Windows DPAPI (base64). Never stored in clear.
@@ -820,7 +886,28 @@ pub struct Settings {
     pub window_maximized: bool,
 }
 
+/// The ask to join Discord comes at most once in this long.
+pub const COMMUNITY_PROMPT_EVERY_SECS: u64 = 30 * 24 * 60 * 60;
+/// And stops for good after it was shown this many times.
+pub const COMMUNITY_PROMPT_TIMES: u32 = 3;
+
 impl Settings {
+    /// After an update, the ask to join Discord is armed: unless it ended,
+    /// was shown three times, or came less than a month ago. Never on a new
+    /// install. Whether anything changed.
+    pub fn ask_to_join_after_update(&mut self, now_secs: u64) -> bool {
+        if self.community_prompt_done
+            || self.community_prompt_due
+            || self.community_prompt_count >= COMMUNITY_PROMPT_TIMES
+            || now_secs.saturating_sub(self.community_prompt_at) < COMMUNITY_PROMPT_EVERY_SECS
+        {
+            return false;
+        }
+        self.community_prompt_due = true;
+        self.community_prompt_at = now_secs;
+        true
+    }
+
     /// Someone who updated is asked for a star right away, unless they already
     /// answered: an answer stays through every update. Whether anything changed.
     pub fn ask_for_star_after_update(&mut self) -> bool {
@@ -892,9 +979,12 @@ impl Default for Settings {
             open_shared_files: false,
             sync_wifi_only: false,
             sync_passwords: false,
+            keep_popups_paused: false,
+            popups_paused: false,
             usb_debugging: true,
             notification_history_days: 1,
             mirror_quality: String::new(),
+            mirror_fps: 60,
             flow_follow_clipboard: true,
             phone_beside: String::new(),
             phone_beside_side: String::new(),
@@ -920,6 +1010,10 @@ impl Default for Settings {
             star_prompt_done: false,
             star_prompt_updated: false,
             star_prompt_minutes: 0,
+            community_prompt_done: false,
+            community_prompt_due: false,
+            community_prompt_count: 0,
+            community_prompt_at: 0,
             obs_port: crate::obs::DEFAULT_PORT,
             obs_password: None,
             window_screen: None,
@@ -972,9 +1066,11 @@ impl Settings {
         set_open_shared_files(self.open_shared_files);
         set_sync_wifi_only(self.sync_wifi_only);
         set_sync_passwords(self.sync_passwords);
+        set_keep_popups_paused(self.keep_popups_paused);
         set_usb_debugging(self.usb_debugging);
         crate::state::set_history_days(self.notification_history_days);
         set_mirror_quality(&self.mirror_quality);
+        set_mirror_fps(self.mirror_fps);
         set_flow_follow_clipboard(self.flow_follow_clipboard);
         set_phone_beside(&self.phone_beside, &self.phone_beside_side);
         set_folder_sync_rules(self.folder_sync_rules.clone());
@@ -1043,8 +1139,19 @@ impl Settings {
 
     /// Saves atomically: a crash mid-write never leaves a half-written file.
     pub fn save(&self, dir: &Path) -> std::io::Result<()> {
-        static SAVE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
         let _guard = SAVE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        self.save_locked(dir)
+    }
+
+    /// Changes what's saved on disk, read and written under the save lock.
+    pub fn update(dir: &Path, change: impl FnOnce(&mut Settings)) -> std::io::Result<()> {
+        let _guard = SAVE_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let mut settings = Settings::load(dir);
+        change(&mut settings);
+        settings.save_locked(dir)
+    }
+
+    fn save_locked(&self, dir: &Path) -> std::io::Result<()> {
         let path = Self::path(dir);
         let tmp = path.with_extension("json.tmp");
         {
@@ -1115,6 +1222,21 @@ mod tests {
         assert!(new.ask_for_star_after_update());
         assert!(new.star_prompt_updated);
         assert!(!new.ask_for_star_after_update(), "nothing more to save the next time");
+
+        // The ask to join Discord: after an update, once a month, three times at most.
+        let month = COMMUNITY_PROMPT_EVERY_SECS;
+        let mut s = Settings::default();
+        assert!(s.ask_to_join_after_update(month));
+        assert!(!s.ask_to_join_after_update(month + 1), "already due");
+        s.community_prompt_due = false;
+        s.community_prompt_count = 1;
+        assert!(!s.ask_to_join_after_update(month + 10), "not again within a month");
+        assert!(s.ask_to_join_after_update(2 * month));
+        s.community_prompt_due = false;
+        s.community_prompt_count = COMMUNITY_PROMPT_TIMES;
+        assert!(!s.ask_to_join_after_update(10 * month), "three times at most");
+        let joined = Settings { community_prompt_done: true, ..Settings::default() };
+        assert!(!{ joined }.ask_to_join_after_update(10 * month));
 
         let mut answered = Settings { star_prompt_done: true, ..Settings::default() };
         assert!(!answered.ask_for_star_after_update());
@@ -1213,9 +1335,12 @@ mod tests {
             open_shared_files: true,
             sync_wifi_only: true,
             sync_passwords: true,
+            keep_popups_paused: true,
+            popups_paused: true,
             usb_debugging: false,
             notification_history_days: 7,
             mirror_quality: "sharper".into(),
+            mirror_fps: 120,
             flow_follow_clipboard: false,
             phone_beside: String::new(),
             phone_beside_side: String::new(),
@@ -1241,6 +1366,10 @@ mod tests {
             star_prompt_done: true,
             star_prompt_updated: true,
             star_prompt_minutes: 3,
+            community_prompt_done: false,
+            community_prompt_due: true,
+            community_prompt_count: 2,
+            community_prompt_at: 1_700_000_000,
             obs_port: crate::obs::DEFAULT_PORT,
             obs_password: None,
             window_screen: Some("DP-1".into()),

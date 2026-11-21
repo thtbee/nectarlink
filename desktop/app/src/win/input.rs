@@ -10,7 +10,7 @@ use std::{
 
 use nectarlink_core::{ButtonAction, KeyMod, MouseButton, PowerAction, SlideAction, TouchAction};
 use windows::Win32::{
-    Foundation::{LPARAM, WPARAM},
+    Foundation::{LPARAM, RECT, WPARAM},
     UI::{
         Input::{
             Ime::ImmGetDefaultIMEWnd,
@@ -19,16 +19,18 @@ use windows::Win32::{
                 KEYBD_EVENT_FLAGS, KEYBDINPUT, KEYEVENTF_EXTENDEDKEY, KEYEVENTF_KEYUP, KEYEVENTF_UNICODE,
                 MAPVK_VK_TO_VSC, MOUSE_EVENT_FLAGS, MOUSEEVENTF_ABSOLUTE, MOUSEEVENTF_HWHEEL,
                 MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP,
-                MOUSEEVENTF_MOVE, MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP, MOUSEEVENTF_WHEEL, MOUSEINPUT,
-                MapVirtualKeyExW, SendInput, ToUnicodeEx, VIRTUAL_KEY, VK_A, VK_B, VK_BACK, VK_C, VK_CAPITAL,
-                VK_CONTROL, VK_DELETE, VK_DOWN, VK_END, VK_ESCAPE, VK_F1, VK_F5, VK_HOME, VK_INSERT, VK_LEFT,
-                VK_LWIN, VK_MEDIA_NEXT_TRACK, VK_MEDIA_PLAY_PAUSE, VK_MEDIA_PREV_TRACK, VK_MENU, VK_NEXT,
-                VK_PRIOR, VK_RETURN, VK_RIGHT, VK_SHIFT, VK_SPACE, VK_TAB, VK_UP, VK_V, VK_VOLUME_DOWN,
-                VK_VOLUME_MUTE, VK_VOLUME_UP, VK_X, VK_Y, VK_Z, VkKeyScanExW,
+                MOUSEEVENTF_MOVE, MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP, MOUSEEVENTF_VIRTUALDESK,
+                MOUSEEVENTF_WHEEL, MOUSEINPUT, MapVirtualKeyExW, SendInput, ToUnicodeEx, VIRTUAL_KEY, VK_A,
+                VK_B, VK_BACK, VK_C, VK_CAPITAL, VK_CONTROL, VK_DELETE, VK_DOWN, VK_END, VK_ESCAPE, VK_F1,
+                VK_F5, VK_HOME, VK_INSERT, VK_LEFT, VK_LWIN, VK_MEDIA_NEXT_TRACK, VK_MEDIA_PLAY_PAUSE,
+                VK_MEDIA_PREV_TRACK, VK_MENU, VK_NEXT, VK_PRIOR, VK_RETURN, VK_RIGHT, VK_SHIFT, VK_SPACE,
+                VK_TAB, VK_UP, VK_V, VK_VOLUME_DOWN, VK_VOLUME_MUTE, VK_VOLUME_UP, VK_X, VK_Y, VK_Z,
+                VkKeyScanExW,
             },
         },
         WindowsAndMessaging::{
-            GetForegroundWindow, GetWindowThreadProcessId, SMTO_ABORTIFHUNG, SendMessageTimeoutW,
+            GetForegroundWindow, GetSystemMetrics, GetWindowThreadProcessId, SM_CXVIRTUALSCREEN,
+            SM_CYVIRTUALSCREEN, SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN, SMTO_ABORTIFHUNG, SendMessageTimeoutW,
             WHEEL_DELTA, WM_IME_CONTROL,
         },
     },
@@ -56,6 +58,50 @@ static STATE: Mutex<InputState> = Mutex::new(InputState {
     held_right: false,
     held_middle: false,
 });
+
+/// The screen a phone viewing this PC shows (#442), when it isn't the main
+/// one: its taps land there.
+static AREA: Mutex<Option<RECT>> = Mutex::new(None);
+
+/// Where absolute positions (`0.0..=1.0`) land: on the screen at `area`, or
+/// on the main screen with `None`.
+pub fn set_absolute_area(area: Option<RECT>) {
+    *AREA.lock().unwrap_or_else(|e| e.into_inner()) = area;
+}
+
+/// `(x, y)` (`0.0..=1.0` of the shown screen) as `SendInput` absolute
+/// coordinates, and the flag that goes with them.
+fn absolute(x: f32, y: f32) -> (i32, i32, MOUSE_EVENT_FLAGS) {
+    let (x, y) = (x.clamp(0.0, 1.0), y.clamp(0.0, 1.0));
+    let area = *AREA.lock().unwrap_or_else(|e| e.into_inner());
+    let Some(area) = area else {
+        return ((x * 65535.0).round() as i32, (y * 65535.0).round() as i32, MOUSE_EVENT_FLAGS(0));
+    };
+    // SAFETY: plain system metrics.
+    let desktop = unsafe {
+        let left = GetSystemMetrics(SM_XVIRTUALSCREEN);
+        let top = GetSystemMetrics(SM_YVIRTUALSCREEN);
+        RECT {
+            left,
+            top,
+            right: left + GetSystemMetrics(SM_CXVIRTUALSCREEN),
+            bottom: top + GetSystemMetrics(SM_CYVIRTUALSCREEN),
+        }
+    };
+    let (ax, ay) = on_desktop(area, desktop, x, y);
+    (ax, ay, MOUSEEVENTF_VIRTUALDESK)
+}
+
+/// A point `(x, y)` of the screen at `area` in the virtual desktop's
+/// absolute coordinates (0 to 65535 across all screens).
+fn on_desktop(area: RECT, desktop: RECT, x: f32, y: f32) -> (i32, i32) {
+    let span = |from: i32, to: i32| ((to - from).max(2) - 1) as f32;
+    let px = area.left as f32 + x * span(area.left, area.right);
+    let py = area.top as f32 + y * span(area.top, area.bottom);
+    let ax = (px - desktop.left as f32) * 65535.0 / span(desktop.left, desktop.right);
+    let ay = (py - desktop.top as f32) * 65535.0 / span(desktop.top, desktop.bottom);
+    (ax.round().clamp(0.0, 65535.0) as i32, ay.round().clamp(0.0, 65535.0) as i32)
+}
 
 fn send_inputs(inputs: &[INPUT]) {
     if inputs.is_empty() {
@@ -136,15 +182,14 @@ pub fn move_relative(dx: f32, dy: f32) {
     }
 }
 
-/// Moves the mouse cursor to normalized coordinates `(x, y)` on the primary
-/// display (`0.0..=1.0`).
+/// Moves the mouse cursor to normalized coordinates `(x, y)` on the shown
+/// screen (`0.0..=1.0`): the main one unless [`set_absolute_area`] says.
 pub fn move_absolute(x: f32, y: f32) {
     if !x.is_finite() || !y.is_finite() {
         return;
     }
-    let ax = (x.clamp(0.0, 1.0) * 65535.0).round() as i32;
-    let ay = (y.clamp(0.0, 1.0) * 65535.0).round() as i32;
-    send_inputs(&[mouse_input(ax, ay, 0, MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE)]);
+    let (ax, ay, desk) = absolute(x, y);
+    send_inputs(&[mouse_input(ax, ay, 0, MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE | desk)]);
 }
 
 /// Injects a normalized touch event (`0.0..=1.0`) from reverse PC mirroring as
@@ -153,23 +198,23 @@ pub fn mirror_touch(action: TouchAction, x: f32, y: f32) {
     if !x.is_finite() || !y.is_finite() {
         return;
     }
-    let ax = (x.clamp(0.0, 1.0) * 65535.0).round() as i32;
-    let ay = (y.clamp(0.0, 1.0) * 65535.0).round() as i32;
-    let flags = match action {
-        TouchAction::Down => {
-            if let Ok(mut s) = STATE.lock() {
-                s.held_left = true;
+    let (ax, ay, desk) = absolute(x, y);
+    let flags = desk
+        | match action {
+            TouchAction::Down => {
+                if let Ok(mut s) = STATE.lock() {
+                    s.held_left = true;
+                }
+                MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_LEFTDOWN
             }
-            MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_LEFTDOWN
-        }
-        TouchAction::Move => MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE,
-        TouchAction::Up => {
-            if let Ok(mut s) = STATE.lock() {
-                s.held_left = false;
+            TouchAction::Move => MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE,
+            TouchAction::Up => {
+                if let Ok(mut s) = STATE.lock() {
+                    s.held_left = false;
+                }
+                MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_LEFTUP
             }
-            MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_LEFTUP
-        }
-    };
+        };
     send_inputs(&[mouse_input(ax, ay, 0, flags)]);
 }
 
@@ -542,6 +587,21 @@ pub fn is_user_active_within_ms(max_idle_ms: u32) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_tap_lands_on_the_screen_shown() {
+        // Two 1920x1080 screens side by side, the second one shown.
+        let desktop = RECT { left: 0, top: 0, right: 3840, bottom: 1080 };
+        let second = RECT { left: 1920, top: 0, right: 3840, bottom: 1080 };
+        assert_eq!(on_desktop(second, desktop, 0.0, 0.0), (32776, 0));
+        assert_eq!(on_desktop(second, desktop, 1.0, 1.0), (65535, 65535));
+        // A screen to the left of the main one starts below zero.
+        let desktop = RECT { left: -1280, top: 0, right: 1920, bottom: 1080 };
+        let left = RECT { left: -1280, top: 0, right: 0, bottom: 1024 };
+        assert_eq!(on_desktop(left, desktop, 0.0, 0.0), (0, 0));
+        let (x, _) = on_desktop(left, desktop, 1.0, 0.5);
+        assert!(x < 65535 * 1280 / 3200 + 1, "still on the left screen: {x}");
+    }
 
     #[test]
     fn each_keystroke_waits_out_the_last_ones_gap() {

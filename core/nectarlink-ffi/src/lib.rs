@@ -1361,6 +1361,17 @@ pub struct CallSim {
     pub is_default: bool,
 }
 
+/// One of a PC's screens, for picking the one to view (`mirror.displays`, #442).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct PcDisplay {
+    /// What `start_pc_mirror`'s `display` takes.
+    pub id: u32,
+    pub width: u32,
+    pub height: u32,
+    /// The PC's main screen.
+    pub primary: bool,
+}
+
 /// One call in this phone's call history (docs/protocol/calls.md).
 #[derive(Clone, PartialEq, Eq, uniffi::Record)]
 pub struct CallLogEntry {
@@ -4687,6 +4698,7 @@ impl NectarlinkNode {
         fps: u32,
         bitrate: u32,
         watch: Option<String>,
+        display: Option<u32>,
     ) -> Result<()> {
         let id = parse_id(&pc_id)?;
         let node = self.node.clone();
@@ -4701,8 +4713,25 @@ impl NectarlinkNode {
             screen_off: false,
             watch,
             sound_only: false,
+            display,
         };
         self.run(async move { Ok(node.mirror_start(id, options).await?) }).await
+    }
+
+    /// A paired PC's screens, the main one first, to pick the one to view;
+    /// empty from a PC that only shares its main one (#442).
+    pub async fn pc_displays(&self, pc_id: String) -> Result<Vec<PcDisplay>> {
+        let id = parse_id(&pc_id)?;
+        let node = self.node.clone();
+        self.run(async move {
+            Ok(node
+                .mirror_displays(id)
+                .await?
+                .into_iter()
+                .map(|d| PcDisplay { id: d.id, width: d.width, height: d.height, primary: d.primary })
+                .collect())
+        })
+        .await
     }
 
     /// Asks a paired PC for a fresh keyframe on its screen stream (`mirror.keyframe`).
@@ -5254,6 +5283,33 @@ pub fn theme_scheme_from_seed(seed_rgb: u32) -> FfiThemeScheme {
 #[uniffi::export]
 pub fn install_id_from(platform_id: String) -> Option<String> {
     core::install_id_from(&platform_id)
+}
+
+/// What's new (#461), kept in `dir` (the app's data folder): at start, after
+/// an update or on a first install, so the dot shows when an update brought
+/// something not seen yet.
+#[uniffi::export]
+pub fn whats_new_note_start(dir: String, updated: bool) {
+    nectarlink_core::whats_new::note_start(std::path::Path::new(&dir), updated);
+}
+
+/// Whether What's new has something not seen yet (the dot).
+#[uniffi::export]
+pub fn whats_new_pending(dir: String) -> bool {
+    nectarlink_core::whats_new::pending(std::path::Path::new(&dir))
+}
+
+/// What's new as JSON: `{version, mode, newCount, groups: [{title, items,
+/// more}], url}`, one short line per change.
+#[uniffi::export]
+pub fn whats_new_json(dir: String) -> String {
+    nectarlink_core::whats_new::json(std::path::Path::new(&dir))
+}
+
+/// What's new was opened: the dot goes, and what it showed stays to show again.
+#[uniffi::export]
+pub fn whats_new_mark_seen(dir: String) {
+    nectarlink_core::whats_new::mark_seen(std::path::Path::new(&dir));
 }
 
 /// Sends core logs to the platform log (logcat on Android). Call once,

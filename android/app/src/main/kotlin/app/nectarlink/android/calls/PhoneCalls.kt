@@ -516,6 +516,10 @@ internal class PhoneCalls(
                 if (rawId.isEmpty()) return@mapNotNull null
                 val id = truncateUtf8(rawId, MAX_ID_BYTES)
                 CallSim(id = id, label = simLabel(tm, handle), isDefault = handle == default)
+            }.let { sims ->
+                // The calling apps fit within what a PC takes, after the SIMs.
+                val apps = AppDial.choices(context)
+                sims.take(MAX_SIMS - apps.size) + apps
             }
         }.getOrElse {
             Log.w(TAG, "can't list the SIMs", it)
@@ -526,6 +530,11 @@ internal class PhoneCalls(
     /** Places a call to [number] on the SIM [sim] (an id from [sims]), or on the default when it's gone. */
     @SuppressLint("MissingPermission")
     fun dialOn(number: String, sim: String): Boolean {
+        // A calling app the PC picked (#434), not a SIM; the default SIM
+        // once that app is gone, as for a SIM that's gone.
+        if (sim.startsWith(AppDial.PREFIX)) {
+            return if (AppDial.available(context, sim)) AppDial.dial(context, number, sim) else dial(number, null)
+        }
         val handle = if (canListSims(context)) {
             runCatching {
                 context.getSystemService(TelecomManager::class.java)?.callCapablePhoneAccounts?.firstOrNull {
@@ -663,6 +672,8 @@ internal class PhoneCalls(
         /** The protocol's limit for a label (`calls::MAX_TEXT_BYTES`), in characters to be safe. */
         private const val MAX_SIM_LABEL = 64
         internal const val MAX_ID_BYTES = 128
+        /** SIMs and calling apps a PC takes in `call.sims`, at most (protocol `calls::MAX_SIMS`). */
+        internal const val MAX_SIMS = 8
         internal const val MAX_NUMBER_BYTES = 64
         internal const val MAX_TEXT_BYTES = 256
 
