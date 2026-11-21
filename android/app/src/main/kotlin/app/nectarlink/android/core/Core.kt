@@ -76,6 +76,7 @@ import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.delay
+import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -1839,16 +1840,26 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         it.online && app.nectarlink.android.clipboard.ClipboardPeers.shares(context, it.id)
     }
 
+    private val screenshotSendLock = Mutex()
+    private val newestScreenshotAtMs = AtomicLong()
+
     private fun onScreenshot(uri: Uri, takenAtMs: Long) {
         if (takenAtMs < PhoneClipboard.screenshotSyncSince(context) || !RecentPhotos.hasImageAccess(context)) return
         val targets = autoClipboardTargets().filter { !it.isAndroid }.map { it.id }.toSet()
         if (targets.isEmpty()) return
+        if (takenAtMs <= newestScreenshotAtMs.getAndAccumulate(takenAtMs, ::maxOf)) return
+        fun stillAllowed() = takenAtMs == newestScreenshotAtMs.get() &&
+            takenAtMs >= PhoneClipboard.screenshotSyncSince(context) && RecentPhotos.hasImageAccess(context)
+        // A slow older transfer must complete before a newer one writes the clipboard.
         runScope?.launch(Dispatchers.IO) {
-            val currentNode = node ?: return@launch
-            val image = (PhoneClipboard.readImage(context, uri) as? PhoneClipboard.ImageResult.Ready)?.image ?: return@launch
-            for (pc in autoClipboardTargets()) {
-                if (takenAtMs < PhoneClipboard.screenshotSyncSince(context)) break
-                if (pc.id in targets) runCatching { currentNode.sendClipboardImageLive(pc.id, image.mime, image.bytes) }
+            screenshotSendLock.withLock {
+                val currentNode = node ?: return@withLock
+                if (!stillAllowed()) return@withLock
+                val image = (PhoneClipboard.readImage(context, uri) as? PhoneClipboard.ImageResult.Ready)?.image ?: return@withLock
+                for (pc in autoClipboardTargets()) {
+                    if (!stillAllowed()) break
+                    if (pc.id in targets) runCatching { currentNode.sendClipboardImageLive(pc.id, image.mime, image.bytes) }
+                }
             }
         }
     }

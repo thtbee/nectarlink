@@ -100,9 +100,8 @@ internal class RecentPhotos(
                         newestId = id
                         val album = cursor.getString(5).orEmpty()
                         val name = cursor.getString(1) ?: "photo.jpg"
-                        val taken = cursor.getLong(4).takeIf { it > 0 } ?: added * 1000
-                        add(Found(id, name, cursor.getLong(2), taken, album))
-
+                        val taken = cursor.getLong(4).takeIf { it > 0 }
+                        add(Found(id, name, cursor.getLong(2), added, taken, album))
                     }
                 }
             }.orEmpty()
@@ -117,18 +116,23 @@ internal class RecentPhotos(
             }
         }
         val now = System.currentTimeMillis()
-        found.lastOrNull { isFreshScreenshot(it.album, it.name, it.taken, watchingSince, now) }?.let {
-            onScreenshot(ContentUris.withAppendedId(IMAGES_URI, it.id), it.taken)
+        found.mapNotNull { photo ->
+            val taken = photo.taken ?: return@mapNotNull null
+            if (isFreshScreenshot(photo.album, photo.name, taken, watchingSince, now)) photo to taken else null
+        }.maxByOrNull { it.second }?.let { (photo, taken) ->
+            onScreenshot(ContentUris.withAppendedId(IMAGES_URI, photo.id), taken)
         }
         // A burst (a camera's burst mode, a downloaded album) isn't news
         // photo by photo: only the latest few.
         for (photo in found.takeLast(MAX_PER_CHECK)) {
             val thumb = encodeThumbnail(context, IMAGES_URI, photo.id, isVideo = false, PREVIEW_PX, MAX_PREVIEW_BYTES) ?: continue
-            onPhoto(Photo(IMAGE_PREFIX + photo.id, photo.name, photo.size.coerceAtLeast(0L).toULong(), photo.taken / 1000, photo.album.contains("Screenshot", ignoreCase = true), thumb))
+            onPhoto(Photo(IMAGE_PREFIX + photo.id, photo.name, photo.size.coerceAtLeast(0L).toULong(), photo.taken?.div(1000) ?: photo.added, photo.album.contains("Screenshot", ignoreCase = true), thumb))
         }
     }
 
-    private data class Found(val id: Long, val name: String, val size: Long, val taken: Long, val album: String)
+    private data class Found(
+        val id: Long, val name: String, val size: Long, val added: Long, val taken: Long?, val album: String,
+    )
 
     companion object {
         private const val TAG = "RecentPhotos"
@@ -436,7 +440,7 @@ internal class RecentPhotos(
 }
 
 // shortcut: standard screenshot names and albums, extend when another OEM layout is verified.
-internal fun isFreshScreenshot(album: String, name: String, taken: Long, since: Long, now: Long): Boolean =
-    taken >= since && now - taken in 0..15_000L &&
+internal fun isFreshScreenshot(album: String, name: String, taken: Long?, since: Long, now: Long): Boolean =
+    taken != null && taken >= since && now - taken in 0..15_000L &&
         (album.equals("Screenshots", ignoreCase = true) || album.equals("Screenshot", ignoreCase = true)) &&
         name.startsWith("Screenshot", ignoreCase = true)
