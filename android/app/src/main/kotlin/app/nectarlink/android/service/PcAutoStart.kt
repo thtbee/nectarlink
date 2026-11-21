@@ -71,7 +71,11 @@ object PcAutoStart {
      * and Elevated is running. False otherwise: the caller asks as usual.
      */
     fun tryStart(context: Context, kind: Kind, pcId: String): Boolean {
-        if (!isOn(context, pcId) || !Elevated.running) return false
+        if (!isOn(context, pcId) ||
+            !Elevated.hasCapability(app.nectarlink.services.client.NectarlinkServiceContract.CAP_BACKGROUND_LAUNCH)
+        ) {
+            return false
+        }
         offer(Pending(kind, pcId, SystemClock.elapsedRealtime()))
         return Elevated.runCommand(OPEN_COMMAND).also { if (!it) pending = null }
     }

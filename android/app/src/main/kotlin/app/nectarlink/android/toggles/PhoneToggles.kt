@@ -24,6 +24,7 @@ import app.nectarlink.android.elevated.Elevated
 import app.nectarlink.android.webcam.WebcamService
 import app.nectarlink.core.PhoneToggleValue
 import app.nectarlink.core.PhoneToggles as CorePhoneToggles
+import app.nectarlink.services.client.NectarlinkServiceContract
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -147,7 +148,7 @@ class PhoneToggles(
         if (torchCameraId != null) add("toggles.flashlight")
         if (canChangeDnd(context)) add("toggles.dnd")
         if (canChangeBrightness(context)) add("toggles.brightness")
-        if (Elevated.running) {
+        if (Elevated.hasCapability(NectarlinkServiceContract.CAP_SYSTEM_TOGGLES)) {
             add("toggles.wifi")
             add("toggles.bluetooth")
         }
@@ -335,8 +336,10 @@ class PhoneToggles(
         am.setStreamVolume(AudioManager.STREAM_MUSIC, wanted, 0)
         // Some phones ignore this without a word (FuntouchOS, #266). Elevated's
         // helper can still get there with the volume keys.
-        if (am.getStreamVolume(AudioManager.STREAM_MUSIC) != wanted && app.nectarlink.android.elevated.Elevated.running) {
-            app.nectarlink.android.elevated.Elevated.setMusicVolume(wanted)
+        if (am.getStreamVolume(AudioManager.STREAM_MUSIC) != wanted &&
+            Elevated.hasCapability(NectarlinkServiceContract.CAP_SYSTEM_TOGGLES)
+        ) {
+            Elevated.setMusicVolume(wanted)
         }
         return true
     }
@@ -357,7 +360,7 @@ class PhoneToggles(
                 raw,
             )
         }
-        if (Elevated.running) {
+        if (Elevated.hasCapability(NectarlinkServiceContract.CAP_SYSTEM_TOGGLES)) {
             return Elevated.runCommand("settings put system screen_brightness $raw")
         }
         return false
@@ -403,7 +406,7 @@ class PhoneToggles(
         fun canChangeDnd(context: Context): Boolean = hasDndAccess(context)
 
         fun canChangeBrightness(context: Context): Boolean =
-            hasWriteSettings(context) || Elevated.running
+            hasWriteSettings(context) || Elevated.hasCapability(NectarlinkServiceContract.CAP_SYSTEM_TOGGLES)
 
         fun dndSettingsIntent(): Intent =
             Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)

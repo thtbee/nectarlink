@@ -22,6 +22,9 @@ import app.nectarlink.android.calls.CallCompanion
 import app.nectarlink.android.notifications.NotificationListener
 import app.nectarlink.core.MirrorInputEvent
 import app.nectarlink.core.TouchPhase
+import app.nectarlink.services.ServiceStatus
+import app.nectarlink.services.client.NectarlinkServiceClient
+import app.nectarlink.services.client.NectarlinkServiceContract
 import io.github.muntashirakon.adb.AbsAdbConnectionManager
 import io.github.muntashirakon.adb.AdbPairingRequiredException
 import io.github.muntashirakon.adb.AdbStream
@@ -113,6 +116,8 @@ object Elevated {
     /** Where the helper listens, and the token it wants, while it runs. */
     @Volatile private var helper: Pair<Int, String>? = null
     @Volatile private var screenOffRequested = false
+    @Volatile private var serviceClient: NectarlinkServiceClient? = null
+    @Volatile private var serviceStatus: ServiceStatus? = null
 
     /** True when the running helper was started through root (`su`), not Wireless debugging. */
     @Volatile var rootActive: Boolean = false
@@ -122,7 +127,27 @@ object Elevated {
     @Volatile var shizukuActive: Boolean = false
         private set
 
-    val running: Boolean get() = input != null
+    /** True when the custom ROM's privileged Nectarlink Services package is available on this device. */
+    fun hasSystemService(context: Context): Boolean =
+        NectarlinkServiceClient.isAvailable(context, requireSystemApp = true)
+
+    fun hasSystemService(): Boolean =
+        ::context.isInitialized && hasSystemService(context)
+
+    /** True when connected to the custom ROM's Nectarlink Services binder. */
+    val romServiceActive: Boolean
+        get() = serviceClient?.isConnected == true
+
+    val running: Boolean get() = input != null || romServiceActive
+
+    /** Whether [flag] (one of [NectarlinkServiceContract].CAP_*) is active right now. */
+    fun hasCapability(flag: Long): Boolean {
+        val client = serviceClient
+        if (client != null) {
+            return client.isConnected && (serviceStatus?.hasCapability(flag) == true)
+        }
+        return input != null && (flag != NectarlinkServiceContract.CAP_CALL_AUDIO || callAudioSupported)
+    }
 
     private val suPaths = arrayOf(
         "/system/bin/su",
@@ -150,9 +175,8 @@ object Elevated {
     /** Whether the user set Elevated up through Shizuku. */
     fun usesShizuku(): Boolean = prefs().getBoolean(SHIZUKU, false)
 
-    /** Set up one way or another, so it should start whenever it can. */
-    /** Set up through Wireless debugging, root or Shizuku, whether or not it runs right now. */
-    fun isSetUp() = paired() || usesRoot() || usesShizuku()
+    /** Set up through Wireless debugging, root, Shizuku, or the custom ROM service. */
+    fun isSetUp() = hasSystemService() || paired() || usesRoot() || usesShizuku()
 
     private fun prefs() = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
@@ -217,6 +241,11 @@ object Elevated {
 
     fun init(context: Context) {
         this.context = context.applicationContext
+        if (hasSystemService(this.context)) {
+            initSystemService()
+            scope.launch(Dispatchers.IO) { start() }
+            return
+        }
         watchWirelessDebugging()
         // Shizuku's service comes after the app on a boot, and again whenever
         // it's restarted: start then, if Elevated goes through it.
@@ -229,6 +258,59 @@ object Elevated {
             if (isSetUp()) {
                 _state.value = State.Waiting
                 start()
+            }
+        }
+    }
+
+    private fun initSystemService() {
+        val client = NectarlinkServiceClient(context, requireSystemApp = true)
+        serviceClient = client
+        scope.launch {
+            client.clipboardEvents.collect { event ->
+                if (event.isSensitive) {
+                    onSensitiveCopied(event.text)
+                } else {
+                    onClipboardChanged(event.text, event.html)
+                }
+            }
+        }
+        scope.launch {
+            client.inputBlockedEvents.collect {
+                onInputBlocked()
+            }
+        }
+        scope.launch {
+            client.state.collect { conn ->
+                when (conn) {
+                    is NectarlinkServiceClient.ConnectionState.Connected -> {
+                        serviceStatus = conn.status
+                        callAudioSupported = conn.status.callAudioSupported
+                        _state.value = State.Running
+                        cancelRetry()
+                        onChange()
+                        scope.launch(Dispatchers.IO) {
+                            client.provisionAppPermissions(context.packageName)
+                            if (screenOffRequested) client.setScreenOff(true)
+                            onChange()
+                        }
+                    }
+                    is NectarlinkServiceClient.ConnectionState.Rejected -> {
+                        serviceStatus = null
+                        callAudioSupported = false
+                        _state.value = State.Waiting
+                        onChange()
+                    }
+                    NectarlinkServiceClient.ConnectionState.Disconnected,
+                    NectarlinkServiceClient.ConnectionState.Unavailable -> {
+                        val wasRunning = _state.value == State.Running
+                        serviceStatus = null
+                        callAudioSupported = false
+                        if (wasRunning) _state.value = State.Waiting
+                        onChange()
+                        if (!held && hasSystemService()) scheduleRetry()
+                    }
+                    NectarlinkServiceClient.ConnectionState.Connecting -> Unit
+                }
             }
         }
     }
@@ -269,10 +351,10 @@ object Elevated {
         }.onFailure { Log.i(TAG, "can't watch wireless debugging", it) }
     }
 
-    /** Tries again later, while it can still work: set up, not running, on Wi-Fi (or through root or Shizuku). */
+    /** Tries again later, while it can still work: set up, not running, on Wi-Fi (or through system service, root or Shizuku). */
     private fun scheduleRetry() {
-        if (held || !isSetUp() || running || BankingPause.isPaused(context)) return
-        val withoutWifi = usesRoot() || (usesShizuku() && ShizukuElevated.allowed())
+        if (held || !isSetUp() || running || (!hasSystemService() && BankingPause.isPaused(context))) return
+        val withoutWifi = hasSystemService() || usesRoot() || (usesShizuku() && ShizukuElevated.allowed())
         if (!withoutWifi && !onWifi()) return
         val wait = RETRY_MS[retryAttempt.coerceAtMost(RETRY_MS.lastIndex)]
         retryAttempt++
@@ -439,6 +521,25 @@ object Elevated {
     /** Connects and starts the input helper (when set up; again after it stopped). */
     suspend fun start(): Boolean = withContext(Dispatchers.IO) {
         held = false
+        if (hasSystemService()) {
+            val client = serviceClient ?: return@withContext false
+            if (client.isConnected) return@withContext true
+            val connected = lock.withLock {
+                if (client.isConnected) return@withLock true
+                if (client.state.value is NectarlinkServiceClient.ConnectionState.Rejected) {
+                    client.disconnect()
+                }
+                _state.value = State.Starting
+                client.connect()
+            }
+            if (connected) {
+                cancelRetry()
+            } else if (_state.value == State.Starting) {
+                _state.value = State.Waiting
+                scheduleRetry()
+            }
+            return@withContext connected
+        }
         // Paused for a banking app: debugging stays off until it's over
         // (BankingPause starts Elevated again then).
         if (BankingPause.isPaused(context)) {
@@ -806,7 +907,7 @@ object Elevated {
      * a PC connects, so plugging in is enough.
      */
     suspend fun startOverUsb(): Boolean = withContext(Dispatchers.IO) {
-        if (held || running || BankingPause.isPaused(context)) return@withContext running
+        if (hasSystemService() || held || running || BankingPause.isPaused(context)) return@withContext running
         lock.withLock { running || startOverUsbLocked() }
     }
 
@@ -839,6 +940,7 @@ object Elevated {
 
     /** Stops the helper while paused for a banking app; [onNetworkChanged] starts it again when resumed. */
     fun pauseForBanking() {
+        if (hasSystemService()) return
         cancelRetry()
         scope.launch(Dispatchers.IO) {
             lock.withLock { stopLocked() }
@@ -848,6 +950,17 @@ object Elevated {
     private fun stopLocked() {
         val wasScreenOff = screenOffRequested
         screenOffRequested = false
+        serviceClient?.let { client ->
+            if (wasScreenOff && client.isConnected) {
+                runCatching { client.setScreenOff(false) }
+            }
+            client.disconnect()
+            serviceStatus = null
+            callAudioSupported = false
+            _state.value = State.Waiting
+            onChange()
+            return
+        }
         val writer = input
         input = null
         helper = null
@@ -914,6 +1027,19 @@ object Elevated {
 
     /** The PC's input as real events; false if Elevated isn't running. */
     fun handle(event: MirrorInputEvent): Boolean {
+        val client = serviceClient
+        if (client != null) {
+            if (!client.isConnected || !hasCapability(NectarlinkServiceContract.CAP_INPUT_INJECTION)) return false
+            if (Thread.currentThread() === offMainThread) {
+                val (w, h) = screen()
+                return handleOnWithService(client, null, w, h, event)
+            }
+            offMain.execute {
+                val (w, h) = screen()
+                handleOnWithService(client, null, w, h, event)
+            }
+            return true
+        }
         if (input == null) return false
         if (Thread.currentThread() === offMainThread) {
             val (w, h) = screen()
@@ -931,6 +1057,15 @@ object Elevated {
      * pixels), or the screen when null.
      */
     fun handleOn(display: Int?, w: Float, h: Float, event: MirrorInputEvent): Boolean {
+        val client = serviceClient
+        if (client != null) {
+            if (!client.isConnected || !hasCapability(NectarlinkServiceContract.CAP_INPUT_INJECTION)) return false
+            if (Thread.currentThread() === offMainThread) {
+                return handleOnWithService(client, display, w, h, event)
+            }
+            offMain.execute { handleOnWithService(client, display, w, h, event) }
+            return true
+        }
         val writer = input ?: return false
         val to = display?.let { "@$it " }.orEmpty()
         val line = to + when (event) {
@@ -967,8 +1102,67 @@ object Elevated {
         return send(writer, line)
     }
 
+    private fun handleOnWithService(
+        client: NectarlinkServiceClient,
+        display: Int?,
+        w: Float,
+        h: Float,
+        event: MirrorInputEvent,
+    ): Boolean {
+        val targetDisplay = display ?: -1
+        return when (event) {
+            is MirrorInputEvent.Touch -> {
+                val action = when (event.action) {
+                    TouchPhase.DOWN -> NectarlinkServiceContract.TOUCH_DOWN
+                    TouchPhase.MOVE -> NectarlinkServiceContract.TOUCH_MOVE
+                    TouchPhase.UP -> NectarlinkServiceContract.TOUCH_UP
+                }
+                client.injectTouch(targetDisplay, action, event.x * w, event.y * h)
+            }
+            is MirrorInputEvent.Scroll ->
+                client.injectScroll(targetDisplay, event.x * w, event.y * h, event.dx, event.dy)
+            is MirrorInputEvent.Key -> keys[event.key]?.let {
+                client.injectKey(targetDisplay, it, 0)
+            } ?: when {
+                event.key == "select_all" ->
+                    client.injectKey(targetDisplay, KeyEvent.KEYCODE_A, KeyEvent.META_CTRL_ON or KeyEvent.META_CTRL_LEFT_ON)
+                event.key == "notifications" && display == null ->
+                    client.expandNotifications()
+                else -> true
+            }
+            is MirrorInputEvent.Text -> when {
+                event.text.isEmpty() -> true
+                event.text == "\n" || event.text == "\r" || event.text == "\r\n" ->
+                    client.injectKey(targetDisplay, KeyEvent.KEYCODE_ENTER, 0)
+                event.text.length == 1 && event.text[0].code in 32..126 ->
+                    client.injectText(targetDisplay, event.text)
+                else ->
+                    client.setClipboard(event.text, null, false) &&
+                        client.injectKey(targetDisplay, KeyEvent.KEYCODE_PASTE, 0)
+            }
+            is MirrorInputEvent.Gamepad ->
+                client.injectGamepad(
+                    targetDisplay,
+                    event.buttons.toInt(),
+                    event.lx.toInt(),
+                    event.ly.toInt(),
+                    event.rx.toInt(),
+                    event.ry.toInt(),
+                    event.lt.toInt(),
+                    event.rt.toInt(),
+                )
+        }
+    }
+
     /** Moves the music volume to this index through the helper, false if it isn't running. */
     fun setMusicVolume(index: Int): Boolean {
+        val client = serviceClient
+        if (client != null) {
+            if (!client.isConnected || !hasCapability(NectarlinkServiceContract.CAP_SYSTEM_TOGGLES)) return false
+            if (Thread.currentThread() === offMainThread) return client.setMusicVolume(index)
+            offMain.execute { client.setMusicVolume(index) }
+            return true
+        }
         val writer = input ?: return false
         return send(writer, "V $index")
     }
@@ -987,6 +1181,12 @@ object Elevated {
      * when it couldn't start. Takes about a second; not on the main thread.
      */
     fun pointerStart(edge: String, y: Float): PointerInfo? {
+        val client = serviceClient
+        if (client != null) {
+            if (!client.isConnected || !hasCapability(NectarlinkServiceContract.CAP_POINTER_FLOW)) return null
+            val info = client.pointerStart(edge, y) ?: return null
+            return PointerInfo(info.width, info.height, info.scale).takeIf { it.width > 0 && it.height > 0 && it.scale > 0f }
+        }
         val writer = input ?: return null
         pointerReplies.clear()
         if (!sendNow(writer, "FS $edge $y")) return null
@@ -998,12 +1198,24 @@ object Elevated {
 
     /** Moves the PC's mouse here by counts, with [buttons] held (bits: left, right, middle). */
     fun pointerMove(dx: Int, dy: Int, buttons: Int, wheel: Int): Boolean {
+        val client = serviceClient
+        if (client != null) {
+            if (!client.isConnected || !hasCapability(NectarlinkServiceContract.CAP_POINTER_FLOW)) return false
+            if (Thread.currentThread() === offMainThread) return client.pointerMove(dx, dy, buttons, wheel)
+            offMain.execute { client.pointerMove(dx, dy, buttons, wheel) }
+            return true
+        }
         val writer = input ?: return false
         return send(writer, "FM $dx $dy $buttons $wheel")
     }
 
     /** Where the pointer is, in pixels; null when unknown. Not on the main thread. */
     fun pointerWhere(): Pair<Float, Float>? {
+        val client = serviceClient
+        if (client != null) {
+            if (!client.isConnected || !hasCapability(NectarlinkServiceContract.CAP_POINTER_FLOW)) return null
+            return client.pointerWhere()
+        }
         val writer = input ?: return null
         pointerReplies.clear()
         if (!sendNow(writer, "FW")) return null
@@ -1015,31 +1227,80 @@ object Elevated {
 
     /** The PC's mouse went back to the PC. */
     fun pointerStop() {
+        val client = serviceClient
+        if (client != null) {
+            if (!client.isConnected) return
+            if (Thread.currentThread() === offMainThread) {
+                client.pointerStop()
+            } else {
+                offMain.execute { client.pointerStop() }
+            }
+            return
+        }
         val writer = input ?: return
         send(writer, "FX")
     }
 
     /** Sends a gamepad state directly through the Elevated helper. */
     fun sendGamepad(buttons: Int, lx: Int, ly: Int, rx: Int, ry: Int, lt: Int, rt: Int): Boolean {
+        val client = serviceClient
+        if (client != null) {
+            if (!client.isConnected || !hasCapability(NectarlinkServiceContract.CAP_INPUT_INJECTION)) return false
+            if (Thread.currentThread() === offMainThread) {
+                return client.injectGamepad(-1, buttons, lx, ly, rx, ry, lt, rt)
+            }
+            offMain.execute { client.injectGamepad(-1, buttons, lx, ly, rx, ry, lt, rt) }
+            return true
+        }
         val writer = input ?: return false
         return send(writer, "G $buttons $lx $ly $rx $ry $lt $rt")
     }
 
     /**
      * Opens a 48 kHz 16-bit stereo PCM audio stream from the Elevated helper
-     * (`InputServer` command `"A"`). Returns null if Elevated isn't running.
+     * (`InputServer` command `"A"`) or the system service. Returns null if Elevated isn't running.
      */
-    fun openAudioStream(): java.net.Socket? {
+    fun openAudioStream(): ElevatedAudioStream? {
+        val client = serviceClient
+        if (client != null) {
+            if (!client.isConnected || !hasCapability(NectarlinkServiceContract.CAP_DEVICE_AUDIO)) return null
+            return client.openDeviceAudio()?.let(::PfdAudioStream)
+        }
         val (port, token) = helper ?: return null
-        return runCatching { HelperProof.open(port, token, "A", PROOF_MS) }.onFailure { Log.w(TAG, "can't open Elevated audio stream", it) }.getOrNull()
+        return runCatching {
+            val sock = java.net.Socket(java.net.InetAddress.getLoopbackAddress(), port).apply {
+                tcpNoDelay = true
+                val out = OutputStreamWriter(getOutputStream(), Charsets.UTF_8)
+                out.write("$token\nA\n")
+                out.flush()
+            }
+            SocketAudioStream(sock)
+        }.onFailure { Log.w(TAG, "can't open Elevated audio stream", it) }.getOrNull()
     }
 
     /**
-     * Opens the call in progress's sound from the Elevated helper ([CallAudio]):
-     * the other party arrives on the socket, what's written goes into the
+     * Opens the call in progress's sound from the Elevated helper ([CallAudio]) or the system service:
+     * the other party arrives on the stream, what's written goes into the
      * call. Null, with the helper's reason logged, if it can't.
      */
-    fun openCallAudio(): java.net.Socket? = askCallAudio("CALL")
+    fun openCallAudio(): ElevatedCallAudioStream? {
+        val client = serviceClient
+        if (client != null) {
+            if (!client.isConnected || !hasCapability(NectarlinkServiceContract.CAP_CALL_AUDIO)) return null
+            val pfd = client.openCallAudio() ?: return null
+            val stream = PfdCallAudioStream(pfd)
+            val answer = SystemServiceBridge.readCallAudioAnswer(stream.inputStream, CALL_AUDIO_ANSWER_MS.toLong()) {
+                runCatching { stream.close() }
+            }
+            if (answer != "OK") {
+                Log.w(TAG, "no call sound from system service: ${answer ?: "timeout"}")
+                runCatching { stream.close() }
+                return null
+            }
+            return stream
+        }
+        return askCallAudio("CALL")?.let(::SocketCallAudioStream)
+    }
 
     /**
      * Whether this phone lets the helper reach a call's sound (Android 13+ and
@@ -1087,10 +1348,20 @@ object Elevated {
     }
 
     /** Lets NectarLink see which app is in front (for Pause for banking apps); false if Elevated isn't running. */
-    fun grantUsageAccess(): Boolean = runCommand("appops set ${context.packageName} GET_USAGE_STATS allow")
+    fun grantUsageAccess(): Boolean {
+        val client = serviceClient
+        if (client != null) {
+            return client.isConnected && client.provisionAppPermissions(context.packageName)
+        }
+        return runCommand("appops set ${context.packageName} GET_USAGE_STATS allow")
+    }
 
-    /** Runs an allowed shell command through the Elevated helper. */
+    /** Runs an allowed shell command through the Elevated helper or system service. */
     fun runCommand(command: String): Boolean {
+        val client = serviceClient
+        if (client != null) {
+            return client.isConnected && SystemServiceBridge.executeCommand(client, command, context.packageName)
+        }
         val writer = input ?: return false
         return send(writer, "C $command")
     }
@@ -1102,12 +1373,22 @@ object Elevated {
      */
     /** Has the helper empty the clipboard if `text` is still on it; false if it isn't running. */
     fun clearClipboard(text: String): Boolean {
+        val client = serviceClient
+        if (client != null) {
+            return client.isConnected && hasCapability(NectarlinkServiceContract.CAP_CLIPBOARD_SYNC) && client.clearClipboard(text)
+        }
         val writer = input ?: return false
         val b64 = android.util.Base64.encodeToString(text.toByteArray(Charsets.UTF_8), android.util.Base64.NO_WRAP)
         return send(writer, "X $b64")
     }
 
     fun setClipboard(text: String, html: String?, sensitive: Boolean = false): Boolean {
+        val client = serviceClient
+        if (client != null) {
+            return client.isConnected &&
+                hasCapability(NectarlinkServiceContract.CAP_CLIPBOARD_SYNC) &&
+                client.setClipboard(text, html, sensitive)
+        }
         val writer = input ?: return false
         val b64 = { value: String -> android.util.Base64.encodeToString(value.toByteArray(Charsets.UTF_8), android.util.Base64.NO_WRAP) }
         return send(writer, "B ${b64(text)} ${html?.let(b64).orEmpty()} ${if (sensitive) "1" else "0"}")
@@ -1119,6 +1400,13 @@ object Elevated {
      * turn the screen on by hand (#82).
      */
     fun wakeScreen(): Boolean {
+        val client = serviceClient
+        if (client != null) {
+            if (!client.isConnected) return false
+            val power = context.getSystemService(android.os.PowerManager::class.java)
+            if (power?.isInteractive != false) return true
+            return client.wakeScreen()
+        }
         val writer = input ?: return false
         val power = context.getSystemService(android.os.PowerManager::class.java)
         if (power?.isInteractive != false) return true
@@ -1128,6 +1416,13 @@ object Elevated {
     /** Turns the physical screen panel off or back on while mirroring. */
     fun setScreenOff(off: Boolean): Boolean {
         screenOffRequested = off
+        val client = serviceClient
+        if (client != null) {
+            if (!client.isConnected || !hasCapability(NectarlinkServiceContract.CAP_DISPLAY_POWER)) return false
+            if (Thread.currentThread() === offMainThread) return client.setScreenOff(off)
+            offMain.execute { client.setScreenOff(off) }
+            return true
+        }
         val writer = input ?: return false.also { Log.i(TAG, "screen ${if (off) "off" else "on"} asked, Elevated isn't running") }
         return send(writer, "P ${if (off) 0 else 1}")
     }
@@ -1135,8 +1430,8 @@ object Elevated {
     /**
      * Opens an app window: the helper runs [pkg] on a display of its own of
      * [width] × [height] pixels at [dpi], and streams it on the returned
-     * connection (packets as [AppDisplay] writes them). Null when Elevated
-     * isn't running. Write "K\n" for a keyframe; close it to close the window.
+     * stream (packets as [AppDisplay] writes them). Null when Elevated
+     * isn't running.
      */
     fun openApp(
         pkg: String,
@@ -1146,17 +1441,34 @@ object Elevated {
         bitrate: Int,
         fps: Int,
         codec: String = "h264",
-    ): java.net.Socket? {
+    ): ElevatedDisplayStream? {
         if (!PACKAGE.matches(pkg)) return null
+        val client = serviceClient
+        if (client != null) {
+            if (!client.isConnected || !hasCapability(NectarlinkServiceContract.CAP_APP_VIRTUAL_DISPLAY)) return null
+            val session = client.openAppDisplay(pkg, width, height, dpi, bitrate, fps, codec) ?: return null
+            val pfd = runCatching { session.videoReadFd }.getOrNull()
+            if (pfd == null) {
+                runCatching { session.close() }
+                return null
+            }
+            return BinderDisplayStream(session, pfd)
+        }
         val (port, token) = helper ?: return null
         return runCatching {
-            HelperProof.open(port, token, "V $width $height $dpi $bitrate $fps $pkg $codec", PROOF_MS)
+            val socket = java.net.Socket(java.net.InetAddress.getLoopbackAddress(), port).apply {
+                tcpNoDelay = true
+                val out = OutputStreamWriter(getOutputStream(), Charsets.UTF_8)
+                out.write("$token\nV $width $height $dpi $bitrate $fps $pkg $codec\n")
+                out.flush()
+            }
+            SocketDisplayStream(socket)
         }.onFailure { Log.w(TAG, "can't open an app window", it) }.getOrNull()
     }
 
     /**
      * Opens a full-screen mirror stream (`pkg == "-"`) via the Elevated shell
-     * helper without requiring a MediaProjection consent prompt on the phone.
+     * helper or system service without requiring a MediaProjection consent prompt on the phone.
      */
     fun openScreen(
         width: Int,
@@ -1165,10 +1477,27 @@ object Elevated {
         bitrate: Int,
         fps: Int,
         codec: String = "h264",
-    ): java.net.Socket? {
+    ): ElevatedDisplayStream? {
+        val client = serviceClient
+        if (client != null) {
+            if (!client.isConnected || !hasCapability(NectarlinkServiceContract.CAP_SCREEN_MIRROR)) return null
+            val session = client.openScreenMirror(width, height, dpi, bitrate, fps, codec) ?: return null
+            val pfd = runCatching { session.videoReadFd }.getOrNull()
+            if (pfd == null) {
+                runCatching { session.close() }
+                return null
+            }
+            return BinderDisplayStream(session, pfd)
+        }
         val (port, token) = helper ?: return null
         return runCatching {
-            HelperProof.open(port, token, "V $width $height $dpi $bitrate $fps - $codec", PROOF_MS)
+            val socket = java.net.Socket(java.net.InetAddress.getLoopbackAddress(), port).apply {
+                tcpNoDelay = true
+                val out = OutputStreamWriter(getOutputStream(), Charsets.UTF_8)
+                out.write("$token\nV $width $height $dpi $bitrate $fps - $codec\n")
+                out.flush()
+            }
+            SocketDisplayStream(socket)
         }.onFailure { Log.w(TAG, "can't open Elevated screen mirror", it) }.getOrNull()
     }
 

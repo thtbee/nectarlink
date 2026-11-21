@@ -255,4 +255,22 @@ class WalkthroughStateTest {
             }
         }
     }
+
+    @Test
+    fun elevatedGuideIsHiddenWhenCustomRomServiceIsAvailable() {
+        val withElevated = FeaturesGuideCatalog.filter(FeatureArea.All, "", includeElevated = true)
+        assertTrue(withElevated.any { it.id == "elevated_mode" })
+
+        val withoutElevated = FeaturesGuideCatalog.filter(FeatureArea.All, "", includeElevated = false)
+        assertFalse(withoutElevated.any { it.id == "elevated_mode" })
+
+        val appWindows = FeaturesGuideCatalog.entries.first { it.id == "phone_app_windows" }
+        val stockState = CoreState(elevated = false, romServiceAvailable = false)
+        assertEquals(GuideFixAction.ENABLE_ELEVATED, appWindows.evaluateFixAction(stockState))
+        assertTrue(appWindows.evaluateBadge(stockState) is FeatureLiveBadge.NeedsPowerLevel)
+
+        val romState = CoreState(elevated = false, romServiceAvailable = true)
+        assertNull(appWindows.evaluateFixAction(romState))
+        assertEquals(FeatureLiveBadge.ConnectPcToCheck, appWindows.evaluateBadge(romState))
+    }
 }

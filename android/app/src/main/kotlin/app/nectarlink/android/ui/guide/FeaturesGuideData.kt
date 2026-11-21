@@ -705,7 +705,7 @@ object FeaturesGuideCatalog {
             dataAndPrivacyRes = R.string.guide_apps_privacy,
             limitsRes = R.string.guide_apps_limits,
             evaluateBadge = { state ->
-                if (!state.elevated) {
+                if (!state.elevated && !state.romServiceAvailable) {
                     FeatureLiveBadge.NeedsPowerLevel(R.string.guide_req_elevated)
                 } else if (state.devices.none { it.online }) {
                     FeatureLiveBadge.ConnectPcToCheck
@@ -714,7 +714,7 @@ object FeaturesGuideCatalog {
                 }
             },
             evaluateFixAction = { state ->
-                if (!state.elevated) GuideFixAction.ENABLE_ELEVATED else null
+                if (!state.elevated && !state.romServiceAvailable) GuideFixAction.ENABLE_ELEVATED else null
             },
         ),
 
@@ -1164,9 +1164,11 @@ object FeaturesGuideCatalog {
         context: Context,
         area: FeatureArea,
         searchQuery: String,
+        includeElevated: Boolean = true,
     ): List<FeatureGuideEntry> {
         val q = searchQuery.trim().lowercase()
         return entries.filter { entry ->
+            val allowed = includeElevated || entry.id != "elevated_mode"
             val matchesArea = area == FeatureArea.All || entry.area == area
             val matchesQuery = q.isEmpty() ||
                 context.getString(entry.titleRes).lowercase().contains(q) ||
@@ -1174,21 +1176,23 @@ object FeaturesGuideCatalog {
                 context.getString(entry.whereTextRes).lowercase().contains(q) ||
                 context.getString(entry.needsSummaryRes).lowercase().contains(q) ||
                 entry.keywords.any { it.lowercase().contains(q) }
-            matchesArea && matchesQuery
+            allowed && matchesArea && matchesQuery
         }
     }
 
     fun filter(
         area: FeatureArea,
         searchQuery: String,
+        includeElevated: Boolean = true,
     ): List<FeatureGuideEntry> {
         val q = searchQuery.trim().lowercase()
         return entries.filter { entry ->
+            val allowed = includeElevated || entry.id != "elevated_mode"
             val matchesArea = area == FeatureArea.All || entry.area == area
             val matchesQuery = q.isEmpty() ||
                 entry.id.lowercase().contains(q) ||
                 entry.keywords.any { it.lowercase().contains(q) }
-            matchesArea && matchesQuery
+            allowed && matchesArea && matchesQuery
         }
     }
 }
