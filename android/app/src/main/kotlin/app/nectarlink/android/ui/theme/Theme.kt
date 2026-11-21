@@ -30,6 +30,8 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -44,7 +46,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 val LocalReducedMotion = compositionLocalOf { false }
 val LocalGlassTheme = compositionLocalOf { false }
 val LocalAmoledTheme = compositionLocalOf { false }
-internal val LocalHomeCardPalette = compositionLocalOf<Palette?> { null }
+internal val LocalHomeCardColors = compositionLocalOf<HomeCardColors?> { null }
 
 /** True when Android's "Remove animations" (animator duration scale 0) is enabled. */
 @Composable
@@ -75,7 +77,7 @@ data class Appearance(
     val amoled: Boolean = false,
     /** Hive's comb breathes and pulses (still with reduced motion or battery saver). */
     val combMotion: Boolean = true,
-    /** A preset or hex seed for the Home device cards, or null to follow the theme. */
+    /** A preset or exact hex color for the Home device cards, or null to follow the theme. */
     val homeCardSeed: String? = null,
 )
 
@@ -85,9 +87,32 @@ internal fun normalizeHomeCardHex(input: String?): String? {
     return "#" + hex.uppercase()
 }
 
-internal fun homeCardPalette(seed: String?, dark: Boolean): Palette? {
-    Tokens.bloomSeeds[seed]?.let { return if (dark) it.dark else it.light }
-    return normalizeHomeCardHex(seed)?.let { paletteFromSeed(it.drop(1).toUInt(16), dark) }
+@androidx.compose.runtime.Immutable
+internal data class HomeCardColors(
+    val background: Color,
+    val ink: Color,
+    val active: Color,
+    val inactive: Color,
+    val fillInk: Color = ink,
+    val exact: Boolean = false,
+)
+
+internal fun customHomeCardColors(input: String?): HomeCardColors? {
+    val hex = normalizeHomeCardHex(input) ?: return null
+    val background = rgbColor(hex.drop(1).toUInt(16))
+    val luminance = background.luminance()
+    val ink = if (luminance >= 0.17913f) Color.Black else Color.White
+    // Layered controls can tint up to 20% of the background.
+    val tinted = ink.copy(alpha = 0.20f).compositeOver(background).luminance()
+    val contrast = if (ink == Color.Black) (tinted + 0.05f) / 0.05f else 1.05f / (tinted + 0.05f)
+    val fillInk = if (contrast >= 4.5f) ink else if (ink == Color.Black) Color.White else Color.Black
+    return HomeCardColors(background, ink, ink, ink.copy(alpha = 0.70f), fillInk, exact = true)
+}
+
+internal fun homeCardColors(seed: String?, dark: Boolean): HomeCardColors? {
+    val preset = Tokens.bloomSeeds[seed] ?: return customHomeCardColors(seed)
+    val palette = if (dark) preset.dark else preset.light
+    return HomeCardColors(palette.primaryContainer, palette.onPrimaryContainer, palette.primary, palette.outline)
 }
 
 private fun hslTone(hue: Float, sat: Float, lightness: Float): Color {
@@ -441,7 +466,7 @@ fun NectarlinkTheme(
         }
     }
     val cardPalette = remember(appearance.homeCardSeed, dark) {
-        homeCardPalette(appearance.homeCardSeed, dark)
+        homeCardColors(appearance.homeCardSeed, dark)
     }
     val combBehind = hive && backdrop
     val targetScheme = remember(baseScheme, glass, dark, amoledActive, combBehind) {
@@ -473,7 +498,7 @@ fun NectarlinkTheme(
         LocalReducedMotion provides reducedMotion,
         LocalGlassTheme provides glass,
         LocalAmoledTheme provides amoledActive,
-        LocalHomeCardPalette provides cardPalette,
+        LocalHomeCardColors provides cardPalette,
         LocalHiveTheme provides hive,
     ) {
         MaterialTheme(

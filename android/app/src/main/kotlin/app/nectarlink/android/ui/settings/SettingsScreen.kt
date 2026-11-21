@@ -10,7 +10,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -105,7 +104,7 @@ import app.nectarlink.android.ui.theme.Tokens
 import app.nectarlink.android.ui.theme.glassModalBlur
 import app.nectarlink.android.ui.theme.glassModalContainerColor
 import app.nectarlink.android.ui.theme.liquidGlassCard
-import app.nectarlink.android.ui.theme.homeCardPalette
+import app.nectarlink.android.ui.theme.customHomeCardColors
 import app.nectarlink.android.ui.theme.normalizeHomeCardHex
 import kotlinx.coroutines.delay
 
@@ -296,7 +295,7 @@ fun SettingsScreen(
                         appearance.mode,
                     ) { value -> onAppearance { it.copy(mode = value) } }
                     SettingRowDivider()
-                    HomeCardColorSetting(appearance) { seed ->
+                    HomeCardColorSetting(appearance.homeCardSeed) { seed ->
                         onAppearance { it.copy(homeCardSeed = seed) }
                     }
                     if (AppLanguage.supported) {
@@ -1980,8 +1979,7 @@ private fun bloomSeedLabel(seed: String?) = when (seed) {
 }
 
 @Composable
-private fun HomeCardColorSetting(appearance: Appearance, onSelect: (String?) -> Unit) {
-    val seed = appearance.homeCardSeed
+private fun HomeCardColorSetting(seed: String?, onSelect: (String?) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     var editingCustomColor by rememberSaveable { mutableStateOf(false) }
     val title = stringResource(R.string.settings_home_card_color)
@@ -2041,12 +2039,7 @@ private fun HomeCardColorSetting(appearance: Appearance, onSelect: (String?) -> 
     if (editingCustomColor) {
         var input by rememberSaveable(customHex) { mutableStateOf(customHex.orEmpty()) }
         val hex = normalizeHomeCardHex(input)
-        val dark = when (appearance.mode) {
-            "light" -> false
-            "dark" -> true
-            else -> isSystemInDarkTheme()
-        }
-        val preview = remember(hex, dark) { homeCardPalette(hex, dark) }
+        val preview = remember(hex) { customHomeCardColors(hex) }
         AlertDialog(
             onDismissRequest = { editingCustomColor = false },
             title = { Text(stringResource(R.string.settings_home_card_color_custom)) },
@@ -2064,8 +2057,8 @@ private fun HomeCardColorSetting(appearance: Appearance, onSelect: (String?) -> 
                     )
                     if (preview != null) {
                         Surface(
-                            color = preview.primaryContainer,
-                            contentColor = preview.onPrimaryContainer,
+                            color = preview.background,
+                            contentColor = preview.ink,
                             shape = MaterialTheme.shapes.medium,
                             modifier = Modifier.fillMaxWidth(),
                         ) {

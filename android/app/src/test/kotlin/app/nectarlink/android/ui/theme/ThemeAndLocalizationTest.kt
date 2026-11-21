@@ -2,6 +2,9 @@
 package app.nectarlink.android.ui.theme
 
 import app.nectarlink.android.ui.Preferences
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -79,14 +82,14 @@ class ThemeAndLocalizationTest {
     @Test
     fun `Home card color follows the theme by default and resolves a saved preset in both modes`() {
         val default = Appearance()
-        assertEquals(null, homeCardPalette(default.homeCardSeed, dark = false))
+        assertEquals(null, homeCardColors(default.homeCardSeed, dark = false))
         assertEquals(null, Preferences.sanitizeAppearance(default.copy(homeCardSeed = "artwork")).homeCardSeed)
 
         for ((name, preset) in Tokens.bloomSeeds) {
             val appearance = Preferences.sanitizeAppearance(default.copy(homeCardSeed = name))
             assertEquals(name, appearance.homeCardSeed)
-            assertEquals(preset.light, homeCardPalette(appearance.homeCardSeed, dark = false))
-            assertEquals(preset.dark, homeCardPalette(appearance.homeCardSeed, dark = true))
+            assertEquals(preset.light.primaryContainer, homeCardColors(appearance.homeCardSeed, dark = false)?.background)
+            assertEquals(preset.dark.primaryContainer, homeCardColors(appearance.homeCardSeed, dark = true)?.background)
         }
     }
 
@@ -100,6 +103,26 @@ class ThemeAndLocalizationTest {
         }
         val appearance = Preferences.sanitizeAppearance(Appearance(theme = "bloom", homeCardSeed = "7c3aed"))
         assertEquals("#7C3AED", appearance.homeCardSeed)
+    }
+
+    @Test
+    fun customHomeCardsUseExactHexInBothModesAndKeepReadableText() {
+        val samples = listOf("000000", "010101", "050608", "100018", "131A1F", "202020", "2C2C2C",
+            "0000FF", "00FF00", "FF0000", "7C3AED", "FF9800", "FFFFFF") +
+            (0..255).map { "%02X%02X%02X".format(it, it, it) }
+        for (hex in samples) {
+            val expectedArgb = (0xFF000000u or hex.toUInt(16)).toInt()
+            val palette = checkNotNull(homeCardColors(hex, dark = false))
+            assertEquals(expectedArgb, palette.background.toArgb())
+            assertEquals(palette, homeCardColors(hex, dark = true))
+            assertEquals(palette, customHomeCardColors(hex))
+            for (alpha in listOf(0f, 0.10f, 0.20f)) {
+                val background = palette.fillInk.copy(alpha = alpha).compositeOver(palette.background).luminance()
+                val foreground = palette.ink.luminance()
+                val contrast = (maxOf(background, foreground) + 0.05f) / (minOf(background, foreground) + 0.05f)
+                assertTrue("$hex label contrast at $alpha: $contrast", contrast >= 4.5f)
+            }
+        }
     }
 
     private fun resolveResDir(): File {

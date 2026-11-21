@@ -124,7 +124,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.nectarlink.android.sms.PhoneSms
 import app.nectarlink.android.ui.WhatsNewButton
 import app.nectarlink.android.ui.guide.GuideHighlightTarget
-import app.nectarlink.android.ui.theme.LocalHomeCardPalette
+import app.nectarlink.android.ui.theme.LocalHomeCardColors
 import app.nectarlink.android.ui.theme.LocalGlassTheme
 import app.nectarlink.android.ui.theme.LocalReducedMotion
 import app.nectarlink.android.ui.theme.bentoWell
@@ -1507,11 +1507,13 @@ private fun PcCard(
         if (tree != null) onSendFolder(device.id, tree)
     }
     val isGlass = LocalGlassTheme.current
-    val cardPalette = LocalHomeCardPalette.current
+    val cardColors = LocalHomeCardColors.current
     val themeCardColor = MaterialTheme.colorScheme.primaryContainer
-    val cardColor = cardPalette?.primaryContainer?.copy(alpha = themeCardColor.alpha) ?: themeCardColor
-    val ink = cardPalette?.onPrimaryContainer ?: MaterialTheme.colorScheme.onPrimaryContainer
-    val sectionLabelColor = ink.copy(alpha = if (cardPalette == null) 0.68f else 0.78f)
+    val exact = cardColors?.exact == true
+    val cardColor = cardColors?.background?.copy(alpha = if (exact) 1f else themeCardColor.alpha) ?: themeCardColor
+    val ink = cardColors?.ink ?: MaterialTheme.colorScheme.onPrimaryContainer
+    val fillInk = cardColors?.fillInk ?: ink
+    val sectionLabelColor = if (exact) ink else ink.copy(alpha = if (cardColors == null) 0.68f else 0.78f)
     androidx.compose.runtime.CompositionLocalProvider(
         androidx.compose.material3.LocalContentColor provides ink,
     ) {
@@ -1533,7 +1535,7 @@ private fun PcCard(
                 disabledContentColor = ink.copy(alpha = 0.38f),
             )
             val tonal = ButtonDefaults.filledTonalButtonColors(
-                containerColor = ink.copy(alpha = if (isGlass) 0.14f else 0.10f),
+                containerColor = fillInk.copy(alpha = if (isGlass) 0.14f else 0.10f),
                 contentColor = ink,
                 disabledContainerColor = ink.copy(alpha = 0.05f),
                 disabledContentColor = ink.copy(alpha = 0.38f),
@@ -1541,9 +1543,9 @@ private fun PcCard(
             val outlined = ButtonDefaults.outlinedButtonColors(contentColor = ink, disabledContentColor = ink.copy(alpha = 0.38f))
             val outline = BorderStroke(1.dp, ink.copy(alpha = if (device.online) 0.45f else 0.15f))
             val statusDotColor = if (device.online) {
-                cardPalette?.primary ?: MaterialTheme.colorScheme.primary
+                cardColors?.active ?: MaterialTheme.colorScheme.primary
             } else {
-                cardPalette?.outline ?: MaterialTheme.colorScheme.outline
+                cardColors?.inactive ?: MaterialTheme.colorScheme.outline
             }
 
             // The status keeps room to be read: with large fonts the buttons move
@@ -1644,7 +1646,7 @@ private fun PcCard(
                         modifier = Modifier
                             .bentoWell(
                                 cornerRadius = 14.dp,
-                                fillColor = ink.copy(alpha = 0.10f),
+                                fillColor = fillInk.copy(alpha = 0.10f),
                             )
                             .padding(horizontal = 10.dp, vertical = 5.dp),
                     )
@@ -1742,7 +1744,7 @@ private fun PcCard(
                         .fillMaxWidth()
                         .bentoWell(
                             cornerRadius = 20.dp,
-                            fillColor = ink.copy(alpha = if (isGlass) 0.11f else 0.07f),
+                            fillColor = fillInk.copy(alpha = if (isGlass) 0.11f else 0.07f),
                             borderColor = if (isGlass) ink.copy(alpha = 0.16f) else Color.Transparent,
                         )
                         .padding(10.dp),
@@ -1954,7 +1956,7 @@ private fun PcCard(
                         .fillMaxWidth()
                         .bentoWell(
                             cornerRadius = 20.dp,
-                            fillColor = ink.copy(alpha = 0.08f),
+                            fillColor = fillInk.copy(alpha = 0.08f),
                         )
                         .padding(16.dp),
                 ) {
@@ -1995,6 +1997,7 @@ private fun PcMediaSeekBar(pcMedia: app.nectarlink.android.media.PcMedia, pcId: 
     var dragging by remember { mutableStateOf<Float?>(null) }
     val position = dragging ?: timeline.positionAt(now).toFloat()
     val seekLabel = stringResource(R.string.media_seek)
+    val labelColor = if (LocalHomeCardColors.current?.exact == true) ink else ink.copy(alpha = 0.78f)
     Slider(
         value = position.coerceIn(0f, timeline.durationMs.toFloat()),
         onValueChange = { dragging = it },
@@ -2007,9 +2010,9 @@ private fun PcMediaSeekBar(pcMedia: app.nectarlink.android.media.PcMedia, pcId: 
         modifier = Modifier.fillMaxWidth().height(28.dp).semantics { contentDescription = seekLabel },
     )
     Row(modifier = Modifier.fillMaxWidth()) {
-        Text(mediaClock(position.toLong()), style = MaterialTheme.typography.labelSmall, color = ink.copy(alpha = 0.78f))
+        Text(mediaClock(position.toLong()), style = MaterialTheme.typography.labelSmall, color = labelColor)
         Spacer(Modifier.weight(1f))
-        Text(mediaClock(timeline.durationMs), style = MaterialTheme.typography.labelSmall, color = ink.copy(alpha = 0.78f))
+        Text(mediaClock(timeline.durationMs), style = MaterialTheme.typography.labelSmall, color = labelColor)
     }
 }
 
@@ -2034,6 +2037,10 @@ private fun PcAudioCardSection(
     onToggleMic: (Boolean) -> Unit = {},
 ) {
     val context = LocalContext.current
+    val cardColors = LocalHomeCardColors.current
+    val fillInk = cardColors?.fillInk ?: ink
+    val secondaryInk = if (cardColors?.exact == true) ink else ink.copy(alpha = 0.78f)
+    val volumeInk = if (cardColors?.exact == true) ink else ink.copy(alpha = 0.85f)
     val pcMedia = remember(context) {
         (context.applicationContext as? NectarlinkApplication)?.core?.pcMedia
     }
@@ -2050,7 +2057,7 @@ private fun PcAudioCardSection(
             .fillMaxWidth()
             .bentoWell(
                 cornerRadius = 20.dp,
-                fillColor = ink.copy(alpha = 0.06f),
+                fillColor = fillInk.copy(alpha = 0.06f),
             )
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -2062,7 +2069,7 @@ private fun PcAudioCardSection(
                     .fillMaxWidth()
                     .bentoWell(
                         cornerRadius = 16.dp,
-                        fillColor = ink.copy(alpha = 0.10f),
+                        fillColor = fillInk.copy(alpha = 0.10f),
                     )
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -2092,7 +2099,7 @@ private fun PcAudioCardSection(
                             Text(
                                 text = mediaSummary.subtitle,
                                 style = MaterialTheme.typography.labelSmall,
-                                color = ink.copy(alpha = 0.78f),
+                                color = secondaryInk,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
@@ -2171,7 +2178,7 @@ private fun PcAudioCardSection(
                 .fillMaxWidth()
                 .bentoWell(
                     cornerRadius = 16.dp,
-                    fillColor = ink.copy(alpha = if (streamingToPhone) 0.14f else 0.06f),
+                    fillColor = fillInk.copy(alpha = if (streamingToPhone) 0.14f else 0.06f),
                 )
                 .clickable(role = Role.Switch) {
                     onSetPcAudio(if (!streamingToPhone) 201 else 200, null)
@@ -2203,7 +2210,7 @@ private fun PcAudioCardSection(
                         }
                     ),
                     style = MaterialTheme.typography.labelSmall,
-                    color = ink.copy(alpha = 0.78f),
+                    color = secondaryInk,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -2219,7 +2226,7 @@ private fun PcAudioCardSection(
                     .fillMaxWidth()
                     .bentoWell(
                         cornerRadius = 16.dp,
-                        fillColor = ink.copy(alpha = if (micOn) 0.14f else 0.06f),
+                        fillColor = fillInk.copy(alpha = if (micOn) 0.14f else 0.06f),
                     )
                     .clickable(role = Role.Switch) { onToggleMic(!micOn) }
                     .padding(horizontal = 12.dp, vertical = 8.dp),
@@ -2245,7 +2252,7 @@ private fun PcAudioCardSection(
                             if (micOn) R.string.pc_audio_use_phone_mic_on else R.string.pc_audio_use_phone_mic_sub,
                         ),
                         style = MaterialTheme.typography.labelSmall,
-                        color = ink.copy(alpha = 0.78f),
+                        color = secondaryInk,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -2318,7 +2325,7 @@ private fun PcAudioCardSection(
                 Text(
                     text = defaultOutput.name,
                     style = MaterialTheme.typography.labelSmall,
-                    color = ink.copy(alpha = 0.85f),
+                    color = volumeInk,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
@@ -2328,7 +2335,7 @@ private fun PcAudioCardSection(
                     Text(
                         text = "${hardwareOutputs.size}",
                         style = MaterialTheme.typography.labelSmall,
-                        color = ink.copy(alpha = 0.85f),
+                        color = volumeInk,
                     )
                 }
             }
