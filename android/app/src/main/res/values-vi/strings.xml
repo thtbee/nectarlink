@@ -665,6 +665,8 @@
 <string name="settings_seed_black">Black</string>
     <string name="settings_home_card_color">Màu thẻ màn hình chính</string>
     <string name="settings_home_card_color_default">Theo chủ đề</string>
+    <string name="settings_home_card_color_custom">Màu tùy chỉnh</string>
+    <string name="settings_home_card_color_hex">Mã màu hex</string>
 <string name="settings_amoled">Đen tuyền (AMOLED)</string>
 <string name="settings_amoled_hint">Bề mặt tối thuần #000000 cho màn hình OLED.</string>
 <!-- Deck defaults & accessibility -->

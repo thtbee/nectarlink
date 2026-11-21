@@ -10,6 +10,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,6 +37,7 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -52,6 +54,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -103,6 +106,8 @@ import app.nectarlink.android.ui.theme.Tokens
 import app.nectarlink.android.ui.theme.glassModalBlur
 import app.nectarlink.android.ui.theme.glassModalContainerColor
 import app.nectarlink.android.ui.theme.liquidGlassCard
+import app.nectarlink.android.ui.theme.homeCardPalette
+import app.nectarlink.android.ui.theme.normalizeHomeCardHex
 import kotlinx.coroutines.delay
 
 @Composable
@@ -291,6 +296,10 @@ fun SettingsScreen(
                         ),
                         appearance.mode,
                     ) { value -> onAppearance { it.copy(mode = value) } }
+                    SettingRowDivider()
+                    HomeCardColorSetting(appearance) { seed ->
+                        onAppearance { it.copy(homeCardSeed = seed) }
+                    }
                     if (AppLanguage.supported) {
                         // System and English, plus the language picked from the list (or More).
                         val context = LocalContext.current
@@ -487,12 +496,6 @@ fun SettingsScreen(
                                     }
                                 }
                             }
-                        }
-                    }
-                    if (appearance.theme == "bloom") {
-                        SettingRowDivider()
-                        HomeCardColorSetting(appearance.homeCardSeed) { seed ->
-                            onAppearance { it.copy(homeCardSeed = seed) }
                         }
                     }
                 }
@@ -1947,10 +1950,13 @@ private fun bloomSeedLabel(seed: String?) = when (seed) {
 }
 
 @Composable
-private fun HomeCardColorSetting(seed: String?, onSelect: (String?) -> Unit) {
+private fun HomeCardColorSetting(appearance: Appearance, onSelect: (String?) -> Unit) {
+    val seed = appearance.homeCardSeed
     var expanded by remember { mutableStateOf(false) }
+    var editingCustomColor by rememberSaveable { mutableStateOf(false) }
     val title = stringResource(R.string.settings_home_card_color)
-    val current = stringResource(bloomSeedLabel(seed))
+    val customHex = normalizeHomeCardHex(seed)
+    val current = customHex ?: stringResource(bloomSeedLabel(seed))
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -1988,8 +1994,69 @@ private fun HomeCardColorSetting(seed: String?, onSelect: (String?) -> Unit) {
                         },
                     )
                 }
+                HorizontalDivider()
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.settings_home_card_color_custom)) },
+                    trailingIcon = { RadioButton(selected = customHex != null, onClick = null) },
+                    modifier = Modifier.semantics { selected = customHex != null },
+                    onClick = {
+                        expanded = false
+                        editingCustomColor = true
+                    },
+                )
             }
         }
+    }
+
+    if (editingCustomColor) {
+        var input by rememberSaveable(customHex) { mutableStateOf(customHex.orEmpty()) }
+        val hex = normalizeHomeCardHex(input)
+        val dark = when (appearance.mode) {
+            "light" -> false
+            "dark" -> true
+            else -> isSystemInDarkTheme()
+        }
+        val preview = remember(hex, dark) { homeCardPalette(hex, dark) }
+        AlertDialog(
+            onDismissRequest = { editingCustomColor = false },
+            title = { Text(stringResource(R.string.settings_home_card_color_custom)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(
+                        value = input,
+                        onValueChange = { input = it },
+                        label = { Text(stringResource(R.string.settings_home_card_color_hex)) },
+                        placeholder = { Text("#7C3AED") },
+                        supportingText = { Text("#RRGGBB") },
+                        singleLine = true,
+                        isError = input.isNotBlank() && hex == null,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    if (preview != null) {
+                        Surface(
+                            color = preview.primaryContainer,
+                            contentColor = preview.onPrimaryContainer,
+                            shape = MaterialTheme.shapes.medium,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(title, modifier = Modifier.padding(16.dp))
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = hex != null,
+                    onClick = {
+                        onSelect(hex)
+                        editingCustomColor = false
+                    },
+                ) { Text(stringResource(R.string.action_done)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { editingCustomColor = false }) { Text(stringResource(R.string.action_cancel)) }
+            },
+        )
     }
 }
 

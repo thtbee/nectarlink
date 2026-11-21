@@ -77,18 +77,29 @@ class ThemeAndLocalizationTest {
     }
 
     @Test
-    fun `Bloom Home card color follows the theme by default and resolves a saved preset in both modes`() {
-        val default = Appearance(theme = "bloom")
-        assertEquals(null, default.bloomHomeCardPalette(dark = false))
+    fun `Home card color follows the theme by default and resolves a saved preset in both modes`() {
+        val default = Appearance()
+        assertEquals(null, homeCardPalette(default.homeCardSeed, dark = false))
         assertEquals(null, Preferences.sanitizeAppearance(default.copy(homeCardSeed = "artwork")).homeCardSeed)
 
         for ((name, preset) in Tokens.bloomSeeds) {
             val appearance = Preferences.sanitizeAppearance(default.copy(homeCardSeed = name))
             assertEquals(name, appearance.homeCardSeed)
-            assertEquals(preset.light, appearance.bloomHomeCardPalette(dark = false))
-            assertEquals(preset.dark, appearance.bloomHomeCardPalette(dark = true))
-            assertEquals(null, appearance.copy(theme = "glass").bloomHomeCardPalette(dark = true))
+            assertEquals(preset.light, homeCardPalette(appearance.homeCardSeed, dark = false))
+            assertEquals(preset.dark, homeCardPalette(appearance.homeCardSeed, dark = true))
         }
+    }
+
+    @Test
+    fun customHomeCardColorAcceptsAndPersistsOnlySixDigitRgb() {
+        assertEquals("#7C3AED", normalizeHomeCardHex(" #7c3aed "))
+        assertEquals("#7C3AED", normalizeHomeCardHex("7c3aed"))
+        assertEquals("#000000", normalizeHomeCardHex("000000"))
+        for (invalid in listOf("#123", "#12345678", "#ABCDXY", "+ABCDE", "")) {
+            assertEquals(null, normalizeHomeCardHex(invalid))
+        }
+        val appearance = Preferences.sanitizeAppearance(Appearance(theme = "bloom", homeCardSeed = "7c3aed"))
+        assertEquals("#7C3AED", appearance.homeCardSeed)
     }
 
     private fun resolveResDir(): File {

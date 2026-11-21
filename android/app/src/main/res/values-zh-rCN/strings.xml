@@ -642,6 +642,8 @@
     <string name="settings_seed_black">黑色</string>
     <string name="settings_home_card_color">首页卡片颜色</string>
     <string name="settings_home_card_color_default">跟随主题</string>
+    <string name="settings_home_card_color_custom">自定义颜色</string>
+    <string name="settings_home_card_color_hex">十六进制颜色</string>
     <string name="settings_amoled">纯黑（AMOLED）</string>
     <string name="settings_amoled_hint">为 OLED 屏幕提供真正的 #000000 深色界面。</string>
     <string name="deck_tile_with_badge">%1$s，%2$s</string>

@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.core.content.edit
 import app.nectarlink.android.ui.theme.Appearance
 import app.nectarlink.android.ui.theme.Tokens
+import app.nectarlink.android.ui.theme.normalizeHomeCardHex
 import app.nectarlink.android.ui.walkthrough.WalkthroughPersistence
 import app.nectarlink.android.ui.walkthrough.WalkthroughStep
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -213,7 +214,7 @@ class Preferences(context: Context) {
                 dynamicColor = dynamicColor,
                 amoled = amoled,
                 combMotion = combMotion,
-                homeCardSeed = homeCardSeed?.takeIf { it in Tokens.bloomSeeds },
+                homeCardSeed = homeCardSeed?.takeIf { it in Tokens.bloomSeeds } ?: normalizeHomeCardHex(homeCardSeed),
             )
         }
 

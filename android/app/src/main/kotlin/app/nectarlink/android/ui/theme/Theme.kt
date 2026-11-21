@@ -44,7 +44,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 val LocalReducedMotion = compositionLocalOf { false }
 val LocalGlassTheme = compositionLocalOf { false }
 val LocalAmoledTheme = compositionLocalOf { false }
-internal val LocalBloomHomeCardPalette = compositionLocalOf<Palette?> { null }
+internal val LocalHomeCardPalette = compositionLocalOf<Palette?> { null }
 
 /** True when Android's "Remove animations" (animator duration scale 0) is enabled. */
 @Composable
@@ -75,14 +75,19 @@ data class Appearance(
     val amoled: Boolean = false,
     /** Hive's comb breathes and pulses (still with reduced motion or battery saver). */
     val combMotion: Boolean = true,
-    /** A Bloom preset for the Home device cards, or null to follow the theme. */
+    /** A preset or hex seed for the Home device cards, or null to follow the theme. */
     val homeCardSeed: String? = null,
 )
 
-internal fun Appearance.bloomHomeCardPalette(dark: Boolean): Palette? {
-    if (theme != "bloom") return null
-    val preset = Tokens.bloomSeeds[homeCardSeed] ?: return null
-    return if (dark) preset.dark else preset.light
+internal fun normalizeHomeCardHex(input: String?): String? {
+    val hex = input?.trim()?.removePrefix("#") ?: return null
+    if (hex.length != 6 || hex.any { it !in "0123456789abcdefABCDEF" }) return null
+    return "#" + hex.uppercase()
+}
+
+internal fun homeCardPalette(seed: String?, dark: Boolean): Palette? {
+    Tokens.bloomSeeds[seed]?.let { return if (dark) it.dark else it.light }
+    return normalizeHomeCardHex(seed)?.let { paletteFromSeed(it.drop(1).toUInt(16), dark) }
 }
 
 private fun hslTone(hue: Float, sat: Float, lightness: Float): Color {
@@ -99,11 +104,11 @@ private fun hslTone(hue: Float, sat: Float, lightness: Float): Color {
 private fun rgbColor(rgb: UInt): Color = Color(0xFF00_0000L or (rgb.toLong() and 0xFF_FFFFL))
 
 /**
- * Builds a Material 3 [ColorScheme] from a `0xRRGGBB` media artwork seed color
+ * Builds a palette from a `0xRRGGBB` seed color
  * using the shared Rust perceptual tonal palette engine (`app.nectarlink.core.themeSchemeFromSeed`),
  * ensuring identical light and dark schemes on Android and Desktop.
  */
-private fun schemeFromArtworkSeed(rgb: UInt, dark: Boolean, error: Color): ColorScheme {
+private fun paletteFromSeed(rgb: UInt, dark: Boolean): Palette {
     val ffiScheme = runCatching { app.nectarlink.core.themeSchemeFromSeed(rgb) }.getOrNull()
     if (ffiScheme != null) {
         val role = if (dark) ffiScheme.dark else ffiScheme.light
@@ -123,7 +128,7 @@ private fun schemeFromArtworkSeed(rgb: UInt, dark: Boolean, error: Color): Color
             onSurfaceVariant = rgbColor(role.onSurfaceVariant),
             outline = rgbColor(role.outline),
             outlineVariant = rgbColor(role.outlineVariant),
-        ).toScheme(dark, error)
+        )
     }
 
     val r = ((rgb shr 16) and 0xFFu).toInt()
@@ -139,7 +144,7 @@ private fun schemeFromArtworkSeed(rgb: UInt, dark: Boolean, error: Color): Color
     val variantS = (s * 0.36f).coerceIn(0.14f, 0.30f)
     val contrastBoost = (seedLuma - 0.5f) * 0.04f
 
-    val pal = if (dark) {
+    return if (dark) {
         Palette(
             primary = hslTone(h, (s * 0.92f).coerceAtLeast(0.55f), (0.78f + contrastBoost).coerceIn(0.74f, 0.84f)),
             onPrimary = hslTone(h, (s * 0.85f).coerceAtLeast(0.45f), 0.15f),
@@ -176,7 +181,6 @@ private fun schemeFromArtworkSeed(rgb: UInt, dark: Boolean, error: Color): Color
             outlineVariant = hslTone(h, variantS, 0.78f),
         )
     }
-    return pal.toScheme(dark, error)
 }
 
 private fun Palette.toScheme(dark: Boolean, error: Color): ColorScheme {
@@ -316,7 +320,7 @@ private fun wallpaperScheme(
     val systemAccent = runCatching { context.getColor(android.R.color.system_accent1_500) }.getOrNull()
     val systemIsStock = systemAccent == null || systemAccent in STOCK_SYSTEM_ACCENTS
     if (systemIsStock && wallpaperSeed != null) {
-        return schemeFromArtworkSeed(wallpaperSeed, dark, error)
+        return paletteFromSeed(wallpaperSeed, dark).toScheme(dark, error)
     }
     return if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
 }
@@ -426,7 +430,7 @@ fun NectarlinkTheme(
             (if (dark) Tokens.graphiteSlate else Tokens.graphitePaper).toScheme(dark, error)
         }
         artworkSeed != null -> remember(artworkSeed, dark, error) {
-            schemeFromArtworkSeed(artworkSeed, dark, error)
+            paletteFromSeed(artworkSeed, dark).toScheme(dark, error)
         }
         wallpaper && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> remember(context, dark, error, wallpaperSeed) {
             wallpaperScheme(context, dark, error, wallpaperSeed)
@@ -435,6 +439,9 @@ fun NectarlinkTheme(
             val seed = Tokens.bloomSeeds[appearance.seed] ?: Tokens.bloomSeeds.getValue(Tokens.DEFAULT_SEED)
             (if (dark) seed.dark else seed.light).toScheme(dark, error)
         }
+    }
+    val cardPalette = remember(appearance.homeCardSeed, dark) {
+        homeCardPalette(appearance.homeCardSeed, dark)
     }
     val combBehind = hive && backdrop
     val targetScheme = remember(baseScheme, glass, dark, amoledActive, combBehind) {
@@ -466,7 +473,7 @@ fun NectarlinkTheme(
         LocalReducedMotion provides reducedMotion,
         LocalGlassTheme provides glass,
         LocalAmoledTheme provides amoledActive,
-        LocalBloomHomeCardPalette provides appearance.bloomHomeCardPalette(dark),
+        LocalHomeCardPalette provides cardPalette,
         LocalHiveTheme provides hive,
     ) {
         MaterialTheme(

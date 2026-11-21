@@ -678,6 +678,8 @@
     <string name="settings_seed_black">Siyah</string>
     <string name="settings_home_card_color">Ana ekran kartı rengi</string>
     <string name="settings_home_card_color_default">Temayı izle</string>
+    <string name="settings_home_card_color_custom">Özel renk</string>
+    <string name="settings_home_card_color_hex">Onaltılık renk</string>
     <string name="settings_amoled">Saf siyah (AMOLED)</string>
     <string name="settings_amoled_hint">OLED ekranlar için kapkara #000000 koyu yüzeyler.</string>
 
