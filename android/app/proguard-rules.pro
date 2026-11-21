@@ -46,3 +46,6 @@
 # Conscrypt (used by Elevated wireless ADB TLS handshake)
 -keep class org.conscrypt.** { *; }
 -dontwarn org.conscrypt.**
+
+# Custom ROM Nectarlink Services AIDL contract
+-keep class app.nectarlink.services.** { *; }

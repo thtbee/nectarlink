@@ -115,8 +115,13 @@ fun FeaturesGuideScreen(
     val selectedArea = remember(selectedAreaId) {
         FeatureArea.entries.firstOrNull { it.id == selectedAreaId } ?: FeatureArea.All
     }
-    val filteredEntries = remember(context, selectedArea, searchQuery) {
-        FeaturesGuideCatalog.filter(context, selectedArea, searchQuery)
+    val filteredEntries = remember(context, selectedArea, searchQuery, state.romServiceAvailable) {
+        FeaturesGuideCatalog.filter(
+            context = context,
+            area = selectedArea,
+            searchQuery = searchQuery,
+            includeElevated = !state.romServiceAvailable,
+        )
     }
     val resolvedCards = remember(context, filteredEntries, state, hasConnectedPc) {
         val res = context.resources
@@ -195,9 +200,13 @@ fun FeaturesGuideScreen(
                 }
                 GuideFixAction.ENABLE_ELEVATED -> {
                     scope.launch {
-                        PairingNotification.show(context)
-                        if (!Elevated.start()) {
-                            openDevOptions(context)
+                        if (Elevated.hasSystemService(context)) {
+                            Elevated.start()
+                        } else {
+                            PairingNotification.show(context)
+                            if (!Elevated.start()) {
+                                openDevOptions(context)
+                            }
                         }
                         onAccessChanged()
                     }

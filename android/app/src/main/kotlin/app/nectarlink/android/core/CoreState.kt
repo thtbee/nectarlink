@@ -193,6 +193,8 @@ data class CoreState(
     val localNetwork: Boolean = true,
     /** Whether the Elevated helper runs (wireless debugging). */
     val elevated: Boolean = false,
+    /** Whether the custom ROM provides Nectarlink Services as a privileged system service. */
+    val romServiceAvailable: Boolean = false,
     /** Whether the user turned on control from the PC (the accessibility service). */
     val inputAccess: Boolean = false,
     /** Whether a paired PC tried to inject mouse/keyboard input while input access is off. */

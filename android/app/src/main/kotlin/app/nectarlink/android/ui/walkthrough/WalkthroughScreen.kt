@@ -195,6 +195,7 @@ fun WalkthroughScreen(
 
     val hasPairedPc = state.devices.isNotEmpty() || state.pairing is PairingState.Paired
     val activeTierIndex = when {
+        state.romServiceAvailable -> if (state.inputAccess) 1 else 0
         state.elevated -> 2
         state.inputAccess -> 1
         else -> 0
@@ -222,6 +223,7 @@ fun WalkthroughScreen(
                 permissionGrantedFlags = permissionGrantedFlags,
                 hasPairedPc = hasPairedPc,
                 activeTierIndex = activeTierIndex,
+                hideElevated = state.romServiceAvailable,
                 isGlass = isGlass,
                 reducedMotion = reducedMotion,
                 modifier = Modifier
@@ -443,6 +445,7 @@ private fun HoneycombCellStage(
     permissionGrantedFlags: List<Boolean>,
     hasPairedPc: Boolean,
     activeTierIndex: Int,
+    hideElevated: Boolean,
     isGlass: Boolean,
     reducedMotion: Boolean,
     modifier: Modifier = Modifier,
@@ -696,9 +699,18 @@ private fun HoneycombCellStage(
                 WalkthroughStep.PowerLevel -> {
                     val tierR = 18.dp.toPx()
                     val stepX = 36.dp.toPx()
-                    for (tier in 0..2) {
-                        val tx = motifCx + (tier - 1) * stepX
-                        val ty = motifCy + (1 - tier) * 7.dp.toPx()
+                    val maxTier = if (hideElevated) 1 else 2
+                    for (tier in 0..maxTier) {
+                        val tx = if (hideElevated) {
+                            motifCx + (tier - 0.5f) * stepX
+                        } else {
+                            motifCx + (tier - 1) * stepX
+                        }
+                        val ty = if (hideElevated) {
+                            motifCy + (0.5f - tier) * 7.dp.toPx()
+                        } else {
+                            motifCy + (1 - tier) * 7.dp.toPx()
+                        }
                         val isSelected = tier == activeTierIndex
                         val isUnlocked = tier <= activeTierIndex
 
@@ -1706,7 +1718,7 @@ private fun PowerLevelStepContent(
 
     val activeTierLabel = stringResource(
         when {
-            state.elevated -> R.string.walkthrough_power_elevated_title
+            !state.romServiceAvailable && state.elevated -> R.string.walkthrough_power_elevated_title
             state.inputAccess -> R.string.walkthrough_power_assist_title
             else -> R.string.walkthrough_power_standard_title
         },
@@ -1756,7 +1768,7 @@ private fun PowerLevelStepContent(
             PowerLevelRow(
                 title = stringResource(R.string.walkthrough_power_standard_title),
                 subtitle = stringResource(R.string.walkthrough_power_standard_sub),
-                active = !state.elevated && !state.inputAccess,
+                active = (state.romServiceAvailable || !state.elevated) && !state.inputAccess,
                 summary = stringResource(R.string.walkthrough_power_standard_desc),
                 actionLabel = null,
                 onAction = null,
@@ -1768,7 +1780,7 @@ private fun PowerLevelStepContent(
             PowerLevelRow(
                 title = stringResource(R.string.walkthrough_power_assist_title),
                 subtitle = stringResource(R.string.walkthrough_power_assist_sub),
-                active = !state.elevated && state.inputAccess,
+                active = (state.romServiceAvailable || !state.elevated) && state.inputAccess,
                 summary = stringResource(R.string.walkthrough_power_assist_desc),
                 actionLabel = stringResource(
                     if (state.inputAccess) R.string.walkthrough_power_assist_manage else R.string.walkthrough_power_assist_open,
@@ -1778,10 +1790,11 @@ private fun PowerLevelStepContent(
                 },
             )
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+            if (!state.romServiceAvailable) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
 
-            // Tier 3: Elevated
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Tier 3: Elevated
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -1885,6 +1898,7 @@ private fun PowerLevelStepContent(
                         )
                     }
                 }
+                }
             }
         }
     }
@@ -1957,7 +1971,7 @@ private fun DoneStepContent(
     }
     val powerLevelText = stringResource(
         when {
-            state.elevated -> R.string.walkthrough_done_power_elevated
+            !state.romServiceAvailable && state.elevated -> R.string.walkthrough_done_power_elevated
             state.inputAccess -> R.string.walkthrough_done_power_assist
             else -> R.string.walkthrough_done_power_standard
         },

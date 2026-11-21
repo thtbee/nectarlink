@@ -15,11 +15,12 @@ import android.os.SystemClock
 import android.util.Log
 import androidx.core.content.ContextCompat
 import app.nectarlink.android.elevated.Elevated
+import app.nectarlink.android.elevated.ElevatedAudioStream
 import app.nectarlink.core.MirrorSendResult
 import app.nectarlink.core.MirrorStream
 import app.nectarlink.core.VideoPacketKind
 import app.nectarlink.core.mirrorAudioConfig
-import java.net.Socket
+import app.nectarlink.services.client.NectarlinkServiceContract
 
 /**
  * The phone's sound while its screen is shared: what apps play (media, games,
@@ -34,7 +35,7 @@ class SoundCapture(
     private val onEnded: () -> Unit = {},
 ) {
     @Volatile private var running = false
-    @Volatile private var elevatedSocket: Socket? = null
+    @Volatile private var elevatedSocket: ElevatedAudioStream? = null
     private var thread: Thread? = null
 
     /**
@@ -85,7 +86,7 @@ class SoundCapture(
             record?.runCatching { release() }
         }
 
-        if (Elevated.running) {
+        if (Elevated.hasCapability(NectarlinkServiceContract.CAP_DEVICE_AUDIO)) {
             running = true
             thread = Thread({ runElevated() }, "sound-capture-elevated").apply {
                 priority = Thread.MAX_PRIORITY
@@ -138,7 +139,7 @@ class SoundCapture(
         }
         elevatedSocket = sock
         try {
-            val input = sock.getInputStream()
+            val input = sock.inputStream
             val packet = ByteArray(PACKET_BYTES)
             var configSent = false
             var started = 0L
@@ -186,7 +187,7 @@ class SoundCapture(
 
         /** Whether this phone can share its sound (Elevated helper or Android 10+ with RECORD_AUDIO). */
         fun canCapture(context: Context): Boolean =
-            Elevated.running ||
+            Elevated.hasCapability(NectarlinkServiceContract.CAP_DEVICE_AUDIO) ||
                 (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
                     ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED)
     }

@@ -16,6 +16,7 @@ import androidx.core.app.NotificationManagerCompat
 import app.nectarlink.android.R
 import app.nectarlink.android.elevated.AppDisplay
 import app.nectarlink.android.elevated.Elevated
+import app.nectarlink.android.elevated.ElevatedDisplayStream
 import app.nectarlink.core.MirrorInputEvent
 import app.nectarlink.core.MirrorOptions
 import app.nectarlink.core.MirrorSendResult
@@ -26,7 +27,6 @@ import app.nectarlink.core.mirrorConfig
 import java.io.ByteArrayOutputStream
 import java.io.DataInputStream
 import java.io.EOFException
-import java.net.Socket
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -52,7 +52,7 @@ class AppWindows(
     private class Window(
         val pc: String,
         val session: UInt,
-        val socket: Socket,
+        val socket: ElevatedDisplayStream,
         @Volatile var width: Int,
         @Volatile var height: Int,
         val dpi: Int,
@@ -105,7 +105,7 @@ class AppWindows(
     /** The helper's packets to the PC, until either side closes. */
     private fun forward(window: Window, stream: MirrorStream) {
         try {
-            val input = DataInputStream(window.socket.getInputStream().buffered(1 shl 16))
+            val input = DataInputStream(window.socket.inputStream.buffered(1 shl 16))
             while (true) {
                 val length = input.readInt()
                 if (length < 9 || length > MAX_PACKET) return
@@ -158,14 +158,7 @@ class AppWindows(
     }
 
     private fun keyframe(window: Window) {
-        runCatching {
-            synchronized(window) {
-                window.socket.getOutputStream().apply {
-                    write("K\n".toByteArray())
-                    flush()
-                }
-            }
-        }
+        window.socket.requestKeyframe()
     }
 
     /**
@@ -181,14 +174,7 @@ class AppWindows(
         window.height = newH
         window.zoom = zoom
         val dpi = (window.dpi * zoom / 100).coerceIn(72, 1000)
-        runCatching {
-            synchronized(window) {
-                window.socket.getOutputStream().apply {
-                    write("R $newW $newH $dpi\n".toByteArray())
-                    flush()
-                }
-            }
-        }
+        window.socket.resize(newW, newH, dpi)
     }
 
     /** The display a PC's window runs on, once it has one. */

@@ -172,7 +172,12 @@ internal class PhonePlatform(
      * helper runs the command on its own).
      */
     override fun appUninstallRequested(pcId: String, pkg: String): Boolean {
-        if (pkg == context.packageName || !PACKAGE.matches(pkg) || !Elevated.running) return false
+        if (pkg == context.packageName ||
+            !PACKAGE.matches(pkg) ||
+            !Elevated.hasCapability(app.nectarlink.services.client.NectarlinkServiceContract.CAP_UNINSTALL_PACKAGES)
+        ) {
+            return false
+        }
         if (!Elevated.runCommand("pm uninstall $pkg")) return false
         repeat(32) {
             val installed = runCatching { context.packageManager.getPackageInfo(pkg, 0) }.isSuccess
