@@ -373,6 +373,9 @@ pub trait Platform: Send + Sync + 'static {
     /// mirroring its screen.
     fn mirror_sound_requested(&self, _peer: &nectarlink_protocol::DeviceId, _on: bool) {}
 
+    /// The PC wants this phone's mirrored screen in landscape or portrait.
+    fn mirror_rotate_requested(&self, _peer: &nectarlink_protocol::DeviceId, _landscape: bool) {}
+
     /// The PC changed `stay_awake` or `screen_off` while mirroring this phone's
     /// screen (`session == 0`).
     fn mirror_power_requested(
@@ -424,6 +427,24 @@ pub trait Platform: Send + Sync + 'static {
         } else {
             Err("MMS attachments are not supported on this device".into())
         }
+    }
+
+    /// The SIMs this phone texts from, and the one it uses without asking
+    /// (a PC asked; offered as `sms.sims`).
+    fn sms_sims(&self) -> Result<nectarlink_protocol::messages::CallSims, String> {
+        Ok(Default::default())
+    }
+
+    /// Like [`send_sms_with_attachments`](Self::send_sms_with_attachments),
+    /// on the SIM `sim` (an id from [`sms_sims`](Self::sms_sims)).
+    fn send_sms_on(
+        &self,
+        to: &[String],
+        body: &str,
+        attachments: &[crate::SmsAttachment],
+        _sim: &str,
+    ) -> Result<(), String> {
+        self.send_sms_with_attachments(to, body, attachments)
     }
 
     /// A picture in a message: its type and bytes.

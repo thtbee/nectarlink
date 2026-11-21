@@ -207,6 +207,8 @@ internal class PhonePlatform(
 
     override fun mirrorSoundRequested(pcId: String, on: Boolean) = MirrorService.setSound(pcId, on)
 
+    override fun mirrorRotateRequested(pcId: String, landscape: Boolean) = MirrorService.rotate(pcId, landscape)
+
     override fun mirrorStopRequested(pcId: String, session: UInt) {
         if (session != SCREEN) return appWindows.close(pcId, session)
         onKeyboardFromPc(pcId, false)
@@ -366,6 +368,11 @@ internal class PhonePlatform(
 
     override fun sendSmsWithAttachments(to: List<String>, body: String, attachments: List<SmsAttachment>): Boolean =
         sms().send(to, body, attachments)
+
+    override fun smsSims(): List<app.nectarlink.core.CallSim> = sms().sims()
+
+    override fun smsSendOn(to: List<String>, body: String, attachments: List<SmsAttachment>, sim: String): Boolean =
+        sms().send(to, body, attachments, sim)
 
     override fun smsPart(id: String): SmsPartData? = sms().part(id)
 

@@ -48,7 +48,16 @@ struct Jitter {
 }
 
 impl Jitter {
+    #[cfg(test)]
     fn new(rate: u32, channels: u16) -> Self {
+        Self::with_buffer(rate, channels, JITTER_START_MS)
+    }
+
+    /// `start_ms` from the buffer setting (#321): the other levels scale with
+    /// it, and 40 gives the old 40 / 20 / 80 / 160 / 220.
+    fn with_buffer(rate: u32, channels: u16, start_ms: usize) -> Self {
+        let start_ms = start_ms.clamp(20, 500);
+        let scale = |ms: usize| ms * start_ms / JITTER_START_MS;
         let frame_bytes = (channels as usize).max(1) * BYTES_PER_SAMPLE;
         let bytes_per_ms = ((rate as usize) * frame_bytes / 1000).max(frame_bytes);
         let align = |ms: usize| {
@@ -56,13 +65,13 @@ impl Jitter {
             (raw / frame_bytes) * frame_bytes
         };
         Self {
-            pcm: VecDeque::with_capacity(align(JITTER_MAX_MS)),
+            pcm: VecDeque::with_capacity(align(scale(JITTER_MAX_MS))),
             frame_bytes,
-            start_bytes: align(JITTER_START_MS),
-            low_bytes: align(JITTER_LOW_MS),
-            target_bytes: align(JITTER_TARGET_MS),
-            high_bytes: align(JITTER_HIGH_MS),
-            max_bytes: align(JITTER_MAX_MS),
+            start_bytes: align(start_ms),
+            low_bytes: align(scale(JITTER_LOW_MS)),
+            target_bytes: align(scale(JITTER_TARGET_MS)),
+            high_bytes: align(scale(JITTER_HIGH_MS)),
+            max_bytes: align(scale(JITTER_MAX_MS)),
             primed: false,
             last_frame: vec![0u8; frame_bytes],
         }
@@ -219,7 +228,11 @@ impl Player {
         let mut child_cell = Some(initial_child);
 
         let handle = thread::Builder::new().name("nectarlink-audio-out".into()).spawn(move || {
-            let mut jitter = Jitter::new(clean_rate, clean_channels);
+            let mut jitter = Jitter::with_buffer(
+                clean_rate,
+                clean_channels,
+                crate::settings::phone_sound_buffer_ms() as usize,
+            );
             let frame_bytes = jitter.frame_bytes;
             let frames_per_tick = ((clean_rate as usize) / 100).max(1);
             let mut scratch = vec![0u8; frames_per_tick * frame_bytes];

@@ -822,6 +822,7 @@ private fun App(
                     val touchpadSensitivity by preferences.touchpadSensitivity.collectAsStateWithLifecycle()
                     val suggestClipboardActions by preferences.suggestClipboardActions.collectAsStateWithLifecycle()
                     val volumeKeysControlPc by preferences.volumeKeysControlPc.collectAsStateWithLifecycle()
+                    val pcSoundBufferMs by preferences.pcSoundBufferMs.collectAsStateWithLifecycle()
                     val quietWhileUsingPc by preferences.quietWhileUsingPc.collectAsStateWithLifecycle()
                     val hideFromRecents by preferences.hideFromRecents.collectAsStateWithLifecycle()
                     val backgroundServiceEnabled by preferences.backgroundServiceEnabled.collectAsStateWithLifecycle()
@@ -1010,6 +1011,8 @@ private fun App(
                                     onSetSuggestClipboardActions = preferences::updateSuggestClipboardActions,
                                     volumeKeysControlPc = volumeKeysControlPc,
                                     onSetVolumeKeysControlPc = preferences::updateVolumeKeysControlPc,
+                                    pcSoundBufferMs = pcSoundBufferMs,
+                                    onSetPcSoundBufferMs = preferences::updatePcSoundBufferMs,
                                     quietWhileUsingPc = quietWhileUsingPc,
                                     onSetQuietWhileUsingPc = preferences::updateQuietWhileUsingPc,
                                     hideFromRecents = hideFromRecents,

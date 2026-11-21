@@ -1312,6 +1312,8 @@ pub struct SmsMessage {
     pub status: Option<String>,
     /// Pictures and other attachments, fetched with `sms_part`.
     pub parts: Vec<SmsPart>,
+    /// The SIM it came in on or went out from (an id from `sms_sims`), when known.
+    pub sim: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
@@ -2820,6 +2822,8 @@ pub trait Platform: Send + Sync {
     fn mirror_resize_requested(&self, pc_id: String, session: u32, width: u32, height: u32, zoom: u32);
     /// The PC updated `stay_awake` or `screen_off` while mirroring the screen (`session == 0`).
     fn mirror_power_requested(&self, pc_id: String, stay_awake: bool, screen_off: bool);
+    /// The PC wants the mirrored screen in landscape or portrait.
+    fn mirror_rotate_requested(&self, pc_id: String, landscape: bool);
     /// The PC wants the phone's sound sent to it, or left on the phone, while
     /// mirroring the screen.
     fn mirror_sound_requested(&self, pc_id: String, on: bool);
@@ -2878,6 +2882,16 @@ pub trait Platform: Send + Sync {
         to: Vec<String>,
         body: String,
         attachments: Vec<SmsAttachment>,
+    ) -> bool;
+    /// A PC asked which SIMs this phone texts from (#474).
+    fn sms_sims(&self) -> Vec<CallSim>;
+    /// Like `send_sms_with_attachments`, on the SIM `sim` (an id from `sms_sims`).
+    fn sms_send_on(
+        &self,
+        to: Vec<String>,
+        body: String,
+        attachments: Vec<SmsAttachment>,
+        sim: String,
     ) -> bool;
     /// A PC asked for a message's attachment; null when it's gone.
     fn sms_part(&self, id: String) -> Option<SmsPartData>;
@@ -3100,6 +3114,9 @@ impl core::Platform for PlatformAdapter {
     fn mirror_power_requested(&self, peer: &DeviceId, stay_awake: bool, screen_off: bool) {
         self.0.mirror_power_requested(peer.to_string(), stay_awake, screen_off);
     }
+    fn mirror_rotate_requested(&self, peer: &DeviceId, landscape: bool) {
+        self.0.mirror_rotate_requested(peer.to_string(), landscape);
+    }
     fn mirror_sound_requested(&self, peer: &DeviceId, on: bool) {
         self.0.mirror_sound_requested(peer.to_string(), on);
     }
@@ -3232,6 +3249,7 @@ impl core::Platform for PlatformAdapter {
                     .into_iter()
                     .map(|p| core::SmsPart { id: p.id, mime: p.mime, size: p.size })
                     .collect(),
+                sim: m.sim,
             })
             .collect())
     }
@@ -3250,6 +3268,29 @@ impl core::Platform for PlatformAdapter {
         let att: Vec<SmsAttachment> =
             attachments.iter().cloned().map(|a| SmsAttachment { mime: a.mime, data: a.data }).collect();
         if self.0.send_sms_with_attachments(to.to_vec(), body.to_owned(), att) {
+            Ok(())
+        } else {
+            Err("not sent".into())
+        }
+    }
+    fn sms_sims(&self) -> Result<core::CallSims, String> {
+        let sims = self.0.sms_sims();
+        let default = sims.iter().find(|s| s.is_default).map(|s| s.id.clone());
+        Ok(core::CallSims {
+            sims: sims.into_iter().map(|s| core::CallSim { id: s.id, label: s.label }).collect(),
+            default,
+        })
+    }
+    fn send_sms_on(
+        &self,
+        to: &[String],
+        body: &str,
+        attachments: &[core::SmsAttachment],
+        sim: &str,
+    ) -> Result<(), String> {
+        let att: Vec<SmsAttachment> =
+            attachments.iter().cloned().map(|a| SmsAttachment { mime: a.mime, data: a.data }).collect();
+        if self.0.sms_send_on(to.to_vec(), body.to_owned(), att, sim.to_owned()) {
             Ok(())
         } else {
             Err("not sent".into())

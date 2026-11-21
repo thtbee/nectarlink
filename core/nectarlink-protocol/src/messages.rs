@@ -81,9 +81,11 @@ pub mod types {
     pub const SMS_SEND: &str = "sms.send";
     pub const SMS_PART: &str = "sms.part";
     pub const SMS_CHANGED: &str = "sms.changed";
+    pub const SMS_SIMS: &str = "sms.sims";
     pub const MIRROR_START: &str = "mirror.start";
     pub const MIRROR_STOP: &str = "mirror.stop";
     pub const MIRROR_POWER: &str = "mirror.power";
+    pub const MIRROR_ROTATE: &str = "mirror.rotate";
     pub const MIRROR_SOUND: &str = "mirror.sound";
     /// Phone → PC: play my sound (#398). The PC starts its phone sound as
     /// if its user had turned it on; answered `ok`.
@@ -1520,6 +1522,16 @@ pub struct MirrorPower {
     pub screen_off: bool,
 }
 
+/// Body of `mirror.rotate`: turn the mirrored phone's screen (`session ==
+/// SCREEN`) to landscape or back to portrait (#473). The phone keeps it there
+/// while it's mirrored, then lets its own rotation take over again. Phones
+/// from before this ignore it.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MirrorRotate {
+    #[serde(default)]
+    pub landscape: bool,
+}
+
 /// Body of `mirror.sound`: send the phone's sound to the PC, or leave it on the
 /// phone, while mirroring its screen. Phones from before this ignore it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -2219,6 +2231,9 @@ pub mod sms {
     pub const SEND: &str = "sms.send";
     /// Offered by PCs that show text messages.
     pub const SHOW: &str = "sms.show";
+    /// Offered by phones that list the SIMs they text from (`sms.sims`) and
+    /// send on the one a PC picks (`sms.send`'s `sim`).
+    pub const SIMS: &str = "sms.sims";
     /// Most conversations or messages in one answer.
     pub const MAX_PAGE: u32 = 100;
     /// A text sent from a PC: at most this many bytes.
@@ -2298,6 +2313,10 @@ pub struct SmsMessage {
     pub status: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub parts: Vec<SmsPart>,
+    /// The SIM it came in on or went out from (an id from `sms.sims`), when
+    /// the phone knows.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sim: Option<String>,
 }
 
 /// Never prints numbers or text (protocol v0 §11).
@@ -2385,6 +2404,10 @@ pub struct SmsSend {
     /// Optional image attachment(s) to send as MMS.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub attachments: Vec<SmsAttachment>,
+    /// The SIM to send on (an id from `sms.sims`); the phone's default when
+    /// missing. Phones from before this send on their default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sim: Option<String>,
 }
 
 /// Never prints numbers or text (protocol v0 §11).
@@ -2394,13 +2417,15 @@ impl std::fmt::Debug for SmsSend {
             .field("to", &self.to.len())
             .field("bytes", &self.body.len())
             .field("attachments", &self.attachments.len())
+            .field("sim", &self.sim)
             .finish()
     }
 }
 
 impl SmsSend {
     pub fn is_valid(&self) -> bool {
-        (1..=sms::MAX_RECIPIENTS).contains(&self.to.len())
+        self.sim.as_deref().is_none_or(is_valid_sim_id)
+            && (1..=sms::MAX_RECIPIENTS).contains(&self.to.len())
             && self.to.iter().all(|a| (1..=64).contains(&a.trim().len()))
             && (!self.body.trim().is_empty() || !self.attachments.is_empty())
             && self.body.len() <= sms::MAX_SEND_BYTES
@@ -5591,10 +5616,27 @@ mod tests {
 
     #[test]
     fn texts_to_send_are_checked() {
-        let send =
-            SmsSend { to: vec!["+15550100".into()], body: "On my way".into(), attachments: Vec::new() };
+        let send = SmsSend {
+            to: vec!["+15550100".into()],
+            body: "On my way".into(),
+            attachments: Vec::new(),
+            sim: None,
+        };
         assert!(send.is_valid());
         assert!(!format!("{send:?}").contains("way"));
+        // On a SIM the phone listed (#474); an empty or control-character id isn't one.
+        assert!(SmsSend { sim: Some("2".into()), ..send.clone() }.is_valid());
+        assert!(!SmsSend { sim: Some(String::new()), ..send.clone() }.is_valid());
+        assert!(!SmsSend { sim: Some("1\n".into()), ..send.clone() }.is_valid());
+        // A phone from before SIMs reads a PC's text with one as it always did.
+        let env = Envelope::new(types::SMS_SEND, &SmsSend { sim: Some("2".into()), ..send.clone() }).unwrap();
+        #[derive(Deserialize)]
+        struct Old {
+            to: Vec<String>,
+            body: String,
+        }
+        let old: Old = env.body().unwrap();
+        assert_eq!((old.to, old.body.as_str()), (send.to.clone(), "On my way"));
         assert!(!SmsSend { to: vec![], ..send.clone() }.is_valid());
         assert!(!SmsSend { body: "  ".into(), ..send.clone() }.is_valid());
         assert!(!SmsSend { body: "x".repeat(sms::MAX_SEND_BYTES + 1), ..send.clone() }.is_valid());
@@ -6558,6 +6600,7 @@ mod tests {
                 4 => try_decode!(
                     MirrorStart,
                     MirrorPower,
+                    MirrorRotate,
                     MirrorSession,
                     MirrorResize,
                     PhoneApp,

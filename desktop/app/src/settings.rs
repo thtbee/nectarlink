@@ -138,6 +138,14 @@ fn default_history_days() -> u32 {
     1
 }
 
+fn default_island_position() -> String {
+    "center".into()
+}
+
+fn default_island_look() -> String {
+    "dark".into()
+}
+
 fn default_true() -> bool {
     true
 }
@@ -320,8 +328,78 @@ fn default_battery_full_threshold() -> u8 {
     100
 }
 
+/// Low in Settings (#321), what it always was; Medium is 100 and High 200.
+fn default_sound_buffer_ms() -> u16 {
+    40
+}
+
+static PHONE_SOUND_BUFFER_MS: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(40);
+
+/// How much of a phone's sound the PC holds before playing it.
+pub fn phone_sound_buffer_ms() -> u32 {
+    PHONE_SOUND_BUFFER_MS.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+pub fn set_phone_sound_buffer_ms(ms: u16) {
+    PHONE_SOUND_BUFFER_MS.store(u32::from(ms.clamp(20, 500)), std::sync::atomic::Ordering::Relaxed);
+}
+
+fn default_battery_low_threshold() -> u8 {
+    15
+}
+
+static BATTERY_LOW_THRESHOLD: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8::new(15);
+
+/// At or under this (and not charging), a phone's battery is low (#478).
+pub fn battery_low_threshold() -> u8 {
+    BATTERY_LOW_THRESHOLD.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+pub fn set_battery_low_threshold(threshold: u8) {
+    BATTERY_LOW_THRESHOLD.store(threshold.clamp(5, 50), std::sync::atomic::Ordering::Relaxed);
+}
+
 static NICKNAMES: std::sync::Mutex<Option<std::collections::HashMap<String, String>>> =
     std::sync::Mutex::new(None);
+
+/// Most apps pinned on one phone.
+pub const MAX_PINNED_APPS: usize = 24;
+
+static PINNED_APPS: std::sync::Mutex<Option<std::collections::HashMap<String, Vec<String>>>> =
+    std::sync::Mutex::new(None);
+
+/// Every phone's pinned apps (#477), by device ID: package names, in order.
+pub fn pinned_apps_all() -> std::collections::HashMap<String, Vec<String>> {
+    PINNED_APPS.lock().unwrap_or_else(|e| e.into_inner()).clone().unwrap_or_default()
+}
+
+pub fn set_pinned_apps_all(pins: std::collections::HashMap<String, Vec<String>>) {
+    *PINNED_APPS.lock().unwrap_or_else(|e| e.into_inner()) = Some(pins);
+}
+
+/// `device`'s pinned apps, in the order they were pinned.
+pub fn pinned_apps(device: &str) -> Vec<String> {
+    PINNED_APPS
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .as_ref()
+        .and_then(|m| m.get(device).cloned())
+        .unwrap_or_default()
+}
+
+/// Pins `pkg` on `device` (last, up to [`MAX_PINNED_APPS`]) or unpins it.
+pub fn set_app_pinned(device: &str, pkg: &str, on: bool) {
+    let mut lock = PINNED_APPS.lock().unwrap_or_else(|e| e.into_inner());
+    let map = lock.get_or_insert_default();
+    let list = map.entry(device.to_owned()).or_default();
+    list.retain(|p| p != pkg);
+    if on && list.len() < MAX_PINNED_APPS {
+        list.push(pkg.to_owned());
+    }
+    if list.is_empty() {
+        map.remove(device);
+    }
+}
 
 static KEEP_SCREEN_OFF: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
 
@@ -467,6 +545,10 @@ pub struct Settings {
     /// Closing the window keeps NectarLink running in the tray.
     #[serde(default = "default_close_to_tray", alias = "close_to_tray")]
     pub close_to_tray: bool,
+    /// The tray icon in one colour, white or black to match the taskbar
+    /// (#479), instead of the coloured tile.
+    #[serde(default, alias = "tray_one_colour")]
+    pub tray_one_colour: bool,
     /// Send what's copied on this PC to connected phones.
     #[serde(alias = "auto_clipboard", alias = "clipboard_sync")]
     pub auto_clipboard: bool,
@@ -522,6 +604,13 @@ pub struct Settings {
     /// Battery charge level percent to treat as "full" for alerts (default `100`, or `80` for battery protection mode).
     #[serde(default = "default_battery_full_threshold", alias = "battery_full_threshold")]
     pub battery_full_threshold: u8,
+    /// How much of a phone's sound is held before it plays, in ms: more
+    /// survives a busy Wi-Fi, less is closer to live.
+    #[serde(default = "default_sound_buffer_ms", alias = "phone_sound_buffer_ms")]
+    pub phone_sound_buffer_ms: u16,
+    /// The battery level that counts as low, in percent (default 15).
+    #[serde(default = "default_battery_low_threshold", alias = "battery_low_threshold")]
+    pub battery_low_threshold: u8,
     /// How big the app draws, in percent of normal ([`UI_SCALES`]). Read when
     /// the app starts.
     #[serde(default = "default_ui_scale", alias = "ui_scale")]
@@ -536,6 +625,9 @@ pub struct Settings {
         alias = "device_nicknames"
     )]
     pub device_nicknames: std::collections::HashMap<String, String>,
+    /// Apps pinned to the top of Apps (#477), by device ID: package names.
+    #[serde(default, skip_serializing_if = "std::collections::HashMap::is_empty", alias = "pinned_apps")]
+    pub pinned_apps: std::collections::HashMap<String, Vec<String>>,
     /// Start when the user signs in. Unset until the user chooses: then an
     /// installed copy starts with Windows and a build run from its folder
     /// doesn't.
@@ -651,6 +743,16 @@ pub struct Settings {
     /// Trigger Nectar Island for phone notifications.
     #[serde(default, alias = "nectar_island_notifications")]
     pub nectar_island_notifications: bool,
+    /// Where the Island sits along the top (#472): `left`, `center` or `right`.
+    #[serde(default = "default_island_position", alias = "nectar_island_position")]
+    pub nectar_island_position: String,
+    /// The Island always dark (`dark`), or following the app's light or dark
+    /// look (`theme`, #325).
+    #[serde(default = "default_island_look", alias = "nectar_island_look")]
+    pub nectar_island_look: String,
+    /// The Island also shows what plays on this PC (#472).
+    #[serde(default, alias = "nectar_island_pc_media")]
+    pub nectar_island_pc_media: bool,
     /// Configured "When X, Do Y" automation rules.
     #[serde(default, skip_serializing_if = "Vec::is_empty", alias = "automation_rules")]
     pub automation_rules: Vec<crate::automations::AutomationRule>,
@@ -736,6 +838,7 @@ impl Default for Settings {
             backdrop: true,
             comb_motion: true,
             close_to_tray: default_close_to_tray(),
+            tray_one_colour: false,
             auto_clipboard: true,
             clipboard_history: true,
             suggest_clipboard_actions: true,
@@ -754,9 +857,12 @@ impl Default for Settings {
             update_channel: String::new(),
             battery_alerts: true,
             battery_full_threshold: default_battery_full_threshold(),
+            battery_low_threshold: default_battery_low_threshold(),
+            phone_sound_buffer_ms: default_sound_buffer_ms(),
             ui_scale: default_ui_scale(),
             keep_screen_off: Vec::new(),
             device_nicknames: std::collections::HashMap::new(),
+            pinned_apps: std::collections::HashMap::new(),
             start_with_windows: None,
             recordings_folder: None,
             recordings_format: RecordingFormat::default(),
@@ -793,6 +899,9 @@ impl Default for Settings {
             nectar_island_transfers: true,
             nectar_island_media: true,
             nectar_island_notifications: false,
+            nectar_island_position: default_island_position(),
+            nectar_island_look: default_island_look(),
+            nectar_island_pc_media: false,
             automation_rules: Vec::new(),
             stream_pc_audio_to_phone: false,
             share_pc_storage: false,
@@ -852,6 +961,8 @@ impl Settings {
     }
 
     pub fn apply_runtime(&self) {
+        #[cfg(windows)]
+        crate::win::tray::set_one_colour(self.tray_one_colour);
         set_clipboard_auto_copy_received_files(self.clipboard_auto_copy_received_files);
         set_open_shared_files(self.open_shared_files);
         set_sync_wifi_only(self.sync_wifi_only);
@@ -873,8 +984,11 @@ impl Settings {
         set_forward_pc_notifications_to_phone(self.forward_pc_notifications_to_phone);
         set_away_mode(self.away_mode);
         set_battery_full_threshold(self.battery_full_threshold);
+        set_battery_low_threshold(self.battery_low_threshold);
+        set_phone_sound_buffer_ms(self.phone_sound_buffer_ms);
         set_keep_screen_off_phones(self.keep_screen_off.clone());
         set_device_nicknames(self.device_nicknames.clone());
+        set_pinned_apps_all(self.pinned_apps.clone());
         set_window_geometry(
             self.window_screen.clone(),
             self.window_x,
@@ -963,6 +1077,24 @@ mod tests {
     use super::*;
 
     #[test]
+    fn pins_keep_their_order_and_unpin_cleanly() {
+        set_pinned_apps_all(std::collections::HashMap::new());
+        set_app_pinned("phone", "com.a", true);
+        set_app_pinned("phone", "com.b", true);
+        set_app_pinned("phone", "com.a", true);
+        assert_eq!(pinned_apps("phone"), ["com.b", "com.a"]);
+        set_app_pinned("phone", "com.b", false);
+        set_app_pinned("phone", "com.a", false);
+        assert!(pinned_apps("phone").is_empty());
+        assert!(!pinned_apps_all().contains_key("phone"));
+        for i in 0..MAX_PINNED_APPS + 5 {
+            set_app_pinned("phone", &format!("com.p{i}"), true);
+        }
+        assert_eq!(pinned_apps("phone").len(), MAX_PINNED_APPS);
+        set_pinned_apps_all(std::collections::HashMap::new());
+    }
+
+    #[test]
     fn every_theme_keeps_its_name() {
         for theme in [Theme::Bloom, Theme::Hive, Theme::Glass, Theme::Graphite, Theme::Fluent] {
             assert_eq!(Theme::parse(theme.name()), theme);
@@ -1023,6 +1155,7 @@ mod tests {
             backdrop: false,
             comb_motion: false,
             close_to_tray: false,
+            tray_one_colour: true,
             auto_clipboard: false,
             clipboard_history: false,
             suggest_clipboard_actions: false,
@@ -1041,9 +1174,15 @@ mod tests {
             update_channel: "nightly".into(),
             battery_alerts: false,
             battery_full_threshold: 80,
+            battery_low_threshold: 10,
+            phone_sound_buffer_ms: 200,
             ui_scale: 125,
             keep_screen_off: vec!["abc".to_owned()],
             device_nicknames: std::collections::HashMap::from([("abc".to_owned(), "Work phone".to_owned())]),
+            pinned_apps: std::collections::HashMap::from([(
+                "abc".to_owned(),
+                vec!["com.example.notes".to_owned()],
+            )]),
             start_with_windows: Some(true),
             recordings_folder: Some(PathBuf::from(r"C:\Recordings")),
             recordings_format: RecordingFormat::Flac,
@@ -1080,6 +1219,9 @@ mod tests {
             nectar_island_transfers: true,
             nectar_island_media: true,
             nectar_island_notifications: false,
+            nectar_island_position: "right".into(),
+            nectar_island_look: "theme".into(),
+            nectar_island_pc_media: true,
             automation_rules: Vec::new(),
             stream_pc_audio_to_phone: true,
             share_pc_storage: true,

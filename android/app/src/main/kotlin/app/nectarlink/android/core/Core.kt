@@ -104,7 +104,14 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     private val context = context.applicationContext.also { PhoneClipboard.init(it) }
     private val ringer = Ringer(this.context)
     private val pcNotificationPoster = PcNotificationPoster(this.context)
-    private val pcSpeakerPlayer = PcSpeakerPlayer()
+    private val pcSpeakerPlayer = PcSpeakerPlayer().also {
+        it.bufferMs = app.nectarlink.android.ui.Preferences.pcSoundBufferMs(context)
+    }
+
+    /** How much of the PC's sound to hold before playing it (#321). */
+    fun setPcSoundBufferMs(ms: Int) {
+        pcSpeakerPlayer.bufferMs = ms
+    }
     /** What plays on this phone, for PCs (needs notification access). */
     private val phoneMedia = PhoneMedia(this.context) { players ->
         syncActiveMediaColor()
@@ -2073,6 +2080,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             (if (PhoneContacts.canRead(context)) listOf("contacts.read") else emptyList()) +
             (if (PhoneSms.canRead(context)) listOf("sms.read") else emptyList()) +
             (if (PhoneSms.canSend(context)) listOf("sms.send") else emptyList()) +
+            (if (PhoneSms.canSend(context) && PhoneSms.canListSims(context)) listOf("sms.sims") else emptyList()) +
             PhoneStorage.capabilities(context) +
             // Unlock a PC with this phone's fingerprint (ADR 0009).
             (if (app.nectarlink.android.unlock.UnlockKeys.supported(context)) listOf("unlock.key") else emptyList()) +

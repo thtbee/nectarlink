@@ -121,16 +121,26 @@ struct Jitter {
 }
 
 impl Jitter {
+    #[cfg(test)]
     fn new(rate: u32, channels: u16) -> Self {
+        Self::with_buffer(rate, channels, START_MS)
+    }
+
+    /// `start_ms` from the buffer setting (#321); the trim target stays above
+    /// it, and 40 gives the old 40 / 200 / 60.
+    fn with_buffer(rate: u32, channels: u16, start_ms: usize) -> Self {
+        let start_ms = start_ms.clamp(20, 500);
+        let trim_ms = if start_ms == START_MS { TRIM_TO_MS } else { start_ms + (start_ms / 2).max(20) };
+        let most_ms = if start_ms == START_MS { MOST_MS } else { trim_ms + 140 };
         let frame_bytes = (channels as usize).max(1) * BYTES_PER_SAMPLE;
         let bytes_per_ms = ((rate as usize) * frame_bytes / 1000).max(frame_bytes);
         let align = |ms: usize| ((ms * bytes_per_ms).max(frame_bytes) / frame_bytes) * frame_bytes;
         Self {
-            pcm: VecDeque::with_capacity(align(MOST_MS)),
+            pcm: VecDeque::with_capacity(align(most_ms)),
             frame_bytes,
-            start_bytes: align(START_MS),
-            trim_bytes: align(TRIM_TO_MS),
-            most_bytes: align(MOST_MS),
+            start_bytes: align(start_ms),
+            trim_bytes: align(trim_ms),
+            most_bytes: align(most_ms),
             primed: false,
         }
     }
@@ -234,7 +244,11 @@ impl Player {
             m_reserved: 0,
         };
         let shared = Arc::into_raw(Arc::new(Shared {
-            jitter: Mutex::new(Jitter::new(rate, channels)),
+            jitter: Mutex::new(Jitter::with_buffer(
+                rate,
+                channels,
+                crate::settings::phone_sound_buffer_ms() as usize,
+            )),
             stopping: AtomicBool::new(false),
         }));
         let mut queue: AudioQueueRef = ptr::null_mut();

@@ -1056,6 +1056,24 @@ Item {
                             }
                         }
 
+                        Divider { width: parent.width; visible: Qt.platform.os === "windows" }
+
+                        ListRow {
+                            width: parent.width
+                            visible: Qt.platform.os === "windows"
+                            iconPath: Icons.palette
+                            title: qsTr("Tray icon")
+                            description: qsTr("One color turns white or black to match the taskbar.")
+                            Segmented {
+                                options: [
+                                    { value: "colour", label: qsTr("Color") },
+                                    { value: "one", label: qsTr("One color") }
+                                ]
+                                value: Preferences.trayOneColour ? "one" : "colour"
+                                onPicked: (val) => Preferences.trayOneColour = val === "one"
+                            }
+                        }
+
                         Divider { width: parent.width }
 
                         // Row 2: Nectar Island | Battery alerts
@@ -1205,6 +1223,59 @@ Item {
                                     }
                                 }
                             }
+
+                            // Wayland puts windows where it likes: the pill is dragged there instead.
+                            Divider { width: parent.width; visible: islandPositionRow.visible }
+
+                            // #472: so it doesn't sit over another app's own bar.
+                            ListRow {
+                                id: islandPositionRow
+                                visible: !Qt.platform.pluginName.startsWith("wayland")
+                                width: parent.width
+                                title: qsTr("Island position")
+                                description: qsTr("Where the pill sits along the top of the screen.")
+                                Segmented {
+                                    options: [
+                                        { value: "left", label: qsTr("Left") },
+                                        { value: "center", label: qsTr("Center") },
+                                        { value: "right", label: qsTr("Right") }
+                                    ]
+                                    value: Preferences.nectarIslandPosition
+                                    onPicked: (val) => Preferences.nectarIslandPosition = val
+                                }
+                            }
+
+                            Divider { width: parent.width }
+
+                            // #325: dark always, or light when the app is.
+                            ListRow {
+                                width: parent.width
+                                title: qsTr("Island look")
+                                description: qsTr("Always dark, or light and dark with the app.")
+                                Segmented {
+                                    options: [
+                                        { value: "dark", label: qsTr("Dark") },
+                                        { value: "theme", label: qsTr("Like the app") }
+                                    ]
+                                    value: Preferences.nectarIslandLook
+                                    onPicked: (val) => Preferences.nectarIslandLook = val
+                                }
+                            }
+
+                            Divider { width: parent.width; visible: Preferences.nectarIslandMedia }
+
+                            // #472: Spotify, a browser, any player Windows' media controls know.
+                            ListRow {
+                                width: parent.width
+                                visible: Preferences.nectarIslandMedia
+                                title: qsTr("This PC's players too")
+                                description: qsTr("Also show music and videos playing on this PC. With more than one, a button switches between them.")
+                                Toggle {
+                                    label: qsTr("This PC's players too")
+                                    checked: Preferences.nectarIslandPcMedia
+                                    onToggled: (on) => Preferences.nectarIslandPcMedia = on
+                                }
+                            }
                         }
 
                         // Sub-row: Full charge alert target (100% or 80% Protect battery)
@@ -1213,6 +1284,20 @@ Item {
                             visible: Preferences.batteryAlerts
                             width: parent.width
                             spacing: 0
+
+                            Divider { width: parent.width }
+
+                            ListRow {
+                                width: parent.width
+                                iconPath: Icons.battery
+                                title: qsTr("Low battery at")
+                                description: qsTr("Alert once when a phone gets down to this level.")
+                                Segmented {
+                                    options: [5, 10, 15, 20, 30].map(v => ({ value: v, label: v + "%" }))
+                                    value: Preferences.batteryLowThreshold
+                                    onPicked: (val) => Preferences.batteryLowThreshold = val
+                                }
+                            }
 
                             Divider { width: parent.width }
 
@@ -1950,6 +2035,25 @@ Item {
                                 label: qsTr("Mute this PC while a phone watches")
                                 checked: Preferences.muteWhileWatched
                                 onToggled: (on) => Preferences.muteWhileWatched = on
+                            }
+                        }
+
+                        Divider { width: parent.width }
+
+                        // #321: more buffer survives a busy Wi-Fi, less is closer to live.
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.speaker
+                            title: qsTr("Phone sound buffer")
+                            description: qsTr("If phone sound on this PC skips on a busy Wi-Fi, a bigger buffer smooths it out, with a little more delay.")
+                            Segmented {
+                                options: [
+                                    { value: 40, label: qsTr("Low") },
+                                    { value: 100, label: qsTr("Medium") },
+                                    { value: 200, label: qsTr("High") }
+                                ]
+                                value: Preferences.phoneSoundBufferMs
+                                onPicked: (val) => Preferences.phoneSoundBufferMs = val
                             }
                         }
 
