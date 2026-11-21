@@ -20,10 +20,9 @@ use crate::{
 
 /// The toast "device" for battery alerts; their key is the phone's ID.
 pub const TOAST_GROUP: &str = "battery";
-/// At or under this (and not charging): low.
-const LOW: u8 = 15;
-/// A low alert comes again only after charging or climbing past this.
-const RECOVERED: u8 = 25;
+/// A low alert comes again only after charging or climbing this far past
+/// the low level.
+const RECOVERY: u8 = 10;
 
 static ENABLED: AtomicBool = AtomicBool::new(true);
 static WATCHES: Mutex<Option<HashMap<DeviceId, Watch>>> = Mutex::new(None);
@@ -49,11 +48,11 @@ struct Watch {
 }
 
 impl Watch {
-    fn update(&mut self, battery: &Battery, full_target: u8) -> Option<Alert> {
+    fn update(&mut self, battery: &Battery, low_at: u8, full_target: u8) -> Option<Alert> {
         let power = battery.charging || battery.plugged.is_some();
-        let low = !power && battery.level <= LOW;
+        let low = !power && battery.level <= low_at;
         let full = power && battery.level >= full_target;
-        if power || battery.level >= RECOVERED {
+        if power || battery.level >= low_at.saturating_add(RECOVERY) {
             self.told_low = false;
         }
         if !power || battery.level < full_target {
@@ -77,9 +76,10 @@ impl Watch {
 pub fn on_event(event: &NodeEvent) {
     let NodeEvent::Battery { device, battery } = event else { return };
     let full_target = crate::settings::battery_full_threshold();
+    let low_at = crate::settings::battery_low_threshold();
     let alert = {
         let mut watches = WATCHES.lock().unwrap_or_else(|e| e.into_inner());
-        watches.get_or_insert_default().entry(*device).or_default().update(battery, full_target)
+        watches.get_or_insert_default().entry(*device).or_default().update(battery, low_at, full_target)
     };
     let Some(alert) = alert else { return };
     if !ENABLED.load(Ordering::Relaxed) {
@@ -137,44 +137,57 @@ mod tests {
     #[test]
     fn low_is_told_once_until_it_recovers() {
         let mut w = Watch::default();
-        assert_eq!(w.update(&at(40, false), 100), None);
-        assert_eq!(w.update(&at(15, false), 100), Some(Alert::Low(15)));
-        assert_eq!(w.update(&at(12, false), 100), None);
+        assert_eq!(w.update(&at(40, false), 15, 100), None);
+        assert_eq!(w.update(&at(15, false), 15, 100), Some(Alert::Low(15)));
+        assert_eq!(w.update(&at(12, false), 15, 100), None);
         // Plugged in, then out again while still low: worth saying again.
-        assert_eq!(w.update(&at(13, true), 100), None);
-        assert_eq!(w.update(&at(13, false), 100), Some(Alert::Low(13)));
+        assert_eq!(w.update(&at(13, true), 15, 100), None);
+        assert_eq!(w.update(&at(13, false), 15, 100), Some(Alert::Low(13)));
         // Bouncing around the line doesn't repeat it.
-        assert_eq!(w.update(&at(16, false), 100), None);
-        assert_eq!(w.update(&at(15, false), 100), None);
-        assert_eq!(w.update(&at(30, false), 100), None);
-        assert_eq!(w.update(&at(14, false), 100), Some(Alert::Low(14)));
+        assert_eq!(w.update(&at(16, false), 15, 100), None);
+        assert_eq!(w.update(&at(15, false), 15, 100), None);
+        assert_eq!(w.update(&at(30, false), 15, 100), None);
+        assert_eq!(w.update(&at(14, false), 15, 100), Some(Alert::Low(14)));
+    }
+
+    #[test]
+    fn low_follows_the_chosen_level() {
+        let mut w = Watch::default();
+        assert_eq!(w.update(&at(12, false), 5, 100), None);
+        assert_eq!(w.update(&at(6, false), 5, 100), None);
+        assert_eq!(w.update(&at(5, false), 5, 100), Some(Alert::Low(5)));
+        // Recovered only 10 points above the chosen level.
+        assert_eq!(w.update(&at(14, false), 5, 100), None);
+        assert_eq!(w.update(&at(5, false), 5, 100), None);
+        assert_eq!(w.update(&at(15, false), 5, 100), None);
+        assert_eq!(w.update(&at(4, false), 5, 100), Some(Alert::Low(4)));
     }
 
     #[test]
     fn low_is_told_right_after_connecting() {
-        assert_eq!(Watch::default().update(&at(9, false), 100), Some(Alert::Low(9)));
+        assert_eq!(Watch::default().update(&at(9, false), 15, 100), Some(Alert::Low(9)));
     }
 
     #[test]
     fn full_is_told_when_it_gets_there() {
         let mut w = Watch::default();
-        assert_eq!(w.update(&at(99, true), 100), None);
-        assert_eq!(w.update(&at(100, true), 100), Some(Alert::Full(100)));
-        assert_eq!(w.update(&at(100, true), 100), None);
-        assert_eq!(w.update(&at(100, false), 100), None);
-        assert_eq!(w.update(&at(100, true), 100), Some(Alert::Full(100)));
+        assert_eq!(w.update(&at(99, true), 15, 100), None);
+        assert_eq!(w.update(&at(100, true), 15, 100), Some(Alert::Full(100)));
+        assert_eq!(w.update(&at(100, true), 15, 100), None);
+        assert_eq!(w.update(&at(100, false), 15, 100), None);
+        assert_eq!(w.update(&at(100, true), 15, 100), Some(Alert::Full(100)));
         // Already full when it connected: not news.
-        assert_eq!(Watch::default().update(&at(100, true), 100), None);
+        assert_eq!(Watch::default().update(&at(100, true), 15, 100), None);
     }
 
     #[test]
     fn full_respects_protect_battery_threshold() {
         let mut w = Watch::default();
-        assert_eq!(w.update(&at(79, true), 80), None);
-        assert_eq!(w.update(&at(80, true), 80), Some(Alert::Full(80)));
-        assert_eq!(w.update(&at(80, true), 80), None);
-        assert_eq!(w.update(&at(80, false), 80), None);
-        assert_eq!(w.update(&at(80, true), 80), Some(Alert::Full(80)));
+        assert_eq!(w.update(&at(79, true), 15, 80), None);
+        assert_eq!(w.update(&at(80, true), 15, 80), Some(Alert::Full(80)));
+        assert_eq!(w.update(&at(80, true), 15, 80), None);
+        assert_eq!(w.update(&at(80, false), 15, 80), None);
+        assert_eq!(w.update(&at(80, true), 15, 80), Some(Alert::Full(80)));
     }
 
     #[test]
@@ -183,11 +196,11 @@ mod tests {
         let mut b = at(80, false);
         b.plugged = Some("ac".into());
         // First report after connect doesn't alert if already 80
-        assert_eq!(w.update(&b, 80), None);
+        assert_eq!(w.update(&b, 15, 80), None);
         // Level dips to 79 and back up to 80 while still plugged
         b.level = 79;
-        assert_eq!(w.update(&b, 80), None);
+        assert_eq!(w.update(&b, 15, 80), None);
         b.level = 80;
-        assert_eq!(w.update(&b, 80), Some(Alert::Full(80)));
+        assert_eq!(w.update(&b, 15, 80), Some(Alert::Full(80)));
     }
 }

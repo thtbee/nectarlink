@@ -3,6 +3,9 @@ contact_links:
   - name: Question or idea
     url: https://github.com/thtbee/nectarlink/discussions
     about: Ask a question, talk through an idea, or show your setup.
+  - name: Chat on Discord
+    url: https://discord.gg/AA2Dp8PYqf
+    about: Quick help and chat with other NectarLink users in the Hive.
   - name: Security issue
     url: https://github.com/thtbee/nectarlink/security/advisories/new
     about: Report security problems privately, never in a public issue.

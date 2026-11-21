@@ -12,12 +12,14 @@ Local-first, end-to-end encrypted, no account and no cloud.
 
 Hi, I'm Bee, and yes, a bee built an app called NectarLink. I build cool stuff
 in the open on [𝕏 @thtbee_](https://x.com/thtbee_), so come see what's next.
-Feedback, bugs or ideas? DM me directly.
+Feedback, bugs or ideas? DM me directly, or come hang out in the
+[Hive on Discord](https://discord.gg/AA2Dp8PYqf).
 
 [![Latest release](https://img.shields.io/github/v/release/thtbee/nectarlink?label=download)](https://github.com/thtbee/nectarlink/releases/latest)
 [![CI](https://github.com/thtbee/nectarlink/actions/workflows/ci.yml/badge.svg)](https://github.com/thtbee/nectarlink/actions/workflows/ci.yml)
 [![Apps: GPL-3.0-or-later](https://img.shields.io/badge/apps-GPL--3.0--or--later-blue)](LICENSE)
 [![Core: MPL-2.0](https://img.shields.io/badge/core-MPL--2.0-blue)](LICENSE)
+[![Discord](https://img.shields.io/badge/Discord-the%20Hive-5865F2?logo=discord&logoColor=white)](https://discord.gg/AA2Dp8PYqf)
 
 <a href="https://buymeacoffee.com/thtbee_"><img src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20some%20honey&emoji=%F0%9F%8D%AF&slug=thtbee_&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff&v=2" alt="Buy me some honey" height="40"></a>
 
@@ -329,7 +331,8 @@ nix develop                       # enter development environment
 
 Ask questions, share ideas and show your setup in
 [Discussions](https://github.com/thtbee/nectarlink/discussions). Issues are for
-bugs and agreed feature work.
+bugs and agreed feature work. For quick help and chat, there's the
+[Hive on Discord](https://discord.gg/AA2Dp8PYqf).
 
 ## Contributing
 

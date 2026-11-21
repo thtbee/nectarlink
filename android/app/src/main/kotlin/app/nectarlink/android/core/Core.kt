@@ -104,7 +104,14 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     private val context = context.applicationContext.also { PhoneClipboard.init(it) }
     private val ringer = Ringer(this.context)
     private val pcNotificationPoster = PcNotificationPoster(this.context)
-    private val pcSpeakerPlayer = PcSpeakerPlayer()
+    private val pcSpeakerPlayer = PcSpeakerPlayer().also {
+        it.bufferMs = app.nectarlink.android.ui.Preferences.pcSoundBufferMs(context)
+    }
+
+    /** How much of the PC's sound to hold before playing it (#321). */
+    fun setPcSoundBufferMs(ms: Int) {
+        pcSpeakerPlayer.bufferMs = ms
+    }
     /** What plays on this phone, for PCs (needs notification access). */
     private val phoneMedia = PhoneMedia(this.context) { players ->
         syncActiveMediaColor()
@@ -275,6 +282,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     private val startGuard = StartGuard()
     @Volatile private var activeStartSeq = 0
     private val wakeTimers = java.util.concurrent.ConcurrentHashMap<String, Job>()
+    /** Per PC gone offline: takes down its running tasks if it stays away. */
+    private val taskTimers = java.util.concurrent.ConcurrentHashMap<String, Job>()
 
     @Volatile private var lastBattery: app.nectarlink.core.Battery? = null
     @Volatile private var lastSignal: SignalSnapshot = SignalSnapshot()
@@ -477,7 +486,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             updateLocalSendMulticast(lsEnabled)
             pruneOldTempCaches()
             _state.update {
-                it.withDevices(devices, pcToggles.storageAllowed, pcToggles.micOff).copy(
+                it.withDevices(devices, pcToggles.storageAllowed, pcToggles.micOff, pcToggles.unlockAllowed).copy(
                     sendQueue = initialQueue,
                     clipboardHistoryEnabled = clipHistEnabled,
                     clipboardHistory = clipHist,
@@ -799,7 +808,11 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                             localNetwork = localNetwork,
                             devices = if (pcToggles != null) {
                                 it.devices.map { d ->
-                                    d.copy(storageEnabled = d.id in pcToggles.storageAllowed, micEnabled = d.id !in pcToggles.micOff)
+                                    d.copy(
+                                        storageEnabled = d.id in pcToggles.storageAllowed,
+                                        micEnabled = d.id !in pcToggles.micOff,
+                                        unlockEnabled = d.id in pcToggles.unlockAllowed,
+                                    )
                                 }
                             } else {
                                 it.devices
@@ -930,6 +943,13 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                     scope.launch(Dispatchers.Default) {
                         pcMedia.update(event.id, "", emptyList())
                     }
+                    // A PC away this long won't say how its running tasks ended.
+                    taskTimers.remove(event.id)?.cancel()
+                    taskTimers[event.id] = scope.launch {
+                        delay(TASKS_AWAY_MS)
+                        taskTimers.remove(event.id)
+                        app.nectarlink.android.notifications.TaskNotifications.cancelRunning(context, event.id)
+                    }
                     pcSpeakerPlayer.stopForPc(event.id)
                     if (_pcMirrorConfig.value?.pcId == event.id) {
                         _pcMirrorConfig.value = null
@@ -950,6 +970,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 }
                 if (event.link is Link.Online) {
                     wakeTimers.remove(event.id)?.cancel()
+                    taskTimers.remove(event.id)?.cancel()
                     retryWaitingRecordings(event.id)
                     // Plugged into a PC with USB debugging allowed: it can start Elevated.
                     if (!Elevated.running) scope.launch(Dispatchers.IO) { Elevated.startOverUsb() }
@@ -964,6 +985,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 ?.updater?.onHint(event.channel, event.version)
             is Event.DeviceRemoved -> {
                 wakeTimers.remove(event.id)?.cancel()
+                taskTimers.remove(event.id)?.cancel()
+                app.nectarlink.android.notifications.TaskNotifications.cancelRunning(context, event.id)
                 // Paired again later, it asks again until chosen again.
                 PcAutoStart.set(context, event.id, false)
                 scope.launch(Dispatchers.Default) {
@@ -1296,18 +1319,37 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         }
     }
 
-    /** Which PCs may browse this phone's storage, and which may not ask for its microphone. */
-    private class PerPcToggles(val storageAllowed: Set<String>, val micOff: Set<String>)
+    /**
+     * Which PCs may browse this phone's storage, which may not ask for its microphone, and
+     * which may ask it to unlock them.
+     */
+    private class PerPcToggles(val storageAllowed: Set<String>, val micOff: Set<String>, val unlockAllowed: Set<String>)
 
     private fun perPcToggles(node: NectarlinkNode, ids: List<String>): PerPcToggles {
         val storage = mutableSetOf<String>()
         val micOff = mutableSetOf<String>()
+        val unlock = mutableSetOf<String>()
         for (id in ids) {
             val toggles = runCatching { node.deviceToggles(id) }.getOrNull() ?: continue
             if (toggles.any { it.name == PhoneStorage.TOGGLE_NAME && it.enabled }) storage += id
             if (toggles.any { it.name == app.nectarlink.android.mic.MicService.TOGGLE_NAME && !it.enabled }) micOff += id
+            if (toggles.any { it.name == UNLOCK_TOGGLE && it.enabled }) unlock += id
         }
-        return PerPcToggles(storage, micOff)
+        return PerPcToggles(storage, micOff, unlock)
+    }
+
+    /**
+     * Lets [pcId] ask this phone to unlock it with the owner's fingerprint (off by default).
+     * Off drops this phone's keys for that PC, and the core tells the PC to drop its copy.
+     */
+    fun setUnlockEnabled(pcId: String, enabled: Boolean) {
+        _state.update { it.withUnlockEnabled(pcId, enabled) }
+        scope.launch(Dispatchers.IO) {
+            startJob?.join()
+            val currentNode = node ?: return@launch
+            runCatching { currentNode.setDeviceToggle(pcId, UNLOCK_TOGGLE, enabled) }
+                .onFailure { Log.w(TAG, "can't change the unlock toggle", it) }
+        }
     }
 
     fun clearWebcamRequest(pcId: String? = null) {
@@ -2184,7 +2226,14 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             (if (PhoneContacts.canRead(context)) listOf("contacts.read") else emptyList()) +
             (if (PhoneSms.canRead(context)) listOf("sms.read") else emptyList()) +
             (if (PhoneSms.canSend(context)) listOf("sms.send") else emptyList()) +
+            (if (PhoneSms.canSend(context) && PhoneSms.canListSims(context)) listOf("sms.sims") else emptyList()) +
             PhoneStorage.capabilities(context) +
+            // Unlock a Windows or Linux PC with a strong biometric.
+            (if (app.nectarlink.android.unlock.UnlockKeys.supported(context)) {
+                listOf("unlock.key", "unlock.linux.key")
+            } else {
+                emptyList()
+            }) +
             (if (WebcamService.hasPermission(context)) listOf("camera.stream") else emptyList()) +
             (if (context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) listOf("camera.capture") else emptyList()) +
             (if (InputService.running || Elevated.running) listOf("mirror.input") else emptyList()) +
@@ -3022,11 +3071,16 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         /** See `ClipboardPeers`: the core refuses that device's clipboard when off. */
         const val CLIPBOARD_RECEIVE_TOGGLE = "clipboard_receive"
         const val TAG = "Nectarlink"
+        /** How long a PC may be away before its running tasks come off this phone. */
+        const val TASKS_AWAY_MS = 30 * 60_000L
         /** Offered while notification access is granted (docs/protocol/capabilities.md). */
         val NOTIFICATION_CAPABILITIES = listOf("notify.mirror", "notify.reply", "notify.live")
         /** Sharing this phone's players, which also needs notification access. */
         val MEDIA_CAPABILITIES = listOf("media.control")
         /** Accepting the PC's clipboard, and sending this one when asked. */
+        /** The per-PC toggle for unlocking it with this phone (ADR 0009). */
+        const val UNLOCK_TOGGLE = "unlock"
+
         val CLIPBOARD_CAPABILITIES = listOf("clip.write", "clip.share", "mirror.capture", "mirror.view")
         /** With access to the phone's photos. */
         val PHOTO_CAPABILITIES = listOf("photos.read")

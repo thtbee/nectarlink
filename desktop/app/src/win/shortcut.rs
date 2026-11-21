@@ -105,7 +105,7 @@ pub fn recent_dir() -> Option<PathBuf> {
     known_folder(&FOLDERID_Recent)
 }
 
-fn known_folder(id: &windows::core::GUID) -> Option<PathBuf> {
+pub(crate) fn known_folder(id: &windows::core::GUID) -> Option<PathBuf> {
     // SAFETY: the returned string is freed with CoTaskMemFree as documented.
     unsafe {
         let path = SHGetKnownFolderPath(id, KF_FLAG_DEFAULT, None).ok()?;

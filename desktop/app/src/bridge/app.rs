@@ -276,6 +276,16 @@ pub mod qobject {
         fn set_hotspot_network(self: &AppController, device: &QString, network: &QString);
         #[qinvokable]
         fn set_device_toggle(self: Pin<&mut AppController>, device: &QString, name: &QString, on: bool);
+        /// Unlock with phone: whether the signed-in Windows user is set up to
+        /// unlock this PC with `device`.
+        #[qinvokable]
+        #[cxx_name = "unlockSetUp"]
+        fn unlock_set_up(self: &AppController, device: &QString) -> bool;
+        /// Unlock with phone: sets the signed-in Windows user up with `device`,
+        /// checking `password` with Windows first. Answers with `unlockResult`.
+        #[qinvokable]
+        #[cxx_name = "setUpUnlock"]
+        fn set_up_unlock(self: Pin<&mut AppController>, device: &QString, password: &QString);
         /// Latest quick settings toggles for a phone as JSON (`""` when unknown).
         #[qinvokable]
         fn phone_toggles(self: &AppController, device: &QString) -> QString;
@@ -428,6 +438,12 @@ pub mod qobject {
         /// A short message for the user (e.g. a command failed).
         #[qsignal]
         fn toast(self: Pin<&mut AppController>, message: QString);
+        /// How setting up unlock with phone ended: `done`, `wrong_password`,
+        /// `declined`, `phone_away`, `phone_cant`, `failed`, or `registered` /
+        /// `register_failed` for the administrator step.
+        #[qsignal]
+        #[cxx_name = "unlockResult"]
+        fn unlock_result(self: Pin<&mut AppController>, device: QString, result: QString);
         /// The phone didn't take a change to one of its quick settings.
         #[qsignal]
         #[cxx_name = "phoneToggleFailed"]
@@ -536,6 +552,8 @@ pub struct AppControllerRust {
     guide_doc_body: QString,
     highlight_target: QString,
     last_online_count: usize,
+    /// The selected phone and the row it had when last seen there.
+    selected: Option<(DeviceId, i32)>,
     last_tray_tooltip: String,
     tray: Option<tray::Tray>,
 }
@@ -809,6 +827,13 @@ impl cxx_qt::Initialize for qobject::AppController {
         self.as_mut()
             .set_whats_new_pending(nectarlink_core::whats_new::pending(&crate::core_host::host().data_dir));
         self.as_mut().set_current_page(QString::from("home"));
+        // Queued: Rust also changes the selection, from inside refresh.
+        self.as_mut()
+            .connect_current_device_changed(
+                |c| c.remember_selected(),
+                cxx_qt::ConnectionType::QueuedConnection,
+            )
+            .release();
         self.as_mut().set_can_update(crate::updater::can_update());
         self.as_mut().set_can_install_unattended(crate::updater::can_install_unattended());
         // Nothing downloading yet (0 would show an empty bar).
@@ -1336,7 +1361,16 @@ impl qobject::AppController {
             || (devices > 0 && (current_idx < 0 || (current_idx as usize) >= devices));
         if should_reset_current {
             self.as_mut().set_current_device(0);
+        } else if let Some((id, at)) = self.rust().selected
+            && at == current_idx
+            && let Some(now) = hub.read(|s| s.devices.iter().position(|d| d.id == id))
+            && now as i32 != current_idx
+        {
+            // The list reordered (a phone paired earlier came back and sorts
+            // first): the selection follows its phone, not its row.
+            self.as_mut().set_current_device(now as i32);
         }
+        self.as_mut().remember_selected();
         let (status_text, error) = match &status {
             CoreStatus::Starting => ("starting", String::new()),
             CoreStatus::Ready { device_id, name } => {
@@ -1787,12 +1821,79 @@ impl qobject::AppController {
         }
     }
 
+    pub fn unlock_set_up(&self, device: &QString) -> bool {
+        #[cfg(windows)]
+        if let Some(id) = super::parse_device(device) {
+            return crate::win::unlock::is_registered() && crate::win::unlock::enrolled_with(id);
+        }
+        let _ = device;
+        false
+    }
+
+    pub fn set_up_unlock(self: Pin<&mut Self>, device: &QString, password: &QString) {
+        #[cfg(windows)]
+        if let Some(id) = super::parse_device(device) {
+            let password = String::from(password);
+            let qt = self.qt_thread();
+            let device = device.clone();
+            core_host::spawn(async move {
+                let result = match crate::win::unlock::enroll(id, password).await {
+                    crate::win::unlock::Enrolled::Done => "done",
+                    crate::win::unlock::Enrolled::WrongPassword => "wrong_password",
+                    crate::win::unlock::Enrolled::Declined => "declined",
+                    crate::win::unlock::Enrolled::PhoneAway => "phone_away",
+                    crate::win::unlock::Enrolled::PhoneCant => "phone_cant",
+                    crate::win::unlock::Enrolled::Failed => "failed",
+                };
+                let _ = qt.queue(move |object| object.unlock_result(device, QString::from(result)));
+            });
+            return;
+        }
+        // Not on this system (the switch never shows here).
+        let _ = password;
+        self.unlock_result(device.clone(), QString::from("failed"));
+    }
+
+    /// Unlock with phone turned on or off for `id`: the credential provider is
+    /// registered with the first phone (one administrator prompt) and removed
+    /// with the last.
+    #[cfg(windows)]
+    fn unlock_toggled(self: Pin<&mut Self>, id: DeviceId, on: bool) {
+        use crate::win::unlock;
+        let Some(node) = core_host::node() else { return };
+        let others_on = node.paired_devices().unwrap_or_default().iter().any(|d| {
+            d.id != id
+                && node
+                    .device_toggles(d.id)
+                    .is_ok_and(|t| t.iter().any(|(n, v)| *n == nectarlink_core::unlock::TOGGLE && *v))
+        });
+        let qt = self.qt_thread();
+        let device = QString::from(&id.to_string());
+        let arg = match (on, unlock::is_registered()) {
+            (true, false) => unlock::REGISTER_ARG,
+            (false, true) if !others_on => unlock::UNREGISTER_ARG,
+            _ => return,
+        };
+        crate::win::vcam::run_elevated(arg, move |ok| {
+            core_host::refresh_capabilities();
+            if on {
+                let result = if ok { "registered" } else { "register_failed" };
+                let _ = qt.queue(move |object| object.unlock_result(device, QString::from(result)));
+            }
+        });
+    }
+
     pub fn device_toggles(&self, device: &QString) -> QList<QVariant> {
         let mut list = QList::default();
         let (Some(id), Some(node)) = (super::parse_device(device), core_host::node()) else { return list };
+        #[cfg(target_os = "linux")]
+        let unlock_supported =
+            crate::win::phone_unlock::available() && node.peer_offers(id, nectarlink_core::linux_unlock::KEY);
+        #[cfg(not(target_os = "linux"))]
+        let unlock_supported = cfg!(windows) && node.peer_offers(id, nectarlink_core::unlock::KEY);
         for (name, on) in node.device_toggles(id).unwrap_or_default() {
-            // Set on the phone (#453); the PC keeps taking the clipboard.
-            if name == "clipboard_receive" {
+            // Clipboard receive is controlled from the phone (#453).
+            if name == "clipboard_receive" || (name == nectarlink_core::unlock::TOGGLE && !unlock_supported) {
                 continue;
             }
             let mut item = QHash::<QHashPair_QString_QVariant>::default();
@@ -1808,6 +1909,10 @@ impl qobject::AppController {
         let name_str = String::from(name);
         if let Err(e) = node.set_device_toggle(id, &name_str, on) {
             show_message(describe(&e));
+        }
+        #[cfg(windows)]
+        if name_str == nectarlink_core::unlock::TOGGLE {
+            self.as_mut().unlock_toggled(id, on);
         }
         if name_str == "remote_input" {
             if !on {
@@ -2897,6 +3002,15 @@ fn load_guide_doc_content(raw_key: &str) -> (String, String) {
 
 /// The phone selected in the app. A taskbar task shows no name, so it acts
 /// on this one and never on another that happens to be online.
+impl qobject::AppController {
+    /// Notes which phone the selected row is, so a reorder can't swap it for another.
+    fn remember_selected(mut self: Pin<&mut Self>) {
+        let idx = *self.current_device();
+        let id = selected_device(idx).filter(|_| idx >= 0);
+        self.as_mut().rust_mut().selected = id.map(|id| (id, idx));
+    }
+}
+
 fn selected_device(current_device_idx: i32) -> Option<DeviceId> {
     let idx = current_device_idx.max(0) as usize;
     core_host::host().hub.read(|s| s.devices.get(idx).map(|d| d.id))

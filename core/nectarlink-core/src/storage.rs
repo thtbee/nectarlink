@@ -532,6 +532,31 @@ pub(crate) async fn serve_read(
     let _ = send.finish();
 }
 
+/// Staging files a `storage/write` is using now. A second write of the same
+/// file (a client retrying while its first attempt still runs) is refused
+/// rather than both writing one staging file at once.
+static WRITING: std::sync::Mutex<Vec<PathBuf>> = std::sync::Mutex::new(Vec::new());
+
+/// A staging file taken in [`WRITING`], given back when dropped.
+struct Writing(PathBuf);
+
+impl Writing {
+    fn take(path: &Path) -> Option<Self> {
+        let mut writing = WRITING.lock().unwrap_or_else(|e| e.into_inner());
+        if writing.iter().any(|p| p == path) {
+            return None;
+        }
+        writing.push(path.to_path_buf());
+        Some(Self(path.to_path_buf()))
+    }
+}
+
+impl Drop for Writing {
+    fn drop(&mut self) {
+        WRITING.lock().unwrap_or_else(|e| e.into_inner()).retain(|p| *p != self.0);
+    }
+}
+
 fn staging_file_path(shared: &Shared, peer: &DeviceId, offer: &StorageWriteOffer) -> PathBuf {
     use std::hash::{Hash, Hasher};
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
@@ -577,6 +602,13 @@ pub(crate) async fn serve_write(
     }
 
     let part_path = staging_file_path(&shared, &peer, &offer);
+    // Held to the end: resuming, writing, checking and saving are one.
+    let Some(_writing) = Writing::take(&part_path) else {
+        let reply = Envelope::error(ErrorCode::Busy, "this file is already being written").reply_to(env.id);
+        let _ = write_frame(&mut send, &reply.to_cbor()).await;
+        let _ = send.finish();
+        return;
+    };
     if let Some(parent) = part_path.parent()
         && tokio::fs::create_dir_all(parent).await.is_err()
     {
@@ -1180,10 +1212,13 @@ impl FolderStorage {
         if std::fs::rename(staged, &dest).is_err() {
             // Another volume: copy beside the file, then swap it in, so a
             // failed copy leaves the file that was there untouched.
+            // A name of its own, so two writes to one file can't share it,
+            // and on disk before it takes the file's place.
             let name = dest.file_name().unwrap_or_default().to_string_lossy();
-            let temp = dest.with_file_name(format!(".nectarlink-part-{name}"));
-            let _ = std::fs::remove_file(&temp);
-            let swapped = std::fs::copy(staged, &temp).and_then(|_| std::fs::rename(&temp, &dest));
+            let temp = dest.with_file_name(format!(".nectarlink-part-{:016x}-{name}", rand::random::<u64>()));
+            let swapped = std::fs::copy(staged, &temp)
+                .and_then(|_| std::fs::OpenOptions::new().write(true).open(&temp)?.sync_all())
+                .and_then(|()| std::fs::rename(&temp, &dest));
             if let Err(e) = swapped {
                 let _ = std::fs::remove_file(&temp);
                 return Err(StorageError::Failed(e.to_string()));
@@ -1290,6 +1325,17 @@ fn system_time_ms(t: Option<SystemTime>) -> i64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn one_write_at_a_time_per_staging_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let (a, b) = (dir.path().join("a.part"), dir.path().join("b.part"));
+        let first = Writing::take(&a).expect("free");
+        assert!(Writing::take(&a).is_none(), "a second write of the same file waits");
+        assert!(Writing::take(&b).is_some(), "another file is fine");
+        drop(first);
+        assert!(Writing::take(&a).is_some(), "free again once the first is done");
+    }
 
     #[test]
     fn renames_never_replace_a_file_and_trash_keeps_both() {

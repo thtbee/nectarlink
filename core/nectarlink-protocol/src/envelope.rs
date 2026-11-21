@@ -56,15 +56,13 @@ impl Envelope {
 
     /// Decodes the body. A missing body decodes as an empty map, so messages
     /// whose fields are all optional work without one.
+    /// Read in place: a large body isn't copied first.
     pub fn body<T: DeserializeOwned>(&self) -> Result<T, ProtocolError> {
-        let value = self.b.clone().unwrap_or(Value::Map(Vec::new()));
-        value.deserialized().map_err(|e| ProtocolError::BadMessage(format!("{}: {e}", self.t)))
-    }
-
-    /// Decodes the body by taking ownership of `self.b` without cloning it.
-    pub fn body_owned<T: DeserializeOwned>(&mut self) -> Result<T, ProtocolError> {
-        let value = self.b.take().unwrap_or(Value::Map(Vec::new()));
-        value.deserialized().map_err(|e| ProtocolError::BadMessage(format!("{}: {e}", self.t)))
+        let decoded = match &self.b {
+            Some(value) => value.deserialized(),
+            None => Value::Map(Vec::new()).deserialized(),
+        };
+        decoded.map_err(|e| ProtocolError::BadMessage(format!("{}: {e}", self.t)))
     }
 
     /// Checks the message type, turning a peer `error` into

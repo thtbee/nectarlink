@@ -52,6 +52,7 @@ The `mirror` window header includes quick controls and keyboard shortcuts:
 | **Turn phone screen off** | Toolbar icon (`Elevated`) | Blanks your phone's physical OLED/LCD display while the `mirror` window continues running on your PC, and turns the physical display back on automatically when mirroring stops. |
 | **Lock phone** | Toolbar icon | Locks the phone, as its power button would. Shows when you can control the phone. |
 | **Play the sound on the phone / here** | Toolbar icon | Stops sending the phone's sound to the PC so the phone plays it again, or brings it back to the PC. While it's on the phone, new mirroring leaves it there. |
+| **Hide the toolbar** | `Ctrl+Shift+T` | Hides the toolbar in every mirroring and app window, so it no longer covers the top corner of the app. `Ctrl+Shift+T` in a window, or **Settings › General › Toolbar in mirroring and app windows**, shows it again. |
 
 ### Opening Phone Apps in Their Own PC Windows (`app window`)
 

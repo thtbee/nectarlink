@@ -23,6 +23,9 @@ QtObject {
     property bool nectarIsland: true
     property bool nectarIslandCalls: true
     property bool nectarIslandMedia: true
+    property string nectarIslandPosition: "center"
+    property string nectarIslandLook: "dark"
+    property bool nectarIslandPcMedia: false
     property bool nectarIslandNotifications: true
     property bool nectarIslandTransfers: true
 }

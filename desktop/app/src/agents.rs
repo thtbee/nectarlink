@@ -357,6 +357,11 @@ impl std::fmt::Debug for Pending {
 }
 
 impl ActionHost for DesktopHost {
+    fn agent_called(&self) {
+        // Settings > AI agents shows "last used", "Connected" and Activity.
+        core_host::host().hub.changed(Changes::PREFS);
+    }
+
     fn confirm(&self, request: ConfirmRequest, expires_s: u64) -> BoxFuture<Decision> {
         let (tx, rx) = oneshot::channel();
         let id = request.id.clone();

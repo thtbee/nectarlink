@@ -298,12 +298,25 @@ struct Options {
     register_vcam: bool,
     /// Elevated helper: unregister `nectarlink_vcam.dll` from `HKLM` and exit.
     unregister_vcam: bool,
+    /// Unlock with phone: register or remove the credential provider (elevated).
+    #[cfg(windows)]
+    register_unlock: bool,
+    #[cfg(windows)]
+    unregister_unlock: bool,
+    /// Start the optional Linux phone unlock relay in a disposable test profile.
+    #[cfg(target_os = "linux")]
+    linux_phone_unlock: bool,
+    #[cfg(target_os = "linux")]
+    linux_unlock_request: Option<Result<win::phone_unlock::Request, &'static str>>,
     /// Elevated helper (Windows): register the sparse package and exit (#84).
     register_package: bool,
     /// Out-of-process Windows 11 Widget Board COM server (`--widget-provider`).
     widget_provider: bool,
     /// The update task's job, as SYSTEM (`--update-service`, see `updater`).
     update_service: bool,
+    /// The same after the administrator prompt, with no task: the channel
+    /// to follow (`--update-elevated <channel>`, see `updater`).
+    update_elevated: Option<String>,
     /// The installer's window (`--setup --installer <setup.exe>`, see `setup`).
     setup: Option<PathBuf>,
     /// The uninstaller's window (`--remove [--installed <folder>]`).
@@ -333,6 +346,26 @@ fn parse_options_from<I: IntoIterator<Item = std::ffi::OsString>>(iter: I) -> Op
     let mut args = iter.into_iter();
     while let Some(arg) = args.next() {
         match arg.to_str() {
+            #[cfg(target_os = "linux")]
+            Some("--linux-phone-unlock") => {
+                in_share = false;
+                options.linux_phone_unlock = true;
+            }
+            #[cfg(target_os = "linux")]
+            Some("--linux-unlock-devices") => {
+                in_share = false;
+                options.linux_unlock_request = Some(Ok(win::phone_unlock::Request::Devices {}));
+            }
+            #[cfg(target_os = "linux")]
+            Some("--linux-unlock-enroll") => {
+                in_share = false;
+                let phone = args.next().and_then(|arg| arg.to_str()?.parse().ok());
+                options.linux_unlock_request = Some(
+                    phone
+                        .map(|phone| win::phone_unlock::Request::Enroll { phone })
+                        .ok_or("usage: nectarlink-desktop --linux-unlock-enroll <device-id>"),
+                );
+            }
             Some("--data-dir") => {
                 in_share = false;
                 options.data_dir = args.next().map(PathBuf::from);
@@ -377,6 +410,11 @@ fn parse_options_from<I: IntoIterator<Item = std::ffi::OsString>>(iter: I) -> Op
                 in_share = false;
                 options.update_service = true;
             }
+            Some(updater::ELEVATED_ARG) => {
+                in_share = false;
+                options.update_elevated =
+                    Some(args.next().and_then(|a| a.into_string().ok()).unwrap_or_default());
+            }
             Some(updater::UPDATED_ARG) => {
                 in_share = false;
                 options.updated = true;
@@ -388,6 +426,16 @@ fn parse_options_from<I: IntoIterator<Item = std::ffi::OsString>>(iter: I) -> Op
             Some(win::vcam::UNREGISTER_ARG) => {
                 in_share = false;
                 options.unregister_vcam = true;
+            }
+            #[cfg(windows)]
+            Some(win::unlock::REGISTER_ARG) => {
+                in_share = false;
+                options.register_unlock = true;
+            }
+            #[cfg(windows)]
+            Some(win::unlock::UNREGISTER_ARG) => {
+                in_share = false;
+                options.unregister_unlock = true;
             }
             Some("--register-package") => {
                 in_share = false;
@@ -541,6 +589,26 @@ fn main() -> ExitCode {
         println!("nectarlink-desktop {}", env!("CARGO_PKG_VERSION"));
         return ExitCode::SUCCESS;
     }
+    #[cfg(target_os = "linux")]
+    if let Some(request) = options.linux_unlock_request {
+        let request = match request {
+            Ok(request) => request,
+            Err(error) => {
+                eprintln!("{error}");
+                return ExitCode::FAILURE;
+            }
+        };
+        return match win::phone_unlock::run_cli(request) {
+            Ok(reply) => {
+                println!("{reply}");
+                ExitCode::SUCCESS
+            }
+            Err(error) => {
+                eprintln!("nectarlink: phone unlock: {error}");
+                ExitCode::FAILURE
+            }
+        };
+    }
     if let Some(installer) = options.setup.clone().filter(|p| !p.as_os_str().is_empty()) {
         return run_setup_window(setup::Mode::Install { installer });
     }
@@ -555,6 +623,9 @@ fn main() -> ExitCode {
     if options.update_service {
         return updater::run_service();
     }
+    if let Some(channel) = &options.update_elevated {
+        return updater::run_elevated(Some(channel.as_str()));
+    }
     if options.register_vcam {
         return match win::vcam::register_hklm() {
             Ok(()) => ExitCode::SUCCESS,
@@ -567,6 +638,21 @@ fn main() -> ExitCode {
     #[cfg(windows)]
     if options.register_package {
         return win::share_target::register_elevated();
+    }
+    #[cfg(windows)]
+    if options.register_unlock || options.unregister_unlock {
+        let done = if options.register_unlock {
+            win::unlock::register_hklm()
+        } else {
+            win::unlock::unregister_hklm()
+        };
+        return match done {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(e) => {
+                eprintln!("nectarlink: unlock with phone: {e}");
+                ExitCode::FAILURE
+            }
+        };
     }
     if options.unregister_vcam {
         return match win::vcam::unregister_hklm() {
@@ -651,6 +737,17 @@ fn main() -> ExitCode {
         tracing::error!(error = %e, "can't start the core runtime");
         return ExitCode::FAILURE;
     }
+    #[cfg(target_os = "linux")]
+    if options.linux_phone_unlock || win::phone_unlock::configured() {
+        match win::phone_unlock::start() {
+            Ok(()) => core_host::spawn(async {
+                if core_host::wait_for_node().await.is_some() {
+                    core_host::refresh_capabilities();
+                }
+            }),
+            Err(error) => tracing::warn!(%error, "couldn't start phone unlock socket"),
+        }
+    }
     // The node starts in the background, so wait for it: the beacon carries
     // its device ID.
     core_host::spawn(async {
@@ -726,16 +823,25 @@ fn main() -> ExitCode {
         updater::set_auto(settings.auto_update);
         updater::set_auto_install(settings.install_updates);
         // Kept from the first run: going by the version alone, a nightly install
-        // would leave Nightly as soon as it took a release.
-        let channel = version::Channel::parse(&settings.update_channel).unwrap_or_else(|| {
-            let own = updater::channel();
-            let mut saved = settings::Settings::load(&data_dir);
-            saved.update_channel = own.as_str().into();
-            if let Err(e) = saved.save(&data_dir) {
-                tracing::warn!(error = %e, "can't save settings");
+        // would leave Nightly as soon as it took a release. Where the update
+        // task installs for everyone on this PC, it follows one channel, the
+        // last one anyone picked: that's the one this account shows and
+        // follows too, rather than set it back to its own at every start.
+        // (The task is only asked about when the two differ.)
+        let mine = version::Channel::parse(&settings.update_channel);
+        let pc = updater::machine_channel().filter(|pc| mine != Some(*pc) && updater::task_installs());
+        let channel = match (pc, mine) {
+            (None, Some(mine)) => mine,
+            (pc, _) => {
+                let channel = pc.unwrap_or_else(updater::channel);
+                let mut saved = settings::Settings::load(&data_dir);
+                saved.update_channel = channel.as_str().into();
+                if let Err(e) = saved.save(&data_dir) {
+                    tracing::warn!(error = %e, "can't save settings");
+                }
+                channel
             }
-            own
-        });
+        };
         updater::set_channel(channel);
         updater::start();
         match (updated_from, options.updated) {
@@ -899,6 +1005,16 @@ mod tests {
         assert!(!opts.minimized);
         assert_eq!(opts.data_dir, Some(PathBuf::from(r"C:\Temp\nectarlink-test")));
         assert!(!parse_options_from(["--minimized"].into_iter().map(OsString::from)).ui_check);
+    }
+
+    #[test]
+    fn parse_options_recognizes_the_elevated_update_flag() {
+        let opts = parse_options_from([updater::ELEVATED_ARG, "nightly"].into_iter().map(OsString::from));
+        assert_eq!(opts.update_elevated.as_deref(), Some("nightly"));
+        assert!(!opts.update_service);
+        assert!(
+            parse_options_from(["--minimized"].into_iter().map(OsString::from)).update_elevated.is_none()
+        );
     }
 
     #[test]

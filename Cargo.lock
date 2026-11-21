@@ -2516,6 +2516,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "nectarlink-credprov"
+version = "0.1.5"
+dependencies = [
+ "windows",
+ "windows-core",
+]
+
+[[package]]
 name = "nectarlink-desktop"
 version = "0.1.5"
 dependencies = [
@@ -2536,6 +2544,7 @@ dependencies = [
  "nectarlink-actions",
  "nectarlink-adb",
  "nectarlink-core",
+ "nectarlink-protocol",
  "nectarlink-vcam",
  "pkg-config",
  "qrcode",
@@ -2581,6 +2590,19 @@ dependencies = [
  "rmcp",
  "serde_json",
  "tokio",
+]
+
+[[package]]
+name = "nectarlink-pam-unlock"
+version = "0.1.5"
+dependencies = [
+ "libc",
+ "nectarlink-protocol",
+ "ring",
+ "rustix",
+ "serde",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]
@@ -3552,9 +3574,9 @@ dependencies = [
 
 [[package]]
 name = "rustix"
-version = "1.1.5"
+version = "1.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "891efababe418670775f199f0d233d84843c227a0949a883ce15b37c78d6629d"
+checksum = "e5e76742e5294153d4dde1207dbec5bdd81eef6fabdc0d2118babadabfd858aa"
 dependencies = [
  "bitflags",
  "errno",
@@ -4088,9 +4110,9 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
 name = "swarm-discovery"
-version = "0.6.3"
+version = "0.6.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b4877f20f064de34b77d79237c9caa37c393590af8ef5a2f3253d59be5a338b"
+checksum = "c349937bc28998d12eed97a4fabcf71e78e15342b10af81eb99e6e0c248ba5fd"
 dependencies = [
  "acto",
  "hickory-proto",
@@ -4171,7 +4193,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32497e9a4c7b38532efcdebeef879707aa9f794296a4f0244f6f69e9bc8574bd"
 dependencies = [
  "fastrand",
- "getrandom 0.4.3",
+ "getrandom 0.3.4",
  "once_cell",
  "rustix",
  "windows-sys 0.61.2",

@@ -431,6 +431,12 @@ fn main() {
         println!("cargo:rustc-link-lib=ole32");
         println!("cargo:rustc-link-lib=shell32");
         println!("cargo:rustc-link-lib=user32");
+        // Trimmed Windows builds can lack the Cloud Files API. Load it on first
+        // use so the app still starts there; storage.rs checks for it first.
+        if std::env::var("CARGO_CFG_TARGET_ENV").as_deref() == Ok("msvc") {
+            println!("cargo:rustc-link-arg=/DELAYLOAD:cldapi.dll");
+            println!("cargo:rustc-link-lib=delayimp");
+        }
     } else if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("linux") {
         println!("cargo:rustc-link-lib=Qt6Quick");
         println!("cargo:rustc-link-lib=Qt6Widgets");

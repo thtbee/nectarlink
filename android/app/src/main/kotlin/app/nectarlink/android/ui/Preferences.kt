@@ -27,6 +27,9 @@ class Preferences(context: Context) {
     private val _volumeKeysControlPc = MutableStateFlow(prefs.getBoolean(VOLUME_KEYS_CONTROL_PC, true))
     val volumeKeysControlPc: StateFlow<Boolean> = _volumeKeysControlPc.asStateFlow()
 
+    private val _pcSoundBufferMs = MutableStateFlow(pcSoundBufferMs(context))
+    val pcSoundBufferMs: StateFlow<Int> = _pcSoundBufferMs.asStateFlow()
+
     private val _quietWhileUsingPc = MutableStateFlow(prefs.getBoolean(QUIET_WHILE_USING_PC, false))
     val quietWhileUsingPc: StateFlow<Boolean> = _quietWhileUsingPc.asStateFlow()
 
@@ -163,6 +166,13 @@ class Preferences(context: Context) {
         (appContext as app.nectarlink.android.NectarlinkApplication).core.pcMedia.volumeKeys(enabled)
     }
 
+    fun updatePcSoundBufferMs(ms: Int) {
+        val value = ms.coerceIn(MIN_SOUND_BUFFER_MS, MAX_SOUND_BUFFER_MS)
+        prefs.edit { putInt(PC_SOUND_BUFFER_MS, value) }
+        _pcSoundBufferMs.value = value
+        (appContext as app.nectarlink.android.NectarlinkApplication).core.setPcSoundBufferMs(value)
+    }
+
     fun updateQuietWhileUsingPc(enabled: Boolean) {
         prefs.edit { putBoolean(QUIET_WHILE_USING_PC, enabled) }
         _quietWhileUsingPc.value = enabled
@@ -213,6 +223,9 @@ class Preferences(context: Context) {
         private const val SUGGEST_CLIPBOARD_ACTIONS = "suggest_clipboard_actions"
         private const val VOLUME_KEYS_CONTROL_PC = "volume_keys_control_pc"
         private const val QUIET_WHILE_USING_PC = "quiet_while_using_pc"
+        private const val PC_SOUND_BUFFER_MS = "pc_sound_buffer_ms"
+        private const val MIN_SOUND_BUFFER_MS = 40
+        private const val MAX_SOUND_BUFFER_MS = 500
         private const val HIDE_FROM_RECENTS = "hide_from_recents"
         internal const val BACKGROUND_SERVICE_ENABLED = "background_service_enabled"
         private const val AWAY_MODE = "away_mode"
@@ -259,6 +272,13 @@ class Preferences(context: Context) {
             context.applicationContext
                 .getSharedPreferences("appearance", Context.MODE_PRIVATE)
                 .getBoolean(SUGGEST_CLIPBOARD_ACTIONS, true)
+
+        /** How much of the PC's sound the phone holds before playing it, in ms (#321). */
+        fun pcSoundBufferMs(context: Context): Int =
+            context.applicationContext
+                .getSharedPreferences("appearance", Context.MODE_PRIVATE)
+                .getInt(PC_SOUND_BUFFER_MS, MIN_SOUND_BUFFER_MS)
+                .coerceIn(MIN_SOUND_BUFFER_MS, MAX_SOUND_BUFFER_MS)
 
         fun isVolumeKeysControlPcEnabled(context: Context): Boolean =
             context.applicationContext

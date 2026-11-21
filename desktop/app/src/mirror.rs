@@ -455,6 +455,26 @@ pub fn set_screen_off(window: Window, on: bool) {
     });
 }
 
+/// Turns the mirrored phone's screen to landscape or portrait (#473). The
+/// phone does it with Elevated and puts its own rotation back afterwards.
+pub fn rotate(window: Window, landscape: bool) {
+    set_notice(
+        window,
+        if landscape {
+            crate::i18n::tr!("Mirror", "Turning the phone to landscape")
+        } else {
+            crate::i18n::tr!("Mirror", "Turning the phone to portrait")
+        },
+    );
+    core_host::host().hub.changed(Changes::MIRROR);
+    let Some(node) = core_host::node() else { return };
+    core_host::spawn(async move {
+        if let Err(e) = node.mirror_rotate(window.device, landscape).await {
+            tracing::debug!(error = %e, "mirror.rotate didn't reach the phone");
+        }
+    });
+}
+
 /// Saves whether `device`'s screen stays off from the start of each mirroring
 /// or app window. The toolbar button and Settings > Devices both set this.
 pub fn remember_screen_off(device: DeviceId, on: bool) {

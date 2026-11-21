@@ -223,6 +223,16 @@ pub fn compute_capabilities(
     if crate::win::vcam::is_registered() {
         caps.push(nectarlink_core::WEBCAM_ADDON_VCAM.into());
     }
+    // Unlock with phone: only once the credential provider is in place.
+    #[cfg(windows)]
+    if crate::win::unlock::is_registered() {
+        caps.push(nectarlink_core::unlock::PC.into());
+        crate::win::unlock::serve();
+    }
+    #[cfg(target_os = "linux")]
+    if crate::win::phone_unlock::available() {
+        caps.push(nectarlink_protocol::messages::linux_unlock::CAP_PC.into());
+    }
     caps
 }
 
@@ -236,22 +246,42 @@ pub fn refresh_capabilities() {
     });
 }
 
+/// How many times a start that failed on the network is tried again, with
+/// the wait before each: at sign-in the network may still be coming up (#466).
+const START_RETRIES: [Duration; 3] =
+    [Duration::from_secs(3), Duration::from_secs(10), Duration::from_secs(30)];
+
 async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
     let host = host();
     let wake = crate::win::wol::query_wake_status();
-    let mut config = NodeConfig::new(&data_dir, this_device(), env!("CARGO_PKG_VERSION"));
-    config.downloads_dir = Some(downloads_dir());
-    config.adb_server = adb_enabled().then_some(nectarlink_core::DEFAULT_ADB_ADDR);
-    let settings = crate::settings::Settings::load(&data_dir);
-    config.away_mode = settings.away_mode;
-    #[cfg(target_os = "linux")]
-    {
-        config.network_interface = Some(settings.network_interface);
+    let config = || {
+        let mut config = NodeConfig::new(&data_dir, this_device(), env!("CARGO_PKG_VERSION"));
+        config.downloads_dir = Some(downloads_dir());
+        config.adb_server = adb_enabled().then_some(nectarlink_core::DEFAULT_ADB_ADDR);
+        let settings = crate::settings::Settings::load(&data_dir);
+        config.away_mode = settings.away_mode;
+        #[cfg(target_os = "linux")]
+        {
+            config.network_interface = Some(settings.network_interface);
+        }
+        // This PC's own players, for phones (crate::win::media_sessions).
+        config.capabilities = compute_capabilities(None);
+        config
+    };
+    let first = config();
+    let initial_caps = first.capabilities.clone();
+    let mut started = Node::start(first, platform.clone()).await;
+    for wait in START_RETRIES {
+        match &started {
+            Err(e @ nectarlink_core::Error::Network(_)) => {
+                tracing::warn!(error = %e, retry_in_s = wait.as_secs(), "core couldn't start; trying again");
+                tokio::time::sleep(wait).await;
+                started = Node::start(config(), platform.clone()).await;
+            }
+            _ => break,
+        }
     }
-    // This PC's own players, for phones (crate::win::media_sessions).
-    config.capabilities = compute_capabilities(None);
-    let initial_caps = config.capabilities.clone();
-    let node = match Node::start(config, platform).await {
+    let node = match started {
         Ok(node) => node,
         Err(e) => {
             tracing::error!(error = %e, "core failed to start");
@@ -357,53 +387,13 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
         }
     });
 
+    // What the UI was given, so after a lag it gets only what it missed.
+    let mut given = nectarlink_core::Resync::new();
     loop {
         match events.recv().await {
             Ok(event) => {
-                if matches!(
-                    &event,
-                    nectarlink_core::NodeEvent::QueueChanged
-                        | nectarlink_core::NodeEvent::QueueDroppedOnUnpair { .. }
-                ) && let Some(node) = self::node()
-                {
-                    let items = node.send_queue(None).unwrap_or_default();
-                    host.hub.update(|s| s.set_send_queue(items));
-                }
-                if let nectarlink_core::NodeEvent::QueueDroppedOnUnpair { peer_name, dropped_count, .. } =
-                    &event
-                    && *dropped_count > 0
-                {
-                    crate::bridge::app::show_message(tr!(
-                        "CoreHost",
-                        "Dropped %1 queued item(s) for %2 (device unpaired).",
-                        dropped_count,
-                        peer_name
-                    ));
-                }
-                crate::notifications::apply(&event);
-                crate::media::on_event(&event);
-                crate::notifications::update_toasts(&event);
-                crate::clipboard::on_event(&event);
-                crate::photos::on_event(&event);
-                crate::photo_backup::on_event(&event);
-                crate::continuity_camera::on_event(&event);
-                crate::calls::on_event(&event);
-                crate::messages::on_event(&event);
-                crate::mirror::on_event(&event);
-                crate::pc_mirror::on_event(&event);
-                crate::remote::on_event(&event);
-                crate::transfers::on_event(&event);
-                crate::send_to::on_event(&event);
-                crate::battery::on_event(&event);
-                crate::update_relay::on_event(&event);
-                crate::storage::on_event(&event);
-                crate::webcam::on_event(&event);
-                crate::phone_mic::on_event(&event);
-                crate::automations::on_event(&event);
-                crate::agents::on_event(&event);
-                #[cfg(windows)]
-                crate::win::pointer_hooks::on_event(&event);
-                crate::bridge::app::on_home_event(&event);
+                given.note(&event);
+                dispatch(host, &event);
             }
             Err(RecvError::Lagged(missed)) => {
                 // Resynchronize what can be re-read; transient events are lost.
@@ -427,10 +417,62 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
                     changes |= s.set_send_queue(send_queue);
                     changes
                 });
+                // Transfers, rings and pairing only ever come as events.
+                if let Some(node) = host.node.get() {
+                    for event in given.missed(node.latest_state()) {
+                        dispatch(host, &event);
+                    }
+                }
             }
             Err(RecvError::Closed) => return,
         }
     }
+}
+
+/// Hands one core event to everything in the app that follows it.
+fn dispatch(host: &CoreHost, event: &nectarlink_core::NodeEvent) {
+    if matches!(
+        event,
+        nectarlink_core::NodeEvent::QueueChanged | nectarlink_core::NodeEvent::QueueDroppedOnUnpair { .. }
+    ) && let Some(node) = self::node()
+    {
+        let items = node.send_queue(None).unwrap_or_default();
+        host.hub.update(|s| s.set_send_queue(items));
+    }
+    if let nectarlink_core::NodeEvent::QueueDroppedOnUnpair { peer_name, dropped_count, .. } = event
+        && *dropped_count > 0
+    {
+        crate::bridge::app::show_message(tr!(
+            "CoreHost",
+            "Dropped %1 queued item(s) for %2 (device unpaired).",
+            dropped_count,
+            peer_name
+        ));
+    }
+    crate::notifications::apply(event);
+    crate::media::on_event(event);
+    crate::notifications::update_toasts(event);
+    crate::clipboard::on_event(event);
+    crate::photos::on_event(event);
+    crate::photo_backup::on_event(event);
+    crate::continuity_camera::on_event(event);
+    crate::calls::on_event(event);
+    crate::messages::on_event(event);
+    crate::mirror::on_event(event);
+    crate::pc_mirror::on_event(event);
+    crate::remote::on_event(event);
+    crate::transfers::on_event(event);
+    crate::send_to::on_event(event);
+    crate::battery::on_event(event);
+    crate::update_relay::on_event(event);
+    crate::storage::on_event(event);
+    crate::webcam::on_event(event);
+    crate::phone_mic::on_event(event);
+    crate::automations::on_event(event);
+    crate::agents::on_event(event);
+    #[cfg(windows)]
+    crate::win::pointer_hooks::on_event(event);
+    crate::bridge::app::on_home_event(event);
 }
 
 /// Where files from phones go: `Downloads\Nectarlink`.

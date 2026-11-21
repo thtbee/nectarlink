@@ -24,6 +24,7 @@ pub mod keymap;
 pub mod media_sessions;
 pub mod mp4;
 pub mod net;
+pub mod phone_unlock;
 pub(crate) mod screen_portal;
 pub mod share;
 pub mod share_target;

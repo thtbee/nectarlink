@@ -71,6 +71,10 @@ pub trait ActionHost: Send + Sync + std::fmt::Debug {
         None
     }
 
+    /// An agent called: its activity row and "last used" are saved, so the
+    /// app can show them.
+    fn agent_called(&self) {}
+
     /// Locks, sleeps, hibernates or shuts down this PC.
     fn pc_power(&self, _action: PowerAction) -> Result<(), String> {
         Err(UNSUPPORTED.into())

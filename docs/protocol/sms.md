@@ -15,6 +15,7 @@ only in memory. New-message alerts come from the phone's own notifications
 | `sms.read` | phone | Lists conversations and messages (needs the SMS permission) |
 | `sms.send` | phone | Sends texts when a PC asks |
 | `sms.show` | PC | Shows messages, and wants `sms.changed` |
+| `sms.sims` | phone | Lists the SIMs it texts from, and sends on the one a PC picks |
 
 Both devices must allow it: the `messages` device toggle, on by default,
 on each side.
@@ -31,11 +32,14 @@ t = "sms.threads"   re = n   b = { threads: [ thread ] }                  // new
 t = "sms.messages"  id = n   b = { thread: text, ? before: int, limit: uint }
 t = "sms.messages"  re = n   b = { messages: [ message ] }               // newest first
 
-t = "sms.send"      id = n   b = { to: [ text ], ? body: text, ? attachments: [ attachment ] }
+t = "sms.send"      id = n   b = { to: [ text ], ? body: text, ? attachments: [ attachment ], ? sim: text }
 t = "ok"            re = n
 
 t = "sms.part"      id = n   b = { id: text }
 t = "sms.part"      re = n   b = { mime: text, data: bytes }
+
+t = "sms.sims"      id = n   b = { sims: [] }
+t = "sms.sims"      re = n   b = { sims: [ { id: text, label: text } ], ? default: text }
 
 t = "sms.changed"            b = { ? thread: text }                       // phone → PC
 
@@ -65,6 +69,7 @@ message = {
   ? outgoing: bool,       // Sent from the phone
   ? status: "sent" | "pending" | "failed",
   ? parts: [ { id: text, mime: text, ? size: uint } ],   // Pictures and other attachments
+  ? sim: text,           // The SIM it came in on or went out from (an id from sms.sims)
 }
 ```
 
@@ -87,7 +92,21 @@ MMS (`sendMultimediaMessage`).
 Errors: `DENIED` when messages are off for the PC, `UNSUPPORTED` when the phone
 doesn't offer `sms.send`, `INTERNAL` when it couldn't send.
 
-### 2.3 Changes
+With `sim`, a phone that offers `sms.sims` sends on that SIM; without it, or
+on a phone that doesn't, the phone's default SIM sends it.
+
+### 2.3 SIMs
+
+`sms.sims` lists the SIMs a dual-SIM phone texts from, in slot order, with
+the label its settings show ("SIM 1 · Airtel") and the one it uses without
+asking, if any. The body has the same shape as `call.sims`
+([calls](calls.md)), at most the same number of SIMs, but its ids are the
+phone's SIM subscriptions, not its calling accounts: an id from one list
+doesn't mean anything to the other. A PC shows a choice only with two or
+more, and by default sends on the SIM the conversation's newest message used.
+Phones that don't offer `sms.sims` answer `UNSUPPORTED`.
+
+### 2.4 Changes
 
 The phone sends `sms.changed` to PCs that offer `sms.show` when its
 messages change (a text arrived or was sent), with the conversation when

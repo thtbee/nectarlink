@@ -26,7 +26,7 @@ use nectarlink_protocol::{
     DeviceId, Envelope, ErrorCode, PacketKind,
     messages::{
         MirrorAudioConfig, MirrorConfig, MirrorDisplay, MirrorDisplays, MirrorInput, MirrorNotice,
-        MirrorPower, MirrorResize, MirrorSession, MirrorSound, MirrorStart, PhoneApp, PhoneApps, PointerAt,
+        MirrorPower, MirrorResize, MirrorRotate, MirrorSession, MirrorSound, MirrorStart, PhoneApp, PhoneApps, PointerAt,
         PointerEdge, PointerEnter, PointerMove, PointerScreen, StreamHeader, mirror, types,
     },
     read_video_packet, video_packet_header, write_frame,
@@ -186,6 +186,14 @@ pub(crate) async fn resize(
         return Err(Error::Protocol("invalid resize".into()));
     }
     session.send(Envelope::new(types::MIRROR_RESIZE, &msg)?).await
+}
+
+/// Turns a mirrored phone's screen to landscape or portrait (#473; not answered).
+pub(crate) async fn rotate(shared: &Shared, session: &Session, landscape: bool) -> Result<()> {
+    if !shared.toggle_on(&session.peer, TOGGLE) {
+        return Err(Error::Denied);
+    }
+    session.send(Envelope::new(types::MIRROR_ROTATE, &MirrorRotate { landscape })?).await
 }
 
 /// Update `stay_awake` and `screen_off` on a phone while mirroring its screen (`session == 0`).
@@ -610,6 +618,12 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
             let MirrorSound { on } = env.body()?;
             if shared.toggle_on(&peer, TOGGLE) && shared.we_offer(mirror::CAPTURE) {
                 tokio::task::spawn_blocking(move || platform.mirror_sound_requested(&peer, on));
+            }
+        }
+        types::MIRROR_ROTATE => {
+            let MirrorRotate { landscape } = env.body()?;
+            if shared.toggle_on(&peer, TOGGLE) && shared.we_offer(mirror::CAPTURE) {
+                tokio::task::spawn_blocking(move || platform.mirror_rotate_requested(&peer, landscape));
             }
         }
         types::MIRROR_POWER => {

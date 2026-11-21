@@ -86,6 +86,7 @@ These come from the plan and will grow into a full style guide:
 
 Questions, ideas that need talking through, and "how do I…" belong in
 [Discussions](https://github.com/thtbee/nectarlink/discussions), not issues.
+For a quick chat with other contributors, join the [Hive on Discord](https://discord.gg/AA2Dp8PYqf).
 
 ## Reporting bugs
 

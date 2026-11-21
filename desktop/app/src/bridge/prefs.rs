@@ -49,6 +49,8 @@ pub mod qobject {
         /// Hive's comb breathes and pulses.
         #[qproperty(bool, comb_motion)]
         #[qproperty(bool, close_to_tray)]
+        /// The tray icon in one colour, matching the taskbar.
+        #[qproperty(bool, tray_one_colour, cxx_name = "trayOneColour")]
         /// Send what's copied on this PC to connected phones.
         #[qproperty(bool, auto_clipboard)]
         /// Keep the last 50 synced clips in encrypted local history.
@@ -69,6 +71,8 @@ pub mod qobject {
         #[qproperty(bool, enter_sends)]
         /// In mirroring and app windows, right-click is a long press instead of Back.
         #[qproperty(bool, right_click_long_press)]
+        /// No floating toolbar in mirroring and app windows.
+        #[qproperty(bool, hide_mirror_toolbar)]
         /// No pop-ups for phone notifications while this PC is locked.
         #[qproperty(bool, quiet_when_locked)]
         #[qproperty(bool, hold_when_locked)]
@@ -82,10 +86,19 @@ pub mod qobject {
         #[qproperty(bool, install_updates)]
         /// The update channel: "stable" or "nightly" (the build's own when unset).
         #[qproperty(QString, update_channel)]
+        /// Whether the channel is this PC's, for every account on it (Windows'
+        /// update task installs for all of them).
+        #[qproperty(bool, update_channel_shared)]
         /// Tell when a phone's battery is low, or full.
         #[qproperty(bool, battery_alerts)]
         /// Charge level threshold for full battery alerts (e.g. 100 or 80 for protect battery mode).
         #[qproperty(i32, battery_full_threshold)]
+        /// The battery level that counts as low, in percent.
+        #[qproperty(i32, battery_low_threshold)]
+        /// How much of a phone's sound is held before it plays, in ms.
+        #[qproperty(i32, phone_sound_buffer_ms)]
+        /// Goes up when an app is pinned or unpinned, so Apps reads the pins again.
+        #[qproperty(i32, pins_revision, cxx_name = "pinsRevision")]
         /// How big the app draws, in percent. Takes effect after a restart.
         #[qproperty(i32, ui_scale)]
         /// Folder where voice recordings from phones are saved.
@@ -139,6 +152,12 @@ pub mod qobject {
         #[qproperty(bool, nectar_island_media)]
         /// Trigger Nectar Island for phone notifications.
         #[qproperty(bool, nectar_island_notifications)]
+        /// Where the Island sits: "left", "center" or "right" (#472).
+        #[qproperty(QString, nectar_island_position, cxx_name = "nectarIslandPosition")]
+        /// "dark", or "theme" to follow the app's look (#325).
+        #[qproperty(QString, nectar_island_look, cxx_name = "nectarIslandLook")]
+        /// The Island also shows this PC's own players (#472).
+        #[qproperty(bool, nectar_island_pc_media, cxx_name = "nectarIslandPcMedia")]
         /// Stream PC system audio to the connected phone via WASAPI loopback.
         #[qproperty(bool, stream_pc_audio_to_phone)]
         /// Share PC user folders (Downloads, Documents, Desktop, Pictures) with phones.
@@ -281,6 +300,14 @@ pub mod qobject {
         /// Enables or disables an automation rule by ID.
         #[qinvokable]
         fn set_automation_rule_enabled(self: Pin<&mut Preferences>, rule_id: &QString, enabled: bool);
+        /// A phone's pinned apps (#477) as a JSON list of package names.
+        #[qinvokable]
+        #[cxx_name = "pinnedApps"]
+        fn pinned_apps(self: &Preferences, device_id: &QString) -> QString;
+        /// Pins an app to the top of Apps, or unpins it.
+        #[qinvokable]
+        #[cxx_name = "setAppPinned"]
+        fn set_app_pinned(self: Pin<&mut Preferences>, device_id: &QString, pkg: &QString, on: bool);
         /// Gets custom nickname for a device or empty.
         #[qinvokable]
         fn nickname_of(self: &Preferences, device_id: &QString) -> QString;
@@ -355,6 +382,7 @@ pub struct PreferencesRust {
     backdrop: bool,
     comb_motion: bool,
     close_to_tray: bool,
+    tray_one_colour: bool,
     auto_clipboard: bool,
     clipboard_history: bool,
     suggest_clipboard_actions: bool,
@@ -365,6 +393,7 @@ pub struct PreferencesRust {
     sync_dnd: bool,
     enter_sends: bool,
     right_click_long_press: bool,
+    hide_mirror_toolbar: bool,
     quiet_when_locked: bool,
     hold_when_locked: bool,
     send_to_menu: bool,
@@ -372,8 +401,12 @@ pub struct PreferencesRust {
     auto_update: bool,
     install_updates: bool,
     update_channel: QString,
+    update_channel_shared: bool,
     battery_alerts: bool,
     battery_full_threshold: i32,
+    battery_low_threshold: i32,
+    phone_sound_buffer_ms: i32,
+    pins_revision: i32,
     ui_scale: i32,
     recordings_folder: QString,
     recordings_folder_is_default: bool,
@@ -403,6 +436,9 @@ pub struct PreferencesRust {
     nectar_island_transfers: bool,
     nectar_island_media: bool,
     nectar_island_notifications: bool,
+    nectar_island_position: QString,
+    nectar_island_look: QString,
+    nectar_island_pc_media: bool,
     stream_pc_audio_to_phone: bool,
     share_pc_storage: bool,
     forward_pc_notifications_to_phone: bool,
@@ -452,6 +488,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_backdrop(settings.backdrop);
         self.as_mut().set_comb_motion(settings.comb_motion);
         self.as_mut().set_close_to_tray(settings.close_to_tray);
+        self.as_mut().set_tray_one_colour(settings.tray_one_colour);
         self.as_mut().set_auto_clipboard(settings.auto_clipboard);
         crate::clipboard::set_auto_send(settings.auto_clipboard);
         self.as_mut().set_clipboard_history(settings.clipboard_history);
@@ -469,6 +506,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
         crate::notifications::set_sync_dnd(settings.sync_dnd);
         self.as_mut().set_enter_sends(settings.enter_sends);
         self.as_mut().set_right_click_long_press(settings.right_click_long_press);
+        self.as_mut().set_hide_mirror_toolbar(settings.hide_mirror_toolbar);
         self.as_mut().set_quiet_when_locked(settings.quiet_when_locked);
         crate::notifications::set_quiet_when_locked(settings.quiet_when_locked);
         self.as_mut().set_hold_when_locked(settings.hold_when_locked);
@@ -482,6 +520,8 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_update_channel(QString::from(channel.as_str()));
         self.as_mut().set_battery_alerts(settings.battery_alerts);
         self.as_mut().set_battery_full_threshold(i32::from(settings.battery_full_threshold));
+        self.as_mut().set_battery_low_threshold(i32::from(settings.battery_low_threshold));
+        self.as_mut().set_phone_sound_buffer_ms(i32::from(settings.phone_sound_buffer_ms));
         self.as_mut().set_ui_scale(i32::from(settings.ui_scale));
         let start_effective = crate::startup::effective(settings.start_with_windows);
         self.as_mut().set_start_with_windows(start_effective);
@@ -519,6 +559,9 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_nectar_island_transfers(settings.nectar_island_transfers);
         self.as_mut().set_nectar_island_media(settings.nectar_island_media);
         self.as_mut().set_nectar_island_notifications(settings.nectar_island_notifications);
+        self.as_mut().set_nectar_island_position(QString::from(&settings.nectar_island_position));
+        self.as_mut().set_nectar_island_look(QString::from(&settings.nectar_island_look));
+        self.as_mut().set_nectar_island_pc_media(settings.nectar_island_pc_media);
         self.as_mut().set_stream_pc_audio_to_phone(settings.stream_pc_audio_to_phone);
         self.as_mut().set_share_pc_storage(settings.share_pc_storage);
         self.as_mut().set_forward_pc_notifications_to_phone(settings.forward_pc_notifications_to_phone);
@@ -568,6 +611,13 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().on_backdrop_changed(|p| p.save()).release();
         self.as_mut().on_comb_motion_changed(|p| p.save()).release();
         self.as_mut().on_close_to_tray_changed(|p| p.save()).release();
+        self.as_mut()
+            .on_tray_one_colour_changed(|p| {
+                #[cfg(windows)]
+                crate::win::tray::set_one_colour(p.tray_one_colour);
+                p.save();
+            })
+            .release();
         self.as_mut()
             .on_auto_clipboard_changed(|p| {
                 crate::clipboard::set_auto_send(p.auto_clipboard);
@@ -624,6 +674,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
             .release();
         self.as_mut().on_enter_sends_changed(|p| p.save()).release();
         self.as_mut().on_right_click_long_press_changed(|p| p.save()).release();
+        self.as_mut().on_hide_mirror_toolbar_changed(|p| p.save()).release();
         self.as_mut()
             .on_sync_dnd_changed(|p| {
                 crate::notifications::set_sync_dnd(p.sync_dnd);
@@ -666,6 +717,18 @@ impl cxx_qt::Initialize for qobject::Preferences {
             .on_battery_full_threshold_changed(|p| {
                 let val = p.battery_full_threshold.clamp(50, 100) as u8;
                 crate::settings::set_battery_full_threshold(val);
+                p.save();
+            })
+            .release();
+        self.as_mut()
+            .on_phone_sound_buffer_ms_changed(|p| {
+                crate::settings::set_phone_sound_buffer_ms(p.phone_sound_buffer_ms.clamp(20, 500) as u16);
+                p.save();
+            })
+            .release();
+        self.as_mut()
+            .on_battery_low_threshold_changed(|p| {
+                crate::settings::set_battery_low_threshold(p.battery_low_threshold.clamp(5, 50) as u8);
                 p.save();
             })
             .release();
@@ -860,6 +923,9 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().on_nectar_island_transfers_changed(|p| p.save()).release();
         self.as_mut().on_nectar_island_media_changed(|p| p.save()).release();
         self.as_mut().on_nectar_island_notifications_changed(|p| p.save()).release();
+        self.as_mut().on_nectar_island_position_changed(|p| p.save()).release();
+        self.as_mut().on_nectar_island_look_changed(|p| p.save()).release();
+        self.as_mut().on_nectar_island_pc_media_changed(|p| p.save()).release();
         self.as_mut()
             .on_stream_pc_audio_to_phone_changed(|p| {
                 crate::settings::set_stream_pc_audio_to_phone(p.stream_pc_audio_to_phone);
@@ -923,6 +989,12 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().on_community_prompt_count_changed(|p| p.save()).release();
 
         super::subscribe(self.qt_thread(), crate::state::Changes::PREFS, Self::refresh_runtime_flags);
+        // Asking Windows takes a moment: not on this thread.
+        let qt = self.qt_thread();
+        std::thread::spawn(move || {
+            let shared = crate::updater::task_installs();
+            let _ = qt.queue(move |p| p.set_update_channel_shared(shared));
+        });
     }
 }
 
@@ -1051,6 +1123,18 @@ impl qobject::Preferences {
         if let Err(e) = spawned {
             tracing::warn!(error = %e, "can't test the OBS connection");
         }
+    }
+
+    pub fn pinned_apps(&self, device_id: &QString) -> QString {
+        let pins = crate::settings::pinned_apps(&String::from(device_id));
+        QString::from(&serde_json::to_string(&pins).unwrap_or_else(|_| "[]".into()))
+    }
+
+    pub fn set_app_pinned(mut self: Pin<&mut Self>, device_id: &QString, pkg: &QString, on: bool) {
+        crate::settings::set_app_pinned(&String::from(device_id), &String::from(pkg), on);
+        let next = self.pins_revision().wrapping_add(1);
+        self.as_mut().set_pins_revision(next);
+        self.save();
     }
 
     pub fn nickname_of(&self, device_id: &QString) -> QString {
@@ -1236,6 +1320,7 @@ impl qobject::Preferences {
             backdrop: p.backdrop,
             comb_motion: p.comb_motion,
             close_to_tray: p.close_to_tray,
+            tray_one_colour: p.tray_one_colour,
             auto_clipboard: p.auto_clipboard,
             clipboard_history: p.clipboard_history,
             suggest_clipboard_actions: p.suggest_clipboard_actions,
@@ -1246,6 +1331,7 @@ impl qobject::Preferences {
             sync_dnd: p.sync_dnd,
             enter_sends: p.enter_sends,
             right_click_long_press: p.right_click_long_press,
+            hide_mirror_toolbar: p.hide_mirror_toolbar,
             quiet_when_locked: p.quiet_when_locked,
             hold_when_locked: p.hold_when_locked,
             send_to_menu: p.send_to_menu,
@@ -1254,9 +1340,12 @@ impl qobject::Preferences {
             update_channel: String::from(&p.update_channel),
             battery_alerts: p.battery_alerts,
             battery_full_threshold: p.battery_full_threshold.clamp(50, 100) as u8,
+            battery_low_threshold: p.battery_low_threshold.clamp(5, 50) as u8,
+            phone_sound_buffer_ms: p.phone_sound_buffer_ms.clamp(20, 500) as u16,
             ui_scale: u16::try_from(p.ui_scale).unwrap_or(100),
             keep_screen_off: crate::settings::keep_screen_off_phones(),
             device_nicknames: crate::settings::device_nicknames(),
+            pinned_apps: crate::settings::pinned_apps_all(),
             start_with_windows: p.start_choice,
             recordings_folder: p.custom_recordings_folder.clone(),
             recordings_format: RecordingFormat::from_str_lossy(&String::from(&p.recordings_format)),
@@ -1297,6 +1386,13 @@ impl qobject::Preferences {
             nectar_island_transfers: p.nectar_island_transfers,
             nectar_island_media: p.nectar_island_media,
             nectar_island_notifications: p.nectar_island_notifications,
+            nectar_island_position: match String::from(&p.nectar_island_position).as_str() {
+                side @ ("left" | "right") => side.to_owned(),
+                _ => "center".to_owned(),
+            },
+            nectar_island_look: if String::from(&p.nectar_island_look) == "theme" { "theme" } else { "dark" }
+                .to_owned(),
+            nectar_island_pc_media: p.nectar_island_pc_media,
             automation_rules: crate::settings::automation_rules(),
             stream_pc_audio_to_phone: p.stream_pc_audio_to_phone,
             share_pc_storage: p.share_pc_storage,

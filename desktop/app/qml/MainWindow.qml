@@ -105,9 +105,11 @@ NativeWindow {
     }
     readonly property int currentDeviceIndex: DeviceList.count > 0
         ? Math.min(Math.max(0, AppController.currentDevice), DeviceList.count - 1) : 0
-    readonly property string currentDeviceId: DeviceList.count > 0
+    // Read again whenever the rows change (revision): a reorder or a rename
+    // keeps the count, and these calls alone wouldn't notice.
+    readonly property string currentDeviceId: DeviceList.count > 0 && DeviceList.revision >= 0
         ? DeviceList.deviceIdAt(currentDeviceIndex) : ""
-    readonly property string currentDeviceName: DeviceList.count > 0
+    readonly property string currentDeviceName: DeviceList.count > 0 && DeviceList.revision >= 0
         ? DeviceList.deviceNameAt(currentDeviceIndex) : ""
 
     minimumWidth: Theme.layout.minWindow[0]
