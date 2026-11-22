@@ -447,6 +447,12 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **Mirroring with Elevated on phones that can't share their sound from it.** On some
+  phones (Android 17 on MagicOS) capturing the phone's sound failed in a way that stopped
+  Elevated altogether, so mirroring asked for screen-capture consent and root was asked for
+  again. Now the screen still mirrors without a prompt, just without the phone's sound.
+  Thanks to [@yiriyangguang](https://github.com/yiriyangguang)
+  ([#518](https://github.com/thtbee/nectarlink/issues/518)).
 - **Less battery on the phone while it's connected.** A quiet connection no longer sends
   pings of its own every 15 seconds on top of the connection's keepalives; it only checks
   when nothing has arrived for a while, and a PC that's gone still shows as offline as
