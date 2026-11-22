@@ -160,7 +160,11 @@ object InputServer {
         while (!server.isClosed) {
             val client = runCatching { server.accept() }.getOrNull() ?: continue
             try {
-                clientPool.execute { serve(client, token, injector) }
+                clientPool.execute {
+                    // One connection failing (an Android audio bug, #518) must
+                    // not take the helper, and so input and mirroring, with it.
+                    runCatching { serve(client, token, injector) }.onFailure { System.err.println("connection failed: $it") }
+                }
             } catch (_: java.util.concurrent.RejectedExecutionException) {
                 runCatching { client.close() }
             }
@@ -517,6 +521,11 @@ object InputServer {
             }
         } catch (_: java.io.IOException) {
             // Client disconnected.
+        } catch (e: RuntimeException) {
+            // Some phones can't capture the submix from here (startRecording
+            // throws on Android 17 MagicOS, #518): the phone's sound stays
+            // off and the screen still mirrors.
+            System.err.println("device audio unavailable: $e")
         } finally {
             runCatching { recorder.stop() }
             runCatching { recorder.release() }
