@@ -892,7 +892,8 @@ fun SettingsScreen(
                     highlighted = pulsingSectionKey == "clipboard",
                 ) {
                     val context = LocalContext.current
-                    if (!state.hasElevatedCapability(NectarlinkServiceContract.CAP_CLIPBOARD_SYNC)) {
+                    // Hidden only when the add-on covers Elevated; with Elevated on it says so here.
+                    if (!state.hideElevated) {
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                             Column(Modifier.weight(1f).padding(end = 12.dp)) {
                                 Text(stringResource(R.string.settings_background_clipboard_title), style = MaterialTheme.typography.titleSmall)

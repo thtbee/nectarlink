@@ -1312,13 +1312,8 @@ object Elevated {
         }
         val (port, token) = helper ?: return null
         return runCatching {
-            val sock = java.net.Socket(java.net.InetAddress.getLoopbackAddress(), port).apply {
-                tcpNoDelay = true
-                val out = OutputStreamWriter(getOutputStream(), Charsets.UTF_8)
-                out.write("$token\nA\n")
-                out.flush()
-            }
-            SocketAudioStream(sock)
+            // The helper proves it's the one this app started before the token goes out.
+            SocketAudioStream(HelperProof.open(port, token, "A", PROOF_MS))
         }.onFailure { Log.w(TAG, "can't open Elevated audio stream", it) }.getOrNull()
     }
 
@@ -1495,13 +1490,7 @@ object Elevated {
         }
         val (port, token) = helper ?: return null
         return runCatching {
-            val socket = java.net.Socket(java.net.InetAddress.getLoopbackAddress(), port).apply {
-                tcpNoDelay = true
-                val out = OutputStreamWriter(getOutputStream(), Charsets.UTF_8)
-                out.write("$token\nV $width $height $dpi $bitrate $fps $pkg $codec\n")
-                out.flush()
-            }
-            SocketDisplayStream(socket)
+            SocketDisplayStream(HelperProof.open(port, token, "V $width $height $dpi $bitrate $fps $pkg $codec", PROOF_MS))
         }.onFailure { Log.w(TAG, "can't open an app window", it) }.getOrNull()
     }
 
@@ -1529,13 +1518,7 @@ object Elevated {
         }
         val (port, token) = helper ?: return null
         return runCatching {
-            val socket = java.net.Socket(java.net.InetAddress.getLoopbackAddress(), port).apply {
-                tcpNoDelay = true
-                val out = OutputStreamWriter(getOutputStream(), Charsets.UTF_8)
-                out.write("$token\nV $width $height $dpi $bitrate $fps - $codec\n")
-                out.flush()
-            }
-            SocketDisplayStream(socket)
+            SocketDisplayStream(HelperProof.open(port, token, "V $width $height $dpi $bitrate $fps - $codec", PROOF_MS))
         }.onFailure { Log.w(TAG, "can't open Elevated screen mirror", it) }.getOrNull()
     }
 
