@@ -1276,7 +1276,11 @@ impl Shared {
         if reassigned_queue {
             self.emit(NodeEvent::QueueChanged);
         }
-        lock(&self.discovered).remove(&peer);
+        // The nearby list on either side would keep offering the device it
+        // just paired with until the mDNS entry expired (#514).
+        if lock(&self.discovered).remove(&peer).is_some() {
+            self.emit(NodeEvent::DiscoveryExpired(peer));
+        }
         self.start_supervisor(peer);
         self.queue_notify.notify_waiters();
         Ok(())

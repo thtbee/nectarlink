@@ -1578,60 +1578,7 @@ Item {
             }
 
             // ---- Transfers ----
-            Card {
-                width: parent.width
-                visible: TransferList.count > 0
-                Column {
-                    width: parent.width
-                    spacing: 4
-                    Item {
-                        width: parent.width
-                        height: Math.max(transfersHeader.height, clearTransfers.height)
-                        Txt {
-                            id: transfersHeader
-                            anchors.verticalCenter: parent.verticalCenter
-                            role: "label"
-                            muted: true
-                            text: qsTr("Transfers")
-                        }
-                        Row {
-                            anchors.right: parent.right
-                            anchors.verticalCenter: parent.verticalCenter
-                            spacing: 6
-                            Button {
-                                variant: "text"
-                                size: "sm"
-                                text: qsTr("Timeline")
-                                onClicked: AppController.currentPage = "timeline"
-                            }
-                            Button {
-                                id: clearTransfers
-                                visible: TransferList.count > TransferList.active
-                                variant: "text"
-                                size: "sm"
-                                text: qsTr("Clear finished")
-                                onClicked: TransferList.clearFinished()
-                            }
-                        }
-                    }
-                    Column {
-                        id: transferList
-                        width: parent.width
-                        move: Transition {
-                            enabled: !Theme.reduceMotion && !page.resizing
-                            NumberAnimation { properties: "y"; duration: 220; easing.type: Easing.OutCubic }
-                        }
-                        add: Transition {
-                            enabled: !Theme.reduceMotion && !page.resizing
-                            NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 200 }
-                        }
-                        Repeater {
-                            model: TransferList
-                            delegate: TransferItem { width: transferList.width }
-                        }
-                    }
-                }
-            }
+            TransfersCard { width: parent.width }
 
             // ---- LocalSend nearby ----
             LocalSendCard {
@@ -3297,6 +3244,8 @@ Item {
                 : qsTr("Sync clipboard is off in Settings, so copies only go over with Send clipboard.")
         }
 
+        TransfersCard { width: parent.width }
+
         FileDialog {
             id: pcFilePicker
             title: qsTr("Send to %1").arg(pcHome.name)
@@ -3307,6 +3256,61 @@ Item {
             id: pcFolderPicker
             title: qsTr("Send a folder to %1").arg(pcHome.name)
             onAccepted: TransferList.send(pcHome.deviceId, [selectedFolder.toString()])
+        }
+    }
+
+    // Transfers are app-wide, so a phone's page and another PC's page show the same list.
+    component TransfersCard: Card {
+        visible: TransferList.count > 0
+        Column {
+            width: parent.width
+            spacing: 4
+            Item {
+                width: parent.width
+                height: Math.max(transfersHeader.height, clearTransfers.height)
+                Txt {
+                    id: transfersHeader
+                    anchors.verticalCenter: parent.verticalCenter
+                    role: "label"
+                    muted: true
+                    text: qsTr("Transfers")
+                }
+                Row {
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 6
+                    Button {
+                        variant: "text"
+                        size: "sm"
+                        text: qsTr("Timeline")
+                        onClicked: AppController.currentPage = "timeline"
+                    }
+                    Button {
+                        id: clearTransfers
+                        visible: TransferList.count > TransferList.active
+                        variant: "text"
+                        size: "sm"
+                        text: qsTr("Clear finished")
+                        onClicked: TransferList.clearFinished()
+                    }
+                }
+            }
+            Column {
+                id: transferList
+                width: parent.width
+                move: Transition {
+                    enabled: !Theme.reduceMotion && !page.resizing
+                    NumberAnimation { properties: "y"; duration: 220; easing.type: Easing.OutCubic }
+                }
+                add: Transition {
+                    enabled: !Theme.reduceMotion && !page.resizing
+                    NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 200 }
+                }
+                Repeater {
+                    model: TransferList
+                    delegate: TransferItem { width: transferList.width }
+                }
+            }
         }
     }
 

@@ -7206,6 +7206,18 @@ async fn usb_auto_pair_requires_consent_on_both_sides_and_connects_over_usb() {
     })
     .await;
 
+    // Neither side keeps offering the other as a nearby device once paired (#514).
+    wait_for(&mut pc, "pc nearby entry gone", |e| match e {
+        NodeEvent::DiscoveryExpired(id) if *id == phone_id => Some(()),
+        _ => None,
+    })
+    .await;
+    wait_for(&mut phone, "phone nearby entry gone", |e| match e {
+        NodeEvent::DiscoveryExpired(id) if *id == pc_id => Some(()),
+        _ => None,
+    })
+    .await;
+
     wait_for(&mut pc, "pc online over usb", |e| match e {
         NodeEvent::LinkChanged { device, link: LinkState::Online { path: ConnectionPath::Usb, .. } }
             if *device == phone_id =>
