@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package app.nectarlink.services.client
 
+import app.nectarlink.services.ServiceStatus
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -105,5 +106,43 @@ class NectarlinkServiceClientTest {
         assertFalse(NectarlinkServiceContract.isAllowedShellCommand("am start -n app.nectarlink/.MainActivity", allowed))
         assertFalse(NectarlinkServiceContract.isAllowedShellCommand("am start -n com.example/.MainActivity", allowed))
         assertFalse(NectarlinkServiceContract.isAllowedShellCommand("reboot", allowed))
+    }
+
+    @Test
+    fun apiVersionHandshakeRejectsUnknownAndMismatchedVersions() {
+        assertTrue(NectarlinkServiceContract.isSupportedApiVersion(NectarlinkServiceContract.API_VERSION))
+        assertFalse(NectarlinkServiceContract.isSupportedApiVersion(0))
+        assertFalse(NectarlinkServiceContract.isSupportedApiVersion(-1))
+        assertFalse(NectarlinkServiceContract.isSupportedApiVersion(NectarlinkServiceContract.API_VERSION + 1))
+
+        fun status(version: Int, enabled: Boolean = true, authorized: Boolean = true) = ServiceStatus(
+            apiVersion = version,
+            serviceEnabled = enabled,
+            callerAuthorized = authorized,
+            privilegedApp = true,
+            capabilities = 0L,
+            callAudioSupported = false,
+            uhidAvailable = true,
+            virtualDeviceSupported = true,
+        )
+
+        assertNull(
+            NectarlinkServiceClient.handshakeRejectionReason(
+                NectarlinkServiceContract.API_VERSION,
+                status(NectarlinkServiceContract.API_VERSION),
+            ),
+        )
+        assertNotNull(NectarlinkServiceClient.handshakeRejectionReason(0, status(1)))
+        assertNotNull(NectarlinkServiceClient.handshakeRejectionReason(2, status(2)))
+        assertNotNull(NectarlinkServiceClient.handshakeRejectionReason(1, status(2)))
+        assertNotNull(NectarlinkServiceClient.handshakeRejectionReason(1, null))
+        assertEquals(
+            "service disabled",
+            NectarlinkServiceClient.handshakeRejectionReason(1, status(1, enabled = false)),
+        )
+        assertEquals(
+            "caller not authorized",
+            NectarlinkServiceClient.handshakeRejectionReason(1, status(1, authorized = false)),
+        )
     }
 }

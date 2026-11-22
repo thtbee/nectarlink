@@ -8,6 +8,7 @@ object NectarlinkServiceContract {
     const val ACTION_SETTINGS = "app.nectarlink.services.ACTION_SETTINGS"
 
     const val API_VERSION = 1
+    const val MIN_SUPPORTED_API_VERSION = 1
 
     /** Package prefix reserved for NectarLink app variants; never eligible for remote uninstall. */
     const val OWN_PACKAGE_PREFIX = "app.nectarlink"
@@ -42,6 +43,9 @@ object NectarlinkServiceContract {
         "cmd wifi start-softap",
         "cmd wifi stop-softap",
     )
+
+    fun isSupportedApiVersion(version: Int): Boolean =
+        version in MIN_SUPPORTED_API_VERSION..API_VERSION
 
     fun isValidPackageName(pkg: String): Boolean = PACKAGE_NAME_REGEX.matches(pkg)
 

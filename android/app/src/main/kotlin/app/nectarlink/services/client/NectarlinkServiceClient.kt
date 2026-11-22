@@ -77,7 +77,9 @@ class NectarlinkServiceClient(
     private var connectWaiter: CompletableDeferred<Boolean>? = null
 
     val isConnected: Boolean
-        get() = _state.value is ConnectionState.Connected
+        get() = (_state.value as? ConnectionState.Connected)?.status?.let {
+            NectarlinkServiceContract.isSupportedApiVersion(it.apiVersion)
+        } == true
 
     private val callback = object : INectarlinkServiceCallback.Stub() {
         override fun onClipboardChanged(text: String?, html: String?, isSensitive: Boolean) {
@@ -91,16 +93,33 @@ class NectarlinkServiceClient(
         }
 
         override fun onStatusChanged(status: ServiceStatus?) {
-            if (status != null) {
-                _state.value = if (status.serviceEnabled && status.callerAuthorized) {
-                    ConnectionState.Connected(status)
-                } else {
-                    ConnectionState.Rejected(
-                        if (!status.serviceEnabled) "service disabled" else "caller not authorized",
-                    )
-                }
+            if (status == null) return
+            if (!NectarlinkServiceContract.isSupportedApiVersion(status.apiVersion)) {
+                Log.w(TAG, "Refusing service status with unsupported API version ${status.apiVersion}")
+                refuseBinding("unsupported api version ${status.apiVersion}")
+                return
+            }
+            if (status.serviceEnabled && status.callerAuthorized) {
+                _state.value = ConnectionState.Connected(status)
+            } else {
+                binder = null
+                _state.value = ConnectionState.Rejected(
+                    if (!status.serviceEnabled) "service disabled" else "caller not authorized",
+                )
             }
         }
+    }
+
+    private fun refuseBinding(reason: String, api: INectarlinkService? = null) {
+        binder = null
+        if (api != null) {
+            runCatching { api.unregisterCallback(callback) }
+        }
+        if (bound) {
+            bound = false
+            runCatching { appContext.unbindService(connection) }
+        }
+        _state.value = ConnectionState.Rejected(reason)
     }
 
     private val connection = object : ServiceConnection {
@@ -110,37 +129,33 @@ class NectarlinkServiceClient(
                 !isInstalled(appContext, requireSystemApp, trustedServiceCertSha256)
             ) {
                 Log.w(TAG, "Refusing untrusted service binding for $targetPkg")
-                binder = null
-                if (bound) {
-                    bound = false
-                    runCatching { appContext.unbindService(this) }
-                }
-                _state.value = ConnectionState.Rejected("untrusted service certificate")
+                refuseBinding("untrusted service certificate")
                 connectWaiter?.complete(false)
                 return
             }
             val api = INectarlinkService.Stub.asInterface(service)
-            binder = api
             scope.launch {
                 val ok = runCatching {
-                    api.registerCallback(callback)
+                    val apiVersion = api.apiVersion
+                    if (!NectarlinkServiceContract.isSupportedApiVersion(apiVersion)) {
+                        Log.w(TAG, "Refusing Nectarlink Services with unsupported API version $apiVersion")
+                        refuseBinding("unsupported api version $apiVersion")
+                        return@runCatching false
+                    }
                     val status = api.status
-                    if (status != null && status.serviceEnabled && status.callerAuthorized) {
-                        _state.value = ConnectionState.Connected(status)
-                        true
-                    } else {
-                        _state.value = ConnectionState.Rejected(
-                            when {
-                                status == null -> "null status"
-                                !status.serviceEnabled -> "service disabled"
-                                else -> "caller not authorized"
-                            },
-                        )
+                    val rejection = handshakeRejectionReason(apiVersion, status)
+                    if (rejection != null) {
+                        refuseBinding(rejection)
                         false
+                    } else {
+                        api.registerCallback(callback)
+                        binder = api
+                        _state.value = ConnectionState.Connected(status!!)
+                        true
                     }
                 }.getOrElse { e ->
                     Log.w(TAG, "Failed to handshake with Nectarlink Services", e)
-                    _state.value = ConnectionState.Rejected(e.message ?: "handshake failed")
+                    refuseBinding(e.message ?: "handshake failed")
                     false
                 }
                 connectWaiter?.complete(ok)
@@ -362,6 +377,7 @@ class NectarlinkServiceClient(
     fun openInputServerChannel(): ParcelFileDescriptor? = call { it.openInputServerChannel() }
 
     private inline fun <T> call(block: (INectarlinkService) -> T): T? {
+        if (!isConnected) return null
         val api = binder ?: return null
         return runCatching { block(api) }.onFailure { e ->
             Log.w(TAG, "Binder call failed", e)
@@ -370,6 +386,17 @@ class NectarlinkServiceClient(
 
     companion object {
         private const val TAG = "NectarlinkServiceClient"
+
+        internal fun handshakeRejectionReason(apiVersion: Int, status: ServiceStatus?): String? = when {
+            !NectarlinkServiceContract.isSupportedApiVersion(apiVersion) ->
+                "unsupported api version $apiVersion"
+            status == null -> "null status"
+            !NectarlinkServiceContract.isSupportedApiVersion(status.apiVersion) || status.apiVersion != apiVersion ->
+                "unsupported api version ${status.apiVersion}"
+            !status.serviceEnabled -> "service disabled"
+            !status.callerAuthorized -> "caller not authorized"
+            else -> null
+        }
 
         fun isInstalled(
             context: Context,
