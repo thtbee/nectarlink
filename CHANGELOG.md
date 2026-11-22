@@ -453,9 +453,30 @@ change things that need a step from you, and its notes say so.
   phones without it are unchanged. It's built and looked after by
   [@isaiahscape](https://github.com/isaiahscape), not by NectarLink
   ([#517](https://github.com/thtbee/nectarlink/pull/517)).
+- **Move the mirroring toolbar.** Drag it by its grip to any corner of a mirroring or app
+  window, so it's off the app's own buttons (a menu in the top corner, say). It stays in
+  that corner in every window. Ctrl+Shift+T still hides it. Thanks to
+  [@s-shahriar](https://github.com/s-shahriar) ([#340](https://github.com/thtbee/nectarlink/issues/340)) and g3ck0 on Discord.
+- **Bring the phone's sound back to the phone.** While the phone's sound plays on a PC,
+  that PC's card on the phone says **Play the sound on the phone again** instead of starting
+  it once more. Thanks to [@doodoobug-dot](https://github.com/doodoobug-dot)
+  ([#521](https://github.com/thtbee/nectarlink/issues/521)).
 
 ### Fixed
 
+- **Turning the phone's screen off while mirroring froze the picture** when the mirror
+  ran through screen capture instead of Elevated. The screen now goes dark only when
+  Elevated shows the mirror; otherwise the phone just stays awake. Thanks to
+  [@yiriyangguang](https://github.com/yiriyangguang) ([#520](https://github.com/thtbee/nectarlink/issues/520)).
+- **Pair nearby** no longer keeps listing a device you've just paired, and when the other
+  device isn't on its pairing screen it says to open it, instead of "Couldn't reach the PC".
+  A PC's page shows its transfers too. Thanks to [@krakotay](https://github.com/krakotay)
+  ([#514](https://github.com/thtbee/nectarlink/issues/514), [#515](https://github.com/thtbee/nectarlink/issues/515)).
+- **Niri** (Linux): typing from the phone uses the keyboard layout that's active right now;
+  the Nectar Island hides when it has nothing to show, rather than catching clicks; and the
+  PC's screen on the phone falls back to OpenGL capture when the GPU's frames don't come
+  through (NVIDIA). Thanks to [@vladikchi](https://github.com/vladikchi)
+  ([D511](https://github.com/thtbee/nectarlink/discussions/511)).
 - **Mirroring and the webcam on NixOS.** The Nix package now keeps the video decoder and
   the other libraries NectarLink loads at run time, and builds against the FFmpeg version
   it supports, so a phone's screen and camera show again instead of "This PC can't decode
