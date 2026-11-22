@@ -177,6 +177,11 @@ void set_ui_scale(int32_t percent)
         qputenv("QT_SCALE_FACTOR", QByteArray::number(percent / 100.0));
 }
 
+void use_native_text_rendering()
+{
+    QQuickWindow::setTextRenderType(QQuickWindow::NativeTextRendering);
+}
+
 void prepare_qt_for_ui_check()
 {
     qInstallMessageHandler(uiCheckMessageHandler);

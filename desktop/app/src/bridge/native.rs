@@ -33,6 +33,10 @@ pub mod ffi {
         /// Draws the app at `percent` of its normal size. Before the app object is
         /// made. `QT_SCALE_FACTOR` set by hand wins.
         fn set_ui_scale(percent: i32);
+        /// Draws text with the system's own renderer (hinted to whole pixels)
+        /// instead of Qt's: crisper for small Chinese and Japanese (#460).
+        /// Before any window is made.
+        fn use_native_text_rendering();
         /// How many QML warnings and errors there were since
         /// `prepare_qt_for_ui_check`.
         fn qml_problem_count() -> i32;
