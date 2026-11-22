@@ -49,7 +49,7 @@
             pkgs.vulkan-loader
             pkgs.libx11
             pkgs.libxkbcommon
-            pkgs.ffmpeg
+            pkgs.ffmpeg_8
           ];
 
           LRELEASE = "${qtEnv}/bin/lrelease";
@@ -78,14 +78,24 @@ EOF
 
           doCheck = false;
 
-          preFixup = ''
+          # These libraries are dlopen()ed, not linked, so fixup's
+          # patchelf --shrink-rpath drops them as unused if they are added
+          # earlier. Add them after fixup, on the real binary behind the Qt
+          # wrapper. ffmpeg_8 here and in buildInputs: h264.rs knows
+          # libavcodec 59-62, linux_video_codec.cpp dlopen()s the major of
+          # the headers it was built with, and nixpkgs' default ffmpeg is 9
+          # (libavcodec 63).
+          postFixup = ''
             patchelf --add-rpath "${pkgs.lib.makeLibraryPath (with pkgs; [
               libGL
               vulkan-loader
               libx11
               libxkbcommon
-              ffmpeg
-            ])}" $out/bin/nectarlink-desktop
+              libxtst
+              ffmpeg_8
+              openh264
+              lame
+            ])}" $out/bin/.nectarlink-desktop-wrapped
           '';
 
           postInstall = ''
@@ -172,7 +182,7 @@ EOF
             vulkan-loader
             libx11
             libxkbcommon
-            ffmpeg
+            ffmpeg_8
           ];
 
           shellHook = ''
@@ -199,7 +209,7 @@ EOF
             vulkan-loader
             libx11
             libxkbcommon
-            ffmpeg
+            ffmpeg_8
           ])}:$LD_LIBRARY_PATH";
           LIBRARY_PATH = "${pkgs.lib.makeLibraryPath (with pkgs; [
             qtEnv
@@ -207,7 +217,7 @@ EOF
             vulkan-loader
             libx11
             libxkbcommon
-            ffmpeg
+            ffmpeg_8
           ])}:$LIBRARY_PATH";
         };
       })

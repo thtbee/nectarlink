@@ -456,6 +456,12 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **Mirroring and the webcam on NixOS.** The Nix package now keeps the video decoder and
+  the other libraries NectarLink loads at run time, and builds against the FFmpeg version
+  it supports, so a phone's screen and camera show again instead of "This PC can't decode
+  the phone camera's video". Thanks to [@Konakonai](https://github.com/Konakonai)
+  ([#512](https://github.com/thtbee/nectarlink/pull/512),
+  [#519](https://github.com/thtbee/nectarlink/issues/519)).
 - **Mirroring with Elevated on phones that can't share their sound from it.** On some
   phones (Android 17 on MagicOS) capturing the phone's sound failed in a way that stopped
   Elevated altogether, so mirroring asked for screen-capture consent and root was asked for
