@@ -9,6 +9,15 @@ object NectarlinkServiceContract {
 
     const val API_VERSION = 1
 
+    /**
+     * Pinned SHA-256 signing certificate digests accepted for [SERVICE_PACKAGE] when verifying
+     * the system service with [android.content.pm.PackageManager.CERT_INPUT_SHA256].
+     */
+    val TRUSTED_SERVICE_CERT_SHA256: Set<String> = setOf(
+        "e055b7e6a622168da36e7b9f730369c8f140e5ba87df1e16f31fd754434eea0d",
+        "c7c09a125ca5320b1670e710e798486de08b318127243b2790f3ff13511924f1",
+    )
+
     const val TOUCH_DOWN = 0
     const val TOUCH_MOVE = 1
     const val TOUCH_UP = 2

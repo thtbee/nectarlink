@@ -7,9 +7,11 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.IBinder
 import android.os.ParcelFileDescriptor
 import android.util.Log
+import java.security.MessageDigest
 import app.nectarlink.services.IDisplaySession
 import app.nectarlink.services.INectarlinkService
 import app.nectarlink.services.INectarlinkServiceCallback
@@ -31,6 +33,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 class NectarlinkServiceClient(
     context: Context,
     private val requireSystemApp: Boolean = true,
+    private val trustedServiceCertSha256: Set<String> = NectarlinkServiceContract.TRUSTED_SERVICE_CERT_SHA256,
 ) {
     sealed interface ConnectionState {
         data object Unavailable : ConnectionState
@@ -50,7 +53,11 @@ class NectarlinkServiceClient(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val _state = MutableStateFlow<ConnectionState>(
-        if (isInstalled(appContext, requireSystemApp)) ConnectionState.Disconnected else ConnectionState.Unavailable,
+        if (isInstalled(appContext, requireSystemApp, trustedServiceCertSha256)) {
+            ConnectionState.Disconnected
+        } else {
+            ConnectionState.Unavailable
+        },
     )
     val state: StateFlow<ConnectionState> = _state.asStateFlow()
 
@@ -98,6 +105,20 @@ class NectarlinkServiceClient(
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            val targetPkg = name?.packageName
+            if (targetPkg != NectarlinkServiceContract.SERVICE_PACKAGE ||
+                !isInstalled(appContext, requireSystemApp, trustedServiceCertSha256)
+            ) {
+                Log.w(TAG, "Refusing untrusted service binding for $targetPkg")
+                binder = null
+                if (bound) {
+                    bound = false
+                    runCatching { appContext.unbindService(this) }
+                }
+                _state.value = ConnectionState.Rejected("untrusted service certificate")
+                connectWaiter?.complete(false)
+                return
+            }
             val api = INectarlinkService.Stub.asInterface(service)
             binder = api
             scope.launch {
@@ -128,7 +149,7 @@ class NectarlinkServiceClient(
 
         override fun onServiceDisconnected(name: ComponentName?) {
             binder = null
-            _state.value = if (isInstalled(appContext, requireSystemApp)) {
+            _state.value = if (isInstalled(appContext, requireSystemApp, trustedServiceCertSha256)) {
                 ConnectionState.Disconnected
             } else {
                 ConnectionState.Unavailable
@@ -149,16 +170,22 @@ class NectarlinkServiceClient(
 
     suspend fun connect(timeoutMs: Long = 5_000L): Boolean {
         if (isConnected) return true
-        if (!isInstalled(appContext, requireSystemApp)) {
+        if (!isInstalled(appContext, requireSystemApp, trustedServiceCertSha256)) {
+            _state.value = ConnectionState.Unavailable
+            return false
+        }
+        val intent = Intent(NectarlinkServiceContract.ACTION_BIND).apply {
+            setPackage(NectarlinkServiceContract.SERVICE_PACKAGE)
+        }
+        val resolveFlags = if (requireSystemApp) PackageManager.MATCH_SYSTEM_ONLY else 0
+        val resolved = appContext.packageManager.resolveService(intent, resolveFlags)
+        if (resolved?.serviceInfo?.packageName != NectarlinkServiceContract.SERVICE_PACKAGE) {
             _state.value = ConnectionState.Unavailable
             return false
         }
         val waiter = CompletableDeferred<Boolean>()
         connectWaiter = waiter
         _state.value = ConnectionState.Connecting
-        val intent = Intent(NectarlinkServiceContract.ACTION_BIND).apply {
-            setPackage(NectarlinkServiceContract.SERVICE_PACKAGE)
-        }
         val initiated = runCatching {
             appContext.bindService(intent, connection, Context.BIND_AUTO_CREATE)
         }.getOrElse { e ->
@@ -186,7 +213,7 @@ class NectarlinkServiceClient(
             bound = false
             runCatching { appContext.unbindService(connection) }
         }
-        _state.value = if (isInstalled(appContext, requireSystemApp)) {
+        _state.value = if (isInstalled(appContext, requireSystemApp, trustedServiceCertSha256)) {
             ConnectionState.Disconnected
         } else {
             ConnectionState.Unavailable
@@ -296,22 +323,74 @@ class NectarlinkServiceClient(
     companion object {
         private const val TAG = "NectarlinkServiceClient"
 
-        fun isInstalled(context: Context, requireSystemApp: Boolean = true): Boolean {
+        fun isInstalled(
+            context: Context,
+            requireSystemApp: Boolean = true,
+            trustedCertSha256: Set<String> = NectarlinkServiceContract.TRUSTED_SERVICE_CERT_SHA256,
+        ): Boolean {
             val info = runCatching {
                 @Suppress("DEPRECATION")
                 context.packageManager.getApplicationInfo(NectarlinkServiceContract.SERVICE_PACKAGE, 0)
             }.getOrNull() ?: return false
-            if (!requireSystemApp) return true
-            val flags = info.flags
-            return (flags and ApplicationInfo.FLAG_SYSTEM) != 0 ||
-                (flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
+            if (requireSystemApp) {
+                val flags = info.flags
+                val isSystem = (flags and ApplicationInfo.FLAG_SYSTEM) != 0 ||
+                    (flags and ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
+                if (!isSystem) return false
+            }
+            return hasTrustedSigningCertificate(
+                context,
+                NectarlinkServiceContract.SERVICE_PACKAGE,
+                trustedCertSha256,
+            )
         }
 
-        fun isAvailable(context: Context, requireSystemApp: Boolean = true): Boolean {
-            if (!isInstalled(context, requireSystemApp)) return false
+        fun isAvailable(
+            context: Context,
+            requireSystemApp: Boolean = true,
+            trustedCertSha256: Set<String> = NectarlinkServiceContract.TRUSTED_SERVICE_CERT_SHA256,
+        ): Boolean {
+            if (!isInstalled(context, requireSystemApp, trustedCertSha256)) return false
             val intent = Intent(NectarlinkServiceContract.ACTION_BIND).setPackage(NectarlinkServiceContract.SERVICE_PACKAGE)
             val flags = if (requireSystemApp) PackageManager.MATCH_SYSTEM_ONLY else 0
-            return context.packageManager.resolveService(intent, flags) != null
+            val resolved = context.packageManager.resolveService(intent, flags)
+            return resolved?.serviceInfo?.packageName == NectarlinkServiceContract.SERVICE_PACKAGE
         }
+
+        internal fun hasTrustedSigningCertificate(
+            context: Context,
+            packageName: String,
+            trustedCertSha256: Set<String>,
+        ): Boolean {
+            val digests = trustedCertSha256.mapNotNull(::decodeSha256Hex)
+            if (digests.isEmpty()) return false
+            val pm = context.packageManager
+            return runCatching {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    digests.any { digest ->
+                        pm.hasSigningCertificate(packageName, digest, PackageManager.CERT_INPUT_SHA256)
+                    }
+                } else {
+                    @Suppress("DEPRECATION")
+                    val info = pm.getPackageInfo(packageName, PackageManager.GET_SIGNATURES)
+                    @Suppress("DEPRECATION")
+                    val sigs = info.signatures ?: return@runCatching false
+                    if (sigs.size != 1) return@runCatching false
+                    val actual = MessageDigest.getInstance("SHA-256").digest(sigs[0].toByteArray())
+                    matchesAnyDigest(actual, digests)
+                }
+            }.getOrDefault(false)
+        }
+
+        internal fun decodeSha256Hex(hex: String): ByteArray? {
+            val clean = hex.trim().lowercase().replace(":", "")
+            if (clean.length != 64 || !clean.all { it in '0'..'9' || it in 'a'..'f' }) return null
+            return ByteArray(32) { i ->
+                clean.substring(i * 2, i * 2 + 2).toInt(16).toByte()
+            }
+        }
+
+        internal fun matchesAnyDigest(actual: ByteArray, allowed: List<ByteArray>): Boolean =
+            allowed.any { expected -> MessageDigest.isEqual(actual, expected) }
     }
 }
