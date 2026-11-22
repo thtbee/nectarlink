@@ -42,4 +42,68 @@ class NectarlinkServiceClientTest {
         assertFalse(NectarlinkServiceClient.matchesAnyDigest(bogus, allowed))
         assertFalse(NectarlinkServiceClient.matchesAnyDigest(matching, emptyList()))
     }
+
+    @Test
+    fun uninstallPackageLimitsRejectNectarlinkAndMalformedPackages() {
+        assertTrue(NectarlinkServiceContract.isAllowedUninstallPackage("com.example.app", "app.nectarlink"))
+        assertTrue(NectarlinkServiceContract.isAllowedUninstallPackage("org.Some_App.v2", "app.nectarlink"))
+        assertFalse(NectarlinkServiceContract.isAllowedUninstallPackage("app.nectarlink", "app.nectarlink"))
+        assertFalse(NectarlinkServiceContract.isAllowedUninstallPackage("app.nectarlink.dev", "app.nectarlink"))
+        assertFalse(NectarlinkServiceContract.isAllowedUninstallPackage("app.nectarlink.services", "app.nectarlink"))
+        assertFalse(NectarlinkServiceContract.isAllowedUninstallPackage("com.custom.fork", "com.custom.fork"))
+        assertFalse(NectarlinkServiceContract.isAllowedUninstallPackage("com.example.app; reboot"))
+        assertFalse(NectarlinkServiceContract.isAllowedUninstallPackage("--user 0 com.example.app"))
+        assertFalse(NectarlinkServiceContract.isAllowedUninstallPackage("com"))
+        assertFalse(NectarlinkServiceContract.isAllowedUninstallPackage(""))
+    }
+
+    @Test
+    fun backgroundLaunchAndProvisioningRestrictPackageAndActivity() {
+        val allowed = setOf("app.nectarlink", "app.nectarlink.dev")
+        val pcStart = NectarlinkServiceContract.ALLOWED_BACKGROUND_ACTIVITY
+        assertTrue(NectarlinkServiceContract.isAllowedBackgroundLaunch("app.nectarlink", pcStart, allowed))
+        assertTrue(NectarlinkServiceContract.isAllowedBackgroundLaunch("app.nectarlink.dev", pcStart, allowed))
+        assertFalse(NectarlinkServiceContract.isAllowedBackgroundLaunch("app.nectarlink", "app.nectarlink.android.MainActivity", allowed))
+        assertFalse(NectarlinkServiceContract.isAllowedBackgroundLaunch("com.other.app", pcStart, allowed))
+        assertFalse(NectarlinkServiceContract.isAllowedBackgroundLaunch("app.nectarlink", "", allowed))
+
+        assertTrue(NectarlinkServiceContract.isAllowedProvisionPackage("app.nectarlink", allowed))
+        assertFalse(NectarlinkServiceContract.isAllowedProvisionPackage("com.other.app", allowed))
+        assertFalse(NectarlinkServiceContract.isAllowedProvisionPackage("invalid", allowed))
+    }
+
+    @Test
+    fun displayPointerBrightnessAndShellCommandsEnforceHelperLimits() {
+        assertTrue(NectarlinkServiceContract.isAllowedBrightness(0))
+        assertTrue(NectarlinkServiceContract.isAllowedBrightness(255))
+        assertFalse(NectarlinkServiceContract.isAllowedBrightness(-1))
+        assertFalse(NectarlinkServiceContract.isAllowedBrightness(256))
+
+        assertTrue(NectarlinkServiceContract.isAllowedDisplayRequest(1080, 1920, 320, 8_000_000, 60, "h264"))
+        assertFalse(NectarlinkServiceContract.isAllowedDisplayRequest(8, 1920, 320, 8_000_000, 60, "h264"))
+        assertFalse(NectarlinkServiceContract.isAllowedDisplayRequest(1080, 1920, 50, 8_000_000, 60, "h264"))
+        assertFalse(NectarlinkServiceContract.isAllowedDisplayRequest(1080, 1920, 320, 0, 60, "h264"))
+        assertFalse(NectarlinkServiceContract.isAllowedDisplayRequest(1080, 1920, 320, 8_000_000, 60, "vp9"))
+
+        assertTrue(NectarlinkServiceContract.isAllowedPointerStart("left", 0.5f))
+        assertTrue(NectarlinkServiceContract.isAllowedPointerStart("right", 0.0f))
+        assertFalse(NectarlinkServiceContract.isAllowedPointerStart("top", 0.5f))
+        assertFalse(NectarlinkServiceContract.isAllowedPointerStart("left", Float.NaN))
+
+        val allowed = setOf("app.nectarlink", "app.nectarlink.dev")
+        assertTrue(NectarlinkServiceContract.isAllowedShellCommand("svc wifi enable", allowed))
+        assertTrue(NectarlinkServiceContract.isAllowedShellCommand("settings put system screen_brightness 128", allowed))
+        assertTrue(NectarlinkServiceContract.isAllowedShellCommand("pm uninstall com.example.app", allowed))
+        assertTrue(
+            NectarlinkServiceContract.isAllowedShellCommand(
+                "am start -n app.nectarlink/${NectarlinkServiceContract.ALLOWED_BACKGROUND_ACTIVITY}",
+                allowed,
+            ),
+        )
+        assertFalse(NectarlinkServiceContract.isAllowedShellCommand("pm uninstall app.nectarlink", allowed))
+        assertFalse(NectarlinkServiceContract.isAllowedShellCommand("pm uninstall app.nectarlink.dev", allowed))
+        assertFalse(NectarlinkServiceContract.isAllowedShellCommand("am start -n app.nectarlink/.MainActivity", allowed))
+        assertFalse(NectarlinkServiceContract.isAllowedShellCommand("am start -n com.example/.MainActivity", allowed))
+        assertFalse(NectarlinkServiceContract.isAllowedShellCommand("reboot", allowed))
+    }
 }

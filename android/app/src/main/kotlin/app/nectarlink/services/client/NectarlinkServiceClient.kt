@@ -222,20 +222,32 @@ class NectarlinkServiceClient(
 
     fun status(): ServiceStatus? = call { it.status }
 
-    fun provisionAppPermissions(targetPackage: String = appContext.packageName): Boolean =
-        call { it.provisionAppPermissions(targetPackage) } ?: false
+    fun provisionAppPermissions(targetPackage: String = appContext.packageName): Boolean {
+        if (!NectarlinkServiceContract.isAllowedProvisionPackage(targetPackage, setOf(appContext.packageName))) {
+            return false
+        }
+        return call { it.provisionAppPermissions(targetPackage) } ?: false
+    }
 
-    fun injectTouch(displayId: Int = -1, action: Int, x: Float, y: Float): Boolean =
-        call { it.injectTouch(displayId, action, x, y) } ?: false
+    fun injectTouch(displayId: Int = -1, action: Int, x: Float, y: Float): Boolean {
+        if (!NectarlinkServiceContract.isAllowedTouch(displayId, action, x, y)) return false
+        return call { it.injectTouch(displayId, action, x, y) } ?: false
+    }
 
-    fun injectScroll(displayId: Int = -1, x: Float, y: Float, dx: Float, dy: Float): Boolean =
-        call { it.injectScroll(displayId, x, y, dx, dy) } ?: false
+    fun injectScroll(displayId: Int = -1, x: Float, y: Float, dx: Float, dy: Float): Boolean {
+        if (!NectarlinkServiceContract.isAllowedScroll(displayId, x, y, dx, dy)) return false
+        return call { it.injectScroll(displayId, x, y, dx, dy) } ?: false
+    }
 
-    fun injectKey(displayId: Int = -1, keyCode: Int, metaState: Int = 0): Boolean =
-        call { it.injectKey(displayId, keyCode, metaState) } ?: false
+    fun injectKey(displayId: Int = -1, keyCode: Int, metaState: Int = 0): Boolean {
+        if (!NectarlinkServiceContract.isAllowedKey(displayId, keyCode)) return false
+        return call { it.injectKey(displayId, keyCode, metaState) } ?: false
+    }
 
-    fun injectText(displayId: Int = -1, text: String): Boolean =
-        call { it.injectText(displayId, text) } ?: false
+    fun injectText(displayId: Int = -1, text: String): Boolean {
+        if (!NectarlinkServiceContract.isAllowedText(displayId, text)) return false
+        return call { it.injectText(displayId, text) } ?: false
+    }
 
     fun injectGamepad(
         displayId: Int = -1,
@@ -246,9 +258,15 @@ class NectarlinkServiceClient(
         ry: Int,
         lt: Int,
         rt: Int,
-    ): Boolean = call { it.injectGamepad(displayId, buttons, lx, ly, rx, ry, lt, rt) } ?: false
+    ): Boolean {
+        if (!NectarlinkServiceContract.isAllowedGamepad(displayId, lx, ly, rx, ry, lt, rt)) return false
+        return call { it.injectGamepad(displayId, buttons, lx, ly, rx, ry, lt, rt) } ?: false
+    }
 
-    fun pointerStart(edge: String, y: Float): PointerScreenInfo? = call { it.pointerStart(edge, y) }
+    fun pointerStart(edge: String, y: Float): PointerScreenInfo? {
+        if (!NectarlinkServiceContract.isAllowedPointerStart(edge, y)) return null
+        return call { it.pointerStart(edge, y) }
+    }
 
     fun pointerMove(dx: Int, dy: Int, buttons: Int, wheel: Int): Boolean =
         call { it.pointerMove(dx, dy, buttons, wheel) } ?: false
@@ -267,7 +285,12 @@ class NectarlinkServiceClient(
         bitrate: Int,
         fps: Int,
         codec: String = "h264",
-    ): IDisplaySession? = call { it.openScreenMirror(width, height, dpi, bitrate, fps, codec) }
+    ): IDisplaySession? {
+        if (!NectarlinkServiceContract.isAllowedDisplayRequest(width, height, dpi, bitrate, fps, codec)) {
+            return null
+        }
+        return call { it.openScreenMirror(width, height, dpi, bitrate, fps, codec) }
+    }
 
     fun openAppDisplay(
         pkg: String,
@@ -277,7 +300,14 @@ class NectarlinkServiceClient(
         bitrate: Int,
         fps: Int,
         codec: String = "h264",
-    ): IDisplaySession? = call { it.openAppDisplay(pkg, width, height, dpi, bitrate, fps, codec) }
+    ): IDisplaySession? {
+        if (!NectarlinkServiceContract.isValidPackageName(pkg) ||
+            !NectarlinkServiceContract.isAllowedDisplayRequest(width, height, dpi, bitrate, fps, codec)
+        ) {
+            return null
+        }
+        return call { it.openAppDisplay(pkg, width, height, dpi, bitrate, fps, codec) }
+    }
 
     fun openDeviceAudio(): ParcelFileDescriptor? = call { it.openDeviceAudio() }
 
@@ -302,14 +332,32 @@ class NectarlinkServiceClient(
 
     fun setHotspotEnabled(enabled: Boolean): Boolean = call { it.setHotspotEnabled(enabled) } ?: false
 
-    fun setScreenBrightness(brightness: Int): Boolean = call { it.setScreenBrightness(brightness) } ?: false
+    fun setScreenBrightness(brightness: Int): Boolean {
+        if (!NectarlinkServiceContract.isAllowedBrightness(brightness)) return false
+        return call { it.setScreenBrightness(brightness) } ?: false
+    }
 
-    fun setMusicVolume(index: Int): Boolean = call { it.setMusicVolume(index) } ?: false
+    fun setMusicVolume(index: Int): Boolean {
+        if (index < 0) return false
+        return call { it.setMusicVolume(index) } ?: false
+    }
 
-    fun uninstallPackage(pkg: String): Boolean = call { it.uninstallPackage(pkg) } ?: false
+    fun uninstallPackage(pkg: String): Boolean {
+        if (!NectarlinkServiceContract.isAllowedUninstallPackage(pkg, appContext.packageName)) return false
+        return call { it.uninstallPackage(pkg) } ?: false
+    }
 
-    fun launchActivityFromBackground(pkg: String, activityClass: String): Boolean =
-        call { it.launchActivityFromBackground(pkg, activityClass) } ?: false
+    fun launchActivityFromBackground(pkg: String, activityClass: String): Boolean {
+        if (!NectarlinkServiceContract.isAllowedBackgroundLaunch(
+                pkg,
+                activityClass,
+                setOf(appContext.packageName),
+            )
+        ) {
+            return false
+        }
+        return call { it.launchActivityFromBackground(pkg, activityClass) } ?: false
+    }
 
     fun openInputServerChannel(): ParcelFileDescriptor? = call { it.openInputServerChannel() }
 

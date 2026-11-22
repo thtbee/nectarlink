@@ -172,8 +172,7 @@ internal class PhonePlatform(
      * helper runs the command on its own).
      */
     override fun appUninstallRequested(pcId: String, pkg: String): Boolean {
-        if (pkg == context.packageName ||
-            !PACKAGE.matches(pkg) ||
+        if (!app.nectarlink.services.client.NectarlinkServiceContract.isAllowedUninstallPackage(pkg, context.packageName) ||
             !Elevated.hasCapability(app.nectarlink.services.client.NectarlinkServiceContract.CAP_UNINSTALL_PACKAGES)
         ) {
             return false

@@ -48,6 +48,8 @@ class SystemServiceBridgeTest {
         val own = "app.nectarlink"
         assertNull(SystemServiceBridge.parseCommand("pm uninstall app.nectarlink", own))
         assertNull(SystemServiceBridge.parseCommand("pm uninstall app.nectarlink.dev", own))
+        assertNull(SystemServiceBridge.parseCommand("pm uninstall app.nectarlink.services", own))
+        assertNull(SystemServiceBridge.parseCommand("am start -n app.nectarlink/app.nectarlink.android.MainActivity", own))
         assertNull(SystemServiceBridge.parseCommand("pm uninstall com.example; rm -rf /", own))
         assertNull(SystemServiceBridge.parseCommand("settings put system screen_brightness 300", own))
         assertNull(SystemServiceBridge.parseCommand("settings put system screen_brightness -1", own))

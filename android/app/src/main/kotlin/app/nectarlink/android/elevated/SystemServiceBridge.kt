@@ -4,6 +4,7 @@ package app.nectarlink.android.elevated
 import android.os.ParcelFileDescriptor
 import app.nectarlink.services.IDisplaySession
 import app.nectarlink.services.client.NectarlinkServiceClient
+import app.nectarlink.services.client.NectarlinkServiceContract
 import java.io.Closeable
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -132,8 +133,6 @@ internal sealed interface SystemServiceCommand {
 internal object SystemServiceBridge {
     private const val BRIGHTNESS_PREFIX = "settings put system screen_brightness "
     private const val UNINSTALL_PREFIX = "pm uninstall "
-    private const val OWN_PACKAGE = "app.nectarlink"
-    private val PACKAGE = Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+")
 
     private val handshakePool = Executors.newCachedThreadPool { r ->
         Thread(r, "nectarlink-service-handshake").apply { isDaemon = true }
@@ -148,15 +147,19 @@ internal object SystemServiceBridge {
         cmd == "hotspot on" || cmd == "cmd wifi start-softap" -> SystemServiceCommand.SetHotspot(true)
         cmd == "hotspot off" || cmd == "cmd wifi stop-softap" -> SystemServiceCommand.SetHotspot(false)
         cmd == "appops set $ownPackage GET_USAGE_STATS allow" -> SystemServiceCommand.ProvisionPermissions
-        cmd == "am start -n $ownPackage/app.nectarlink.android.service.PcStartActivity" ->
+        cmd == "am start -n $ownPackage/${NectarlinkServiceContract.ALLOWED_BACKGROUND_ACTIVITY}" ->
             SystemServiceCommand.LaunchPcStartActivity
         cmd.startsWith(BRIGHTNESS_PREFIX) -> {
             val v = cmd.removePrefix(BRIGHTNESS_PREFIX).toIntOrNull()
-            if (v != null && v in 0..255) SystemServiceCommand.SetBrightness(v) else null
+            if (v != null && NectarlinkServiceContract.isAllowedBrightness(v)) {
+                SystemServiceCommand.SetBrightness(v)
+            } else {
+                null
+            }
         }
         cmd.startsWith(UNINSTALL_PREFIX) -> {
             val pkg = cmd.removePrefix(UNINSTALL_PREFIX)
-            if (PACKAGE.matches(pkg) && pkg != ownPackage && pkg != OWN_PACKAGE && !pkg.startsWith("$OWN_PACKAGE.")) {
+            if (NectarlinkServiceContract.isAllowedUninstallPackage(pkg, ownPackage)) {
                 SystemServiceCommand.UninstallPackage(pkg)
             } else {
                 null
@@ -175,7 +178,7 @@ internal object SystemServiceBridge {
             is SystemServiceCommand.UninstallPackage -> client.uninstallPackage(parsed.pkg)
             SystemServiceCommand.ProvisionPermissions -> client.provisionAppPermissions(ownPackage)
             SystemServiceCommand.LaunchPcStartActivity ->
-                client.launchActivityFromBackground(ownPackage, "app.nectarlink.android.service.PcStartActivity")
+                client.launchActivityFromBackground(ownPackage, NectarlinkServiceContract.ALLOWED_BACKGROUND_ACTIVITY)
             null -> false
         }
     }
