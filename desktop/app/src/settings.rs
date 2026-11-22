@@ -628,6 +628,11 @@ pub struct Settings {
     /// the app's own top corner. Ctrl+Shift+T in a window brings it back.
     #[serde(default)]
     pub hide_mirror_toolbar: bool,
+    /// That toolbar's corner, so it can be moved off the app's own buttons.
+    #[serde(default)]
+    pub mirror_toolbar_bottom: bool,
+    #[serde(default)]
+    pub mirror_toolbar_left: bool,
     /// No pop-ups for phone notifications while this PC is locked.
     #[serde(default, alias = "quiet_when_locked")]
     pub quiet_when_locked: bool,
@@ -945,6 +950,8 @@ impl Default for Settings {
             enter_sends: false,
             right_click_long_press: false,
             hide_mirror_toolbar: false,
+            mirror_toolbar_bottom: false,
+            mirror_toolbar_left: false,
             quiet_when_locked: false,
             hold_when_locked: false,
             send_to_menu: true,
@@ -1300,6 +1307,8 @@ mod tests {
             enter_sends: true,
             right_click_long_press: true,
             hide_mirror_toolbar: true,
+            mirror_toolbar_bottom: true,
+            mirror_toolbar_left: true,
             quiet_when_locked: true,
             hold_when_locked: true,
             send_to_menu: false,

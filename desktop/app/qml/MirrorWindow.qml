@@ -697,18 +697,26 @@ Window {
         interval: 1800
         repeat: false
     }
+    // The toolbar sits in a corner of the window, top right unless it was
+    // dragged by its grip to another one: off the app's own buttons (#340).
+    readonly property bool toolbarBottom: Preferences.mirrorToolbarBottom
+    readonly property bool toolbarLeft: Preferences.mirrorToolbarLeft
+    // Hovering this strip along the toolbar's edge shows it.
     Item {
-        anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
+        y: win.toolbarBottom ? parent.height - height : 0
         height: navPill.visible && !navPill.besideToolbar ? 104 : 56
         HoverHandler { id: topZoneHover }
     }
     Rectangle {
         id: toolbar
-        anchors.top: parent.top
-        anchors.right: parent.right
-        anchors.margins: 12
+        readonly property real restX: win.toolbarLeft ? 12 : parent.width - width - 12
+        readonly property real restY: win.toolbarBottom
+            ? parent.height - height - 12 - (hintBanner.visible ? hintBanner.height + 12 : 0)
+            : 12
+        x: restX
+        y: restY
         width: toolbarRow.implicitWidth + 8
         height: 40
         radius: 20
@@ -720,15 +728,54 @@ Window {
         // Only while it's wanted: it sits over the app's own top bar (#340).
         // Recording and a dark phone screen show in the window's title instead.
         opacity: topZoneHover.hovered || toolbarHover.hovered || navHover.hovered || toolbarWakeTimer.running
-            || toolbarHasFocus ? 1 : 0
+            || toolbarHasFocus || gripDrag.active ? 1 : 0
         Behavior on opacity { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.fadeFast } }
 
         HoverHandler { id: toolbarHover }
+
+        // Let go of a drag: the nearest corner keeps it, in every window.
+        function settle() {
+            const parentItem = toolbar.parent
+            Preferences.mirrorToolbarLeft = toolbar.x + toolbar.width / 2 < parentItem.width / 2
+            Preferences.mirrorToolbarBottom = toolbar.y + toolbar.height / 2 > parentItem.height / 2
+            toolbar.x = Qt.binding(() => toolbar.restX)
+            toolbar.y = Qt.binding(() => toolbar.restY)
+            toolbarWakeTimer.restart()
+        }
 
         Row {
             id: toolbarRow
             anchors.centerIn: parent
             spacing: 2
+
+            Item {
+                id: gripHandle
+                width: 20
+                height: 32
+                anchors.verticalCenter: parent.verticalCenter
+                Accessible.role: Accessible.Grip
+                Accessible.name: qsTr("Drag to move the toolbar to another corner")
+                Icon {
+                    anchors.centerIn: parent
+                    width: 14
+                    height: 14
+                    path: Icons.grip
+                    color: Qt.rgba(1, 1, 1, gripHover.hovered || gripDrag.active ? 0.95 : 0.6)
+                }
+                HoverHandler {
+                    id: gripHover
+                    cursorShape: gripDrag.active ? Qt.ClosedHandCursor : Qt.OpenHandCursor
+                }
+                DragHandler {
+                    id: gripDrag
+                    target: toolbar
+                    xAxis.minimum: 0
+                    xAxis.maximum: toolbar.parent.width - toolbar.width
+                    yAxis.minimum: 0
+                    yAxis.maximum: toolbar.parent.height - toolbar.height
+                    onActiveChanged: if (!active) toolbar.settle()
+                }
+            }
 
             IconButton {
                 id: copyShotBtn
@@ -845,10 +892,13 @@ Window {
     Rectangle {
         id: navPill
         readonly property bool besideToolbar: win.width >= toolbar.width + width + 30
-        anchors.top: besideToolbar ? parent.top : toolbar.bottom
-        anchors.topMargin: besideToolbar ? 12 : 6
-        anchors.right: besideToolbar ? toolbar.left : parent.right
-        anchors.rightMargin: besideToolbar ? 6 : 12
+        // Beside the toolbar on the window's inner side, or past it, away from the edge.
+        x: besideToolbar
+            ? (win.toolbarLeft ? toolbar.x + toolbar.width + 6 : toolbar.x - width - 6)
+            : (win.toolbarLeft ? toolbar.x : toolbar.x + toolbar.width - width)
+        y: besideToolbar
+            ? toolbar.y
+            : (win.toolbarBottom ? toolbar.y - height - 6 : toolbar.y + toolbar.height + 6)
         width: navRow.implicitWidth + 8
         height: 40
         radius: 20
@@ -893,9 +943,8 @@ Window {
     // toolbar's corner says so, instead of the whole toolbar staying over
     // the picture. A click plays the sound again.
     Rectangle {
-        anchors.top: parent.top
-        anchors.right: parent.right
-        anchors.margins: 12
+        x: win.toolbarLeft ? 12 : parent.width - width - 12
+        y: win.toolbarBottom ? parent.height - height - 12 : 12
         width: 32
         height: 32
         radius: 16
