@@ -26,6 +26,7 @@ class InputServerCommandsTest {
         assertTrue(InputServer.isAllowedCommand("pm uninstall org.Some_App.v2"))
         assertFalse(InputServer.isAllowedCommand("pm uninstall app.nectarlink"))
         assertFalse(InputServer.isAllowedCommand("pm uninstall app.nectarlink.dev"))
+        assertFalse(InputServer.isAllowedCommand("pm uninstall sn.nectarlink.services"))
         assertFalse(InputServer.isAllowedCommand("pm uninstall com.example.app; reboot"))
         assertFalse(InputServer.isAllowedCommand("pm uninstall --user 0 com.example.app"))
         assertFalse(InputServer.isAllowedCommand("pm uninstall com"))

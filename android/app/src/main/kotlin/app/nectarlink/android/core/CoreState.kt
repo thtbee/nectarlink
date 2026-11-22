@@ -191,8 +191,12 @@ data class CoreState(
     val notificationAccess: Boolean = false,
     /** Whether Android lets NectarLink reach the local network (Android 17). */
     val localNetwork: Boolean = true,
-    /** Whether the Elevated helper runs (wireless debugging). */
+    /** Whether the Elevated helper (`InputServer` via ADB, root, or Shizuku) runs. */
     val elevated: Boolean = false,
+    /** Whether Nectarlink Services completed a verified handshake and is currently connected. */
+    val romServiceAvailable: Boolean = false,
+    /** Bitmask of [NectarlinkServiceContract].CAP_* reported by the connected system service. */
+    val romServiceCapabilities: Long = 0L,
     /** Whether the user turned on control from the PC (the accessibility service). */
     val inputAccess: Boolean = false,
     /** Whether a paired PC tried to inject mouse/keyboard input while input access is off. */
@@ -264,6 +268,18 @@ data class CoreState(
     val activeMediaColor: UInt? = null,
 ) {
     fun device(id: String): Device? = devices.firstOrNull { it.id == id }
+
+    /** Whether [flag] is provided by normal Elevated or by the verified system service. */
+    fun hasElevatedCapability(flag: Long): Boolean =
+        elevated || (romServiceAvailable && (romServiceCapabilities and flag) == flag)
+
+    /** Whether Elevated setup UI should be hidden because the verified system service covers all core capabilities. */
+    val hideElevated: Boolean
+        get() = romServiceAvailable &&
+            app.nectarlink.services.client.NectarlinkServiceContract.hasAllRequiredCapabilities(
+                romServiceCapabilities,
+                android.os.Build.VERSION.SDK_INT,
+            )
 
     /**
      * Whether a connected PC has "Phone as speaker" on: its deck state lists

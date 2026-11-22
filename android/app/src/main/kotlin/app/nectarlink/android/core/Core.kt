@@ -42,6 +42,7 @@ import app.nectarlink.android.mirror.MirrorService
 import app.nectarlink.android.toggles.PhoneToggles
 import app.nectarlink.android.webcam.WebcamRequests
 import app.nectarlink.android.webcam.WebcamService
+import app.nectarlink.services.client.NectarlinkServiceContract
 import app.nectarlink.core.FfiQueueStatus
 import app.nectarlink.core.Event
 import app.nectarlink.core.EventListener
@@ -598,8 +599,12 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                     }
             }
             val initialInputEnabled = InputService.running || InputService.enabled(context)
-            val initialElevated = Elevated.running
-            val initialInputAccess = InputService.running || initialElevated || initialInputEnabled
+            val initialElevated = Elevated.helperRunning
+            val initialRomService = Elevated.romServiceActive
+            val initialRomCaps = Elevated.romServiceCapabilities
+            val initialInputAccess = InputService.running ||
+                Elevated.hasCapability(NectarlinkServiceContract.CAP_INPUT_INJECTION) ||
+                initialInputEnabled
             _state.update {
                 it.copy(
                     companionAssociated = companionAssociated,
@@ -610,6 +615,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                     smsAccess = PhoneSms.hasAll(context),
                     inputAccess = initialInputAccess,
                     elevated = initialElevated,
+                    romServiceAvailable = initialRomService,
+                    romServiceCapabilities = initialRomCaps,
                     dndAccess = PhoneToggles.hasDndAccess(context),
                     writeSettingsAccess = PhoneToggles.hasWriteSettings(context),
                     storageAllFilesAccess = PhoneStorage.hasAllFilesAccess(context),
@@ -787,8 +794,15 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                     val contactsAccess = PhoneContacts.canRead(context)
                     val smsAccess = PhoneSms.hasAll(context)
                     val inputEnabled = InputService.enabled(context)
-                    val elevated = Elevated.running
-                    val inputAccess = InputService.running || elevated || inputEnabled
+                    val elevated = Elevated.helperRunning
+                    val romServiceAvailable = Elevated.romServiceActive
+                    val romServiceCapabilities = Elevated.romServiceCapabilities
+                    if (Elevated.hasSystemService(context) && !romServiceAvailable) {
+                        scope.launch { Elevated.start() }
+                    }
+                    val inputAccess = InputService.running ||
+                        Elevated.hasCapability(NectarlinkServiceContract.CAP_INPUT_INJECTION) ||
+                        inputEnabled
                     val dndAccess = PhoneToggles.hasDndAccess(context)
                     val writeSettingsAccess = PhoneToggles.hasWriteSettings(context)
                     val storageAllFilesAccess = PhoneStorage.hasAllFilesAccess(context)
@@ -814,6 +828,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                             smsAccess = smsAccess,
                             inputAccess = inputAccess,
                             elevated = elevated,
+                            romServiceAvailable = romServiceAvailable,
+                            romServiceCapabilities = romServiceCapabilities,
                             remoteInputRequested = if (inputAccess) false else it.remoteInputRequested,
                             dndAccess = dndAccess,
                             writeSettingsAccess = writeSettingsAccess,
@@ -2274,7 +2290,9 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             (if (PhoneCalls.canControl(context) && CallCompanion.allowed(context)) listOf("call.incall") else emptyList()) +
             // A call's sound on the PC: only where the Elevated helper found it can reach it
             // (Android 13+ and the phone's audio HAL), so PCs show no button that can't work.
-            (if (PhoneCalls.canControl(context) && Elevated.running && Elevated.callAudioSupported) {
+            (if (PhoneCalls.canControl(context) &&
+                    Elevated.hasCapability(NectarlinkServiceContract.CAP_CALL_AUDIO) &&
+                    Elevated.callAudioSupported) {
                 listOf("call.audio")
             } else {
                 emptyList()
@@ -2295,18 +2313,41 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             }) +
             (if (WebcamService.hasPermission(context)) listOf("camera.stream") else emptyList()) +
             (if (context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) listOf("camera.capture") else emptyList()) +
-            (if (InputService.running || Elevated.running) listOf("mirror.input") else emptyList()) +
-            (if (Elevated.running) listOf("clip.read.auto") else emptyList()) +
+            (if (InputService.running || Elevated.hasCapability(NectarlinkServiceContract.CAP_INPUT_INJECTION)) {
+                listOf("mirror.input")
+            } else {
+                emptyList()
+            }) +
+            (if (Elevated.hasCapability(NectarlinkServiceContract.CAP_CLIPBOARD_SYNC)) listOf("clip.read.auto") else emptyList()) +
             // Apps in windows of their own run on displays the Elevated helper makes.
-            (if (Elevated.running && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) listOf("mirror.virtual_display") else emptyList()) +
+            (if (Elevated.hasCapability(NectarlinkServiceContract.CAP_APP_VIRTUAL_DISPLAY) &&
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                listOf("mirror.virtual_display")
+            } else {
+                emptyList()
+            }) +
             // A PC can uninstall an app through Elevated (D349).
-            (if (Elevated.running) listOf("mirror.apps.uninstall") else emptyList()) +
+            (if (Elevated.hasCapability(NectarlinkServiceContract.CAP_UNINSTALL_PACKAGES)) {
+                listOf("mirror.apps.uninstall")
+            } else {
+                emptyList()
+            }) +
             // The PC's mouse over the edge of its screen, with a pointer of the phone's own (#107).
-            (if (Elevated.running) listOf("mirror.pointer") else emptyList()) +
+            (if (Elevated.hasCapability(NectarlinkServiceContract.CAP_POINTER_FLOW)) listOf("mirror.pointer") else emptyList()) +
             // Asked for when a PC wants the sound, or streamed via Elevated helper.
-            (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q || Elevated.running) listOf("mirror.audio.playback") else emptyList()) +
+            (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ||
+                    Elevated.hasCapability(NectarlinkServiceContract.CAP_DEVICE_AUDIO)) {
+                listOf("mirror.audio.playback")
+            } else {
+                emptyList()
+            }) +
             // The same sound on its own, without the screen.
-            (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q || Elevated.running) listOf("mirror.sound") else emptyList()) +
+            (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ||
+                    Elevated.hasCapability(NectarlinkServiceContract.CAP_DEVICE_AUDIO)) {
+                listOf("mirror.sound")
+            } else {
+                emptyList()
+            }) +
             (if (app.nectarlink.android.mirror.ScreenEncoder.supportsHevcDecoder()) listOf("mirror.decode.hevc") else emptyList())
 
     /**
@@ -2335,7 +2376,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
      * user turned on control from the PC (docs/PLAN.md §4.6).
      */
     private fun powerLevel(): PowerLevel = when {
-        Elevated.running -> PowerLevel.ELEVATED
+        Elevated.helperRunning || Elevated.romServiceCapabilities != 0L -> PowerLevel.ELEVATED
         InputService.running -> PowerLevel.ASSIST
         else -> PowerLevel.BASIC
     }

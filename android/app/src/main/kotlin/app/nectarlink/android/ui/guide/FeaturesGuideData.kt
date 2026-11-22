@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.annotation.StringRes
 import app.nectarlink.android.R
 import app.nectarlink.android.core.CoreState
+import app.nectarlink.services.client.NectarlinkServiceContract
 
 /**
  * High-level area filter tabs on the Features Guide screen.
@@ -705,7 +706,7 @@ object FeaturesGuideCatalog {
             dataAndPrivacyRes = R.string.guide_apps_privacy,
             limitsRes = R.string.guide_apps_limits,
             evaluateBadge = { state ->
-                if (!state.elevated) {
+                if (!state.hasElevatedCapability(NectarlinkServiceContract.CAP_APP_VIRTUAL_DISPLAY)) {
                     FeatureLiveBadge.NeedsPowerLevel(R.string.guide_req_elevated)
                 } else if (state.devices.none { it.online }) {
                     FeatureLiveBadge.ConnectPcToCheck
@@ -714,7 +715,11 @@ object FeaturesGuideCatalog {
                 }
             },
             evaluateFixAction = { state ->
-                if (!state.elevated) GuideFixAction.ENABLE_ELEVATED else null
+                if (!state.hasElevatedCapability(NectarlinkServiceContract.CAP_APP_VIRTUAL_DISPLAY)) {
+                    GuideFixAction.ENABLE_ELEVATED
+                } else {
+                    null
+                }
             },
         ),
 
@@ -881,7 +886,7 @@ object FeaturesGuideCatalog {
             dataAndPrivacyRes = R.string.guide_assist_privacy,
             limitsRes = R.string.guide_assist_limits,
             evaluateBadge = { state ->
-                if (!state.inputAccess && !state.elevated) {
+                if (!state.inputAccess && !state.hasElevatedCapability(NectarlinkServiceContract.CAP_INPUT_INJECTION)) {
                     FeatureLiveBadge.NeedsPowerLevel(R.string.guide_req_assist_or_elevated)
                 } else if (state.devices.none { it.online }) {
                     FeatureLiveBadge.ConnectPcToCheck
@@ -890,7 +895,11 @@ object FeaturesGuideCatalog {
                 }
             },
             evaluateFixAction = { state ->
-                if (!state.inputAccess && !state.elevated) GuideFixAction.OPEN_ACCESSIBILITY else null
+                if (!state.inputAccess && !state.hasElevatedCapability(NectarlinkServiceContract.CAP_INPUT_INJECTION)) {
+                    GuideFixAction.OPEN_ACCESSIBILITY
+                } else {
+                    null
+                }
             },
         ),
 
@@ -920,14 +929,14 @@ object FeaturesGuideCatalog {
             dataAndPrivacyRes = R.string.guide_elevated_privacy,
             limitsRes = R.string.guide_elevated_limits,
             evaluateBadge = { state ->
-                if (!state.elevated) {
+                if (!state.elevated && !state.hideElevated) {
                     FeatureLiveBadge.NeedsPowerLevel(R.string.guide_req_elevated)
                 } else {
                     FeatureLiveBadge.Available
                 }
             },
             evaluateFixAction = { state ->
-                if (!state.elevated) GuideFixAction.ENABLE_ELEVATED else null
+                if (!state.elevated && !state.hideElevated) GuideFixAction.ENABLE_ELEVATED else null
             },
         ),
 
@@ -1063,7 +1072,7 @@ object FeaturesGuideCatalog {
             evaluateBadge = { state ->
                 if (!state.dndAccess) {
                     FeatureLiveBadge.NeedsPermission(R.string.guide_req_dnd)
-                } else if (!state.writeSettingsAccess && !state.elevated) {
+                } else if (!state.writeSettingsAccess && !state.hasElevatedCapability(NectarlinkServiceContract.CAP_SYSTEM_TOGGLES)) {
                     FeatureLiveBadge.NeedsPermission(R.string.guide_req_write_settings)
                 } else if (state.devices.none { it.online }) {
                     FeatureLiveBadge.ConnectPcToCheck
@@ -1074,7 +1083,8 @@ object FeaturesGuideCatalog {
             evaluateFixAction = { state ->
                 when {
                     !state.dndAccess -> GuideFixAction.ENABLE_DND
-                    !state.writeSettingsAccess && !state.elevated -> GuideFixAction.ENABLE_WRITE_SETTINGS
+                    !state.writeSettingsAccess && !state.hasElevatedCapability(NectarlinkServiceContract.CAP_SYSTEM_TOGGLES) ->
+                        GuideFixAction.ENABLE_WRITE_SETTINGS
                     else -> null
                 }
             },
@@ -1164,9 +1174,11 @@ object FeaturesGuideCatalog {
         context: Context,
         area: FeatureArea,
         searchQuery: String,
+        includeElevated: Boolean = true,
     ): List<FeatureGuideEntry> {
         val q = searchQuery.trim().lowercase()
         return entries.filter { entry ->
+            val allowed = includeElevated || entry.id != "elevated_mode"
             val matchesArea = area == FeatureArea.All || entry.area == area
             val matchesQuery = q.isEmpty() ||
                 context.getString(entry.titleRes).lowercase().contains(q) ||
@@ -1174,21 +1186,23 @@ object FeaturesGuideCatalog {
                 context.getString(entry.whereTextRes).lowercase().contains(q) ||
                 context.getString(entry.needsSummaryRes).lowercase().contains(q) ||
                 entry.keywords.any { it.lowercase().contains(q) }
-            matchesArea && matchesQuery
+            allowed && matchesArea && matchesQuery
         }
     }
 
     fun filter(
         area: FeatureArea,
         searchQuery: String,
+        includeElevated: Boolean = true,
     ): List<FeatureGuideEntry> {
         val q = searchQuery.trim().lowercase()
         return entries.filter { entry ->
+            val allowed = includeElevated || entry.id != "elevated_mode"
             val matchesArea = area == FeatureArea.All || entry.area == area
             val matchesQuery = q.isEmpty() ||
                 entry.id.lowercase().contains(q) ||
                 entry.keywords.any { it.lowercase().contains(q) }
-            matchesArea && matchesQuery
+            allowed && matchesArea && matchesQuery
         }
     }
 }

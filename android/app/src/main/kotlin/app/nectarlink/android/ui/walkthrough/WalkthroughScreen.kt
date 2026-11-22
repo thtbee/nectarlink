@@ -104,6 +104,7 @@ import app.nectarlink.android.notifications.NotificationListener
 import app.nectarlink.android.photos.RecentPhotos
 import app.nectarlink.android.sms.PhoneSms
 import app.nectarlink.android.storage.PhoneStorage
+import app.nectarlink.services.client.NectarlinkServiceContract
 import app.nectarlink.android.ui.pairing.PairingActions
 import app.nectarlink.android.ui.pairing.QrScanner
 import app.nectarlink.android.ui.theme.LocalGlassTheme
@@ -181,6 +182,8 @@ fun WalkthroughScreen(
         state.storageSafFolders,
         state.inputAccess,
         state.elevated,
+        state.romServiceAvailable,
+        state.romServiceCapabilities,
     ) {
         listOf(
             state.notificationAccess && postNotifGranted,
@@ -189,12 +192,13 @@ fun WalkthroughScreen(
             state.smsAccess && state.contactsAccess,
             state.photoAccess,
             state.storageAllFilesAccess || state.storageSafFolders.isNotEmpty(),
-            state.inputAccess || state.elevated,
+            state.inputAccess || state.hasElevatedCapability(NectarlinkServiceContract.CAP_INPUT_INJECTION),
         )
     }
 
     val hasPairedPc = state.devices.isNotEmpty() || state.pairing is PairingState.Paired
     val activeTierIndex = when {
+        state.hideElevated -> if (state.inputAccess) 1 else 0
         state.elevated -> 2
         state.inputAccess -> 1
         else -> 0
@@ -222,6 +226,7 @@ fun WalkthroughScreen(
                 permissionGrantedFlags = permissionGrantedFlags,
                 hasPairedPc = hasPairedPc,
                 activeTierIndex = activeTierIndex,
+                hideElevated = state.hideElevated,
                 isGlass = isGlass,
                 reducedMotion = reducedMotion,
                 modifier = Modifier
@@ -443,6 +448,7 @@ private fun HoneycombCellStage(
     permissionGrantedFlags: List<Boolean>,
     hasPairedPc: Boolean,
     activeTierIndex: Int,
+    hideElevated: Boolean,
     isGlass: Boolean,
     reducedMotion: Boolean,
     modifier: Modifier = Modifier,
@@ -696,9 +702,18 @@ private fun HoneycombCellStage(
                 WalkthroughStep.PowerLevel -> {
                     val tierR = 18.dp.toPx()
                     val stepX = 36.dp.toPx()
-                    for (tier in 0..2) {
-                        val tx = motifCx + (tier - 1) * stepX
-                        val ty = motifCy + (1 - tier) * 7.dp.toPx()
+                    val maxTier = if (hideElevated) 1 else 2
+                    for (tier in 0..maxTier) {
+                        val tx = if (hideElevated) {
+                            motifCx + (tier - 0.5f) * stepX
+                        } else {
+                            motifCx + (tier - 1) * stepX
+                        }
+                        val ty = if (hideElevated) {
+                            motifCy + (0.5f - tier) * 7.dp.toPx()
+                        } else {
+                            motifCy + (1 - tier) * 7.dp.toPx()
+                        }
                         val isSelected = tier == activeTierIndex
                         val isUnlocked = tier <= activeTierIndex
 
@@ -1135,7 +1150,7 @@ private fun PermissionsStepContent(
             whatItDoesRes = R.string.walkthrough_perm_access_does,
             whatAndroidRequiresRes = R.string.walkthrough_perm_access_requires,
             optional = true,
-            granted = state.inputAccess || state.elevated,
+            granted = state.inputAccess || state.hasElevatedCapability(NectarlinkServiceContract.CAP_INPUT_INJECTION),
             onGrant = {
                 runCatching { context.startActivity(InputService.settingsIntent()) }
             },
@@ -1706,7 +1721,7 @@ private fun PowerLevelStepContent(
 
     val activeTierLabel = stringResource(
         when {
-            state.elevated -> R.string.walkthrough_power_elevated_title
+            !state.hideElevated && state.elevated -> R.string.walkthrough_power_elevated_title
             state.inputAccess -> R.string.walkthrough_power_assist_title
             else -> R.string.walkthrough_power_standard_title
         },
@@ -1756,7 +1771,7 @@ private fun PowerLevelStepContent(
             PowerLevelRow(
                 title = stringResource(R.string.walkthrough_power_standard_title),
                 subtitle = stringResource(R.string.walkthrough_power_standard_sub),
-                active = !state.elevated && !state.inputAccess,
+                active = (state.hideElevated || !state.elevated) && !state.inputAccess,
                 summary = stringResource(R.string.walkthrough_power_standard_desc),
                 actionLabel = null,
                 onAction = null,
@@ -1768,7 +1783,7 @@ private fun PowerLevelStepContent(
             PowerLevelRow(
                 title = stringResource(R.string.walkthrough_power_assist_title),
                 subtitle = stringResource(R.string.walkthrough_power_assist_sub),
-                active = !state.elevated && state.inputAccess,
+                active = (state.hideElevated || !state.elevated) && state.inputAccess,
                 summary = stringResource(R.string.walkthrough_power_assist_desc),
                 actionLabel = stringResource(
                     if (state.inputAccess) R.string.walkthrough_power_assist_manage else R.string.walkthrough_power_assist_open,
@@ -1778,10 +1793,11 @@ private fun PowerLevelStepContent(
                 },
             )
 
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
+            if (!state.hideElevated) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f))
 
-            // Tier 3: Elevated
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Tier 3: Elevated
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -1885,6 +1901,7 @@ private fun PowerLevelStepContent(
                         )
                     }
                 }
+                }
             }
         }
     }
@@ -1957,7 +1974,7 @@ private fun DoneStepContent(
     }
     val powerLevelText = stringResource(
         when {
-            state.elevated -> R.string.walkthrough_done_power_elevated
+            !state.hideElevated && state.elevated -> R.string.walkthrough_done_power_elevated
             state.inputAccess -> R.string.walkthrough_done_power_assist
             else -> R.string.walkthrough_done_power_standard
         },

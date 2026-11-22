@@ -19,10 +19,10 @@ import app.nectarlink.android.NectarlinkApplication
 import app.nectarlink.android.R
 import app.nectarlink.android.elevated.CallAudio
 import app.nectarlink.android.elevated.Elevated
+import app.nectarlink.android.elevated.ElevatedCallAudioStream
 import app.nectarlink.core.MirrorSendResult
 import app.nectarlink.core.VideoPacketKind
 import app.nectarlink.core.mirrorAudioConfig
-import java.net.Socket
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -82,7 +82,7 @@ class CallAudioService : Service() {
                     }
                     // The PC plays the call now; the phone's copy goes quiet (#133).
                     CallEarpiece.quiet(this@CallAudioService)
-                    val input = call.socket.getInputStream()
+                    val input = call.socket.inputStream
                     val chunk = ByteArray(CallAudio.CHUNK_BYTES)
                     var samples = 0L
                     while (true) {
@@ -155,7 +155,7 @@ class CallAudioService : Service() {
     }
 
     /** A call's sound carried to [pcId] over the helper's [socket]. */
-    private class Active(val pcId: String, val socket: Socket) {
+    private class Active(val pcId: String, val socket: ElevatedCallAudioStream) {
         @Volatile var started = false
     }
 
@@ -200,7 +200,7 @@ class CallAudioService : Service() {
             if (CallCompanion.controls()?.muted == true) return
             val call = synchronized(lock) { active?.takeIf { it.pcId == pcId } } ?: return
             runCatching {
-                val out = call.socket.getOutputStream()
+                val out = call.socket.outputStream
                 synchronized(call) { out.write(pcm) }
             }
         }

@@ -84,6 +84,7 @@ import app.nectarlink.android.elevated.Elevated
 import app.nectarlink.android.elevated.PairingNotification
 import app.nectarlink.android.elevated.ElevatedMethod
 import app.nectarlink.android.elevated.ShizukuElevated
+import app.nectarlink.services.client.NectarlinkServiceContract
 import app.nectarlink.android.mirror.InputService
 import app.nectarlink.android.photos.RecentPhotos
 import app.nectarlink.android.sms.PhoneSms
@@ -758,15 +759,23 @@ fun SettingsScreen(
                     highlighted = pulsingSectionKey == "control",
                 ) {
                     ControlAccess(state.inputAccess)
-                    SettingRowDivider()
-                    ElevatedAccess()
-                    AssistOnDemandAccess(state.elevated)
+                    if (!state.hideElevated) {
+                        SettingRowDivider()
+                        ElevatedAccess()
+                    }
+                    AssistOnDemandAccess(
+                        state.hasElevatedCapability(NectarlinkServiceContract.CAP_INPUT_INJECTION),
+                        state.hideElevated,
+                    )
                     SettingRowDivider()
                     BankingPauseAccess()
                     SettingRowDivider()
                     DndAccess(state.dndAccess)
                     SettingRowDivider()
-                    WriteSettingsAccess(state.writeSettingsAccess || state.elevated)
+                    WriteSettingsAccess(
+                        state.writeSettingsAccess ||
+                            state.hasElevatedCapability(NectarlinkServiceContract.CAP_SYSTEM_TOGGLES),
+                    )
                 }
             }
 
@@ -883,31 +892,34 @@ fun SettingsScreen(
                     highlighted = pulsingSectionKey == "clipboard",
                 ) {
                     val context = LocalContext.current
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-                        Column(Modifier.weight(1f).padding(end = 12.dp)) {
-                            Text(stringResource(R.string.settings_background_clipboard_title), style = MaterialTheme.typography.titleSmall)
-                            Text(
-                                if (state.elevated) {
-                                    stringResource(R.string.settings_wireless_debugging_active)
-                                } else {
-                                    stringResource(R.string.settings_wireless_debugging_hint)
-                                },
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        // Elevated's own section knows every way to start it.
-                        if (state.elevated) {
-                            OutlinedButton(onClick = { jumpToControl++ }) {
-                                Text(stringResource(R.string.action_manage))
+                    // Hidden only when the add-on covers Elevated; with Elevated on it says so here.
+                    if (!state.hideElevated) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                            Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                                Text(stringResource(R.string.settings_background_clipboard_title), style = MaterialTheme.typography.titleSmall)
+                                Text(
+                                    if (state.elevated) {
+                                        stringResource(R.string.settings_wireless_debugging_active)
+                                    } else {
+                                        stringResource(R.string.settings_wireless_debugging_hint)
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
                             }
-                        } else {
-                            Button(onClick = { jumpToControl++ }) {
-                                Text(stringResource(R.string.elevated_set_up))
+                            // Elevated's own section knows every way to start it.
+                            if (state.elevated) {
+                                OutlinedButton(onClick = { jumpToControl++ }) {
+                                    Text(stringResource(R.string.action_manage))
+                                }
+                            } else {
+                                Button(onClick = { jumpToControl++ }) {
+                                    Text(stringResource(R.string.elevated_set_up))
+                                }
                             }
                         }
+                        SettingRowDivider()
                     }
-                    SettingRowDivider()
                     var syncPasswords by remember { mutableStateOf(PhoneClipboard.syncPasswords(context)) }
                     val syncPasswordsTitle = stringResource(R.string.settings_clipboard_passwords)
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -1575,10 +1587,10 @@ private fun ControlAccess(on: Boolean) {
  * does everything else Assist would. Its own divider, since it may not show.
  */
 @Composable
-private fun AssistOnDemandAccess(elevatedRunning: Boolean) {
+private fun AssistOnDemandAccess(elevatedRunning: Boolean, hideElevated: Boolean = false) {
     val context = LocalContext.current
     val on by app.nectarlink.android.banking.AssistOnDemand.enabled.collectAsStateWithLifecycle()
-    if (!on && !elevatedRunning && !Elevated.isSetUp()) return
+    if (!on && (hideElevated || (!elevatedRunning && !Elevated.isSetUp()))) return
     SettingRowDivider()
     val title = stringResource(R.string.settings_assist_on_demand)
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {

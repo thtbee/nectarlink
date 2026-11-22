@@ -444,6 +444,15 @@ change things that need a step from you, and its notes say so.
   own. Thanks to
   [@w-rakeeb](https://github.com/w-rakeeb)
   ([#501](https://github.com/thtbee/nectarlink/pull/501)).
+- **Nectarlink Services for rooted phones and custom ROMs (experimental).** A separate
+  community add-on, [nectarlink-services](https://github.com/isaiahscape/nectarlink-services),
+  installed as a system app through a
+  [KernelSU or Magisk module](https://github.com/isaiahscape/nectarlink-module), gives the
+  phone app what Elevated does without Wireless debugging, Shizuku or a root prompt each
+  time. NectarLink uses it only after checking its signature, version and what it offers;
+  phones without it are unchanged. It's built and looked after by
+  [@isaiahscape](https://github.com/isaiahscape), not by NectarLink
+  ([#517](https://github.com/thtbee/nectarlink/pull/517)).
 
 ### Fixed
 
