@@ -62,7 +62,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@v7
       - name: Install the pinned Rust toolchain
@@ -99,7 +99,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, ubuntu-24.04-arm, windows-latest, macos-latest]
     steps:
       - run: echo "Only docs changed; nothing to build or test."
 
@@ -266,10 +266,16 @@ jobs:
           rmdir "$MNT"
 
   desktop-linux:
-    name: Linux app (x64)
+    name: Linux app (${{ matrix.arch }})
     needs: changes
     if: needs.changes.outputs.code == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { arch: x64, os: ubuntu-latest, qt-host: linux, qt-arch: linux_gcc_64 }
+          - { arch: arm64, os: ubuntu-24.04-arm, qt-host: linux_arm64, qt-arch: linux_gcc_arm64 }
     steps:
       - uses: actions/checkout@v7
       - name: Install the pinned Rust toolchain
@@ -278,8 +284,8 @@ jobs:
       - name: Where the system packages are cached
         id: apt
         run: |
-          echo "prefix=apt-$ImageOS-" >> "$GITHUB_OUTPUT"
-          echo "key=apt-$ImageOS-$ImageVersion-v1" >> "$GITHUB_OUTPUT"
+          echo "prefix=apt-$ImageOS-$RUNNER_ARCH-" >> "$GITHUB_OUTPUT"
+          echo "key=apt-$ImageOS-$RUNNER_ARCH-$ImageVersion-v1" >> "$GITHUB_OUTPUT"
       # Their mirror is sometimes slow (5 minutes for 74 MB), so the packages
       # come from this cache, refreshed with each new runner image.
       - uses: actions/cache@v6
@@ -301,9 +307,9 @@ jobs:
         uses: jurplel/install-qt-action@b344308e4483fc892e0d27b3cd1b173ebdd95f06 # v4.5.0
         with:
           version: ${{ env.QT_VERSION }}
-          host: linux
+          host: ${{ matrix.qt-host }}
           target: desktop
-          arch: linux_gcc_64
+          arch: ${{ matrix.qt-arch }}
           cache: true
           aqtsource: git+https://github.com/miurahr/aqtinstall.git@5a49f2b391ae8ee1d3c0dd87f8b33c1d49a4deb7
       - name: Clippy
