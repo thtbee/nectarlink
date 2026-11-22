@@ -1,64 +1,64 @@
 {
   "schema": 1,
   "channel": "nightly",
-  "version": "0.1.6-nightly.11",
-  "name": "Azure Bluebell",
-  "published": "2026-11-17T02:16:21Z",
-  "notes": "https://github.com/thtbee/nectarlink/releases/tag/v0.1.6-nightly.11",
+  "version": "0.1.6-nightly.12",
+  "name": "Teal Crocus",
+  "published": "2026-11-22T14:40:40Z",
+  "notes": "https://github.com/thtbee/nectarlink/releases/tag/v0.1.6-nightly.12",
   "files": [
     {
-      "name": "Nectarlink-0.1.6-nightly.11-android.apk",
-      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.6-nightly.11/Nectarlink-0.1.6-nightly.11-android.apk",
-      "sha256": "b2bcfc44bed84e5320126cb212ea22ecd4d463d82eb75badda554e913bb12bf8",
-      "size": 55118826
+      "name": "Nectarlink-0.1.6-nightly.12-android.apk",
+      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.6-nightly.12/Nectarlink-0.1.6-nightly.12-android.apk",
+      "sha256": "05e24054998419ccab9a1265aad6d48ec966583061bddeffbee580a6a35014bf",
+      "size": 57792762
     },
     {
-      "name": "Nectarlink-0.1.6-nightly.11-arm64-setup.exe",
-      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.6-nightly.11/Nectarlink-0.1.6-nightly.11-arm64-setup.exe",
-      "sha256": "706c817c32cd627c7b6e4c1262f69d7470e87b64514094b8e1a5d7d6d00118b2",
-      "size": 39771049
+      "name": "Nectarlink-0.1.6-nightly.12-arm64-setup.exe",
+      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.6-nightly.12/Nectarlink-0.1.6-nightly.12-arm64-setup.exe",
+      "sha256": "6255ee0259425da1eae5438f9b5e1f8614fb47d6891ed420d87719c13ddc84a8",
+      "size": 43105838
     },
     {
-      "name": "Nectarlink-0.1.6-nightly.11-linux-x86_64.tar.gz",
-      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.6-nightly.11/Nectarlink-0.1.6-nightly.11-linux-x86_64.tar.gz",
-      "sha256": "e6cc177621b8f204b53042a60fa6d6a816128d2892162cd2f2105a7a74a7805f",
-      "size": 71667390
+      "name": "Nectarlink-0.1.6-nightly.12-linux-x86_64.tar.gz",
+      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.6-nightly.12/Nectarlink-0.1.6-nightly.12-linux-x86_64.tar.gz",
+      "sha256": "45b169816cb6924edb32276c4cc44593bb885d597f730a1fe519e9cb641fb2f5",
+      "size": 75241915
     },
     {
-      "name": "Nectarlink-0.1.6-nightly.11-macos-arm64.dmg",
-      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.6-nightly.11/Nectarlink-0.1.6-nightly.11-macos-arm64.dmg",
-      "sha256": "e3cb647c0bd9447c7eea70857898d4f1f3a17d5d8ec8e8417b70b43caa485548",
-      "size": 85302303
+      "name": "Nectarlink-0.1.6-nightly.12-macos-arm64.dmg",
+      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.6-nightly.12/Nectarlink-0.1.6-nightly.12-macos-arm64.dmg",
+      "sha256": "655ef9af398bba1acfa2c778fe61208d3690eef5435ea10fd6be127bed02b575",
+      "size": 87067969
     },
     {
-      "name": "Nectarlink-0.1.6-nightly.11-x64-setup.exe",
-      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.6-nightly.11/Nectarlink-0.1.6-nightly.11-x64-setup.exe",
-      "sha256": "2545fbc4f8fddb13069f8d36f0500c459b446762a756f5fefca3ab4d1c99d653",
-      "size": 43258754
+      "name": "Nectarlink-0.1.6-nightly.12-x64-setup.exe",
+      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.6-nightly.12/Nectarlink-0.1.6-nightly.12-x64-setup.exe",
+      "sha256": "f122dbb978c180aec3e6c5ccc9ac58a9eaeabca76fd2137d1e4e8bb6439d0ec6",
+      "size": 46876894
     },
     {
-      "name": "Nectarlink-0.1.6-nightly.11-x86_64.AppImage",
-      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.6-nightly.11/Nectarlink-0.1.6-nightly.11-x86_64.AppImage",
-      "sha256": "1418e2f86b780123d8e80b6b090d098a893d096294dfb545071d286e720f47b3",
-      "size": 64358904
+      "name": "Nectarlink-0.1.6-nightly.12-x86_64.AppImage",
+      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.6-nightly.12/Nectarlink-0.1.6-nightly.12-x86_64.AppImage",
+      "sha256": "30c739e6c760198fccff3aba563a72937647adef0815a505029a26666bd7157c",
+      "size": 67336696
     },
     {
       "name": "install.sh",
-      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.6-nightly.11/install.sh",
-      "sha256": "b7cdc18c1789d75e26c8d972985da2fd78bd7117eebf0d384d096760c4203821",
-      "size": 23634
+      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.6-nightly.12/install.sh",
+      "sha256": "8c41de6a44fff096231900d310b565cc9df8d5cef1e2f5eb377cddad7dce8fc8",
+      "size": 23675
     },
     {
-      "name": "nectarlink-0.1.6-nightly.11-1.x86_64.rpm",
-      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.6-nightly.11/nectarlink-0.1.6-nightly.11-1.x86_64.rpm",
-      "sha256": "bb824cb6bcd03c82794e491dc7bbea04596e311c21ba3851365e1549071323b9",
-      "size": 70633954
+      "name": "nectarlink-0.1.6-nightly.12-1.x86_64.rpm",
+      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.6-nightly.12/nectarlink-0.1.6-nightly.12-1.x86_64.rpm",
+      "sha256": "e72b288011344a5b61c99cbe51e0ae020d61b80cf2bc11ad9255d5058cf50ea4",
+      "size": 73908415
     },
     {
-      "name": "nectarlink_0.1.6-nightly.11_amd64.deb",
-      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.6-nightly.11/nectarlink_0.1.6-nightly.11_amd64.deb",
-      "sha256": "cf27a30f638133aebda9902d80456a9707367ab53de9d719b81fea18e8382154",
-      "size": 51654464
+      "name": "nectarlink_0.1.6-nightly.12_amd64.deb",
+      "url": "https://github.com/thtbee/nectarlink/releases/download/v0.1.6-nightly.12/nectarlink_0.1.6-nightly.12_amd64.deb",
+      "sha256": "ac4c413e9438e08c4d1e5de4361556da721425bb05b26c9a61498bfe75d6c488",
+      "size": 54093266
     }
   ]
 }
