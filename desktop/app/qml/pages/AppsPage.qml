@@ -57,12 +57,15 @@ Item {
 
     // An app's other actions: right-click, the Menu key, or a long press.
     property var actionApp: null
+    // Whether that app already has a shortcut: then the menu takes it away (#370).
+    property bool actionHasShortcut: false
     property bool confirmUninstall: false
     readonly property var uninstallFeature: AppController.capsRevision >= 0 && deviceId.length > 0
         ? AppController.featureState(deviceId, "mirroring.app_uninstall") : ({})
     readonly property bool canUninstall: uninstallFeature.state === "available"
     function showActions(app) {
         actionApp = app
+        actionHasShortcut = Mirror.appShortcutsSupported() && Mirror.hasAppShortcut(deviceId, app.pkg)
         confirmUninstall = false
         appActions.open()
     }
@@ -434,10 +437,15 @@ Item {
                 visible: Mirror.appShortcutsSupported()
                 variant: "tonal"
                 iconPath: Icons.pin
-                text: Qt.platform.os === "windows" ? qsTr("Add to desktop") : qsTr("Add to app menu")
+                text: page.actionHasShortcut
+                    ? (Qt.platform.os === "windows" ? qsTr("Remove from desktop") : qsTr("Remove from app menu"))
+                    : (Qt.platform.os === "windows" ? qsTr("Add to desktop") : qsTr("Add to app menu"))
                 onClicked: {
                     appActions.close()
-                    Mirror.addAppShortcut(page.deviceId, page.actionApp.pkg, page.actionApp.label)
+                    if (page.actionHasShortcut)
+                        Mirror.removeAppShortcut(page.deviceId, page.actionApp.pkg, page.actionApp.label)
+                    else
+                        Mirror.addAppShortcut(page.deviceId, page.actionApp.pkg, page.actionApp.label)
                 }
             }
             // Through Elevated, after a second press confirms it (D349).

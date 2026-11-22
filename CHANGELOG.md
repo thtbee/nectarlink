@@ -479,6 +479,11 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **A phone app's shortcut can be taken away again.** Once an app has a shortcut, its menu
+  on the PC's Apps page says **Remove from app menu** (Linux, where app menus have no way to
+  delete an entry) or **Remove from desktop** (Windows). Thanks to
+  [@unaibenidorm](https://github.com/unaibenidorm)
+  ([#370](https://github.com/thtbee/nectarlink/issues/370)).
 - **Chinese and Japanese text on Windows** is drawn with Windows' own text renderer, which
   is crisper at small sizes. Thanks to [@zzz1465720680](https://github.com/zzz1465720680) ([#460](https://github.com/thtbee/nectarlink/issues/460)).
 - **Turning the phone's screen off while mirroring froze the picture** when the mirror

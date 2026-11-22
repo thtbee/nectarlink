@@ -65,6 +65,31 @@ pub fn relaunch(data_dir: &Path, device: DeviceId, pkg: &str) -> Option<(String,
     Some((command, icon))
 }
 
+/// The shortcuts NectarLink made for `pkg` on `device` that are still there.
+pub fn existing(device: DeviceId, pkg: &str) -> Vec<PathBuf> {
+    if !nectarlink_core::is_package_name(pkg) {
+        return Vec::new();
+    }
+    imp::existing(&task(&device, pkg), pkg)
+}
+
+/// Deletes the shortcuts for `pkg` on `device` (#370: Linux app menus have no
+/// way to remove an entry); how many there were.
+pub fn remove(device: DeviceId, pkg: &str) -> Result<usize, String> {
+    let found = existing(device, pkg);
+    for path in &found {
+        std::fs::remove_file(path).map_err(|e| e.to_string())?;
+    }
+    Ok(found.len())
+}
+
+/// Whether `text` (a shortcut's arguments or command line) runs exactly
+/// `task`, not one that merely starts with it.
+#[cfg_attr(not(any(windows, target_os = "linux")), allow(dead_code))]
+fn runs_task(text: &str, task: &str) -> bool {
+    text.split_whitespace().any(|word| word.trim_matches('"') == task)
+}
+
 /// Adds the shortcut for `pkg` (shown as `label`) on `device`; where it went.
 pub fn add(data_dir: &Path, device: DeviceId, pkg: &str, label: &str) -> Result<PathBuf, String> {
     if !nectarlink_core::is_package_name(pkg) {
@@ -99,6 +124,22 @@ mod imp {
         };
         shortcut::write_with_icon(&path, &link, ico.as_deref()).map_err(|e| e.to_string())?;
         Ok(path)
+    }
+
+    /// Desktop shortcuts that run `task`, whatever they were renamed to.
+    pub fn existing(task: &str, _pkg: &str) -> Vec<PathBuf> {
+        shortcut::desktop_dir().map(|desktop| existing_in(&desktop, task)).unwrap_or_default()
+    }
+
+    /// The shortcuts in `dir` that run `task`.
+    pub fn existing_in(dir: &Path, task: &str) -> Vec<PathBuf> {
+        let Ok(entries) = std::fs::read_dir(dir) else { return Vec::new() };
+        entries
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| p.extension().is_some_and(|x| x.eq_ignore_ascii_case("lnk")))
+            .filter(|p| shortcut::arguments(p).is_some_and(|args| super::runs_task(&args, task)))
+            .collect()
     }
 
     /// The `.ico` for `png`, written only when it's missing or older than
@@ -153,6 +194,17 @@ mod imp {
         std::fs::write(&path, content).map_err(|e| e.to_string())?;
         Ok(path)
     }
+
+    /// The app menu entry for `pkg`, when it opens `task` (this phone's).
+    pub fn existing(task: &str, pkg: &str) -> Vec<PathBuf> {
+        let Some(apps) = dirs::data_dir().map(|d| d.join("applications")) else { return Vec::new() };
+        let path = apps.join(format!("nectarlink-app-{pkg}.desktop"));
+        let opens_task = std::fs::read_to_string(&path).is_ok_and(|text| {
+            text.lines()
+                .any(|line| line.strip_prefix("Exec=").is_some_and(|exec| super::runs_task(exec, task)))
+        });
+        if opens_task { vec![path] } else { Vec::new() }
+    }
 }
 
 #[cfg(not(any(windows, target_os = "linux")))]
@@ -161,6 +213,10 @@ mod imp {
 
     pub fn add(_: &Path, _: &Path, _: &str, _: &str, _: &str, _: Option<&Path>) -> Result<PathBuf, String> {
         Err("not on this system".into())
+    }
+
+    pub fn existing(_: &str, _: &str) -> Vec<PathBuf> {
+        Vec::new()
     }
 }
 
@@ -201,6 +257,19 @@ mod tests {
     }
 
     #[test]
+    fn a_shortcut_runs_its_own_task_only() {
+        let device = DeviceId([7; 32]);
+        let t = task(&device, "com.example.app");
+        assert!(runs_task(&format!("--task {t}"), &t));
+        assert!(runs_task(&format!("\"/opt/nectarlink\" --task \"{t}\""), &t));
+        assert!(!runs_task(&format!("--task {t}.pro"), &t), "another app whose name starts the same");
+        assert!(
+            !runs_task(&format!("--task {}", task(&DeviceId([8; 32]), "com.example.app")), &t),
+            "another phone"
+        );
+    }
+
+    #[test]
     fn file_names_lose_what_windows_refuses() {
         assert_eq!(file_stem("Maps: Go/Now?", "com.maps"), "Maps Go Now");
         assert_eq!(file_stem("  ...  ", "com.x"), "com.x");
@@ -220,6 +289,30 @@ mod tests {
         assert_eq!(u32::from_le_bytes(ico[14..18].try_into().unwrap()) as usize, png.len());
         assert_eq!(&ico[22..], &png[..]);
         assert!(ico_from_png(b"GIF89a").is_none());
+    }
+
+    /// Shortcuts are found by what they run, so renaming one on the desktop
+    /// doesn't hide it from Remove (#370), and another app's stays.
+    #[cfg(windows)]
+    #[test]
+    fn a_windows_shortcut_is_found_by_its_task() {
+        use crate::win::shortcut::{self, Shortcut};
+        let dir = std::env::temp_dir().join(format!("nl-shortcut-find-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let device = DeviceId([7; 32]);
+        let exe = std::env::current_exe().unwrap();
+        let mine = task(&device, "com.example.app");
+        let other = task(&device, "com.example.other");
+        for (name, t) in [("Renamed by me.lnk", &mine), ("Other.lnk", &other)] {
+            let link = Shortcut {
+                target: exe.clone(),
+                arguments: format!("{} {t}", crate::win::jumplist::ARG),
+                description: String::new(),
+            };
+            shortcut::write(&dir.join(name), &link).unwrap();
+        }
+        assert_eq!(imp::existing_in(&dir, &mine), vec![dir.join("Renamed by me.lnk")]);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     /// A real shortcut, in a temporary folder: it starts this app with the

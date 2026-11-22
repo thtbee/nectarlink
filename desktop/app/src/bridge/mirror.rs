@@ -68,6 +68,14 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "addAppShortcut"]
         fn add_app_shortcut(self: &Mirror, device: &QString, pkg: &QString, label: &QString) -> bool;
+        /// Whether that app has a shortcut NectarLink made, still there.
+        #[qinvokable]
+        #[cxx_name = "hasAppShortcut"]
+        fn has_app_shortcut(self: &Mirror, device: &QString, pkg: &QString) -> bool;
+        /// Takes that shortcut away again (#370). Says how it went.
+        #[qinvokable]
+        #[cxx_name = "removeAppShortcut"]
+        fn remove_app_shortcut(self: &Mirror, device: &QString, pkg: &QString, label: &QString) -> bool;
         /// Uninstalls a phone app (D349); the result shows as a message.
         #[qinvokable]
         #[cxx_name = "uninstallApp"]
@@ -388,6 +396,31 @@ impl qobject::Mirror {
             Err(error) => {
                 tracing::warn!(%error, "couldn't add a phone app's shortcut");
                 crate::bridge::app::show_message(tr!("Apps", "Couldn't add a shortcut for %1.", label));
+                false
+            }
+        }
+    }
+
+    pub fn has_app_shortcut(&self, device: &QString, pkg: &QString) -> bool {
+        super::parse_device(device)
+            .is_some_and(|device| !crate::app_shortcuts::existing(device, &String::from(pkg)).is_empty())
+    }
+
+    pub fn remove_app_shortcut(&self, device: &QString, pkg: &QString, label: &QString) -> bool {
+        let Some(device) = super::parse_device(device) else { return false };
+        let label = String::from(label);
+        match crate::app_shortcuts::remove(device, &String::from(pkg)) {
+            Ok(_) => {
+                crate::bridge::app::show_message(if cfg!(windows) {
+                    tr!("Apps", "Removed %1 from your desktop.", label)
+                } else {
+                    tr!("Apps", "Removed %1 from your app menu.", label)
+                });
+                true
+            }
+            Err(error) => {
+                tracing::warn!(%error, "couldn't remove a phone app's shortcut");
+                crate::bridge::app::show_message(tr!("Apps", "Couldn't remove the shortcut for %1.", label));
                 false
             }
         }
