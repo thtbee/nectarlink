@@ -2,10 +2,11 @@
 //! Ephemeral browser file transfers, independent of paired devices.
 
 mod lan;
+mod protocol;
 mod transfer;
 
 use std::{
-    net::{Ipv4Addr, UdpSocket},
+    net::{Ipv4Addr, SocketAddrV4, UdpSocket},
     path::PathBuf,
     sync::Arc,
     time::{Duration, SystemTime, UNIX_EPOCH},
@@ -19,16 +20,33 @@ use iroh_relay::{
     tls::{CaTlsConfig, default_provider},
 };
 use n0_future::{BufferedStreamExt, SinkExt, StreamExt, stream};
-use tokio::sync::Mutex;
+use tokio::{net::TcpListener, sync::mpsc, time::Instant};
 use url::Url;
 
 pub(crate) const DEFAULT_SITE: &str = "https://anysend-nectarlink.netlify.app/";
 const LIFETIME: Duration = Duration::from_secs(600);
+pub(crate) const MAX_GUESTS: i32 = 100;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Route {
     Lan,
     Relay,
+}
+
+impl Route {
+    fn code(self) -> u8 {
+        match self {
+            Self::Lan => 0,
+            Self::Relay => 1,
+        }
+    }
+
+    fn chunk(self) -> usize {
+        match self {
+            Self::Lan => 256 * 1024,
+            Self::Relay => 60 * 1024,
+        }
+    }
 }
 
 pub(crate) enum Selection {
@@ -40,6 +58,7 @@ pub(crate) enum Event {
     Ticket(Route, Url),
     Unavailable(Route, String),
     Started(Route),
+    Guests { connected: usize, completed: usize, failed: usize },
     Progress(u64, u64),
     Finished(Option<PathBuf>),
     Failed(String),
@@ -47,7 +66,7 @@ pub(crate) enum Event {
 }
 
 type Report = Arc<dyn Fn(Event) + Send + Sync>;
-type Shared = Arc<Mutex<transfer::Session>>;
+type Shared = Arc<transfer::Session>;
 
 pub(crate) fn site(input: &str) -> Result<Url> {
     let input = input.trim();
@@ -75,27 +94,61 @@ pub(crate) async fn run(
     site: Url,
     interface: String,
     relays: Vec<RelayUrl>,
+    limit: i32,
     report: Report,
 ) -> Result<()> {
+    if !(1..=MAX_GUESTS).contains(&limit) {
+        bail!("Choose between 1 and 100 browsers.");
+    }
     let host = SecretKey::generate();
-    let guest = SecretKey::generate();
+    let ticket = SecretKey::generate();
     let expires = SystemTime::now() + LIFETIME;
-    let session = Arc::new(Mutex::new(
-        transfer::Session::new(selection, &host, &guest, expires, report.clone()).await?,
-    ));
-    let ticket = |page: Url, relay: Option<&Url>| {
-        ticket_url(page, expires, host.public(), &guest, relay)
+    let deadline = Instant::now() + LIFETIME;
+    let session = Arc::new(
+        transfer::Session::new(
+            selection,
+            host.clone(),
+            ticket.clone(),
+            deadline,
+            limit as usize,
+            report.clone(),
+        )
+        .await?,
+    );
+    let listener = match bind_lan(&interface).await {
+        Ok(listener) => Some(listener),
+        Err(error) => {
+            report(Event::Unavailable(Route::Lan, error.to_string()));
+            None
+        }
     };
-
+    let local_address = listener.as_ref().map(|(address, _)| *address);
+    let site_origin = site.origin().ascii_serialization();
     let local = async {
-        let result = lan_route(&interface, &session, &ticket, &report).await;
-        if let Err(error) = result {
+        let Some((address, listener)) = listener else { return };
+        let page = Url::parse(&format!("http://{address}/")).expect("IPv4 HTTP URL");
+        report(Event::Ticket(Route::Lan, ticket_url(page, expires, host.public(), &ticket, None, None)));
+        if let Err(error) = lan::serve(listener, session.clone(), site_origin).await {
             report(Event::Unavailable(Route::Lan, error.to_string()));
         }
     };
     let global = async {
         let result = async {
-            let (url, client) = connect_relay(relays, &host).await?;
+            #[cfg(target_os = "linux")]
+            let connector = if interface.is_empty() {
+                None
+            } else {
+                Some(
+                    nectarlink_core::direct_network::RelayConnector::start(interface.clone())
+                        .await
+                        .context("Could not route the relay through the selected interface.")?,
+                )
+            };
+            #[cfg(target_os = "linux")]
+            let proxy = connector.as_ref().map(|connector| connector.url());
+            #[cfg(not(target_os = "linux"))]
+            let proxy = None;
+            let (url, client) = connect_relay(relays, &host, proxy).await?;
             let mut relay = (*url).clone();
             if relay.domain().is_some_and(|domain| domain.ends_with('.')) {
                 let domain = relay.domain().unwrap_or_default().trim_end_matches('.').to_owned();
@@ -103,35 +156,35 @@ pub(crate) async fn run(
             }
             relay.set_scheme("wss").map_err(|()| anyhow::anyhow!("Invalid relay URL"))?;
             relay.set_path("/relay");
-            report(Event::Ticket(Route::Relay, ticket(site, Some(&relay))));
-            relay_loop(client, guest.public(), &session).await
+            report(Event::Ticket(
+                Route::Relay,
+                ticket_url(
+                    site,
+                    expires,
+                    host.public(),
+                    &ticket,
+                    local_address.filter(|addr| addr.ip().is_private()),
+                    Some(&relay),
+                ),
+            ));
+            relay_loop(client, &session).await
         }
         .await;
         if let Err(error) = result {
             report(Event::Unavailable(Route::Relay, error.to_string()));
         }
     };
-    if tokio::time::timeout(LIFETIME, async { tokio::join!(local, global) }).await.is_err()
-        && !session.lock().await.finished()
-    {
+    if tokio::time::timeout_at(deadline, async { tokio::join!(local, global) }).await.is_err() {
         report(Event::Expired);
     }
     Ok(())
 }
 
-async fn lan_route(
-    interface: &str,
-    session: &Shared,
-    ticket: &impl Fn(Url, Option<&Url>) -> Url,
-    report: &Report,
-) -> Result<()> {
+async fn bind_lan(interface: &str) -> Result<(SocketAddrV4, TcpListener)> {
     let ip = lan_ip(interface).context("No IPv4 address on the selected LAN interface.")?;
-    let listener =
-        tokio::net::TcpListener::bind((ip, 0)).await.context("Could not start the LAN listener.")?;
-    let address = listener.local_addr()?;
-    let page = Url::parse(&format!("http://{address}/"))?;
-    report(Event::Ticket(Route::Lan, ticket(page, None)));
-    lan::serve(listener, session.clone()).await
+    let listener = TcpListener::bind((ip, 0)).await.context("Could not start the LAN listener.")?;
+    let address = SocketAddrV4::new(ip, listener.local_addr()?.port());
+    Ok((address, listener))
 }
 
 fn lan_ip(selected: &str) -> Option<Ipv4Addr> {
@@ -157,15 +210,22 @@ fn lan_ip(selected: &str) -> Option<Ipv4Addr> {
         .min_by_key(|ip| route_ip != Some((*ip).into()))
 }
 
-async fn connect_relay(relays: Vec<RelayUrl>, host: &SecretKey) -> Result<(RelayUrl, Client)> {
+async fn connect_relay(
+    relays: Vec<RelayUrl>,
+    host: &SecretKey,
+    proxy: Option<&Url>,
+) -> Result<(RelayUrl, Client)> {
     if relays.is_empty() {
         bail!("No HTTPS relay is enabled in the mobile network settings.");
     }
     let tls = CaTlsConfig::default().client_config(default_provider())?;
     let dns = DnsResolver::new();
     let dial = |url: RelayUrl| {
-        let builder =
+        let mut builder =
             ClientBuilder::new(url.clone(), host.clone(), dns.clone()).tls_client_config(tls.clone());
+        if let Some(proxy) = proxy {
+            builder = builder.proxy_url(proxy.clone());
+        }
         async move {
             let client = tokio::time::timeout(Duration::from_secs(5), builder.connect()).await.ok()?.ok()?;
             Some((url, client))
@@ -186,40 +246,69 @@ async fn connect_relay(relays: Vec<RelayUrl>, host: &SecretKey) -> Result<(Relay
     bail!("Could not connect to an enabled mobile network relay.")
 }
 
-async fn relay_loop(mut client: Client, guest: PublicKey, session: &Shared) -> Result<()> {
-    while let Some(message) = client.next().await {
-        match message.map_err(|_| anyhow::anyhow!("The relay connection closed."))? {
-            RelayToClientMsg::Ping(nonce) => {
-                client.send(ClientToRelayMsg::Pong(nonce)).await?;
+async fn relay_loop(client: Client, session: &Shared) -> Result<()> {
+    let (stream, mut sink) = client.split();
+    let (send, mut receive) = mpsc::channel::<Vec<ClientToRelayMsg>>(16);
+    let reader = async {
+        let mut pending = stream
+            .map(|message| async move {
+                let replies = match message.map_err(|_| anyhow::anyhow!("The relay connection closed."))? {
+                    RelayToClientMsg::Ping(nonce) => vec![ClientToRelayMsg::Pong(nonce)],
+                    RelayToClientMsg::Datagrams { remote_endpoint_id, datagrams }
+                        if datagrams.segment_size.is_none() =>
+                    {
+                        session
+                            .handle(Route::Relay, remote_endpoint_id, &datagrams.contents)
+                            .await
+                            .into_iter()
+                            .map(|reply| ClientToRelayMsg::Datagrams {
+                                dst_endpoint_id: remote_endpoint_id,
+                                datagrams: reply.into(),
+                            })
+                            .collect()
+                    }
+                    _ => Vec::new(),
+                };
+                Ok::<_, anyhow::Error>(replies)
+            })
+            .buffered_unordered(16);
+        while let Some(replies) = pending.next().await {
+            let replies = replies?;
+            if !replies.is_empty() {
+                send.send(replies).await.context("The relay connection closed.")?;
             }
-            RelayToClientMsg::Datagrams { remote_endpoint_id, datagrams }
-                if remote_endpoint_id == guest && datagrams.segment_size.is_none() =>
-            {
-                let replies = session.lock().await.handle(Route::Relay, &datagrams.contents).await;
-                for reply in replies {
-                    client
-                        .send(ClientToRelayMsg::Datagrams { dst_endpoint_id: guest, datagrams: reply.into() })
-                        .await?;
-                }
-            }
-            _ => {}
         }
-    }
-    bail!("The relay connection closed.")
+        bail!("The relay connection closed.")
+    };
+    let writer = async {
+        while let Some(replies) = receive.recv().await {
+            for reply in replies {
+                sink.feed(reply).await?;
+            }
+            sink.flush().await?;
+        }
+        Ok(())
+    };
+    tokio::try_join!(reader, writer).map(|_: ((), ())| ())
 }
 
 fn ticket_url(
     mut page: Url,
     expiry: SystemTime,
     peer: PublicKey,
-    guest: &SecretKey,
+    ticket_key: &SecretKey,
+    lan: Option<SocketAddrV4>,
     relay: Option<&Url>,
 ) -> Url {
     let milliseconds = expiry.duration_since(UNIX_EPOCH).unwrap_or_default().as_millis() as u64;
     let mut ticket = Vec::with_capacity(128);
+    ticket.push(2);
     ticket.extend_from_slice(&milliseconds.to_be_bytes()[2..]);
     ticket.extend_from_slice(peer.as_bytes());
-    ticket.extend_from_slice(&guest.to_bytes());
+    ticket.extend_from_slice(&ticket_key.to_bytes());
+    let (ip, port) = lan.map_or(([0; 4], 0), |address| (address.ip().octets(), address.port()));
+    ticket.extend_from_slice(&ip);
+    ticket.extend_from_slice(&port.to_be_bytes());
     if let Some(relay) = relay {
         ticket.extend_from_slice(relay.as_str().as_bytes());
     }

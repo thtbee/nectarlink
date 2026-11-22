@@ -2559,6 +2559,7 @@ dependencies = [
  "pkg-config",
  "qrcode",
  "rand",
+ "ring",
  "serde",
  "serde_json",
  "sha1_smol",

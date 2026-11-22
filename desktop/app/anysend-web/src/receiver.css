@@ -132,7 +132,7 @@ progress:indeterminate::-webkit-progress-bar { background: transparent; }
 @media (prefers-reduced-motion: reduce) { progress:indeterminate { animation: none; } }
 
 .hint { margin-top: .9rem; line-height: 1.45; }
-a[download] {
+a[download], #actions button {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -142,11 +142,15 @@ a[download] {
   color: var(--on-honey);
   background: var(--honey);
   border-radius: .78rem;
+  font: inherit;
   font-weight: 730;
   text-decoration: none;
+  border: 0;
 }
-a[download]:hover { filter: brightness(1.08); }
-a[download]:focus-visible { outline: 2px solid var(--honey); outline-offset: 3px; }
+#actions button { display: inline-flex; margin-inline-end: .5rem; cursor: pointer; }
+#actions button + button { background: var(--soft); color: var(--on-soft); }
+a[download]:hover, #actions button:hover { filter: brightness(1.08); }
+a[download]:focus-visible, #actions button:focus-visible { outline: 2px solid var(--honey); outline-offset: 3px; }
 input[type="file"] { display: block; max-width: 100%; margin-top: 1.15rem; font: inherit; }
 input[type="file"]::file-selector-button {
   margin-inline-end: .6rem;

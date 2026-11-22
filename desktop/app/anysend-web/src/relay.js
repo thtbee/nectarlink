@@ -1,25 +1,30 @@
 import {join} from './bytes.js';
 
-export function connectRelay(url, identity, receive, challengeHash) {
+export function connectRelay(url, identity, receive, challengeHash, signal, disconnect) {
+  signal.throwIfAborted();
   return new Promise((resolve, reject) => {
     const socket = new WebSocket(url, 'iroh-relay-v2');
     socket.binaryType = 'arraybuffer';
     const send = (frame) => socket.send(frame);
-    const timeout = setTimeout(() => {
-      reject(Error('Relay timeout'));
-      socket.close();
-    }, 10000);
-    socket.onerror = socket.onclose = () => {
+    let connected = false;
+    function fail(error) {
       clearTimeout(timeout);
-      reject(Error('Relay offline'));
-    };
+      signal.removeEventListener('abort', abort);
+      socket.onerror = socket.onclose = null;
+      socket.close();
+      if (connected) disconnect(error);
+      else reject(error);
+    }
+    const abort = () => fail(signal.reason);
+    const timeout = setTimeout(() => fail(Error('Relay timeout')), 10000);
+    signal.addEventListener('abort', abort, {once: true});
+    socket.onerror = socket.onclose = () => fail(Error('Relay offline'));
     socket.onmessage = ({data}) => {
       const frame = new Uint8Array(data);
       switch (frame[0]) {
         case 0: {
           if (frame.length !== 17) {
-            reject(Error('Invalid relay challenge'));
-            socket.close();
+            fail(Error('Invalid relay challenge'));
             break;
           }
           // Tag, raw public key, postcard byte-string length, signature.
@@ -29,15 +34,13 @@ export function connectRelay(url, identity, receive, challengeHash) {
         }
         case 2:
           clearTimeout(timeout);
+          connected = true;
           resolve({
             send: (peer, payload) => send(join([4], peer, [0], payload)),
-            close: () => socket.close(),
           });
           break;
         case 3:
-          clearTimeout(timeout);
-          reject(Error('Relay denied'));
-          socket.close();
+          fail(Error('Relay denied'));
           break;
         case 6:
           if (frame.length > 34) receive(frame.subarray(1, 33), frame.subarray(34));

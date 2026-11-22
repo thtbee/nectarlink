@@ -18,6 +18,9 @@ const copy = {
     failed: 'The transfer could not be completed.',
     newTicket: 'Ask the sender to generate a fresh QR code.',
     progress: 'File transfer progress',
+    route: 'Use the local network if both devices are on it.',
+    local: 'Local network',
+    internet: 'Internet',
     sendTitle: 'Send a file',
     choose: 'Choose a file to send to the PC.',
     tooLarge: 'Choose a file up to 128 MiB.',
@@ -42,6 +45,9 @@ const copy = {
     failed: 'Не удалось завершить передачу.',
     newTicket: 'Попросите отправителя создать новый QR-код.',
     progress: 'Ход передачи файла',
+    route: 'Если оба устройства в одной сети, выберите локальную сеть.',
+    local: 'Локальная сеть',
+    internet: 'Интернет',
     sendTitle: 'Отправить файл',
     choose: 'Выберите файл для отправки на ПК.',
     tooLarge: 'Выберите файл размером до 128 МиБ.',
@@ -92,6 +98,20 @@ export function createReceiverView() {
   const actions = get('actions');
   let uploading = false;
   let total = 0;
+  function waitForChoice(signal, setup) {
+    signal.throwIfAborted();
+    return new Promise((resolve, reject) => {
+      const abort = () => reject(signal.reason);
+      signal.addEventListener('abort', abort, {once: true});
+      setup((choice) => {
+        signal.removeEventListener('abort', abort);
+        actions.hidden = true;
+        actions.replaceChildren();
+        transfer.hidden = false;
+        resolve(choice);
+      });
+    });
+  }
   function formatBytes(bytes) {
     const unit = bytes < 1024 ? 0 : bytes < 1024 ** 2 ? 1 : 2;
     return `${number.format(bytes / 1024 ** unit)} ${strings.units[unit]}`;
@@ -103,10 +123,26 @@ export function createReceiverView() {
     get('percent').textContent = `${percent}%`;
   }
   return {
+    async chooseLocal(signal) {
+      status.textContent = strings.route;
+      transfer.hidden = true;
+      actions.hidden = false;
+      const local = document.createElement('button');
+      const internet = document.createElement('button');
+      local.textContent = strings.local;
+      internet.textContent = strings.internet;
+      actions.append(local, internet);
+      const useLocal = await waitForChoice(signal, (select) => {
+        local.onclick = () => select(true);
+        internet.onclick = () => select(false);
+      });
+      status.textContent = strings.connecting;
+      return useLocal;
+    },
     waiting() {
       status.textContent = strings.waiting;
     },
-    chooseFile(limit) {
+    chooseFile(limit, signal) {
       uploading = true;
       get('title').textContent = strings.sendTitle;
       document.title = `${strings.sendTitle} · AnySend`;
@@ -117,7 +153,7 @@ export function createReceiverView() {
       input.setAttribute('aria-label', strings.choose);
       actions.replaceChildren(input);
       actions.hidden = false;
-      return new Promise((resolve) => {
+      return waitForChoice(signal, (select) => {
         input.onchange = () => {
           const file = input.files[0];
           if (!file) return;
@@ -126,9 +162,7 @@ export function createReceiverView() {
             input.value = '';
             return;
           }
-          actions.hidden = true;
-          actions.replaceChildren();
-          resolve(file);
+          select(file);
         };
       });
     },
@@ -174,6 +208,8 @@ export function createReceiverView() {
       status.textContent = strings[label];
       status.dataset.result = 'error';
       transfer.hidden = true;
+      actions.hidden = true;
+      actions.replaceChildren();
       hint.textContent = strings.newTicket;
     },
   };

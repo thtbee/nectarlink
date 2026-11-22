@@ -1,77 +1,115 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 use std::{
-    io::SeekFrom,
+    collections::HashMap,
+    io::{self, SeekFrom},
     path::{Path, PathBuf},
-    time::SystemTime,
+    sync::Arc,
 };
 
-use aes_gcm::{
-    Aes256Gcm, KeyInit, Nonce,
-    aead::{Aead, Payload},
-};
+use aes_gcm::Aes256Gcm;
 use anyhow::{Context, Result, bail};
 use bytes::Bytes;
-use iroh::{PublicKey, SecretKey, Signature};
+use iroh::{PublicKey, SecretKey};
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha512};
 use tokio::{
     fs::File,
-    io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt},
+    io::{AsyncSeekExt, AsyncWriteExt, BufWriter},
+    sync::Mutex,
+    time::Instant,
 };
 
-use super::{Event, Report, Route, Selection};
+use super::{
+    Event, Report, Route, Selection,
+    protocol::{self, COMPLETE, COMPLETE_INDEX, ERROR_INDEX, PULL, PUSH, open, read_index, seal},
+};
 
-pub(super) const CHUNK: usize = 48 * 1024;
-const WINDOW: usize = 16;
+pub(super) const WINDOW: usize = 8;
 const MAX_SIZE: u64 = 128 * 1024 * 1024;
-const REQUEST: &[u8] = b"AnySend file request v1";
-const CLAIM: &[u8] = b"AnySend browser v1";
-const ACK: &[u8] = b"AnySend sender v1";
-const UPLOAD: &[u8] = b"AnySend file upload v1";
-const ERROR_INDEX: u32 = u32::MAX;
 
-#[derive(Serialize, Deserialize)]
+#[derive(PartialEq, Serialize, Deserialize)]
 struct FileInfo {
     name: String,
     size: u64,
 }
 
-enum Transfer {
-    Send { file: File, info: FileInfo, chunks: Vec<bool>, sent: u64 },
-    Receive { directory: PathBuf, incoming: Option<Incoming> },
+enum Offer {
+    Send { file: Arc<std::fs::File>, info: FileInfo },
+    Receive(PathBuf),
 }
 
 struct Incoming {
     info: FileInfo,
-    file: File,
+    file: BufWriter<File>,
+    position: u64,
     temp: tempfile::TempPath,
-    chunks: Vec<bool>,
-    received: u64,
+    chunks: Chunks,
 }
 
 pub(super) struct Session {
-    guest: PublicKey,
-    claim: Vec<u8>,
+    host: SecretKey,
+    ticket: SecretKey,
+    offer: Offer,
+    deadline: Instant,
+    limit: usize,
+    guests: Mutex<Guests>,
+    report: Report,
+}
+
+#[derive(Default)]
+struct Guests {
+    entries: HashMap<PublicKey, Arc<Mutex<Guest>>>,
+    completed: usize,
+    failed: usize,
+}
+
+struct Guest {
+    route: Route,
+    key: [u8; 32],
     ack: Bytes,
     cipher: Aes256Gcm,
-    transfer: Transfer,
-    expires: SystemTime,
-    route: Option<Route>,
+    sent: Chunks,
+    incoming: Option<Incoming>,
     finished: bool,
-    failed: bool,
-    report: Report,
+    saved: Option<PathBuf>,
+    error: Option<Bytes>,
+}
+
+#[derive(Default)]
+struct Chunks {
+    seen: Vec<bool>,
+    bytes: u64,
+}
+
+impl Chunks {
+    fn new(size: u64, route: Route) -> Self {
+        Self { seen: vec![false; size.div_ceil(route.chunk() as u64) as usize], bytes: 0 }
+    }
+
+    fn record(&mut self, index: usize, length: usize, total: u64, report: Option<&Report>) {
+        if !self.seen[index] {
+            self.seen[index] = true;
+            let before = self.bytes;
+            self.bytes += length as u64;
+            if let Some(report) = report
+                && (before == 0 || before * 100 / total != self.bytes * 100 / total)
+            {
+                report(Event::Progress(self.bytes, total));
+            }
+        }
+    }
 }
 
 impl Session {
     pub(super) async fn new(
         selection: Selection,
-        host: &SecretKey,
-        guest: &SecretKey,
-        expires: SystemTime,
+        host: SecretKey,
+        ticket: SecretKey,
+        deadline: Instant,
+        limit: usize,
         report: Report,
     ) -> Result<Self> {
-        let transfer = match selection {
+        let offer = match selection {
             Selection::Send(path) => {
                 let file = File::open(&path).await.context("Could not open the selected file.")?;
                 let metadata = file.metadata().await?;
@@ -80,198 +118,281 @@ impl Session {
                     bail!("Choose a file up to 128 MiB.");
                 }
                 let name = path.file_name().context("The file has no name.")?.to_string_lossy().into_owned();
-                Transfer::Send {
-                    file,
-                    info: FileInfo { name, size },
-                    chunks: vec![false; count(size)],
-                    sent: 0,
-                }
+                Offer::Send { file: Arc::new(file.into_std().await), info: FileInfo { name, size } }
             }
             Selection::Receive(directory) => {
                 if !tokio::fs::metadata(&directory).await.is_ok_and(|meta| meta.is_dir()) {
                     bail!("Choose an existing destination folder.");
                 }
-                Transfer::Receive { directory, incoming: None }
+                Offer::Receive(directory)
             }
         };
-        let peer = host.public();
-        let seed = guest.to_bytes();
-        let guest = guest.public();
-        let key = Sha512::new().chain_update(peer.as_bytes()).chain_update(seed).finalize();
-        let cipher = Aes256Gcm::new_from_slice(&key[..32]).expect("32-byte AES key");
-        let claim = [CLAIM, peer.as_bytes()].concat();
-        let acknowledgment = host.sign(&[ACK, guest.as_bytes()].concat());
-        let ack = Bytes::from([&[1], acknowledgment.to_bytes().as_slice()].concat());
-        Ok(Self {
-            guest,
-            claim,
-            ack,
-            cipher,
-            transfer,
-            expires,
-            route: None,
-            finished: false,
-            failed: false,
-            report,
-        })
+        Ok(Self { host, ticket, offer, deadline, limit, guests: Mutex::default(), report })
     }
 
-    pub(super) fn finished(&self) -> bool {
-        self.finished || self.failed
+    pub(super) fn probe(&self, challenge: &[u8]) -> Bytes {
+        Bytes::copy_from_slice(&self.host.sign(&[protocol::PROBE, challenge].concat()).to_bytes())
     }
 
-    pub(super) async fn handle(&mut self, route: Route, request: &[u8]) -> Vec<Bytes> {
-        if let Ok(signature) = <&[u8; 64]>::try_from(request)
-            && self.guest.verify(&self.claim, &Signature::from_bytes(signature)).is_ok()
-        {
-            if self.route.is_some() || SystemTime::now() >= self.expires {
-                return vec![Bytes::from_static(&[0])];
-            }
-            self.route = Some(route);
-            (self.report)(Event::Started(route));
-            return vec![self.ack.clone()];
+    async fn claim(&self, route: Route, id: PublicKey, bytes: &[u8]) -> Vec<Bytes> {
+        let denied = || vec![Bytes::from_static(&[0])];
+        let Some(key) = protocol::verify_claim(self.host.public(), self.ticket.public(), id, route, bytes)
+        else {
+            return denied();
+        };
+        let mut guests = self.guests.lock().await;
+        if Instant::now() >= self.deadline {
+            return denied();
         }
-        if self.route != Some(route) || self.failed || SystemTime::now() >= self.expires {
+        if let Some(guest) = guests.entries.get(&id).cloned() {
+            drop(guests);
+            let guest = guest.lock().await;
+            return if guest.route == route && guest.key == key { vec![guest.ack.clone()] } else { denied() };
+        }
+        if guests.entries.len() >= self.limit {
+            return denied();
+        }
+        let Ok((cipher, ack)) = protocol::accept_claim(&self.host, &self.ticket, id, route, key) else {
+            return denied();
+        };
+        let sent = match &self.offer {
+            Offer::Send { info, .. } => Chunks::new(info.size, route),
+            Offer::Receive(_) => Chunks::default(),
+        };
+        guests.entries.insert(
+            id,
+            Arc::new(Mutex::new(Guest {
+                route,
+                key,
+                ack: ack.clone(),
+                cipher,
+                sent,
+                incoming: None,
+                finished: false,
+                saved: None,
+                error: None,
+            })),
+        );
+        if guests.entries.len() == 1 {
+            (self.report)(Event::Started(route));
+        }
+        self.report_guests(&guests);
+        vec![ack]
+    }
+
+    pub(super) async fn handle(&self, route: Route, id: PublicKey, bytes: &[u8]) -> Vec<Bytes> {
+        if Instant::now() >= self.deadline {
             return Vec::new();
         }
-        match self.packet(request).await {
-            Ok(replies) => replies,
-            Err(error) => {
-                self.failed = true;
-                if let Transfer::Receive { incoming, .. } = &mut self.transfer {
-                    *incoming = None;
+        if let Some((&1, claim)) = bytes.split_first() {
+            return self.claim(route, id, claim).await;
+        }
+        let guest = self.guests.lock().await.entries.get(&id).cloned();
+        let Some(guest) = guest else { return Vec::new() };
+        let mut guest = guest.lock().await;
+        if guest.route != route || Instant::now() >= self.deadline {
+            return Vec::new();
+        }
+        let was_finished = guest.finished;
+        let result = guest.packet(self, bytes).await;
+        if Instant::now() >= self.deadline {
+            return Vec::new();
+        }
+        match result {
+            Ok(replies) => {
+                if !was_finished && guest.finished {
+                    let saved = guest.saved.take().filter(|_| self.limit == 1);
+                    let mut guests = self.guests.lock().await;
+                    guests.completed += 1;
+                    self.report_guests(&guests);
+                    if guests.completed == self.limit {
+                        (self.report)(Event::Finished(saved));
+                    }
                 }
+                replies
+            }
+            Err(error) => {
                 let message = error.to_string();
-                (self.report)(Event::Failed(message.clone()));
-                seal(&self.cipher, ERROR_INDEX, message.as_bytes()).into_iter().collect()
+                guest.incoming = None;
+                let reply = seal(&guest.cipher, ERROR_INDEX, message.as_bytes()).ok();
+                guest.error = reply.clone();
+                let mut guests = self.guests.lock().await;
+                guests.failed += 1;
+                self.report_guests(&guests);
+                if guests.completed + guests.failed == self.limit {
+                    (self.report)(Event::Failed(message));
+                }
+                reply.into_iter().collect()
             }
         }
     }
 
-    async fn packet(&mut self, request: &[u8]) -> Result<Vec<Bytes>> {
-        if request.len() == 32 {
-            let Some(index) = open(&self.cipher, request, REQUEST).and_then(|bytes| read_index(&bytes))
-            else {
-                return Ok(Vec::new());
-            };
-            return self.read(index).await;
-        }
-        if !self.finished
-            && request.first() == Some(&2)
-            && let Some(index) = read_index(&request[1..])
-            && let Some(plaintext) = open(&self.cipher, &request[5..], &[UPLOAD, &request[1..5]].concat())
-        {
-            return self.write(index, &plaintext).await;
-        }
-        Ok(Vec::new())
+    fn report_guests(&self, guests: &Guests) {
+        (self.report)(Event::Guests {
+            connected: guests.entries.len(),
+            completed: guests.completed,
+            failed: guests.failed,
+        });
     }
 
-    async fn read(&mut self, index: u32) -> Result<Vec<Bytes>> {
+    fn progress(&self) -> Option<&Report> {
+        (self.limit == 1).then_some(&self.report)
+    }
+}
+
+impl Guest {
+    async fn packet(&mut self, session: &Session, bytes: &[u8]) -> Result<Vec<Bytes>> {
+        let Some((&kind, data)) = bytes.split_first() else { return Ok(Vec::new()) };
+        if let Some(error) = &self.error {
+            return Ok(vec![error.clone()]);
+        }
+        match kind {
+            2 if data.len() == 36 => {
+                let Some(range) = open(&self.cipher, data, PULL) else { return Ok(Vec::new()) };
+                let first = read_index(&range).expect("8-byte request");
+                let count = read_index(&range[4..]).expect("8-byte request") as usize;
+                self.read(session, first, count).await
+            }
+            3 if let Offer::Receive(directory) = &session.offer
+                && let Some((header, frame)) = data.split_at_checked(4)
+                && let Some(plaintext) = open(&self.cipher, frame, &[PUSH, header].concat()) =>
+            {
+                let index = read_index(header).expect("4-byte index");
+                if !self.finished {
+                    self.write(directory, index, &plaintext, session).await?;
+                }
+                Ok(vec![seal(&self.cipher, index, &[])?])
+            }
+            4 if let Offer::Send { info, .. } = &session.offer
+                && data.len() == 28
+                && open(&self.cipher, data, COMPLETE).is_some()
+                && self.sent.bytes == info.size =>
+            {
+                self.finished = true;
+                Ok(vec![seal(&self.cipher, COMPLETE_INDEX, &[])?])
+            }
+            _ => Ok(Vec::new()),
+        }
+    }
+
+    async fn read(&mut self, session: &Session, index: u32, count: usize) -> Result<Vec<Bytes>> {
+        if count == 0 || count > WINDOW {
+            return Ok(Vec::new());
+        }
         if index == 0 {
-            let metadata = match &self.transfer {
-                Transfer::Send { info, .. } => serde_json::to_vec(info)?,
-                Transfer::Receive { .. } => br#"{"direction":"upload","maxSize":134217728}"#.to_vec(),
+            let metadata = match &session.offer {
+                Offer::Send { info, .. } => serde_json::to_vec(info)?,
+                Offer::Receive(_) => serde_json::to_vec(&serde_json::json!({
+                    "direction": "upload",
+                    "maxSize": MAX_SIZE,
+                }))?,
             };
-            if matches!(&self.transfer, Transfer::Send { info, .. } if info.size == 0) {
-                self.finish(None);
-            }
             return Ok(vec![seal(&self.cipher, 0, &metadata)?]);
         }
-        let Transfer::Send { file, info, chunks, sent } = &mut self.transfer else {
-            return Ok(Vec::new());
-        };
+        let Offer::Send { file, info } = &session.offer else { return Ok(Vec::new()) };
         let first = (index - 1) as usize;
-        let end = (first + WINDOW).min(chunks.len());
-        let before = *sent;
-        let mut replies = Vec::with_capacity(end.saturating_sub(first));
-        if first < end {
-            file.seek(SeekFrom::Start(first as u64 * CHUNK as u64)).await?;
+        let end = first.saturating_add(count).min(self.sent.seen.len());
+        if first >= end {
+            return Ok(Vec::new());
         }
-        for (i, served) in chunks.iter_mut().enumerate().take(end).skip(first) {
-            let length = chunk_len(info.size, i);
-            let mut buffer = vec![0; length];
-            file.read_exact(&mut buffer).await.context("Could not read the selected file.")?;
-            replies.push(seal(&self.cipher, i as u32 + 1, &buffer)?);
-            if !*served {
-                *served = true;
-                *sent += length as u64;
-            }
-        }
-        let total = info.size;
-        let sent = *sent;
-        progress(&self.report, before, sent, total);
-        if sent == total {
-            self.finish(None);
+        let chunk = self.route.chunk();
+        let offset = first as u64 * chunk as u64;
+        let length = ((end - first) * chunk).min((info.size - offset) as usize);
+        let file = file.clone();
+        let cipher = self.cipher.clone();
+        let replies = tokio::task::spawn_blocking(move || -> Result<Vec<Bytes>> {
+            let mut bytes = vec![0; length];
+            read_at(&file, &mut bytes, offset).context("Could not read the selected file.")?;
+            bytes.chunks(chunk).enumerate().map(|(i, data)| seal(&cipher, index + i as u32, data)).collect()
+        })
+        .await??;
+        for i in first..end {
+            self.sent.record(i, chunk_len(info.size, i, chunk), info.size, session.progress());
         }
         Ok(replies)
     }
 
-    async fn write(&mut self, index: u32, plaintext: &[u8]) -> Result<Vec<Bytes>> {
-        let Transfer::Receive { directory, incoming } = &mut self.transfer else {
-            return Ok(Vec::new());
-        };
+    async fn write(
+        &mut self,
+        directory: &Path,
+        index: u32,
+        plaintext: &[u8],
+        session: &Session,
+    ) -> Result<()> {
+        let chunk = self.route.chunk();
         if index == 0 {
-            if incoming.is_some() {
-                return Ok(vec![seal(&self.cipher, 0, &[])?]);
-            }
             let info: FileInfo = serde_json::from_slice(plaintext).context("Invalid file information.")?;
             if info.size > MAX_SIZE || !safe_filename(&info.name) {
                 bail!("The file name is invalid or the file is larger than 128 MiB.");
             }
-            let (file, temp) = tempfile::NamedTempFile::new_in(&*directory)
+            if let Some(incoming) = &self.incoming {
+                if incoming.info != info {
+                    bail!("The file information changed during the upload.");
+                }
+                return Ok(());
+            }
+            let (file, temp) = tempfile::NamedTempFile::new_in(directory)
                 .context("Could not create a file in the destination folder.")?
                 .into_parts();
-            *incoming = Some(Incoming {
-                file: File::from_std(file),
+            self.incoming = Some(Incoming {
+                file: BufWriter::with_capacity(1024 * 1024, File::from_std(file)),
+                position: 0,
                 temp,
-                chunks: vec![false; count(info.size)],
+                chunks: Chunks::new(info.size, self.route),
                 info,
-                received: 0,
             });
         } else {
-            let Some(file) = incoming.as_mut() else {
-                return Ok(Vec::new());
+            let Some(file) = self.incoming.as_mut() else {
+                bail!("File information must be sent before the upload.");
             };
             let i = (index - 1) as usize;
-            if i >= file.chunks.len() || plaintext.len() != chunk_len(file.info.size, i) {
+            if i >= file.chunks.seen.len() || plaintext.len() != chunk_len(file.info.size, i, chunk) {
                 bail!("The upload contains an invalid file chunk.");
             }
-            if !file.chunks[i] {
-                file.file.seek(SeekFrom::Start(i as u64 * CHUNK as u64)).await?;
+            if !file.chunks.seen[i] {
+                let offset = i as u64 * chunk as u64;
+                if file.position != offset {
+                    file.file.seek(SeekFrom::Start(offset)).await?;
+                }
                 file.file.write_all(plaintext).await.context("Could not write the received file.")?;
-                file.chunks[i] = true;
-                let before = file.received;
-                file.received += plaintext.len() as u64;
-                progress(&self.report, before, file.received, file.info.size);
+                file.position = offset + plaintext.len() as u64;
+                file.chunks.record(i, plaintext.len(), file.info.size, session.progress());
             }
         }
-        if incoming.as_ref().is_some_and(|file| file.received == file.info.size) {
-            let path = save(incoming.take().expect("completed upload"), directory).await?;
-            self.finish(Some(path));
-        }
-        Ok(vec![seal(&self.cipher, index, &[])?])
-    }
-
-    fn finish(&mut self, file: Option<PathBuf>) {
-        if !self.finished {
+        if self.incoming.as_ref().is_some_and(|file| file.chunks.bytes == file.info.size) {
+            let incoming = self.incoming.take().expect("completed upload");
+            self.saved = Some(save(incoming, directory, session.deadline).await?);
             self.finished = true;
-            (self.report)(Event::Finished(file));
+        }
+        Ok(())
+    }
+}
+
+#[cfg(unix)]
+fn read_at(file: &std::fs::File, bytes: &mut [u8], offset: u64) -> io::Result<()> {
+    std::os::unix::fs::FileExt::read_exact_at(file, bytes, offset)
+}
+
+#[cfg(windows)]
+fn read_at(file: &std::fs::File, mut bytes: &mut [u8], mut offset: u64) -> io::Result<()> {
+    use std::os::windows::fs::FileExt;
+
+    while !bytes.is_empty() {
+        match file.seek_read(bytes, offset) {
+            Ok(0) => return Err(io::ErrorKind::UnexpectedEof.into()),
+            Ok(length) => {
+                offset += length as u64;
+                bytes = &mut bytes[length..];
+            }
+            Err(error) if error.kind() == io::ErrorKind::Interrupted => {}
+            Err(error) => return Err(error),
         }
     }
+    Ok(())
 }
 
-fn count(size: u64) -> usize {
-    size.div_ceil(CHUNK as u64) as usize
-}
-
-fn chunk_len(size: u64, index: usize) -> usize {
-    (size - index as u64 * CHUNK as u64).min(CHUNK as u64) as usize
-}
-
-fn progress(report: &Report, before: u64, after: u64, total: u64) {
-    if before < after && (before == 0 || before * 100 / total != after * 100 / total) {
-        report(Event::Progress(after, total));
-    }
+fn chunk_len(size: u64, index: usize, chunk: usize) -> usize {
+    (size - index as u64 * chunk as u64).min(chunk as u64) as usize
 }
 
 fn safe_filename(name: &str) -> bool {
@@ -281,7 +402,7 @@ fn safe_filename(name: &str) -> bool {
         && !name.chars().any(|c| c.is_control() || "\\/:<>|\"?*".contains(c))
 }
 
-async fn save(mut incoming: Incoming, directory: &Path) -> Result<PathBuf> {
+async fn save(mut incoming: Incoming, directory: &Path, deadline: Instant) -> Result<PathBuf> {
     incoming.file.flush().await?;
     drop(incoming.file);
     let path = Path::new(&incoming.info.name);
@@ -289,6 +410,9 @@ async fn save(mut incoming: Incoming, directory: &Path) -> Result<PathBuf> {
     let ext = path.extension().map(|ext| format!(".{}", ext.to_string_lossy())).unwrap_or_default();
     let mut temp = incoming.temp;
     for attempt in 0..1000 {
+        if Instant::now() >= deadline {
+            bail!("The AnySend link has expired.");
+        }
         let destination = if attempt == 0 {
             directory.join(path)
         } else {
@@ -296,27 +420,102 @@ async fn save(mut incoming: Incoming, directory: &Path) -> Result<PathBuf> {
         };
         match temp.persist_noclobber(&destination) {
             Ok(()) => return Ok(destination),
-            Err(error) if error.error.kind() == std::io::ErrorKind::AlreadyExists => temp = error.path,
+            Err(error) if error.error.kind() == io::ErrorKind::AlreadyExists => temp = error.path,
             Err(error) => return Err(error.error).context("Could not save the received file."),
         }
     }
     bail!("Could not choose a free name in the destination folder.")
 }
 
-fn read_index(bytes: &[u8]) -> Option<u32> {
-    Some(u32::from_be_bytes(bytes.get(..4)?.try_into().ok()?))
-}
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
 
-fn open(cipher: &Aes256Gcm, frame: &[u8], aad: &[u8]) -> Option<Vec<u8>> {
-    let nonce = Nonce::from_slice(frame.get(..12)?);
-    cipher.decrypt(nonce, Payload { msg: &frame[12..], aad }).ok()
-}
+    use ring::{agreement, rand::SystemRandom};
+    use tokio::task::JoinSet;
 
-fn seal(cipher: &Aes256Gcm, index: u32, plaintext: &[u8]) -> Result<Bytes> {
-    let header = index.to_be_bytes();
-    let nonce = rand::random::<[u8; 12]>();
-    let encrypted = cipher
-        .encrypt(Nonce::from_slice(&nonce), Payload { msg: plaintext, aad: &header })
-        .map_err(|_| anyhow::anyhow!("Could not encrypt the file payload."))?;
-    Ok(Bytes::from([header.as_slice(), &nonce, &encrypted].concat()))
+    use super::*;
+
+    fn claim(host: &SecretKey, ticket: &SecretKey, guest: PublicKey, route: Route) -> Vec<u8> {
+        let key = agreement::EphemeralPrivateKey::generate(&agreement::X25519, &SystemRandom::new())
+            .unwrap()
+            .compute_public_key()
+            .unwrap();
+        let signature = ticket.sign(
+            &[
+                b"AnySend browser v2".as_slice(),
+                host.public().as_bytes(),
+                guest.as_bytes(),
+                &[route.code()],
+                key.as_ref(),
+            ]
+            .concat(),
+        );
+        [&[1], key.as_ref(), signature.to_bytes().as_slice()].concat()
+    }
+
+    #[tokio::test]
+    async fn guest_limit_is_shared_by_both_routes() {
+        let directory = tempfile::tempdir().unwrap();
+        let host = SecretKey::generate();
+        let ticket = SecretKey::generate();
+        let session = Arc::new(
+            Session::new(
+                Selection::Receive(directory.path().to_owned()),
+                host.clone(),
+                ticket.clone(),
+                Instant::now() + Duration::from_secs(10),
+                super::super::MAX_GUESTS as usize,
+                Arc::new(|_| {}),
+            )
+            .await
+            .unwrap(),
+        );
+
+        // Dropped acknowledgments can be retried without spending another slot.
+        let guest = SecretKey::generate().public();
+        let request = claim(&host, &ticket, guest, Route::Lan);
+        let ack = session.handle(Route::Lan, guest, &request).await;
+        assert_eq!(ack[0].len(), 97);
+        assert_eq!(session.handle(Route::Lan, guest, &request).await, ack);
+        assert_eq!(session.handle(Route::Relay, guest, &request).await, [Bytes::from_static(&[0])]);
+        let other_guest = SecretKey::generate().public();
+        assert_eq!(session.handle(Route::Lan, other_guest, &request).await, [Bytes::from_static(&[0])]);
+
+        let mut tasks = JoinSet::new();
+        for index in 0..100 {
+            let route = if index % 2 == 0 { Route::Lan } else { Route::Relay };
+            let guest = SecretKey::generate().public();
+            let request = claim(&host, &ticket, guest, route);
+            let session = session.clone();
+            tasks.spawn(async move { session.handle(route, guest, &request).await[0].len() == 97 });
+        }
+        let mut accepted = 1;
+        while let Some(result) = tasks.join_next().await {
+            accepted += usize::from(result.unwrap());
+        }
+        assert_eq!(accepted, 100);
+    }
+
+    #[tokio::test]
+    async fn expired_session_neither_claims_nor_serves_packets() {
+        let directory = tempfile::tempdir().unwrap();
+        let host = SecretKey::generate();
+        let ticket = SecretKey::generate();
+        let session = Session::new(
+            Selection::Receive(directory.path().to_owned()),
+            host.clone(),
+            ticket.clone(),
+            Instant::now(),
+            1,
+            Arc::new(|_| {}),
+        )
+        .await
+        .unwrap();
+
+        let guest = SecretKey::generate().public();
+        let request = claim(&host, &ticket, guest, Route::Lan);
+        assert!(session.handle(Route::Lan, guest, &request).await.is_empty());
+        assert!(session.handle(Route::Relay, guest, &[2; 37]).await.is_empty());
+    }
 }

@@ -1506,6 +1506,7 @@ mod tests {
             forward_pc_notifications_to_phone: true,
             away_mode: true,
             network_interface: "wlan0".into(),
+            anysend_site: "https://anysend.example/".into(),
             walkthrough_completed: true,
             walkthrough_step: 4,
             whats_new_dismissed: true,

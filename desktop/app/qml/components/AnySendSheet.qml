@@ -1,21 +1,26 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import QtQuick
+import QtQuick.Controls as Controls
 import QtQuick.Dialogs
 import app.nectarlink
 
 Sheet {
     id: sheet
     cardWidth: 568
+    readonly property bool showTickets: AnySend.phase === "waiting" ||
+        (AnySend.phase === "transferring" && AnySend.connected < AnySend.limit)
     onOpenedChanged: {
-        if (opened)
+        if (opened) {
             siteInput.text = Preferences.anysendSite
-        else
+            limitInput.value = 1
+        } else {
             AnySend.cancel()
+        }
     }
 
     function begin(receive, url) {
         Preferences.anysendSite = siteInput.text.trim()
-        AnySend.start(receive, url.toString(), Preferences.anysendSite, Preferences.networkInterface)
+        AnySend.start(receive, url.toString(), Preferences.anysendSite, Preferences.networkInterface, limitInput.value)
     }
 
     FileDialog {
@@ -60,6 +65,23 @@ Sheet {
             }
         }
 
+        Row {
+            spacing: 8
+            Txt {
+                anchors.verticalCenter: parent.verticalCenter
+                text: qsTr("Maximum browsers")
+                role: "label"
+            }
+            Controls.SpinBox {
+                id: limitInput
+                from: 1
+                to: 100
+                value: 1
+                editable: true
+                Accessible.name: qsTr("Maximum browsers")
+            }
+        }
+
         Txt {
             text: qsTr("Website for the global QR")
             role: "label"
@@ -89,7 +111,7 @@ Sheet {
 
         Grid {
             id: routes
-            visible: AnySend.phase === "waiting"
+            visible: sheet.showTickets
             width: parent.width
             columns: width >= 400 ? 2 : 1
             spacing: 12
@@ -97,7 +119,7 @@ Sheet {
             Repeater {
                 model: [
                     { title: qsTr("Local network"), path: AnySend.lanPath, size: AnySend.lanSize, error: AnySend.lanError },
-                    { title: qsTr("Global / iroh relay"), path: AnySend.relayPath, size: AnySend.relaySize, error: AnySend.relayError }
+                    { title: qsTr("Global link"), path: AnySend.relayPath, size: AnySend.relaySize, error: AnySend.relayError }
                 ]
                 delegate: Column {
                     required property var modelData
@@ -130,14 +152,21 @@ Sheet {
             }
         }
         Txt {
-            visible: AnySend.phase === "waiting"
+            visible: sheet.showTickets
             width: parent.width
             text: qsTr("Scan either QR within 10 minutes. Use the local QR on a trusted network.")
             wrapMode: Text.WordWrap
             muted: true
         }
         Txt {
-            visible: AnySend.phase === "transferring" || AnySend.phase === "finished" ||
+            visible: AnySend.limit > 1
+            width: parent.width
+            wrapMode: Text.WordWrap
+            text: qsTr("Connected %1/%2 · Completed %3 · Failed %4")
+                .arg(AnySend.connected).arg(AnySend.limit).arg(AnySend.completed).arg(AnySend.failed)
+        }
+        Txt {
+            visible: (AnySend.phase === "transferring" && AnySend.limit === 1) || AnySend.phase === "finished" ||
                      AnySend.phase === "expired" || AnySend.phase === "failed"
             width: parent.width
             wrapMode: Text.Wrap

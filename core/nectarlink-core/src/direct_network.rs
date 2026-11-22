@@ -89,14 +89,21 @@ fn bind_subnet(builder: Builder, address: SocketAddr, prefix: u8) -> crate::Resu
 
 /// iroh exposes CONNECT as its dial extension, but does not expose its TCP socket.
 /// Authenticate this loopback connector and leave relay TLS and iroh framing intact.
-pub(crate) struct RelayConnector {
+pub struct RelayConnector {
     url: Url,
     interface: watch::Sender<String>,
     task: AbortHandle,
 }
 
+impl std::fmt::Debug for RelayConnector {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.debug_struct("RelayConnector").finish_non_exhaustive()
+    }
+}
+
 impl RelayConnector {
-    pub(crate) async fn start(interface: String) -> io::Result<Self> {
+    /// Starts an authenticated loopback connector for relay TCP connections on the interface.
+    pub async fn start(interface: String) -> io::Result<Self> {
         let listener = TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, 0)).await?;
         let password = format!("{:032x}", rand::random::<u128>());
         let credentials = format!("nectarlink:{password}");
@@ -131,7 +138,8 @@ impl RelayConnector {
         Ok(Self { url, interface, task })
     }
 
-    pub(crate) fn url(&self) -> &Url {
+    /// URL for the local CONNECT tunnel, including its credentials.
+    pub fn url(&self) -> &Url {
         &self.url
     }
 

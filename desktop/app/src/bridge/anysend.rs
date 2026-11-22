@@ -29,6 +29,10 @@ pub mod qobject {
         #[qproperty(QString, error)]
         #[qproperty(QString, saved_path)]
         #[qproperty(f64, progress)]
+        #[qproperty(i32, limit)]
+        #[qproperty(i32, connected)]
+        #[qproperty(i32, completed)]
+        #[qproperty(i32, failed)]
         #[qproperty(QString, lan_path)]
         #[qproperty(i32, lan_size)]
         #[qproperty(QString, lan_error)]
@@ -44,6 +48,7 @@ pub mod qobject {
             file_url: &QString,
             site_url: &QString,
             interface: &QString,
+            limit: i32,
         );
 
         #[qinvokable]
@@ -60,6 +65,10 @@ pub struct AnySendRust {
     error: QString,
     saved_path: QString,
     progress: f64,
+    limit: i32,
+    connected: i32,
+    completed: i32,
+    failed: i32,
     lan_path: QString,
     lan_size: i32,
     lan_error: QString,
@@ -85,6 +94,7 @@ impl qobject::AnySend {
         file_url: &QString,
         site_url: &QString,
         interface: &QString,
+        limit: i32,
     ) {
         self.as_mut().cancel();
         let Some(path) = QUrl::from(file_url).to_local_file().map(|path| PathBuf::from(path.to_string()))
@@ -102,6 +112,7 @@ impl qobject::AnySend {
         let selected = if receive { Selection::Receive(path) } else { Selection::Send(path) };
         let interface = interface.to_string();
         let relays = relay_candidates();
+        self.as_mut().set_limit(limit);
         self.as_mut().set_phase(QString::from("waiting"));
         let qt = self.qt_thread();
         let generation = self.generation;
@@ -113,7 +124,7 @@ impl qobject::AnySend {
             });
         });
         let task = core_host::host().runtime.spawn(async move {
-            if let Err(error) = anysend::run(selected, site, interface, relays, report.clone()).await {
+            if let Err(error) = anysend::run(selected, site, interface, relays, limit, report.clone()).await {
                 report(Event::Failed(error.to_string()));
             }
         });
@@ -133,6 +144,10 @@ impl qobject::AnySend {
         self.as_mut().set_error(QString::default());
         self.as_mut().set_saved_path(QString::default());
         self.as_mut().set_progress(0.0);
+        self.as_mut().set_limit(0);
+        self.as_mut().set_connected(0);
+        self.as_mut().set_completed(0);
+        self.as_mut().set_failed(0);
         self.as_mut().clear_tickets();
     }
 
@@ -146,7 +161,7 @@ impl qobject::AnySend {
     fn event(mut self: Pin<&mut Self>, event: Event) {
         match event {
             Event::Ticket(route, url) => {
-                if self.phase != QString::from("waiting") {
+                if self.phase != QString::from("waiting") && self.phase != QString::from("transferring") {
                     return;
                 }
                 let Ok(code) = qr::encode(url.as_str()) else {
@@ -166,7 +181,10 @@ impl qobject::AnySend {
             }
             Event::Unavailable(route, error) => {
                 let active = if route == Route::Lan { "lan" } else { "relay" };
-                if self.phase == QString::from("transferring") && self.active_route == QString::from(active) {
+                if self.limit == 1
+                    && self.phase == QString::from("transferring")
+                    && self.active_route == QString::from(active)
+                {
                     self.as_mut().set_phase(QString::from("failed"));
                     self.as_mut().set_error(QString::from(&error));
                 } else {
@@ -174,13 +192,17 @@ impl qobject::AnySend {
                 }
             }
             Event::Started(route) => {
-                self.as_mut().clear_tickets();
                 self.as_mut().set_active_route(QString::from(if route == Route::Lan {
                     "lan"
                 } else {
                     "relay"
                 }));
                 self.as_mut().set_phase(QString::from("transferring"));
+            }
+            Event::Guests { connected, completed, failed } => {
+                self.as_mut().set_connected(connected as i32);
+                self.as_mut().set_completed(completed as i32);
+                self.as_mut().set_failed(failed as i32);
             }
             Event::Progress(bytes, total) => {
                 self.as_mut().set_progress(bytes as f64 / total as f64);
@@ -199,7 +221,9 @@ impl qobject::AnySend {
             }
             Event::Expired => {
                 self.as_mut().clear_tickets();
-                self.as_mut().set_phase(QString::from("expired"));
+                if self.phase == QString::from("waiting") || self.phase == QString::from("transferring") {
+                    self.as_mut().set_phase(QString::from("expired"));
+                }
             }
         }
     }
