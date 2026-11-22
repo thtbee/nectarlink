@@ -10,6 +10,83 @@ Item {
     id: page
     property bool active: false
     property string currentSection: "appearance"
+
+    // ---- Search (#522): every row's title and description, in every section ----
+    property string searchQuery: ""
+    property var searchResults: []
+    onSearchQueryChanged: searchResults = findSettings(searchQuery)
+
+    function sectionTitle(id) {
+        for (let i = 0; i < categories.length; i++)
+            if (categories[i].id === id) return categories[i].title
+        return ""
+    }
+
+    // Rows are anything with a title and a description (ListRow, SwitchBar...).
+    function collectRows(item, section, into) {
+        if (!item) return
+        if (typeof item.title === "string" && typeof item.description === "string" && item.title.length > 0)
+            into.push({ section: section, title: item.title, description: item.description, item: item })
+        const kids = item.children
+        for (let i = 0; i < kids.length; i++)
+            collectRows(kids[i], section, into)
+    }
+
+    function findSettings(query) {
+        const words = query.toLowerCase().split(/\s+/).filter(w => w.length > 0)
+        if (words.length === 0) return []
+        const rows = []
+        const kids = column.children
+        for (let i = 0; i < kids.length; i++) {
+            const section = kids[i].settingsSection
+            if (typeof section === "string" && section.length > 0)
+                collectRows(kids[i], section, rows)
+        }
+        // Sections by name too, so "camera" finds Camera & Audio.
+        for (let i = 0; i < categories.length; i++)
+            rows.push({ section: categories[i].id, title: categories[i].title, description: categories[i].subtitle, item: null })
+        const matches = (row) => {
+            const text = (row.title + " " + row.description + " " + sectionTitle(row.section)).toLowerCase()
+            return words.every(w => text.indexOf(w) >= 0)
+        }
+        const seen = {}
+        const found = []
+        for (let i = 0; i < rows.length && found.length < 12; i++) {
+            const key = rows[i].section + "|" + rows[i].title
+            if (seen[key] || !matches(rows[i])) continue
+            seen[key] = true
+            found.push(rows[i])
+        }
+        return found
+    }
+
+    // Opens a result's section, scrolls to its row and flashes it.
+    function openResult(result) {
+        searchQuery = ""
+        searchInput.text = ""
+        currentSection = result.section
+        pendingRow = result.item
+        scrollToRow.restart()
+    }
+    property var pendingRow: null
+    Timer {
+        id: scrollToRow
+        // After the section's own scroll-to-top and fade-in.
+        interval: 180
+        onTriggered: {
+            const row = page.pendingRow
+            page.pendingRow = null
+            if (!row || !row.visible) return
+            const pos = row.mapToItem(column, 0, 0)
+            const max = Math.max(0, contentFlickable.contentHeight - contentFlickable.height)
+            contentFlickable.contentY = Math.max(0, Math.min(max, pos.y - 24))
+            rowFlash.x = pos.x - 6
+            rowFlash.y = pos.y - 4
+            rowFlash.width = row.width + 12
+            rowFlash.height = row.height + 8
+            rowFlashAnim.restart()
+        }
+    }
     property int selectedDeviceIndex: 0
     signal pairRequested
 
@@ -496,6 +573,24 @@ Item {
         boundsBehavior: Flickable.StopAtBounds
         clip: true
 
+        // A found row flashes once (#522).
+        Rectangle {
+            id: rowFlash
+            parent: column
+            z: 10
+            radius: Theme.radiusMd
+            color: "transparent"
+            border.width: 2
+            border.color: Theme.primary
+            opacity: 0
+            SequentialAnimation {
+                id: rowFlashAnim
+                NumberAnimation { target: rowFlash; property: "opacity"; to: 1; duration: Theme.reduceMotion ? 0 : 120 }
+                PauseAnimation { duration: 900 }
+                NumberAnimation { target: rowFlash; property: "opacity"; to: 0; duration: Theme.reduceMotion ? 0 : 400 }
+            }
+        }
+
         Column {
             id: column
             width: Math.min(840, contentFlickable.width - Theme.contentPadding * 2)
@@ -521,6 +616,111 @@ Item {
                     to: 0
                     duration: 135
                     easing.type: Easing.OutCubic
+                }
+            }
+
+            // Search across every section (#522).
+            Rectangle {
+                id: searchBox
+                width: parent.width
+                height: 40
+                radius: Theme.graphite ? Theme.radiusSm : height / 2
+                color: Theme.graphite ? "transparent" : Theme.surfaceContainerHighest
+                border.width: searchInput.activeFocus ? 2 : 1
+                border.color: searchInput.activeFocus ? Theme.primary : Theme.outlineVariant
+                Icon {
+                    id: searchIconSettings
+                    anchors.left: parent.left
+                    anchors.leftMargin: 14
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 18; height: 18
+                    path: Icons.search
+                    color: Theme.surfaceContentVariant
+                }
+                TextInput {
+                    id: searchInput
+                    anchors.left: searchIconSettings.right
+                    anchors.leftMargin: 10
+                    anchors.right: parent.right
+                    anchors.rightMargin: 14
+                    anchors.verticalCenter: parent.verticalCenter
+                    font.family: Theme.fontUi
+                    font.pixelSize: 14
+                    color: Theme.surfaceContent
+                    selectionColor: Theme.primaryContainer
+                    selectedTextColor: Theme.primaryContainerContent
+                    clip: true
+                    Accessible.name: qsTr("Search settings")
+                    onTextChanged: page.searchQuery = text
+                    Keys.onReturnPressed: if (page.searchResults.length > 0) page.openResult(page.searchResults[0])
+                    Keys.onEnterPressed: if (page.searchResults.length > 0) page.openResult(page.searchResults[0])
+                    Keys.onEscapePressed: text = ""
+                    Txt {
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: searchInput.text.length === 0
+                        role: "body"
+                        muted: true
+                        text: qsTr("Search settings")
+                    }
+                }
+            }
+            Card {
+                width: parent.width
+                visible: page.searchQuery.trim().length > 0
+                Column {
+                    width: parent.width
+                    Txt {
+                        visible: page.searchResults.length === 0
+                        width: parent.width
+                        topPadding: 8
+                        bottomPadding: 8
+                        role: "body"
+                        muted: true
+                        text: qsTr("No setting matches \"%1\".").arg(page.searchQuery.trim())
+                    }
+                    Repeater {
+                        model: page.searchResults
+                        delegate: Rectangle {
+                            id: resultRow
+                            required property var modelData
+                            required property int index
+                            width: parent.width
+                            height: resultText.implicitHeight + 16
+                            radius: Theme.radiusMd
+                            color: resultMouse.containsMouse ? Theme.subtleFillSecondary : "transparent"
+                            activeFocusOnTab: true
+                            Accessible.role: Accessible.Button
+                            Accessible.name: modelData.title + ", " + page.sectionTitle(modelData.section)
+                            Keys.onReturnPressed: page.openResult(modelData)
+                            Keys.onSpacePressed: page.openResult(modelData)
+                            Column {
+                                id: resultText
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.leftMargin: 8
+                                anchors.rightMargin: 8
+                                anchors.verticalCenter: parent.verticalCenter
+                                spacing: 2
+                                Txt { width: parent.width; role: "label"; text: resultRow.modelData.title; elide: Text.ElideRight }
+                                Txt {
+                                    width: parent.width
+                                    role: "caption"
+                                    muted: true
+                                    elide: Text.ElideRight
+                                    text: page.sectionTitle(resultRow.modelData.section)
+                                        + (resultRow.modelData.item && resultRow.modelData.description.length > 0
+                                           ? " · " + resultRow.modelData.description : "")
+                                }
+                            }
+                            MouseArea {
+                                id: resultMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: page.openResult(resultRow.modelData)
+                            }
+                        }
+                    }
                 }
             }
 
@@ -555,6 +755,7 @@ Item {
             // 1. APPEARANCE
             // ================================================================
             Column {
+                readonly property string settingsSection: "appearance"
                 visible: page.currentSection === "appearance"
                 width: visible ? parent.width : 0
                 spacing: Theme.gutter
@@ -960,6 +1161,7 @@ Item {
             // 2. GENERAL
             // ================================================================
             Column {
+                readonly property string settingsSection: "general"
                 visible: page.currentSection === "general"
                 width: visible ? parent.width : 0
                 spacing: Theme.gutter
@@ -1471,6 +1673,7 @@ Item {
             // 3. DEVICES
             // ================================================================
             Column {
+                readonly property string settingsSection: "devices"
                 visible: page.currentSection === "devices"
                 width: visible ? parent.width : 0
                 spacing: Theme.gutter
@@ -1948,6 +2151,7 @@ Item {
             // 4. CAMERA & AUDIO
             // ================================================================
             Column {
+                readonly property string settingsSection: "camera_audio"
                 visible: page.currentSection === "camera_audio"
                 width: visible ? parent.width : 0
                 spacing: Theme.gutter
@@ -2402,6 +2606,7 @@ Item {
             // 5. NOTIFICATIONS
             // ================================================================
             Column {
+                readonly property string settingsSection: "notifications"
                 visible: page.currentSection === "notifications"
                 width: visible ? parent.width : 0
                 spacing: Theme.gutter
@@ -2578,6 +2783,7 @@ Item {
             // 6. FILES & SYNC
             // ================================================================
             Column {
+                readonly property string settingsSection: "files_sync"
                 visible: page.currentSection === "files_sync"
                 width: visible ? parent.width : 0
                 spacing: Theme.gutter
@@ -2897,6 +3103,7 @@ Item {
             // 7. SHORTCUTS & RULES
             // ================================================================
             Column {
+                readonly property string settingsSection: "shortcuts"
                 visible: page.currentSection === "shortcuts"
                 width: visible ? parent.width : 0
                 spacing: Theme.gutter
@@ -3383,6 +3590,7 @@ Item {
             // 8. STORAGE & PRIVACY
             // ================================================================
             Column {
+                readonly property string settingsSection: "storage"
                 visible: page.currentSection === "storage"
                 width: visible ? parent.width : 0
                 spacing: Theme.gutter
@@ -3731,6 +3939,7 @@ Item {
             // AI AGENTS
             // ================================================================
             AgentsSection {
+                readonly property string settingsSection: "agents"
                 visible: page.currentSection === "agents"
                 width: visible ? parent.width : 0
             }
@@ -3739,6 +3948,7 @@ Item {
             // 9. CONNECTION & ABOUT
             // ================================================================
             Column {
+                readonly property string settingsSection: "connection"
                 visible: page.currentSection === "connection"
                 width: visible ? parent.width : 0
                 spacing: Theme.gutter
@@ -4078,6 +4288,7 @@ Item {
             // 10. COMMUNITY (id "support", as links to it already say)
             // ================================================================
             Column {
+                readonly property string settingsSection: "support"
                 visible: page.currentSection === "support"
                 width: visible ? parent.width : 0
                 spacing: Theme.gutter
@@ -4150,6 +4361,7 @@ Item {
             // REPORT A PROBLEM
             // ================================================================
             Column {
+                readonly property string settingsSection: "report"
                 visible: page.currentSection === "report"
                 width: visible ? parent.width : 0
                 spacing: Theme.gutter
