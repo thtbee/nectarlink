@@ -6,6 +6,8 @@
 
 // cxx-qt generates FFI code with `unsafe`; these modules are the boundary.
 #[allow(unsafe_code)]
+pub mod anysend;
+#[allow(unsafe_code)]
 pub mod agents;
 #[allow(unsafe_code)]
 pub mod app;

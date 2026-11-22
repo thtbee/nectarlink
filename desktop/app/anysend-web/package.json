@@ -1,0 +1,11 @@
+{
+  "name": "nectarlink-anysend-web",
+  "private": true,
+  "type": "module",
+  "scripts": {"build": "bun build.js"},
+  "dependencies": {
+    "@noble/ciphers": "2.2.0",
+    "@noble/hashes": "2.4.0",
+    "tweetnacl": "1.0.3"
+  }
+}

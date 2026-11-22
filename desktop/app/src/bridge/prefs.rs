@@ -187,6 +187,7 @@ pub mod qobject {
         /// Stay connected over mobile data (LTE/5G) or relay when away from Wi-Fi.
         #[qproperty(bool, away_mode)]
         #[qproperty(QString, network_interface)]
+        #[qproperty(QString, anysend_site)]
         /// Alias for `start_with_windows` used by the walkthrough and settings bindings.
         #[qproperty(bool, start_at_login)]
         /// Whether the first-run setup walkthrough has been completed or skipped.
@@ -506,6 +507,7 @@ pub struct PreferencesRust {
     phone_beside_side: QString,
     away_mode: bool,
     network_interface: QString,
+    anysend_site: QString,
     start_at_login: bool,
     walkthrough_completed: bool,
     walkthrough_step: i32,
@@ -641,6 +643,11 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_phone_beside_side(QString::from(&settings.phone_beside_side));
         self.as_mut().set_away_mode(settings.away_mode);
         self.as_mut().set_network_interface(QString::from(&settings.network_interface));
+        self.as_mut().set_anysend_site(QString::from(if settings.anysend_site.is_empty() {
+            crate::anysend::DEFAULT_SITE
+        } else {
+            settings.anysend_site.as_str()
+        }));
         self.as_mut().set_walkthrough_completed(settings.walkthrough_completed);
         self.as_mut().set_walkthrough_step(i32::from(settings.walkthrough_step.min(6)));
         self.as_mut().set_whats_new_dismissed(settings.whats_new_dismissed);
@@ -1076,6 +1083,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
             })
             .release();
         self.as_mut().on_network_interface_changed(|p| p.save()).release();
+        self.as_mut().on_anysend_site_changed(|p| p.save()).release();
         self.as_mut().on_walkthrough_completed_changed(|p| p.save()).release();
         self.as_mut()
             .on_walkthrough_step_changed(|mut p| {
@@ -1587,6 +1595,7 @@ impl qobject::Preferences {
             phone_beside_side: p.phone_beside_side.to_string(),
             away_mode: p.away_mode,
             network_interface: p.network_interface.to_string(),
+            anysend_site: p.anysend_site.to_string(),
             walkthrough_completed: p.walkthrough_completed,
             walkthrough_step: p.walkthrough_step.clamp(0, 6) as u8,
             whats_new_dismissed: p.whats_new_dismissed,

@@ -15,6 +15,7 @@ mod app_shortcuts;
 mod automations;
 mod badges;
 mod battery;
+mod anysend;
 mod bridge;
 mod call_audio;
 mod calls;
