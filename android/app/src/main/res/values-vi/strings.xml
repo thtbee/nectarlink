@@ -48,6 +48,8 @@
 <string name="not_connected">Chưa kết nối</string>
 <!-- Settings -->
 <string name="settings_title">Cài đặt</string>
+<string name="settings_search">Tìm trong cài đặt</string>
+<string name="settings_search_none">Không có cài đặt nào khớp.</string>
 <string name="settings_appearance">Giao diện</string>
 <string name="settings_theme">Chủ đề</string>
 <string name="settings_mode">Chế độ</string>

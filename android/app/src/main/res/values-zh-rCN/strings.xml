@@ -45,6 +45,8 @@
     <string name="connected">已连接</string>
     <string name="not_connected">未连接</string>
     <string name="settings_title">设置</string>
+    <string name="settings_search">搜索设置</string>
+    <string name="settings_search_none">没有匹配的设置。</string>
     <string name="settings_appearance">外观</string>
     <string name="settings_theme">主题</string>
     <string name="settings_mode">模式</string>

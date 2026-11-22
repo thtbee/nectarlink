@@ -163,6 +163,9 @@ fun SettingsScreen(
     var activeCategory by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("all") }
     var pulsingSectionKey by remember { mutableStateOf<String?>(null) }
     var jumpToControl by remember { mutableStateOf(0) }
+    // Search (#522): a found setting opens its section and pulses it.
+    var settingsQuery by rememberSaveable { mutableStateOf("") }
+    var searchJump by remember { mutableStateOf<Pair<String, Int>?>(null) }
     val isGlass = LocalGlassTheme.current
     val anyDialogOpen = confirmUnpair != null || confirmClearEverything
 
@@ -195,6 +198,17 @@ fun SettingsScreen(
         runCatching { listState.animateScrollToItem(2) }
         delay(2200)
         if (pulsingSectionKey == "control") pulsingSectionKey = null
+    }
+
+    androidx.compose.runtime.LaunchedEffect(searchJump) {
+        val (section, _) = searchJump ?: return@LaunchedEffect
+        val (category, indexInCat) = settingsSectionPlace(section)
+        activeCategory = category
+        pulsingSectionKey = section
+        delay(60)
+        runCatching { listState.animateScrollToItem(indexInCat) }
+        delay(2200)
+        if (pulsingSectionKey == section) pulsingSectionKey = null
     }
 
     androidx.compose.runtime.LaunchedEffect(highlightTarget) {
@@ -246,6 +260,66 @@ fun SettingsScreen(
                     )
                     FilledTonalButton(onClick = onOpenFeaturesGuide) {
                         Text(stringResource(R.string.guide_title))
+                    }
+                }
+                val resources = androidx.compose.ui.platform.LocalResources.current
+                val searchLabel = stringResource(R.string.settings_search)
+                OutlinedTextField(
+                    value = settingsQuery,
+                    onValueChange = { settingsQuery = it },
+                    placeholder = { Text(searchLabel) },
+                    singleLine = true,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { contentDescription = searchLabel },
+                )
+                if (settingsQuery.isNotBlank()) {
+                    val sectionTitles = remember(resources) {
+                        SETTINGS_SEARCH_INDEX.groupBy { it.section }
+                            .mapValues { (_, entries) -> resources.getString(entries.first().title) }
+                    }
+                    val found = remember(settingsQuery, resources) {
+                        searchSettings(
+                            settingsQuery,
+                            SETTINGS_SEARCH_INDEX,
+                            sectionTitle = { sectionTitles[it].orEmpty() },
+                            label = { resources.getString(it) },
+                        )
+                    }
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainer,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Column(Modifier.padding(vertical = 4.dp)) {
+                            if (found.isEmpty()) {
+                                Text(
+                                    stringResource(R.string.settings_search_none),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                                )
+                            }
+                            found.forEach { entry ->
+                                Column(
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            settingsQuery = ""
+                                            // The count makes the same section twice in a row still jump.
+                                            searchJump = entry.section to (searchJump?.second ?: 0) + 1
+                                        }
+                                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                                ) {
+                                    Text(stringResource(entry.title), style = MaterialTheme.typography.titleSmall)
+                                    Text(
+                                        sectionTitles[entry.section].orEmpty(),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
                 Row(

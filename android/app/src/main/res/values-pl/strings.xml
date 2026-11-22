@@ -51,6 +51,8 @@
 
     <!-- Settings -->
     <string name="settings_title">Ustawienia</string>
+    <string name="settings_search">Szukaj w ustawieniach</string>
+    <string name="settings_search_none">Żadne ustawienie nie pasuje.</string>
     <string name="settings_appearance">Wygląd</string>
     <string name="settings_theme">Motyw</string>
     <string name="settings_mode">Tryb</string>

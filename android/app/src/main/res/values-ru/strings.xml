@@ -45,6 +45,8 @@
     <string name="connected">Подключено</string>
     <string name="not_connected">Не подключено</string>
     <string name="settings_title">Настройки</string>
+    <string name="settings_search">Поиск по настройкам</string>
+    <string name="settings_search_none">Нет подходящих настроек.</string>
     <string name="settings_appearance">Оформление</string>
     <string name="settings_theme">Тема</string>
     <string name="settings_mode">Режим</string>

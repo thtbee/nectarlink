@@ -51,6 +51,8 @@
 
     <!-- Settings -->
     <string name="settings_title">設定</string>
+    <string name="settings_search">設定を検索</string>
+    <string name="settings_search_none">一致する設定はありません。</string>
     <string name="settings_appearance">外観</string>
     <string name="settings_theme">テーマ</string>
     <string name="settings_mode">モード</string>

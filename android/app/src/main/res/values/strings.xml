@@ -51,6 +51,8 @@
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>
+    <string name="settings_search">Search settings</string>
+    <string name="settings_search_none">No setting matches that.</string>
     <string name="settings_appearance">Appearance</string>
     <string name="settings_theme">Theme</string>
     <string name="settings_mode">Mode</string>
