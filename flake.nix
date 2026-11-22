@@ -78,14 +78,22 @@ EOF
 
           doCheck = false;
 
-          preFixup = ''
+          # These libraries are dlopen()ed, not linked, so fixup's
+          # patchelf --shrink-rpath drops them as unused if they are added
+          # earlier. Add them after fixup, on the real binary behind the Qt
+          # wrapper. ffmpeg_8: the decoder knows libavcodec 59-62, and
+          # nixpkgs' default ffmpeg is 9 (libavcodec 63).
+          postFixup = ''
             patchelf --add-rpath "${pkgs.lib.makeLibraryPath (with pkgs; [
               libGL
               vulkan-loader
               libx11
               libxkbcommon
-              ffmpeg
-            ])}" $out/bin/nectarlink-desktop
+              libxtst
+              ffmpeg_8
+              openh264
+              lame
+            ])}" $out/bin/.nectarlink-desktop-wrapped
           '';
 
           postInstall = ''
