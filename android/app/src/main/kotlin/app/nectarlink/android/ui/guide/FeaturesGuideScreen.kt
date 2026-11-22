@@ -115,12 +115,12 @@ fun FeaturesGuideScreen(
     val selectedArea = remember(selectedAreaId) {
         FeatureArea.entries.firstOrNull { it.id == selectedAreaId } ?: FeatureArea.All
     }
-    val filteredEntries = remember(context, selectedArea, searchQuery, state.romServiceAvailable) {
+    val filteredEntries = remember(context, selectedArea, searchQuery, state.hideElevated) {
         FeaturesGuideCatalog.filter(
             context = context,
             area = selectedArea,
             searchQuery = searchQuery,
-            includeElevated = !state.romServiceAvailable,
+            includeElevated = !state.hideElevated,
         )
     }
     val resolvedCards = remember(context, filteredEntries, state, hasConnectedPc) {

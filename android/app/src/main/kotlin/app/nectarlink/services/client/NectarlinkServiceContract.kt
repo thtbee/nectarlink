@@ -182,4 +182,32 @@ object NectarlinkServiceContract {
     const val CAP_UNINSTALL_PACKAGES = 1L shl 8
     const val CAP_POINTER_FLOW = 1L shl 9
     const val CAP_BACKGROUND_LAUNCH = 1L shl 10
+
+    /**
+     * Core Elevated capabilities expected from a fully functional system service.
+     * Note [CAP_APP_VIRTUAL_DISPLAY] requires Android 11+ (API 30) and [CAP_CALL_AUDIO] depends
+     * on telephony audio HAL support on the device.
+     */
+    const val CORE_ELEVATED_CAPABILITIES =
+        CAP_INPUT_INJECTION or
+            CAP_SCREEN_MIRROR or
+            CAP_DEVICE_AUDIO or
+            CAP_CLIPBOARD_SYNC or
+            CAP_DISPLAY_POWER or
+            CAP_SYSTEM_TOGGLES or
+            CAP_UNINSTALL_PACKAGES or
+            CAP_POINTER_FLOW or
+            CAP_BACKGROUND_LAUNCH
+
+    fun requiredElevatedCapabilities(sdkInt: Int): Long =
+        if (sdkInt == 0 || sdkInt >= 30) {
+            CORE_ELEVATED_CAPABILITIES or CAP_APP_VIRTUAL_DISPLAY
+        } else {
+            CORE_ELEVATED_CAPABILITIES
+        }
+
+    fun hasAllRequiredCapabilities(capabilities: Long, sdkInt: Int): Boolean {
+        val required = requiredElevatedCapabilities(sdkInt)
+        return (capabilities and required) == required
+    }
 }

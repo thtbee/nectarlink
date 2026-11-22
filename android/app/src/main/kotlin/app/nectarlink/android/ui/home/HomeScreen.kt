@@ -317,7 +317,12 @@ fun HomeScreen(
                 add("update_card")
                 if (!backgroundServiceEnabled) add("background_connection_off")
                 if (!state.localNetwork) add("local_network_setup")
-                if (state.remoteInputRequested && !state.inputAccess && !state.elevated) add("remote_input_requested")
+                if (state.remoteInputRequested &&
+                    !state.inputAccess &&
+                    !state.hasElevatedCapability(app.nectarlink.services.client.NectarlinkServiceContract.CAP_INPUT_INJECTION)
+                ) {
+                    add("remote_input_requested")
+                }
                 if (state.devices.none { !it.isAndroid }) add("no_paired_pc_card")
                 state.devices.filter { !it.isAndroid }.forEach { add(it.id) }
                 state.devices.filter { it.isAndroid }.forEach { add(it.id) }
@@ -326,8 +331,12 @@ fun HomeScreen(
                     var missingCount = 0
                     if (!state.backgroundUnrestricted) missingCount++
                     if (!state.notificationAccess) missingCount++
-                    if (!state.elevated && !state.romServiceAvailable) missingCount++
-                    if (!state.inputAccess && !state.elevated) missingCount++
+                    if (!state.hasElevatedCapability(app.nectarlink.services.client.NectarlinkServiceContract.CAP_CLIPBOARD_SYNC)) missingCount++
+                    if (!state.inputAccess &&
+                        !state.hasElevatedCapability(app.nectarlink.services.client.NectarlinkServiceContract.CAP_INPUT_INJECTION)
+                    ) {
+                        missingCount++
+                    }
                     if (!state.smsAccess) missingCount++
                     if (!state.callAccess) missingCount++
                     if (!state.contactsAccess) missingCount++
@@ -744,8 +753,14 @@ fun HomeScreen(
             var missingCount = 0
             if (!state.backgroundUnrestricted) missingCount++
             if (!state.notificationAccess) missingCount++
-            if (!state.elevated && !state.romServiceAvailable) missingCount++
-            if (!state.inputAccess && !state.elevated) missingCount++
+            if (!state.hasElevatedCapability(app.nectarlink.services.client.NectarlinkServiceContract.CAP_CLIPBOARD_SYNC)) {
+                missingCount++
+            }
+            if (!state.inputAccess &&
+                !state.hasElevatedCapability(app.nectarlink.services.client.NectarlinkServiceContract.CAP_INPUT_INJECTION)
+            ) {
+                missingCount++
+            }
             if (!state.smsAccess) missingCount++
             if (!state.callAccess) missingCount++
             if (!state.contactsAccess) missingCount++
@@ -1284,7 +1299,7 @@ private fun PermissionsSetupCard(
                         runCatching { context.startActivity(NotificationListener.settingsIntent(context)) }
                     }
                 }
-                if (!state.elevated && !state.romServiceAvailable) {
+                if (!state.hasElevatedCapability(app.nectarlink.services.client.NectarlinkServiceContract.CAP_CLIPBOARD_SYNC)) {
                     SetupCard(
                         title = stringResource(R.string.home_background_clipboard_title),
                         text = stringResource(R.string.home_background_clipboard_body),
@@ -1299,7 +1314,9 @@ private fun PermissionsSetupCard(
                         }
                     }
                 }
-                if (!state.inputAccess && !state.elevated) {
+                if (!state.inputAccess &&
+                    !state.hasElevatedCapability(app.nectarlink.services.client.NectarlinkServiceContract.CAP_INPUT_INJECTION)
+                ) {
                     SetupCard(
                         stringResource(R.string.control_title),
                         stringResource(R.string.control_off),

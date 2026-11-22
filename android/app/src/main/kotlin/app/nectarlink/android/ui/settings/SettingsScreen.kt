@@ -84,6 +84,7 @@ import app.nectarlink.android.elevated.Elevated
 import app.nectarlink.android.elevated.PairingNotification
 import app.nectarlink.android.elevated.ElevatedMethod
 import app.nectarlink.android.elevated.ShizukuElevated
+import app.nectarlink.services.client.NectarlinkServiceContract
 import app.nectarlink.android.mirror.InputService
 import app.nectarlink.android.photos.RecentPhotos
 import app.nectarlink.android.sms.PhoneSms
@@ -758,17 +759,23 @@ fun SettingsScreen(
                     highlighted = pulsingSectionKey == "control",
                 ) {
                     ControlAccess(state.inputAccess)
-                    if (!state.romServiceAvailable) {
+                    if (!state.hideElevated) {
                         SettingRowDivider()
                         ElevatedAccess()
                     }
-                    AssistOnDemandAccess(state.elevated, state.romServiceAvailable)
+                    AssistOnDemandAccess(
+                        state.hasElevatedCapability(NectarlinkServiceContract.CAP_INPUT_INJECTION),
+                        state.hideElevated,
+                    )
                     SettingRowDivider()
                     BankingPauseAccess()
                     SettingRowDivider()
                     DndAccess(state.dndAccess)
                     SettingRowDivider()
-                    WriteSettingsAccess(state.writeSettingsAccess || state.elevated)
+                    WriteSettingsAccess(
+                        state.writeSettingsAccess ||
+                            state.hasElevatedCapability(NectarlinkServiceContract.CAP_SYSTEM_TOGGLES),
+                    )
                 }
             }
 
@@ -885,7 +892,7 @@ fun SettingsScreen(
                     highlighted = pulsingSectionKey == "clipboard",
                 ) {
                     val context = LocalContext.current
-                    if (!state.romServiceAvailable) {
+                    if (!state.hasElevatedCapability(NectarlinkServiceContract.CAP_CLIPBOARD_SYNC)) {
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                             Column(Modifier.weight(1f).padding(end = 12.dp)) {
                                 Text(stringResource(R.string.settings_background_clipboard_title), style = MaterialTheme.typography.titleSmall)
@@ -1579,10 +1586,10 @@ private fun ControlAccess(on: Boolean) {
  * does everything else Assist would. Its own divider, since it may not show.
  */
 @Composable
-private fun AssistOnDemandAccess(elevatedRunning: Boolean, romServiceAvailable: Boolean = false) {
+private fun AssistOnDemandAccess(elevatedRunning: Boolean, hideElevated: Boolean = false) {
     val context = LocalContext.current
     val on by app.nectarlink.android.banking.AssistOnDemand.enabled.collectAsStateWithLifecycle()
-    if (!on && (romServiceAvailable || (!elevatedRunning && !Elevated.isSetUp()))) return
+    if (!on && (hideElevated || (!elevatedRunning && !Elevated.isSetUp()))) return
     SettingRowDivider()
     val title = stringResource(R.string.settings_assist_on_demand)
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {

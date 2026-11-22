@@ -168,6 +168,20 @@ internal object SystemServiceBridge {
         else -> null
     }
 
+    fun requiredCapability(cmd: String, ownPackage: String): Long? = when (parseCommand(cmd, ownPackage)) {
+        SystemServiceCommand.ExpandNotifications,
+        is SystemServiceCommand.SetWifi,
+        is SystemServiceCommand.SetBluetooth,
+        is SystemServiceCommand.SetHotspot,
+        is SystemServiceCommand.SetBrightness,
+        -> NectarlinkServiceContract.CAP_SYSTEM_TOGGLES
+        is SystemServiceCommand.UninstallPackage -> NectarlinkServiceContract.CAP_UNINSTALL_PACKAGES
+        SystemServiceCommand.LaunchPcStartActivity -> NectarlinkServiceContract.CAP_BACKGROUND_LAUNCH
+        SystemServiceCommand.ProvisionPermissions,
+        null,
+        -> null
+    }
+
     fun executeCommand(client: NectarlinkServiceClient, cmd: String, ownPackage: String): Boolean {
         return when (val parsed = parseCommand(cmd, ownPackage)) {
             SystemServiceCommand.ExpandNotifications -> client.expandNotifications()

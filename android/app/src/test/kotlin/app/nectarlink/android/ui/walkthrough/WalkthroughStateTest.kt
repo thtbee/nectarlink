@@ -6,6 +6,7 @@ import app.nectarlink.android.ui.guide.FeatureArea
 import app.nectarlink.android.ui.guide.FeatureLiveBadge
 import app.nectarlink.android.ui.guide.FeaturesGuideCatalog
 import app.nectarlink.android.ui.guide.GuideFixAction
+import app.nectarlink.services.client.NectarlinkServiceContract
 import java.io.File
 import javax.xml.parsers.DocumentBuilderFactory
 import org.junit.Assert.assertEquals
@@ -257,20 +258,63 @@ class WalkthroughStateTest {
     }
 
     @Test
-    fun elevatedGuideIsHiddenWhenCustomRomServiceIsAvailable() {
-        val withElevated = FeaturesGuideCatalog.filter(FeatureArea.All, "", includeElevated = true)
-        assertTrue(withElevated.any { it.id == "elevated_mode" })
-
-        val withoutElevated = FeaturesGuideCatalog.filter(FeatureArea.All, "", includeElevated = false)
-        assertFalse(withoutElevated.any { it.id == "elevated_mode" })
-
+    fun elevatedGuideIsHiddenOnlyAfterHandshakeAndPerCapability() {
         val appWindows = FeaturesGuideCatalog.entries.first { it.id == "phone_app_windows" }
-        val stockState = CoreState(elevated = false, romServiceAvailable = false)
-        assertEquals(GuideFixAction.ENABLE_ELEVATED, appWindows.evaluateFixAction(stockState))
-        assertTrue(appWindows.evaluateBadge(stockState) is FeatureLiveBadge.NeedsPowerLevel)
+        val quickToggles = FeaturesGuideCatalog.entries.first { it.id == "phone_quick_toggles" }
+        val fullCaps = NectarlinkServiceContract.requiredElevatedCapabilities(35)
 
-        val romState = CoreState(elevated = false, romServiceAvailable = true)
-        assertNull(appWindows.evaluateFixAction(romState))
-        assertEquals(FeatureLiveBadge.ConnectPcToCheck, appWindows.evaluateBadge(romState))
+        // Stock / unverified / refused service never hides Elevated.
+        val refusedState = CoreState(
+            elevated = false,
+            romServiceAvailable = false,
+            romServiceCapabilities = fullCaps,
+        )
+        assertFalse(refusedState.hideElevated)
+        assertFalse(refusedState.hasElevatedCapability(NectarlinkServiceContract.CAP_APP_VIRTUAL_DISPLAY))
+        assertEquals(GuideFixAction.ENABLE_ELEVATED, appWindows.evaluateFixAction(refusedState))
+        assertTrue(appWindows.evaluateBadge(refusedState) is FeatureLiveBadge.NeedsPowerLevel)
+
+        // Connected service missing CAP_APP_VIRTUAL_DISPLAY keeps Elevated visible and app windows fixable.
+        val missingVirtualDisplay = CoreState(
+            elevated = false,
+            romServiceAvailable = true,
+            romServiceCapabilities = fullCaps and NectarlinkServiceContract.CAP_APP_VIRTUAL_DISPLAY.inv(),
+            dndAccess = true,
+        )
+        assertFalse(missingVirtualDisplay.hideElevated)
+        assertTrue(missingVirtualDisplay.hasElevatedCapability(NectarlinkServiceContract.CAP_CLIPBOARD_SYNC))
+        assertTrue(missingVirtualDisplay.hasElevatedCapability(NectarlinkServiceContract.CAP_SYSTEM_TOGGLES))
+        assertFalse(missingVirtualDisplay.hasElevatedCapability(NectarlinkServiceContract.CAP_APP_VIRTUAL_DISPLAY))
+        assertEquals(GuideFixAction.ENABLE_ELEVATED, appWindows.evaluateFixAction(missingVirtualDisplay))
+        assertNull(quickToggles.evaluateFixAction(missingVirtualDisplay))
+
+        // Connected service missing CAP_SYSTEM_TOGGLES keeps quick toggles asking for Write Settings.
+        val missingSystemToggles = CoreState(
+            elevated = false,
+            romServiceAvailable = true,
+            romServiceCapabilities = fullCaps and NectarlinkServiceContract.CAP_SYSTEM_TOGGLES.inv(),
+            dndAccess = true,
+        )
+        assertFalse(missingSystemToggles.hideElevated)
+        assertEquals(GuideFixAction.ENABLE_WRITE_SETTINGS, quickToggles.evaluateFixAction(missingSystemToggles))
+        assertNull(appWindows.evaluateFixAction(missingSystemToggles))
+
+        // Connected service with all required capabilities hides Elevated setup.
+        val fullRomState = CoreState(
+            elevated = false,
+            romServiceAvailable = true,
+            romServiceCapabilities = fullCaps,
+            dndAccess = true,
+        )
+        assertTrue(fullRomState.hideElevated)
+        assertNull(appWindows.evaluateFixAction(fullRomState))
+        assertNull(quickToggles.evaluateFixAction(fullRomState))
+        assertEquals(FeatureLiveBadge.ConnectPcToCheck, appWindows.evaluateBadge(fullRomState))
+
+        val withElevated = FeaturesGuideCatalog.filter(FeatureArea.All, "", includeElevated = !fullRomState.hideElevated)
+        assertFalse(withElevated.any { it.id == "elevated_mode" })
+
+        val withoutFullCaps = FeaturesGuideCatalog.filter(FeatureArea.All, "", includeElevated = !missingVirtualDisplay.hideElevated)
+        assertTrue(withoutFullCaps.any { it.id == "elevated_mode" })
     }
 }

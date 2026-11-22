@@ -599,9 +599,12 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                     }
             }
             val initialInputEnabled = InputService.running || InputService.enabled(context)
-            val initialElevated = Elevated.running
-            val initialRomService = Elevated.hasSystemService(context)
-            val initialInputAccess = InputService.running || initialElevated || initialInputEnabled
+            val initialElevated = Elevated.helperRunning
+            val initialRomService = Elevated.romServiceActive
+            val initialRomCaps = Elevated.romServiceCapabilities
+            val initialInputAccess = InputService.running ||
+                Elevated.hasCapability(NectarlinkServiceContract.CAP_INPUT_INJECTION) ||
+                initialInputEnabled
             _state.update {
                 it.copy(
                     companionAssociated = companionAssociated,
@@ -613,6 +616,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                     inputAccess = initialInputAccess,
                     elevated = initialElevated,
                     romServiceAvailable = initialRomService,
+                    romServiceCapabilities = initialRomCaps,
                     dndAccess = PhoneToggles.hasDndAccess(context),
                     writeSettingsAccess = PhoneToggles.hasWriteSettings(context),
                     storageAllFilesAccess = PhoneStorage.hasAllFilesAccess(context),
@@ -790,12 +794,15 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                     val contactsAccess = PhoneContacts.canRead(context)
                     val smsAccess = PhoneSms.hasAll(context)
                     val inputEnabled = InputService.enabled(context)
-                    val elevated = Elevated.running
-                    val romServiceAvailable = Elevated.hasSystemService(context)
-                    if (romServiceAvailable && !elevated) {
+                    val elevated = Elevated.helperRunning
+                    val romServiceAvailable = Elevated.romServiceActive
+                    val romServiceCapabilities = Elevated.romServiceCapabilities
+                    if (Elevated.hasSystemService(context) && !romServiceAvailable) {
                         scope.launch { Elevated.start() }
                     }
-                    val inputAccess = InputService.running || elevated || inputEnabled
+                    val inputAccess = InputService.running ||
+                        Elevated.hasCapability(NectarlinkServiceContract.CAP_INPUT_INJECTION) ||
+                        inputEnabled
                     val dndAccess = PhoneToggles.hasDndAccess(context)
                     val writeSettingsAccess = PhoneToggles.hasWriteSettings(context)
                     val storageAllFilesAccess = PhoneStorage.hasAllFilesAccess(context)
@@ -822,6 +829,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                             inputAccess = inputAccess,
                             elevated = elevated,
                             romServiceAvailable = romServiceAvailable,
+                            romServiceCapabilities = romServiceCapabilities,
                             remoteInputRequested = if (inputAccess) false else it.remoteInputRequested,
                             dndAccess = dndAccess,
                             writeSettingsAccess = writeSettingsAccess,
@@ -2368,7 +2376,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
      * user turned on control from the PC (docs/PLAN.md §4.6).
      */
     private fun powerLevel(): PowerLevel = when {
-        Elevated.running -> PowerLevel.ELEVATED
+        Elevated.helperRunning || Elevated.romServiceCapabilities != 0L -> PowerLevel.ELEVATED
         InputService.running -> PowerLevel.ASSIST
         else -> PowerLevel.BASIC
     }
