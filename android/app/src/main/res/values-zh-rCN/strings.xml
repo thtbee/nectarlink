@@ -293,6 +293,7 @@
     <string name="action_sleep_pc">睡眠</string>
     <string name="action_hibernate_pc">休眠</string>
     <string name="action_phone_sound_on_pc">在电脑上播放手机声音</string>
+    <string name="action_phone_sound_back">在手机上重新播放声音</string>
     <string name="phone_sound_on_pc_off">%1$s 不播放此手机的声音。请在电脑的 设置 › 设备 中为此手机开启屏幕镜像。</string>
     <string name="action_shutdown_pc">关机</string>
     <string name="shutdown_pc_title">要关闭 %1$s 吗？</string>

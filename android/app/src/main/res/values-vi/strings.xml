@@ -300,6 +300,7 @@
 <string name="action_sleep_pc">Ngủ</string>
 <string name="action_hibernate_pc">Ngủ đông</string>
 <string name="action_phone_sound_on_pc">Phát âm thanh điện thoại trên PC</string>
+<string name="action_phone_sound_back">Phát lại âm thanh trên điện thoại</string>
 <string name="phone_sound_on_pc_off">%1$s không phát âm thanh của điện thoại này. Trên PC, hãy bật Phản chiếu màn hình cho điện thoại này trong Cài đặt › Thiết bị.</string>
 <string name="action_shutdown_pc">Tắt máy</string>
 <string name="shutdown_pc_title">Tắt %1$s?</string>

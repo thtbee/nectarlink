@@ -305,6 +305,7 @@
     <string name="action_sleep_pc">Uśpij</string>
     <string name="action_hibernate_pc">Hibernuj</string>
     <string name="action_phone_sound_on_pc">Odtwarzaj dźwięk telefonu na komputerze</string>
+    <string name="action_phone_sound_back">Odtwarzaj dźwięk znowu na telefonie</string>
     <string name="phone_sound_on_pc_off">%1$s nie odtwarza dźwięku z tego telefonu. Na komputerze włącz lustro ekranu dla tego telefonu w Ustawienia › Urządzenia.</string>
     <string name="action_shutdown_pc">Wyłącz</string>
     <string name="shutdown_pc_title">Wyłączyć %1$s?</string>

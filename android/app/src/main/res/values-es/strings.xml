@@ -304,6 +304,7 @@
     <string name="action_sleep_pc">Suspender</string>
     <string name="action_hibernate_pc">Hibernar</string>
     <string name="action_phone_sound_on_pc">Reproducir el sonido del teléfono en el PC</string>
+    <string name="action_phone_sound_back">Volver a reproducir el sonido en el teléfono</string>
     <string name="phone_sound_on_pc_off">%1$s no reproduce el sonido de este teléfono. En el PC, activa Duplicación de pantalla para este teléfono en Ajustes › Dispositivos.</string>
     <string name="action_shutdown_pc">Apagar</string>
     <string name="shutdown_pc_title">¿Apagar %1$s?</string>

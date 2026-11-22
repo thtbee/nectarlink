@@ -301,6 +301,7 @@
     <string name="action_sleep_pc">Suspender</string>
     <string name="action_hibernate_pc">Hibernar</string>
     <string name="action_phone_sound_on_pc">Tocar o som do celular no PC</string>
+    <string name="action_phone_sound_back">Voltar o som para o celular</string>
     <string name="phone_sound_on_pc_off">%1$s não toca o som deste celular. No PC, ative Espelhamento de tela para este celular em Configurações › Dispositivos.</string>
     <string name="action_shutdown_pc">Desligar</string>
     <string name="shutdown_pc_title">Desligar %1$s?</string>

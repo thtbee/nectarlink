@@ -301,6 +301,7 @@
     <string name="action_sleep_pc">Uyut</string>
     <string name="action_hibernate_pc">Hazırda beklet</string>
     <string name="action_phone_sound_on_pc">Telefon sesini bilgisayarda çal</string>
+    <string name="action_phone_sound_back">Sesi yeniden telefonda çal</string>
     <string name="phone_sound_on_pc_off">%1$s bu telefonun sesini çalmıyor. Bilgisayarda Ayarlar › Cihazlar bölümünden bu telefon için Ekran yansıtmayı açın.</string>
     <string name="action_shutdown_pc">Kapat</string>
     <string name="shutdown_pc_title">%1$s kapatılsın mı?</string>

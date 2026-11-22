@@ -301,6 +301,7 @@
     <string name="action_sleep_pc">Energie sparen</string>
     <string name="action_hibernate_pc">Ruhezustand</string>
     <string name="action_phone_sound_on_pc">Smartphone-Ton auf dem PC abspielen</string>
+    <string name="action_phone_sound_back">Ton wieder auf dem Smartphone abspielen</string>
     <string name="phone_sound_on_pc_off">%1$s spielt den Ton dieses Smartphones nicht ab. Schalte am PC unter Einstellungen › Geräte die Bildschirmspiegelung für dieses Smartphone ein.</string>
     <string name="action_shutdown_pc">Herunterfahren</string>
     <string name="shutdown_pc_title">%1$s herunterfahren?</string>

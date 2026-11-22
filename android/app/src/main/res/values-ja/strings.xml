@@ -300,6 +300,7 @@
     <string name="action_sleep_pc">スリープ</string>
     <string name="action_hibernate_pc">ハイバネート</string>
     <string name="action_phone_sound_on_pc">スマートフォンの音声をPCで再生</string>
+    <string name="action_phone_sound_back">音声をスマートフォンに戻す</string>
     <string name="phone_sound_on_pc_off">%1$s はこのスマートフォンの音声を再生しません。PCの「設定」›「デバイス」で、このスマートフォンの「画面ミラーリング」をオンにしてください。</string>
     <string name="action_shutdown_pc">シャットダウン</string>
     <string name="shutdown_pc_title">%1$s をシャットダウンしますか？</string>

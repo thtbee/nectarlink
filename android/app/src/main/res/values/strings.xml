@@ -303,6 +303,7 @@
     <string name="action_sleep_pc">Sleep</string>
     <string name="action_hibernate_pc">Hibernate</string>
     <string name="action_phone_sound_on_pc">Play phone sound on the PC</string>
+    <string name="action_phone_sound_back">Play the sound on the phone again</string>
     <string name="phone_sound_on_pc_off">%1$s doesn\'t play this phone\'s sound. On the PC, turn on Screen mirroring for this phone in Settings › Devices.</string>
     <string name="action_shutdown_pc">Shut down</string>
     <string name="shutdown_pc_title">Shut down %1$s?</string>

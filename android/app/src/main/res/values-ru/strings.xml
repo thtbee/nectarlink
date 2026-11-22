@@ -295,6 +295,7 @@
     <string name="action_sleep_pc">Сон</string>
     <string name="action_hibernate_pc">Гибернация</string>
     <string name="action_phone_sound_on_pc">Звук телефона на ПК</string>
+    <string name="action_phone_sound_back">Вернуть звук на телефон</string>
     <string name="phone_sound_on_pc_off">%1$s не воспроизводит звук этого телефона. На ПК включите «Экран телефона» для этого телефона в разделе Настройки › Устройства.</string>
     <string name="action_shutdown_pc">Выключить</string>
     <string name="shutdown_pc_title">Выключить %1$s?</string>

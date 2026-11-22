@@ -709,6 +709,8 @@ fun HomeScreen(
                     onHibernate = onHibernate,
                     onShutdown = onShutdown,
                     onPhoneSoundOnPc = onPhoneSoundOnPc,
+                    soundOnPcNow = mirrorSession.active && mirrorSession.soundOnly && mirrorSession.pcId == device.id,
+                    onStopSound = onStopMirror,
                     onWake = onWake,
                     onSetReconnect = onSetReconnect,
                     onRemote = onRemote,
@@ -1510,6 +1512,8 @@ private fun PcCard(
     onHibernate: (String) -> Unit,
     onShutdown: (String) -> Unit,
     onPhoneSoundOnPc: (String) -> Unit,
+    soundOnPcNow: Boolean,
+    onStopSound: () -> Unit,
     onWake: (String) -> Unit,
     onSetReconnect: (String, Boolean) -> Unit,
     onRemote: (String) -> Unit,
@@ -1859,16 +1863,20 @@ private fun PcCard(
                         micOn = micOn,
                         onToggleMic = onToggleMic,
                     )
-                    // The phone's sound on the PC, started from here (#398); stopped
-                    // from the "sharing sound" card like any sharing.
-                    if (device.has("mirroring.sound_from_phone")) {
+                    // The phone's sound on the PC, started from here (#398) and
+                    // brought back to the phone from the same button (#521).
+                    if (device.has("mirroring.sound_from_phone") || soundOnPcNow) {
                         FilledTonalButton(
                             contentPadding = CardButtonPadding,
                             colors = tonal,
-                            onClick = { onPhoneSoundOnPc(device.id) },
+                            onClick = { if (soundOnPcNow) onStopSound() else onPhoneSoundOnPc(device.id) },
                             modifier = Modifier.fillMaxWidth(),
                         ) {
-                            ButtonLabel(stringResource(R.string.action_phone_sound_on_pc))
+                            ButtonLabel(
+                                stringResource(
+                                    if (soundOnPcNow) R.string.action_phone_sound_back else R.string.action_phone_sound_on_pc,
+                                ),
+                            )
                         }
                     }
                 }
