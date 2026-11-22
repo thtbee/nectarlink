@@ -194,6 +194,21 @@ Window {
 
     function mediaKey(item) { return item.deviceId + "|" + item.playerId }
 
+    // A song paused (here, on headphones or on the phone) stays on the Island
+    // with Play for a while, rather than taking the button away (#516).
+    Timer {
+        id: pausedKeep
+        interval: 5 * 60 * 1000
+        onTriggered: islandWin.recomputeMedia()
+    }
+    function pausedMedia(key) {
+        for (let i = 0; i < mediaRepeater.count; i++) {
+            const item = mediaRepeater.itemAt(i)
+            if (item && !item.playing && mediaKey(item) === key && item.title.length > 0) return item
+        }
+        return null
+    }
+
     // Shows the next playing source.
     function nextMediaSource() {
         const playing = playingMedia()
@@ -207,10 +222,23 @@ Window {
         const playing = playingMedia()
         mediaSources = playing.length
         // The one picked while it plays, else a phone's, else this PC's.
-        const best = playing.find(item => mediaKey(item) === mediaPick)
+        let best = playing.find(item => mediaKey(item) === mediaPick)
             || playing.find(item => item.deviceId !== "local")
             || playing[0]
             || null
+        if (best) {
+            pausedKeep.stop()
+        } else if (mediaTitle.length > 0) {
+            // Nothing plays: the song that was showing, paused, if it's still there.
+            const paused = pausedMedia(mediaDeviceId + "|" + mediaPlayerId)
+            if (paused && (mediaPlaying || pausedKeep.running)) {
+                if (mediaPlaying)
+                    pausedKeep.restart()
+                best = paused
+            } else {
+                pausedKeep.stop()
+            }
+        }
         if (best) {
             mediaDeviceId = best.deviceId
             mediaPlayerId = best.playerId
@@ -271,7 +299,7 @@ Window {
         return Qt.locale().toString(b / (1024 * 1024), "f", 1) + " MB/s"
     }
 
-    readonly property bool hasMediaCandidate: mediaPlaying && mediaTitle.length > 0
+    readonly property bool hasMediaCandidate: mediaTitle.length > 0 && (mediaPlaying || pausedKeep.running)
     readonly property string mode: {
         if (Preferences.nectarIslandCalls && PhoneCall.active) return "call"
         if (Preferences.nectarIslandTransfers && (TransferList.active > 0 || transferJustFinished)) return "transfer"
