@@ -774,7 +774,7 @@ pub struct Settings {
     /// How many days notification history is kept: 1, 3, 7 or 30 (#442).
     #[serde(default = "default_history_days", alias = "notification_history_days")]
     pub notification_history_days: u32,
-    /// "sharper" or "smoother"; anything else is the balanced default. Text, so a
+    /// "sharper", "smoother" or "adaptive"; anything else is the balanced default. Text, so a
     /// value from a newer version can't stop this file from loading.
     #[serde(default, alias = "mirror_quality")]
     pub mirror_quality: String,

@@ -1964,12 +1964,15 @@ Item {
                                 ? qsTr("The phone's full resolution. Uses more of its battery, and needs good Wi-Fi or USB and a GPU on this PC.")
                                 : Preferences.mirrorQuality === "smoother"
                                 ? qsTr("A softer picture that holds up better on weak Wi-Fi.")
+                                : Preferences.mirrorQuality === "adaptive"
+                                ? qsTr("Starts at Balanced and lowers the picture while this PC can't keep up, then goes back up once it can.")
                                 : qsTr("For the phone's screen and app windows, from the next time you open them.")
                             Segmented {
                                 options: [
                                     { value: "balanced", label: qsTr("Balanced") },
                                     { value: "sharper", label: qsTr("Sharper") },
-                                    { value: "smoother", label: qsTr("Smoother") }
+                                    { value: "smoother", label: qsTr("Smoother") },
+                                    { value: "adaptive", label: qsTr("Adaptive") }
                                 ]
                                 value: Preferences.mirrorQuality
                                 onPicked: (value) => Preferences.mirrorQuality = value
