@@ -25,6 +25,7 @@
     <string name="pair_failed_declined">Se rechazó el emparejamiento en uno de los dispositivos.</string>
     <string name="pair_failed_expired">El código expiró. Muestra uno nuevo en tu PC.</string>
     <string name="pair_failed_unreachable">No se pudo conectar con el PC. Comprueba que ambos dispositivos estén en la misma red.</string>
+    <string name="pair_failed_not_pairing">El otro dispositivo no está listo para vincularse. Abre su pantalla de vinculación y vuelve a intentarlo.</string>
     <string name="pair_failed_other">Ese no es un código de emparejamiento NectarLink o algo salió mal.</string>
     <string name="your_pc">tu PC</string>
     <string name="camera_permission_needed">NectarLink necesita acceso a la cámara para escanear el código de emparejamiento. No se graba nada.</string>

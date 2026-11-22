@@ -410,5 +410,6 @@ private fun failureText(failure: PairingFailure): String = when (failure) {
     PairingFailure.Declined -> stringResource(R.string.pair_failed_declined)
     PairingFailure.Expired -> stringResource(R.string.pair_failed_expired)
     PairingFailure.Unreachable -> stringResource(R.string.pair_failed_unreachable)
+    PairingFailure.NotPairing -> stringResource(R.string.pair_failed_not_pairing)
     is PairingFailure.Other -> stringResource(R.string.pair_failed_other)
 }

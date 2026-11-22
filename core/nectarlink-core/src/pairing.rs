@@ -429,11 +429,29 @@ async fn settle_initiator(
     match result {
         Ok(device) => shared.complete_pairing(peer, device).await,
         Err(err) => {
+            // Reached, but refused because it isn't on its pairing screen:
+            // say so, rather than blaming the network (#514).
+            if refused_not_pairing(conn) {
+                shared.emit(NodeEvent::Pairing(PairingEvent::Failed(PairingFailure::NotPairing)));
+                return Err(err);
+            }
             conn.close(VarInt::from_u32(CLOSE_FAILED), b"failed");
             Err(fail(shared, err))
         }
     }
 }
+
+/// Whether the host closed this connection because it isn't in pairing mode.
+fn refused_not_pairing(conn: &Connection) -> bool {
+    matches!(
+        conn.close_reason(),
+        Some(ConnectionError::ApplicationClosed(close))
+            if close.error_code == VarInt::from_u32(ErrorCode::Denied.close_code()) && close.reason.as_ref() == NOT_PAIRING
+    )
+}
+
+/// The reason a host gives when it refuses pairing outside pairing mode.
+const NOT_PAIRING: &[u8] = b"not pairing";
 
 // ---- Host side ----
 
@@ -449,7 +467,7 @@ pub(crate) async fn accept(shared: Arc<Shared>, conn: Connection) {
     let host_generation = shared.pairing.host_generation();
     if host_generation.is_none() && !is_usb {
         tracing::debug!(peer = %peer.short(), "refusing pairing connection: not in pairing mode");
-        conn.close(VarInt::from_u32(ErrorCode::Denied.close_code()), b"not pairing");
+        conn.close(VarInt::from_u32(ErrorCode::Denied.close_code()), NOT_PAIRING);
         return;
     }
     // The first stream must come soon, and not after a cancel.

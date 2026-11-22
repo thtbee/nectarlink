@@ -197,6 +197,7 @@ impl qobject::Pairing {
                     PairingFailure::Declined => "declined",
                     PairingFailure::Expired => "expired",
                     PairingFailure::Unreachable => "unreachable",
+                    PairingFailure::NotPairing => "not_pairing",
                     PairingFailure::Other(_) => "other",
                 };
                 self.as_mut().set_failure(QString::from(failure));

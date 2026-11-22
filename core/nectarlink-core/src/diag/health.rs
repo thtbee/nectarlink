@@ -176,6 +176,7 @@ fn pairing_code(why: &PairingFailure) -> Code {
         PairingFailure::Declined => Code::Declined,
         PairingFailure::Expired => Code::Expired,
         PairingFailure::Unreachable => Code::Unreachable,
+        PairingFailure::NotPairing => Code::Denied,
         PairingFailure::Other(_) => Code::Other,
     }
 }

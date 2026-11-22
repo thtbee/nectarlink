@@ -24,6 +24,7 @@
 <string name="pair_failed_declined">Một trong hai thiết bị đã từ chối ghép nối.</string>
 <string name="pair_failed_expired">Mã đã hết hạn. Hãy hiển thị mã mới trên PC của bạn.</string>
 <string name="pair_failed_unreachable">Không thể kết nối tới PC. Hãy đảm bảo cả hai thiết bị đang ở cùng mạng.</string>
+<string name="pair_failed_not_pairing">Thiết bị kia chưa sẵn sàng ghép nối. Hãy mở màn hình ghép nối trên thiết bị đó rồi thử lại.</string>
 <string name="pair_failed_other">Đó không phải là mã ghép nối NectarLink, hoặc đã có lỗi xảy ra.</string>
 <string name="your_pc">PC của bạn</string>
 <string name="camera_permission_needed">NectarLink cần camera để quét mã ghép nối. Không có gì được ghi lại.</string>

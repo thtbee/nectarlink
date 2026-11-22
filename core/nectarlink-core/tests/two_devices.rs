@@ -1252,7 +1252,7 @@ async fn nearby_pairing_started_from_the_pc() {
 /// side: what the phone did before its pairing screen accepted pairing.
 #[tokio::test(flavor = "multi_thread")]
 async fn nearby_pairing_is_refused_by_a_device_not_accepting_it() {
-    let pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
     let phone = device("Pixel", DeviceKind::Phone).await;
     let phone_id = phone.node.device_id();
     pc.node.pairing_start_qr().await.unwrap();
@@ -1260,6 +1260,13 @@ async fn nearby_pairing_is_refused_by_a_device_not_accepting_it() {
     let result = with_timeout("refused pairing", pc.node.pairing_start_nearby(phone_id)).await;
     assert!(result.is_err(), "the phone isn't accepting pairing");
     assert!(phone.node.paired_devices().unwrap().is_empty());
+    // Said as "open its pairing screen", not as a network problem (#514).
+    wait_for(&mut pc, "not pairing", |e| match e {
+        NodeEvent::Pairing(PairingEvent::Failed(PairingFailure::NotPairing)) => Some(()),
+        NodeEvent::Pairing(PairingEvent::Failed(other)) => panic!("failed as {other:?}"),
+        _ => None,
+    })
+    .await;
 }
 
 #[tokio::test(flavor = "multi_thread")]

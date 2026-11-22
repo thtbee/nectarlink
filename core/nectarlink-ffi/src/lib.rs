@@ -167,6 +167,8 @@ pub enum PairingFailure {
     Declined,
     Expired,
     Unreachable,
+    /// Reached, but not on its pairing screen.
+    NotPairing,
     Other { message: String },
 }
 
@@ -2172,6 +2174,7 @@ impl From<core::PairingFailure> for PairingFailure {
             core::PairingFailure::Declined => PairingFailure::Declined,
             core::PairingFailure::Expired => PairingFailure::Expired,
             core::PairingFailure::Unreachable => PairingFailure::Unreachable,
+            core::PairingFailure::NotPairing => PairingFailure::NotPairing,
             core::PairingFailure::Other(message) => PairingFailure::Other { message },
         }
     }

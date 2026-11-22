@@ -23,6 +23,7 @@
     <string name="pair_failed_declined">Связывание отклонено на одном из устройств.</string>
     <string name="pair_failed_expired">Срок действия кода истёк. Покажите новый на ПК.</string>
     <string name="pair_failed_unreachable">Не удалось связаться с ПК. Убедитесь, что оба устройства в одной сети.</string>
+    <string name="pair_failed_not_pairing">Другое устройство не готово к сопряжению. Откройте на нём экран сопряжения и попробуйте снова.</string>
     <string name="pair_failed_other">Это не код связи NectarLink, или что-то пошло не так.</string>
     <string name="your_pc">ваш ПК</string>
     <string name="camera_permission_needed">NectarLink нужна камера, чтобы отсканировать код связи. Ничего не записывается.</string>

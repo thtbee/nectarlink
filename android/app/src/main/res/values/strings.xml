@@ -25,6 +25,7 @@
     <string name="pair_failed_declined">Pairing was declined on one of the devices.</string>
     <string name="pair_failed_expired">The code expired. Show a new one on your PC.</string>
     <string name="pair_failed_unreachable">Couldn\'t reach the PC. Make sure both are on the same network.</string>
+    <string name="pair_failed_not_pairing">The other device isn\'t ready to pair. Open its pairing screen, then try again.</string>
     <string name="pair_failed_other">That isn\'t a NectarLink pairing code, or something went wrong.</string>
     <string name="your_pc">your PC</string>
     <string name="camera_permission_needed">NectarLink needs the camera to scan the pairing code. Nothing is recorded.</string>

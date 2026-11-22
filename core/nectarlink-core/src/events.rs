@@ -64,6 +64,9 @@ pub enum PairingFailure {
     Expired,
     /// The other device couldn't be reached.
     Unreachable,
+    /// The other device was reached but isn't showing its pairing screen,
+    /// so it refused (nobody can start pairing with it uninvited, #514).
+    NotPairing,
     /// Anything else; the string is for logs.
     Other(String),
 }

@@ -25,6 +25,7 @@
     <string name="pair_failed_declined">いずれかのデバイスでペアリングが拒否されました。</string>
     <string name="pair_failed_expired">コードの有効期限が切れました。PCで新しいコードを表示してください。</string>
     <string name="pair_failed_unreachable">PCに接続できませんでした。両方が同じネットワークにつながっているか確認してください。</string>
+    <string name="pair_failed_not_pairing">相手のデバイスはペアリングの準備ができていません。相手のペアリング画面を開いてから、もう一度お試しください。</string>
     <string name="pair_failed_other">それはNectarLinkのペアリングコードではないか、何か不具合が起きたようです。</string>
     <string name="your_pc">お使いのPC</string>
     <string name="camera_permission_needed">NectarLinkでペアリングコードを読み取るにはカメラが必要です。記録されるものはありません。</string>

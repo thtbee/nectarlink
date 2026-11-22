@@ -25,6 +25,7 @@
     <string name="pair_failed_declined">Die Kopplung wurde auf einem der Geräte abgelehnt.</string>
     <string name="pair_failed_expired">Der Code ist abgelaufen. Lass dir auf deinem PC einen neuen anzeigen.</string>
     <string name="pair_failed_unreachable">Der PC konnte nicht erreicht werden. Stelle sicher, dass beide Geräte im selben Netzwerk sind.</string>
+    <string name="pair_failed_not_pairing">Das andere Gerät ist nicht bereit zum Koppeln. Öffne dort den Kopplungsbildschirm und versuche es erneut.</string>
     <string name="pair_failed_other">Das ist kein NectarLink-Kopplungscode oder etwas ist schiefgelaufen.</string>
     <string name="your_pc">dein PC</string>
     <string name="camera_permission_needed">NectarLink benötigt die Kamera, um den Kopplungscode zu scannen. Es wird nichts aufgenommen.</string>

@@ -25,6 +25,7 @@
     <string name="pair_failed_declined">Parowanie zostało odrzucone na jednym z urządzeń.</string>
     <string name="pair_failed_expired">Kod wygasł. Wyświetl nowy kod na komputerze.</string>
     <string name="pair_failed_unreachable">Nie udało się połączyć z komputerem. Upewnij się, że oba urządzenia są w tej samej sieci.</string>
+    <string name="pair_failed_not_pairing">Drugie urządzenie nie jest gotowe do parowania. Otwórz na nim ekran parowania i spróbuj ponownie.</string>
     <string name="pair_failed_other">To nie jest kod parowania NectarLink lub wystąpił błąd.</string>
     <string name="your_pc">Twój komputer</string>
     <string name="camera_permission_needed">NectarLink potrzebuje dostępu do aparatu, aby zeskanować kod parowania. Nic nie jest nagrywane.</string>

@@ -25,6 +25,7 @@
     <string name="pair_failed_declined">Um dos dispositivos recusou o pareamento.</string>
     <string name="pair_failed_expired">O código expirou. Gere outro no PC.</string>
     <string name="pair_failed_unreachable">Não foi possível acessar o PC. Confira se os dois estão na mesma rede.</string>
+    <string name="pair_failed_not_pairing">O outro dispositivo não está pronto para parear. Abra a tela de pareamento dele e tente de novo.</string>
     <string name="pair_failed_other">Esse não é um código de pareamento do NectarLink ou algo deu errado.</string>
     <string name="your_pc">seu PC</string>
     <string name="camera_permission_needed">O NectarLink precisa acessar a câmera para ler o código de pareamento. Nada é gravado.</string>

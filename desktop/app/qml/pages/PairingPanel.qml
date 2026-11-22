@@ -356,6 +356,7 @@ Item {
                     case "rejected": return qsTr("Pairing was cancelled or the codes didn't match, so nothing was paired. Try again.")
                     case "declined": return qsTr("Pairing was declined on one of the devices.")
                     case "unreachable": return qsTr("Couldn't reach the phone. Make sure both devices are on the same network.")
+                    case "not_pairing": return qsTr("The other device isn't ready to pair. Open its pairing screen, then try again.")
                     case "expired": return qsTr("The code expired.")
                     default: return qsTr("Something went wrong. Try again.")
                     }
