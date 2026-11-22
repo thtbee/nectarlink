@@ -2,10 +2,10 @@
 package app.nectarlink.services.client
 
 object NectarlinkServiceContract {
-    const val SERVICE_PACKAGE = "app.nectarlink.services"
+    const val SERVICE_PACKAGE = "sn.nectarlink.services"
     const val SERVICE_CLASS = "app.nectarlink.services.service.NectarlinkPrivilegedService"
-    const val ACTION_BIND = "app.nectarlink.services.ACTION_BIND"
-    const val ACTION_SETTINGS = "app.nectarlink.services.ACTION_SETTINGS"
+    const val ACTION_BIND = "sn.nectarlink.services.ACTION_BIND"
+    const val ACTION_SETTINGS = "sn.nectarlink.services.ACTION_SETTINGS"
 
     const val API_VERSION = 1
     const val MIN_SUPPORTED_API_VERSION = 1
@@ -54,7 +54,7 @@ object NectarlinkServiceContract {
 
     fun isAllowedUninstallPackage(pkg: String, extraForbiddenPackage: String? = null): Boolean {
         if (!isValidPackageName(pkg)) return false
-        if (isNectarlinkPackage(pkg)) return false
+        if (isNectarlinkPackage(pkg) || pkg == SERVICE_PACKAGE || pkg.startsWith("$SERVICE_PACKAGE.")) return false
         if (extraForbiddenPackage != null && pkg == extraForbiddenPackage) return false
         return true
     }

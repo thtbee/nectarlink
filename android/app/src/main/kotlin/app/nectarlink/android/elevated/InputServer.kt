@@ -111,9 +111,6 @@ object InputServer {
     private const val AUTO_ROTATE_PREFIX = "settings put system accelerometer_rotation "
     private const val ROTATION_PREFIX = "settings put system user_rotation "
     private const val UNINSTALL_PREFIX = "pm uninstall "
-    // Release and debug builds alike: neither may uninstall the other.
-    private const val OWN_PACKAGE = "app.nectarlink"
-    private val PACKAGE_NAME = Regex("[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+")
 
     /**
      * Whether the app may run [cmd] through the helper: one of [allowedCommands],
@@ -134,7 +131,7 @@ object InputServer {
         }
         if (cmd.startsWith(UNINSTALL_PREFIX)) {
             val pkg = cmd.removePrefix(UNINSTALL_PREFIX)
-            return PACKAGE_NAME.matches(pkg) && pkg != OWN_PACKAGE && !pkg.startsWith("$OWN_PACKAGE.")
+            return app.nectarlink.services.client.NectarlinkServiceContract.isAllowedUninstallPackage(pkg)
         }
         return false
     }

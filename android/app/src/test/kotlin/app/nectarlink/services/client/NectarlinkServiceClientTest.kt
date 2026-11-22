@@ -46,11 +46,16 @@ class NectarlinkServiceClientTest {
 
     @Test
     fun uninstallPackageLimitsRejectNectarlinkAndMalformedPackages() {
+        assertEquals("sn.nectarlink.services", NectarlinkServiceContract.SERVICE_PACKAGE)
+        assertEquals("sn.nectarlink.services.ACTION_BIND", NectarlinkServiceContract.ACTION_BIND)
+        assertEquals("sn.nectarlink.services.ACTION_SETTINGS", NectarlinkServiceContract.ACTION_SETTINGS)
         assertTrue(NectarlinkServiceContract.isAllowedUninstallPackage("com.example.app", "app.nectarlink"))
         assertTrue(NectarlinkServiceContract.isAllowedUninstallPackage("org.Some_App.v2", "app.nectarlink"))
         assertFalse(NectarlinkServiceContract.isAllowedUninstallPackage("app.nectarlink", "app.nectarlink"))
         assertFalse(NectarlinkServiceContract.isAllowedUninstallPackage("app.nectarlink.dev", "app.nectarlink"))
         assertFalse(NectarlinkServiceContract.isAllowedUninstallPackage("app.nectarlink.services", "app.nectarlink"))
+        assertFalse(NectarlinkServiceContract.isAllowedUninstallPackage("sn.nectarlink.services", "app.nectarlink"))
+        assertFalse(NectarlinkServiceContract.isAllowedUninstallPackage("sn.nectarlink.services.dev", "app.nectarlink"))
         assertFalse(NectarlinkServiceContract.isAllowedUninstallPackage("com.custom.fork", "com.custom.fork"))
         assertFalse(NectarlinkServiceContract.isAllowedUninstallPackage("com.example.app; reboot"))
         assertFalse(NectarlinkServiceContract.isAllowedUninstallPackage("--user 0 com.example.app"))
