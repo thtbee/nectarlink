@@ -837,12 +837,26 @@ impl AppState {
         self.app_rules.get(app).copied().unwrap_or_default()
     }
 
+    /// The apps whose notifications are hidden on the PC; their chats stay
+    /// out of Messages too (#530).
+    pub fn hidden_apps(&self) -> BTreeSet<String> {
+        self.app_rules
+            .iter()
+            .filter(|(_, rule)| **rule == AppRule::Hidden)
+            .map(|(app, _)| app.clone())
+            .collect()
+    }
+
     pub fn set_app_rule(&mut self, app: &str, rule: AppRule) -> Changes {
         let changed = match rule {
             AppRule::Show => self.app_rules.remove(app).is_some(),
             rule => self.app_rules.insert(app.to_owned(), rule) != Some(rule),
         };
-        if changed { Changes::APPS | Changes::NOTIFICATIONS | Changes::HISTORY } else { Changes::NONE }
+        if changed {
+            Changes::APPS | Changes::NOTIFICATIONS | Changes::HISTORY | Changes::MESSAGES
+        } else {
+            Changes::NONE
+        }
     }
 
     /// Whether an app's notification group is expanded in the PC feed.
@@ -1605,8 +1619,14 @@ mod tests {
         let app = s.notifications[0].notification.app.clone();
         assert!(s.app_names.contains_key(&app));
         assert_eq!(s.app_rule(&app), AppRule::Show);
-        assert!(s.set_app_rule(&app, AppRule::Hidden).intersects(Changes::NOTIFICATIONS));
+        let hiding = s.set_app_rule(&app, AppRule::Hidden);
+        assert!(hiding.intersects(Changes::NOTIFICATIONS));
+        assert!(hiding.intersects(Changes::MESSAGES), "Messages drops the app's chats (#530)");
         assert_eq!(s.app_rule(&app), AppRule::Hidden);
+        assert_eq!(s.hidden_apps().into_iter().collect::<Vec<_>>(), std::slice::from_ref(&app));
+        s.set_app_rule("com.example.quiet", AppRule::Quiet);
+        assert!(!s.hidden_apps().contains("com.example.quiet"), "quiet apps keep their chats");
+        s.set_app_rule("com.example.quiet", AppRule::Show);
         assert_eq!(s.set_app_rule(&app, AppRule::Hidden), Changes::NONE);
         s.set_app_rule(&app, AppRule::Show);
         assert!(s.app_rules.is_empty(), "the default isn't stored");
