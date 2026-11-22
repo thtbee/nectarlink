@@ -356,7 +356,11 @@ class MirrorService : Service() {
             elevatedScreen = elevatedSocket != null,
             sound = sound != null,
         )
-        StreamPower.set(this, StreamPower.SCREEN, active, stayAwake, screenOff)
+        // Only the helper's own display keeps drawing with the panel off; a
+        // screen-capture mirror would freeze on its last frame (#520), so the
+        // panel stays on and the phone is only kept awake.
+        val panelOff = screenOff && elevatedSocket != null
+        StreamPower.set(this, StreamPower.SCREEN, active, stayAwake || screenOff, panelOff)
     }
 
     /** The sound, on a stream of its own; the screen goes on without it if it can't. */
