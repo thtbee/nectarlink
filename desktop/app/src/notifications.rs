@@ -542,6 +542,15 @@ pub fn on_toast(event: ToastEvent) {
             return crate::calls::on_toast(key, action);
         }
         ToastEvent::Dismissed { device, .. } if device == crate::calls::TOAST_GROUP => return,
+        // A folder sync's progress: opening shows Files & Sync's list.
+        ToastEvent::Dismissed { device, .. } | ToastEvent::Action { device, .. }
+            if device == crate::folder_sync::TOAST_GROUP =>
+        {
+            return;
+        }
+        ToastEvent::Opened { device, .. } if device == crate::folder_sync::TOAST_GROUP => {
+            return crate::bridge::app::request_activation();
+        }
         ToastEvent::Dismissed { device, .. } | ToastEvent::Action { device, .. }
             if device == crate::battery::TOAST_GROUP =>
         {

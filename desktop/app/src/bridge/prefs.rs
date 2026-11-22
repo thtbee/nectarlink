@@ -285,6 +285,21 @@ pub mod qobject {
         /// Removes a folder sync rule by ID.
         #[qinvokable]
         fn remove_folder_sync_rule(self: Pin<&mut Preferences>, rule_id: &QString);
+        /// Changes a folder sync rule: its folders, direction and deletions (#491).
+        #[qinvokable]
+        #[cxx_name = "updateFolderSyncRule"]
+        fn update_folder_sync_rule(
+            self: Pin<&mut Preferences>,
+            rule_id: &QString,
+            phone_folder: &QString,
+            pc_folder: &QString,
+            mode: &QString,
+            remove_deleted: bool,
+        );
+        /// `base` with the phone folder's name added, for "Keep each folder's name".
+        #[qinvokable]
+        #[cxx_name = "pcFolderKeepingName"]
+        fn pc_folder_keeping_name(self: &Preferences, base: &QString, phone_folder: &QString) -> QString;
         /// Enables or disables a folder sync rule by ID.
         #[qinvokable]
         fn set_folder_sync_rule_enabled(self: Pin<&mut Preferences>, rule_id: &QString, enabled: bool);
@@ -1247,6 +1262,57 @@ impl qobject::Preferences {
 
     pub fn local_folder(&self, url: &QString) -> QString {
         QString::from(&folder_from_url(url).map(|p| p.to_string_lossy().into_owned()).unwrap_or_default())
+    }
+
+    pub fn update_folder_sync_rule(
+        mut self: Pin<&mut Self>,
+        rule_id: &QString,
+        phone_folder: &QString,
+        pc_folder: &QString,
+        mode: &QString,
+        remove_deleted: bool,
+    ) {
+        let id = String::from(rule_id);
+        let raw_pc = QUrl::from(pc_folder)
+            .to_local_file()
+            .map(|p| String::from(&p))
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| String::from(pc_folder));
+        let pc_trimmed = raw_pc.trim().to_owned();
+        let Some(phone_trimmed) = crate::folder_sync::phone_folder_path(&String::from(phone_folder)) else {
+            return;
+        };
+        if pc_trimmed.is_empty() {
+            return;
+        }
+        let mode = match String::from(mode) {
+            m if m == crate::folder_sync::MODE_PC_TO_PHONE || m == crate::folder_sync::MODE_TWO_WAY => m,
+            _ => crate::folder_sync::MODE_PHONE_TO_PC.to_owned(),
+        };
+        let mut rules = crate::settings::folder_sync_rules();
+        let Some(rule) = rules.iter_mut().find(|r| r.id == id) else { return };
+        // Other folders: what was synced before says nothing about them.
+        if rule.phone_folder != phone_trimmed || rule.pc_folder != pc_trimmed {
+            crate::folder_sync::forget_rule(&id);
+        }
+        rule.phone_folder = phone_trimmed;
+        rule.pc_folder = pc_trimmed;
+        rule.remove_deleted = remove_deleted && mode != crate::folder_sync::MODE_PC_TO_PHONE;
+        rule.mode = mode;
+        let json = serde_json::to_string(&rules).unwrap_or_else(|_| "[]".into());
+        crate::settings::set_folder_sync_rules(rules);
+        self.as_mut().set_folder_sync_rules_json(QString::from(&json));
+        self.save();
+    }
+
+    pub fn pc_folder_keeping_name(&self, base: &QString, phone_folder: &QString) -> QString {
+        let base = folder_from_url(base)
+            .map(|p| p.to_string_lossy().into_owned())
+            .unwrap_or_else(|| String::from(base));
+        QString::from(
+            &crate::folder_sync::pc_folder_keeping_name(&base, &String::from(phone_folder))
+                .unwrap_or_default(),
+        )
     }
 
     pub fn remove_folder_sync_rule(mut self: Pin<&mut Self>, rule_id: &QString) {

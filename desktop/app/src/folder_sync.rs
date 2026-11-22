@@ -38,6 +38,54 @@ pub struct FolderSyncRule {
 }
 
 pub const MODE_PHONE_TO_PC: &str = "one_way_phone_to_pc";
+
+/// The notification group for a sync in progress (#491); its key is the rule's ID.
+pub const TOAST_GROUP: &str = "folder_sync";
+
+/// `base` with the phone folder's own name added (`DCIM/Camera` in
+/// `D:\\Phone` is `D:\\Phone\\Camera`), for "Keep each folder's name" (#491).
+pub fn pc_folder_keeping_name(base: &str, phone_folder: &str) -> Option<String> {
+    let path = phone_folder_path(phone_folder)?;
+    let name = path.rsplit('/').next().unwrap_or(&path);
+    let base = base.trim().trim_end_matches(['/', '\\']);
+    if base.is_empty() {
+        return None;
+    }
+    // Already ends in that name: picked that folder itself.
+    if base.rsplit(['/', '\\']).next().is_some_and(|last| last.eq_ignore_ascii_case(name)) {
+        return Some(base.to_owned());
+    }
+    Some(PathBuf::from(base).join(name).to_string_lossy().into_owned())
+}
+
+/// Shows (or moves) the notification for a sync of `rule` in progress.
+fn show_progress(rule: &FolderSyncRule, phone: &str, done: usize, total: usize) {
+    let status = tr!("FolderSync", "Syncing with %1", phone);
+    let label = tr!("FolderSync", "%1 of %2 files", done, total);
+    let progress = crate::win::toast::Progress {
+        status,
+        value: Some(if total == 0 { 1.0 } else { done as f64 / total as f64 }),
+        label,
+    };
+    if done == 0 {
+        crate::win::toast::show(crate::win::toast::Toast {
+            device: TOAST_GROUP.into(),
+            key: rule.id.clone(),
+            title: rule.phone_folder.clone(),
+            body: rule.pc_folder.clone(),
+            attribution: "NectarLink".into(),
+            icon: None,
+            image: None,
+            actions: Vec::new(),
+            reply: None,
+            silent: true,
+            progress: Some(progress),
+            call: false,
+        });
+    } else {
+        crate::win::toast::update_progress(TOAST_GROUP, &rule.id, progress);
+    }
+}
 pub const MODE_PC_TO_PHONE: &str = "one_way_pc_to_phone";
 pub const MODE_TWO_WAY: &str = "two_way";
 
@@ -748,7 +796,16 @@ pub async fn sync_now(node: &Node) -> SyncReport {
             }
         }
 
-        for action in actions {
+        // A quiet notification with a bar while files go across (#491).
+        let total = actions.len();
+        let phone_name = core_host::host().hub.read(|s| s.name_of(&peer)).unwrap_or_default();
+        if total > 0 {
+            show_progress(&rule, &phone_name, 0, total);
+        }
+        for (done, action) in actions.into_iter().enumerate() {
+            if done > 0 {
+                show_progress(&rule, &phone_name, done, total);
+            }
             if !sync_allowed(peer) {
                 report.held_back += 1;
                 break;
@@ -822,6 +879,9 @@ pub async fn sync_now(node: &Node) -> SyncReport {
             }
         }
 
+        if total > 0 {
+            show_progress(&rule, &phone_name, total, total);
+        }
         baselines().lock().unwrap_or_else(|e| e.into_inner()).insert(rule.id, updated_baseline);
         save_baselines();
     }
@@ -1121,6 +1181,20 @@ mod tests {
     fn suggested_folders_follow_the_kind_of_folder() {
         let Some(pictures) = dirs::picture_dir() else { return };
         assert_eq!(suggested_pc_folder("DCIM/Camera"), Some(pictures.join("Phone Camera")));
+        // "Keep each folder's name": the phone folder's own name inside the chosen one.
+        let base = std::env::temp_dir();
+        let base_text = base.to_string_lossy().into_owned();
+        assert_eq!(
+            pc_folder_keeping_name(&base_text, "DCIM/Camera"),
+            Some(base.join("Camera").to_string_lossy().into_owned())
+        );
+        assert_eq!(
+            pc_folder_keeping_name(&base.join("Camera").to_string_lossy(), "DCIM/Camera"),
+            Some(base.join("Camera").to_string_lossy().into_owned()),
+            "already that folder"
+        );
+        assert_eq!(pc_folder_keeping_name(&base_text, ".."), None);
+        assert_eq!(pc_folder_keeping_name("  ", "Download"), None);
         assert_eq!(suggested_pc_folder("Pictures/Screenshots"), Some(pictures.join("Phone Screenshots")));
         if let Some(documents) = dirs::document_dir() {
             assert_eq!(suggested_pc_folder("Download"), Some(documents.join("Phone Download")));

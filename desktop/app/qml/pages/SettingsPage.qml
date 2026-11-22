@@ -357,7 +357,7 @@ Item {
     FolderDialog {
         id: folderSyncPcPicker
         title: qsTr("Sync into")
-        onAccepted: folderSyncSheet.pcFolder = Preferences.localFolder(selectedFolder.toString())
+        onAccepted: folderSyncSheet.pcBase = Preferences.localFolder(selectedFolder.toString())
     }
 
     FolderDialog {
@@ -3081,6 +3081,14 @@ Item {
                                             anchors.verticalCenter: parent.verticalCenter
                                             variant: "text"
                                             size: "sm"
+                                            iconPath: Icons.edit
+                                            text: qsTr("Edit")
+                                            onClicked: folderSyncSheet.openToEdit(syncRuleDelegate.modelData)
+                                        }
+                                        Button {
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            variant: "text"
+                                            size: "sm"
                                             iconPath: Icons.trash
                                             text: qsTr("Remove")
                                             onClicked: Preferences.removeFolderSyncRule(syncRuleDelegate.modelData.id)
@@ -4418,37 +4426,85 @@ Item {
     Sheet {
         id: folderSyncSheet
         property string phoneId
-        property string phoneFolder
-        property string pcFolder
+        // Editing this rule, or adding when empty (#491).
+        property string editId: ""
+        // Phone folders picked from the chips (several at once when adding),
+        // plus one typed in.
+        property var picked: []
+        property string typed: ""
+        // The PC folder the user chose; empty until then, when each phone
+        // folder gets its own suggested one.
+        property string pcBase: ""
+        // In the chosen folder, each phone folder gets a folder of its name (#491).
+        property bool keepNames: true
         property string mode: "one_way_phone_to_pc"
         property bool removeDeleted: false
-        // The PC folder follows the phone folder until the user picks one.
-        property bool pcChosen: false
         readonly property var common: ["DCIM/Camera", "Pictures/Screenshots", "Download", "Documents", "Music", "Movies", "Recordings"]
-        readonly property string tidyPhoneFolder: phoneFolder.split(/[\/\\]/).map(p => p.trim()).filter(p => p.length > 0 && p !== ".").join("/")
-        readonly property bool phoneFolderOk: tidyPhoneFolder.length > 0 && tidyPhoneFolder.split("/").indexOf("..") < 0
+        function tidy(folder) {
+            return folder.split(/[\/\\]/).map(p => p.trim()).filter(p => p.length > 0 && p !== ".").join("/")
+        }
+        function folderOk(folder) { return folder.length > 0 && folder.split("/").indexOf("..") < 0 }
+        readonly property var phoneFolders: {
+            const all = picked.slice()
+            const t = tidy(typed)
+            if (folderOk(t) && all.indexOf(t) < 0) all.push(t)
+            return all
+        }
+        // Where each phone folder goes on this PC.
+        function pcFolderFor(folder) {
+            if (pcBase.length === 0) return Preferences.suggestedSyncFolder(folder)
+            return keepNames ? Preferences.pcFolderKeepingName(pcBase, folder) : pcBase
+        }
+        readonly property bool ready: phoneFolders.length > 0
+            && phoneFolders.every(f => pcFolderFor(f).length > 0)
+            && (editId.length > 0 ? phoneFolders.length === 1 : true)
         cardWidth: 480
 
         function openFor(id) {
             phoneId = id
+            editId = ""
             mode = "one_way_phone_to_pc"
             removeDeleted = false
-            pcChosen = false
-            choosePhoneFolder("DCIM/Camera")
+            pcBase = ""
+            keepNames = true
+            picked = ["DCIM/Camera"]
+            typed = ""
+            phoneFolderInput.text = ""
             open()
         }
-        function choosePhoneFolder(folder) {
-            phoneFolder = folder
-            if (phoneFolderInput.text !== folder)
-                phoneFolderInput.text = folder
-            if (!pcChosen)
-                pcFolder = Preferences.suggestedSyncFolder(folder)
+        function openToEdit(rule) {
+            phoneId = rule.phoneId
+            editId = rule.id
+            mode = rule.mode
+            removeDeleted = Boolean(rule.removeDeleted)
+            picked = [rule.phoneFolder]
+            typed = ""
+            phoneFolderInput.text = ""
+            // Kept as it is: the chosen folder, exactly.
+            pcBase = rule.pcFolder
+            keepNames = false
+            open()
+        }
+        function togglePhoneFolder(folder) {
+            const at = picked.indexOf(folder)
+            if (editId.length > 0) {
+                picked = [folder]
+            } else if (at >= 0) {
+                picked = picked.filter(f => f !== folder)
+            } else {
+                picked = picked.concat([folder])
+            }
         }
 
         Column {
             width: parent.width
             spacing: 12
-            Txt { width: parent.width; text: qsTr("Sync a folder"); role: "headline"; wrapMode: Text.WordWrap }
+            Txt {
+                width: parent.width
+                text: folderSyncSheet.editId.length > 0 ? qsTr("Edit synced folder") : qsTr("Sync folders")
+                role: "headline"
+                wrapMode: Text.WordWrap
+            }
             Txt {
                 width: parent.width
                 wrapMode: Text.WordWrap
@@ -4467,8 +4523,8 @@ Item {
                         required property string modelData
                         text: modelData
                         interactive: true
-                        selected: folderSyncSheet.tidyPhoneFolder === modelData
-                        onClicked: folderSyncSheet.choosePhoneFolder(modelData)
+                        selected: folderSyncSheet.picked.indexOf(modelData) >= 0
+                        onClicked: folderSyncSheet.togglePhoneFolder(modelData)
                     }
                 }
             }
@@ -4488,8 +4544,20 @@ Item {
                     selectByMouse: true
                     clip: true
                     Accessible.role: Accessible.EditableText
-                    Accessible.name: qsTr("Folder on the phone")
-                    onTextEdited: folderSyncSheet.choosePhoneFolder(text)
+                    Accessible.name: qsTr("Another folder on the phone")
+                    onTextEdited: {
+                        folderSyncSheet.typed = text
+                        // Editing has one folder: what's typed replaces the chip.
+                        if (folderSyncSheet.editId.length > 0 && text.trim().length > 0)
+                            folderSyncSheet.picked = []
+                    }
+                    Txt {
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: phoneFolderInput.text.length === 0
+                        role: "body"
+                        muted: true
+                        text: qsTr("Another folder, like WhatsApp/Media")
+                    }
                 }
             }
 
@@ -4500,18 +4568,46 @@ Item {
                 Txt {
                     width: parent.width - choosePcFolder.width - 8
                     anchors.verticalCenter: parent.verticalCenter
-                    text: folderSyncSheet.pcFolder
+                    text: folderSyncSheet.pcBase.length > 0 ? folderSyncSheet.pcBase : qsTr("A folder of its own for each, in Pictures, Music, Videos or Documents")
                     elide: Text.ElideMiddle
+                    wrapMode: folderSyncSheet.pcBase.length > 0 ? Text.NoWrap : Text.WordWrap
                     role: "body"
+                    muted: folderSyncSheet.pcBase.length === 0
                 }
                 Button {
                     id: choosePcFolder
                     variant: "text"
                     size: "sm"
                     text: qsTr("Choose…")
-                    onClicked: {
-                        folderSyncSheet.pcChosen = true
-                        folderSyncPcPicker.open()
+                    onClicked: folderSyncPcPicker.open()
+                }
+            }
+            ListRow {
+                width: parent.width
+                visible: folderSyncSheet.pcBase.length > 0
+                title: qsTr("Keep each folder's name")
+                description: qsTr("Each phone folder goes into a folder of its own name in the one you chose, instead of straight into it.")
+                Toggle {
+                    label: qsTr("Keep each folder's name")
+                    checked: folderSyncSheet.keepNames
+                    onToggled: (on) => folderSyncSheet.keepNames = on
+                }
+            }
+            // Where each goes, when there's more than one or a name is added.
+            Column {
+                width: parent.width
+                spacing: 2
+                visible: folderSyncSheet.phoneFolders.length > 1
+                    || (folderSyncSheet.pcBase.length > 0 && folderSyncSheet.keepNames)
+                Repeater {
+                    model: folderSyncSheet.phoneFolders
+                    delegate: Txt {
+                        required property string modelData
+                        width: parent.width
+                        role: "caption"
+                        muted: true
+                        elide: Text.ElideMiddle
+                        text: modelData + "  →  " + folderSyncSheet.pcFolderFor(modelData)
                     }
                 }
             }
@@ -4556,13 +4652,22 @@ Item {
                 spacing: 10
                 Button { variant: "text"; text: qsTr("Cancel"); onClicked: folderSyncSheet.close() }
                 Button {
-                    text: qsTr("Add")
-                    enabled: folderSyncSheet.phoneFolderOk && folderSyncSheet.pcFolder.length > 0
+                    text: folderSyncSheet.editId.length > 0 ? qsTr("Save")
+                        : folderSyncSheet.phoneFolders.length > 1 ? qsTr("Add %1 folders").arg(folderSyncSheet.phoneFolders.length)
+                        : qsTr("Add")
+                    enabled: folderSyncSheet.ready
                     onClicked: {
-                        Preferences.addFolderSyncRule(folderSyncSheet.phoneId, folderSyncSheet.tidyPhoneFolder,
-                                                      folderSyncSheet.pcFolder, folderSyncSheet.mode,
-                                                      folderSyncSheet.removeDeleted)
-                        folderSyncSheet.close()
+                        const sheet = folderSyncSheet
+                        if (sheet.editId.length > 0) {
+                            const folder = sheet.phoneFolders[0]
+                            Preferences.updateFolderSyncRule(sheet.editId, folder, sheet.pcFolderFor(folder),
+                                                             sheet.mode, sheet.removeDeleted)
+                        } else {
+                            for (const folder of sheet.phoneFolders)
+                                Preferences.addFolderSyncRule(sheet.phoneId, folder, sheet.pcFolderFor(folder),
+                                                              sheet.mode, sheet.removeDeleted)
+                        }
+                        sheet.close()
                     }
                 }
             }
