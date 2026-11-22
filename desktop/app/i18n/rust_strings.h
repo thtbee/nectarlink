@@ -279,9 +279,11 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Errors", "The device didn't answer in time."), // desktop/app/src/bridge/app.rs
     QT_TRANSLATE_NOOP("Errors", "The device isn't connected right now."), // desktop/app/src/bridge/app.rs
     QT_TRANSLATE_NOOP("Errors", "The device's app doesn't support that yet."), // desktop/app/src/bridge/app.rs
+    QT_TRANSLATE_NOOP("FolderSync", "%1 of %2 files"), // desktop/app/src/folder_sync.rs
     QT_TRANSLATE_NOOP("FolderSync", "Couldn't read the folder on the phone. Check that it's connected."), // desktop/app/src/folder_sync.rs
     QT_TRANSLATE_NOOP("FolderSync", "Folders are up to date."), // desktop/app/src/folder_sync.rs
     QT_TRANSLATE_NOOP("FolderSync", "Synced %1 file(s)."), // desktop/app/src/folder_sync.rs
+    QT_TRANSLATE_NOOP("FolderSync", "Syncing with %1"), // desktop/app/src/folder_sync.rs
     QT_TRANSLATE_NOOP("FolderSync", "The phone hasn't let this PC into its files yet. Allow it on the phone."), // desktop/app/src/folder_sync.rs
     QT_TRANSLATE_NOOP("FolderSync", "Waiting for Wi-Fi. Sync on Wi-Fi only is on, and the phone is away."), // desktop/app/src/folder_sync.rs
     QT_TRANSLATE_NOOP("Guide", "1. Install NectarLink on your PC (Windows 11 or Linux) and your Android phone (Android 8.0 or newer).\n2. Connect both devices to the same Wi-Fi network, or plug your phone into your PC with a USB cable.\n3. Open the Pair step in the setup walkthrough, or click + (Pair a new device) at the bottom of the left rail.\n4. Scan the QR code from the NectarLink Android app, or select your phone from the nearby devices list and confirm that the 6-digit code matches on both screens.\n5. Choose which features to share for that phone and grant only the Android permissions you want to use."), // desktop/app/src/bridge/app.rs
@@ -376,6 +378,7 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Messages", "Only image or voice-note audio files can be attached."), // desktop/app/src/messages.rs
     QT_TRANSLATE_NOOP("Messages", "The text wasn't sent: this conversation isn't loaded yet. Try again in a moment."), // desktop/app/src/messages.rs
     QT_TRANSLATE_NOOP("Mirror", "Couldn't start recording."), // desktop/app/src/mirror.rs
+    QT_TRANSLATE_NOOP("Mirror", "Lowering the picture so this PC keeps up"), // desktop/app/src/mirror.rs
     QT_TRANSLATE_NOOP("Mirror", "Mirror recording"), // desktop/app/src/mirror.rs
     QT_TRANSLATE_NOOP("Mirror", "Mirror screenshot"), // desktop/app/src/mirror.rs
     QT_TRANSLATE_NOOP("Mirror", "Mirroring is turned off for this phone."), // desktop/app/src/mirror.rs
@@ -397,6 +400,7 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Mirror", "The screenshot couldn't be copied to the clipboard."), // desktop/app/src/mirror.rs
     QT_TRANSLATE_NOOP("Mirror", "The screenshot couldn't be saved."), // desktop/app/src/mirror.rs
     QT_TRANSLATE_NOOP("Mirror", "This PC can't decode the phone's video."), // desktop/app/src/mirror.rs
+    QT_TRANSLATE_NOOP("Mirror", "This PC keeps up again: sharper picture"), // desktop/app/src/mirror.rs
     QT_TRANSLATE_NOOP("Mirror", "This phone's app doesn't share its screen yet. Update NectarLink on the phone."), // desktop/app/src/mirror.rs
     QT_TRANSLATE_NOOP("Mirror", "Turning the phone to landscape"), // desktop/app/src/mirror.rs
     QT_TRANSLATE_NOOP("Mirror", "Turning the phone to portrait"), // desktop/app/src/mirror.rs

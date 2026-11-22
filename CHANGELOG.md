@@ -464,9 +464,23 @@ change things that need a step from you, and its notes say so.
 - **Copy a notification's text.** On the PC's Home, a notification's **...** menu has
   **Copy text** and **Copy title and text**. Thanks to [@korry73](https://github.com/korry73)
   ([#526](https://github.com/thtbee/nectarlink/issues/526)).
+- **Adaptive mirror quality.** Settings › Camera & Audio › Mirror quality has **Adaptive**:
+  it starts at Balanced, lowers the picture while this PC can't keep up (which is what
+  froze mirroring on slower PCs), and goes back up once it has kept up for a while. Thanks
+  to [@unaibenidorm](https://github.com/unaibenidorm) and [@marceleno1717](https://github.com/marceleno1717) ([#523](https://github.com/thtbee/nectarlink/issues/523),
+  [#464](https://github.com/thtbee/nectarlink/issues/464)).
+- **Search in Settings**, on the PC and the phone: type part of a setting's name and pick
+  it to go straight there. Thanks to [@unaibenidorm](https://github.com/unaibenidorm) ([#522](https://github.com/thtbee/nectarlink/issues/522)).
+- **A paused song stays on the Island** with Play for five minutes, so you can start it
+  again from there. Thanks to [@Konakonai](https://github.com/Konakonai) ([#516](https://github.com/thtbee/nectarlink/issues/516)).
+- **Folder sync**: pick several phone folders at once, keep each folder's name inside the
+  PC folder you choose, edit a synced folder after adding it, and see a notification with
+  progress while files go across. Thanks to [@znbaboy](https://github.com/znbaboy) ([#491](https://github.com/thtbee/nectarlink/issues/491)).
 
 ### Fixed
 
+- **Chinese and Japanese text on Windows** is drawn with Windows' own text renderer, which
+  is crisper at small sizes. Thanks to [@zzz1465720680](https://github.com/zzz1465720680) ([#460](https://github.com/thtbee/nectarlink/issues/460)).
 - **Turning the phone's screen off while mirroring froze the picture** when the mirror
   ran through screen capture instead of Elevated. The screen now goes dark only when
   Elevated shows the mirror; otherwise the phone just stays awake. Thanks to
