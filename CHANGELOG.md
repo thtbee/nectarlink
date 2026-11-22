@@ -461,6 +461,9 @@ change things that need a step from you, and its notes say so.
   that PC's card on the phone says **Play the sound on the phone again** instead of starting
   it once more. Thanks to [@doodoobug-dot](https://github.com/doodoobug-dot)
   ([#521](https://github.com/thtbee/nectarlink/issues/521)).
+- **Copy a notification's text.** On the PC's Home, a notification's **...** menu has
+  **Copy text** and **Copy title and text**. Thanks to [@korry73](https://github.com/korry73)
+  ([#526](https://github.com/thtbee/nectarlink/issues/526)).
 
 ### Fixed
 

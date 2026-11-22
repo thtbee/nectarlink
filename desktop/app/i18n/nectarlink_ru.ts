@@ -4999,13 +4999,13 @@ What it needs
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="520"/>
-        <location filename="../qml/pages/HomePage.qml" line="3276"/>
+        <location filename="../qml/pages/HomePage.qml" line="3302"/>
         <source>Transfers</source>
         <translation>Передачи</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="529"/>
-        <location filename="../qml/pages/HomePage.qml" line="3293"/>
+        <location filename="../qml/pages/HomePage.qml" line="3319"/>
         <source>Clear finished</source>
         <translation>Убрать завершённые</translation>
     </message>
@@ -5037,13 +5037,13 @@ What it needs
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1157"/>
-        <location filename="../qml/pages/HomePage.qml" line="3180"/>
+        <location filename="../qml/pages/HomePage.qml" line="3206"/>
         <source>Away · %1 ms</source>
         <translation>Вне дома · %1 мс</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1157"/>
-        <location filename="../qml/pages/HomePage.qml" line="3180"/>
+        <location filename="../qml/pages/HomePage.qml" line="3206"/>
         <source>Away</source>
         <translation>Вне дома</translation>
     </message>
@@ -5083,19 +5083,19 @@ What it needs
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1166"/>
-        <location filename="../qml/pages/HomePage.qml" line="3182"/>
+        <location filename="../qml/pages/HomePage.qml" line="3208"/>
         <source>Not reconnecting</source>
         <translation>Не переподключается</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1167"/>
-        <location filename="../qml/pages/HomePage.qml" line="3183"/>
+        <location filename="../qml/pages/HomePage.qml" line="3209"/>
         <source>Offline · %1</source>
         <translation>Не в сети · %1</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1168"/>
-        <location filename="../qml/pages/HomePage.qml" line="3184"/>
+        <location filename="../qml/pages/HomePage.qml" line="3210"/>
         <source>Offline</source>
         <translation>Не в сети</translation>
     </message>
@@ -5141,32 +5141,32 @@ What it needs
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1324"/>
-        <location filename="../qml/pages/HomePage.qml" line="3206"/>
-        <location filename="../qml/pages/HomePage.qml" line="3812"/>
+        <location filename="../qml/pages/HomePage.qml" line="3232"/>
+        <location filename="../qml/pages/HomePage.qml" line="3838"/>
         <source>Send files</source>
         <translation>Отправить файлы</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1330"/>
-        <location filename="../qml/pages/HomePage.qml" line="3212"/>
+        <location filename="../qml/pages/HomePage.qml" line="3238"/>
         <source>Send a folder</source>
         <translation>Отправить папку</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1337"/>
-        <location filename="../qml/pages/HomePage.qml" line="3218"/>
+        <location filename="../qml/pages/HomePage.qml" line="3244"/>
         <source>Send clipboard</source>
         <translation>Отправить буфер обмена</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1343"/>
-        <location filename="../qml/pages/HomePage.qml" line="2875"/>
+        <location filename="../qml/pages/HomePage.qml" line="2901"/>
         <source>Clipboard history</source>
         <translation>История буфера обмена</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1353"/>
-        <location filename="../qml/pages/HomePage.qml" line="3227"/>
+        <location filename="../qml/pages/HomePage.qml" line="3253"/>
         <source>Stop ringing</source>
         <translation>Остановить звонок</translation>
     </message>
@@ -5177,7 +5177,7 @@ What it needs
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1363"/>
-        <location filename="../qml/pages/HomePage.qml" line="3251"/>
+        <location filename="../qml/pages/HomePage.qml" line="3277"/>
         <source>Send to %1</source>
         <translation>Отправить на %1</translation>
     </message>
@@ -5188,7 +5188,7 @@ What it needs
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1385"/>
-        <location filename="../qml/pages/HomePage.qml" line="3257"/>
+        <location filename="../qml/pages/HomePage.qml" line="3283"/>
         <source>Send a folder to %1</source>
         <translation>Отправить папку на %1</translation>
     </message>
@@ -5256,13 +5256,13 @@ What it needs
         <location filename="../qml/pages/HomePage.qml" line="1569"/>
         <location filename="../qml/pages/HomePage.qml" line="2129"/>
         <location filename="../qml/pages/HomePage.qml" line="2221"/>
-        <location filename="../qml/pages/HomePage.qml" line="2718"/>
+        <location filename="../qml/pages/HomePage.qml" line="2744"/>
         <source>Cancel</source>
         <translation>Отмена</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="2520"/>
-        <location filename="../qml/pages/HomePage.qml" line="3285"/>
+        <location filename="../qml/pages/HomePage.qml" line="3311"/>
         <source>Timeline</source>
         <translation>Хронология</translation>
     </message>
@@ -5535,7 +5535,7 @@ What it needs
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="2344"/>
-        <location filename="../qml/pages/HomePage.qml" line="3408"/>
+        <location filename="../qml/pages/HomePage.qml" line="3434"/>
         <source>When connected</source>
         <translation>При подключении</translation>
     </message>
@@ -5581,246 +5581,256 @@ What it needs
         <translation>Нет недавних действий</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2628"/>
+        <location filename="../qml/pages/HomePage.qml" line="2633"/>
         <source>%1 notifications</source>
         <translation>Уведомления %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2631"/>
+        <location filename="../qml/pages/HomePage.qml" line="2643"/>
+        <source>Copy text</source>
+        <translation>Копировать текст</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="2651"/>
+        <source>Copy title and text</source>
+        <translation>Копировать заголовок и текст</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="2657"/>
         <source>Show</source>
         <translation>Показывать</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2632"/>
+        <location filename="../qml/pages/HomePage.qml" line="2658"/>
         <source>No pop-ups</source>
         <translation>Без всплывающих</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2633"/>
+        <location filename="../qml/pages/HomePage.qml" line="2659"/>
         <source>Hide</source>
         <translation>Скрывать</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2647"/>
+        <location filename="../qml/pages/HomePage.qml" line="2673"/>
         <source>Hidden on this PC.</source>
         <translation>Скрыты на этом ПК.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2649"/>
+        <location filename="../qml/pages/HomePage.qml" line="2675"/>
         <source>Shown in feed without pop-ups.</source>
         <translation>Показываются в ленте без всплывающих окон.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2652"/>
+        <location filename="../qml/pages/HomePage.qml" line="2678"/>
         <source>Shown in feed and as desktop pop-ups.</source>
         <translation>Показываются в ленте и во всплывающих окнах.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3244"/>
+        <location filename="../qml/pages/HomePage.qml" line="3270"/>
         <source>Sync clipboard is off in Settings, so copies only go over with Send clipboard.</source>
         <translation>Синхронизация буфера обмена выключена в настройках, поэтому скопированное передаётся только кнопкой «Отправить буфер обмена».</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2651"/>
+        <location filename="../qml/pages/HomePage.qml" line="2677"/>
         <source>Shown in feed and as Windows pop-ups.</source>
         <translation>Показываются в ленте и во всплывающих окнах Windows.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2656"/>
-        <location filename="../qml/pages/HomePage.qml" line="2852"/>
-        <location filename="../qml/pages/HomePage.qml" line="3095"/>
-        <location filename="../qml/pages/HomePage.qml" line="3889"/>
+        <location filename="../qml/pages/HomePage.qml" line="2682"/>
+        <location filename="../qml/pages/HomePage.qml" line="2878"/>
+        <location filename="../qml/pages/HomePage.qml" line="3121"/>
+        <location filename="../qml/pages/HomePage.qml" line="3915"/>
         <source>Done</source>
         <translation>Готово</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2723"/>
+        <location filename="../qml/pages/HomePage.qml" line="2749"/>
         <source>Save</source>
         <translation>Сохранить</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2744"/>
+        <location filename="../qml/pages/HomePage.qml" line="2770"/>
         <source>Notification history</source>
         <translation>История уведомлений</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2752"/>
-        <location filename="../qml/pages/HomePage.qml" line="2883"/>
+        <location filename="../qml/pages/HomePage.qml" line="2778"/>
+        <location filename="../qml/pages/HomePage.qml" line="2909"/>
         <source>Clear history</source>
         <translation>Очистить историю</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2762"/>
+        <location filename="../qml/pages/HomePage.qml" line="2788"/>
         <source>Dismissed notifications from the last 24 hours.</source>
         <translation>Скрытые уведомления за последние 24 часа.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2763"/>
+        <location filename="../qml/pages/HomePage.qml" line="2789"/>
         <source>No recent notifications.</source>
         <translation>Нет недавних уведомлений.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2805"/>
-        <location filename="../qml/pages/HomePage.qml" line="2811"/>
+        <location filename="../qml/pages/HomePage.qml" line="2831"/>
+        <location filename="../qml/pages/HomePage.qml" line="2837"/>
         <source>Search notification history</source>
         <translation>Поиск в истории уведомлений</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2848"/>
-        <location filename="../qml/pages/HomePage.qml" line="3091"/>
+        <location filename="../qml/pages/HomePage.qml" line="2874"/>
+        <location filename="../qml/pages/HomePage.qml" line="3117"/>
         <source>Nothing matches “%1”.</source>
         <translation>Ничего не найдено по запросу «%1».</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2893"/>
+        <location filename="../qml/pages/HomePage.qml" line="2919"/>
         <source>Last 50 shared clips.</source>
         <translation>Последние 50 общих фрагментов.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2894"/>
+        <location filename="../qml/pages/HomePage.qml" line="2920"/>
         <source>No shared clips yet.</source>
         <translation>Пока нет общих фрагментов.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2934"/>
-        <location filename="../qml/pages/HomePage.qml" line="2940"/>
+        <location filename="../qml/pages/HomePage.qml" line="2960"/>
+        <location filename="../qml/pages/HomePage.qml" line="2966"/>
         <source>Search clipboard history</source>
         <translation>Поиск в истории буфера обмена</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2960"/>
+        <location filename="../qml/pages/HomePage.qml" line="2986"/>
         <source>From %1</source>
         <translation>С %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2960"/>
+        <location filename="../qml/pages/HomePage.qml" line="2986"/>
         <source>From phone</source>
         <translation>С телефона</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2961"/>
+        <location filename="../qml/pages/HomePage.qml" line="2987"/>
         <source>Sent to %1</source>
         <translation>Отправлено на %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2961"/>
+        <location filename="../qml/pages/HomePage.qml" line="2987"/>
         <source>From this PC</source>
         <translation>С этого ПК</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2967"/>
+        <location filename="../qml/pages/HomePage.qml" line="2993"/>
         <source>Image</source>
         <translation>Изображение</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3005"/>
+        <location filename="../qml/pages/HomePage.qml" line="3031"/>
         <source>Pinned</source>
         <translation>Закреплено</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3049"/>
+        <location filename="../qml/pages/HomePage.qml" line="3075"/>
         <source>Open on phone</source>
         <translation>Открыть на телефоне</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3058"/>
+        <location filename="../qml/pages/HomePage.qml" line="3084"/>
         <source>Send to phone</source>
         <translation>Отправить на телефон</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3066"/>
+        <location filename="../qml/pages/HomePage.qml" line="3092"/>
         <source>Copy</source>
         <translation>Копировать</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3072"/>
+        <location filename="../qml/pages/HomePage.qml" line="3098"/>
         <source>Unpin</source>
         <translation>Открепить</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3072"/>
+        <location filename="../qml/pages/HomePage.qml" line="3098"/>
         <source>Pin</source>
         <translation>Закрепить</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3077"/>
+        <location filename="../qml/pages/HomePage.qml" line="3103"/>
         <source>Delete</source>
         <translation>Удалить</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3181"/>
+        <location filename="../qml/pages/HomePage.qml" line="3207"/>
         <source>Connected · %1 ms</source>
         <translation>Подключено · %1 мс</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3181"/>
+        <location filename="../qml/pages/HomePage.qml" line="3207"/>
         <source>Connected</source>
         <translation>Подключено</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3186"/>
+        <location filename="../qml/pages/HomePage.qml" line="3212"/>
         <source>%1% · charging</source>
         <translation>%1% · заряжается</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3187"/>
-        <location filename="../qml/pages/HomePage.qml" line="3581"/>
-        <location filename="../qml/pages/HomePage.qml" line="3592"/>
+        <location filename="../qml/pages/HomePage.qml" line="3213"/>
+        <location filename="../qml/pages/HomePage.qml" line="3607"/>
+        <location filename="../qml/pages/HomePage.qml" line="3618"/>
         <source>%1%</source>
         <translation>%1%</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3227"/>
+        <location filename="../qml/pages/HomePage.qml" line="3253"/>
         <source>Ring PC</source>
         <translation>Позвонить на ПК</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3243"/>
+        <location filename="../qml/pages/HomePage.qml" line="3269"/>
         <source>What you copy here also goes to %1, and what you copy there comes here.</source>
         <translation>Скопированное здесь попадает и на %1, а скопированное там приходит сюда.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3733"/>
+        <location filename="../qml/pages/HomePage.qml" line="3759"/>
         <source>LocalSend nearby · %1</source>
         <translation>LocalSend рядом · %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3734"/>
+        <location filename="../qml/pages/HomePage.qml" line="3760"/>
         <source>LocalSend nearby</source>
         <translation>LocalSend рядом</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3743"/>
+        <location filename="../qml/pages/HomePage.qml" line="3769"/>
         <source>Refresh</source>
         <translation>Обновить</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3754"/>
+        <location filename="../qml/pages/HomePage.qml" line="3780"/>
         <source>Listening for LocalSend devices on your Wi‑Fi network.</source>
         <translation>Поиск устройств LocalSend в вашей сети Wi‑Fi.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3755"/>
+        <location filename="../qml/pages/HomePage.qml" line="3781"/>
         <source>LocalSend port 53317 is busy on this PC (another LocalSend app may be running).</source>
         <translation>Порт LocalSend 53317 занят на этом ПК (возможно, запущено другое приложение LocalSend).</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3794"/>
+        <location filename="../qml/pages/HomePage.qml" line="3820"/>
         <source>Nearby device</source>
         <translation>Устройство рядом</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3850"/>
+        <location filename="../qml/pages/HomePage.qml" line="3876"/>
         <source>Image preview</source>
         <translation>Просмотр изображения</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3857"/>
+        <location filename="../qml/pages/HomePage.qml" line="3883"/>
         <source>Close</source>
         <translation>Закрыть</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3885"/>
+        <location filename="../qml/pages/HomePage.qml" line="3911"/>
         <source>Open externally</source>
         <translation>Открыть в другом приложении</translation>
     </message>
@@ -5840,12 +5850,12 @@ What it needs
         <translation>Нажмите на поле ввода на телефоне и печатайте</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2685"/>
+        <location filename="../qml/pages/HomePage.qml" line="2711"/>
         <source>Phone nickname</source>
         <translation>Имя телефона</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2693"/>
+        <location filename="../qml/pages/HomePage.qml" line="2719"/>
         <source>Set a custom name for this phone on your PC. Leave blank to use &quot;%1&quot;.</source>
         <translation>Задайте своё имя для этого телефона на ПК. Оставьте пустым, чтобы использовать «%1».</translation>
     </message>
@@ -7198,41 +7208,46 @@ What it needs
     </message>
     <message>
         <location filename="rust_strings.h" line="406"/>
+        <source>Copied</source>
+        <translation>Скопировано</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="407"/>
         <source>Copy code</source>
         <translation>Копировать код</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="407"/>
+        <location filename="rust_strings.h" line="408"/>
         <source>Dismissed %1 from %2</source>
         <translation>Скрыто %1 от %2</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="408"/>
+        <location filename="rust_strings.h" line="409"/>
         <source>Dismissed %1 notifications</source>
         <translation>Скрыто уведомлений: %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="409"/>
+        <location filename="rust_strings.h" line="410"/>
         <source>Dismissed from %1</source>
         <translation>Скрыто от %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="410"/>
+        <location filename="rust_strings.h" line="411"/>
         <source>Notification dismissed</source>
         <translation>Уведомление скрыто</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="411"/>
+        <location filename="rust_strings.h" line="412"/>
         <source>Open</source>
         <translation>Открыть</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="412"/>
+        <location filename="rust_strings.h" line="413"/>
         <source>Reply</source>
         <translation>Ответить</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="413"/>
+        <location filename="rust_strings.h" line="414"/>
         <source>That notification is gone from the phone.</source>
         <translation>Этого уведомления больше нет на телефоне.</translation>
     </message>
@@ -7348,17 +7363,17 @@ What it needs
 <context>
     <name>Obs</name>
     <message>
-        <location filename="rust_strings.h" line="414"/>
+        <location filename="rust_strings.h" line="415"/>
         <source>OBS isn&apos;t reachable on port %1. Turn on its WebSocket server.</source>
         <translation>OBS недоступен на порту %1. Включите его сервер WebSocket.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="415"/>
+        <location filename="rust_strings.h" line="416"/>
         <source>OBS: %1</source>
         <translation>OBS: %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="416"/>
+        <location filename="rust_strings.h" line="417"/>
         <source>The service on that port isn&apos;t OBS.</source>
         <translation>Служба на этом порту — не OBS.</translation>
     </message>
@@ -7543,7 +7558,7 @@ What it needs
 <context>
     <name>PcMirror</name>
     <message>
-        <location filename="rust_strings.h" line="417"/>
+        <location filename="rust_strings.h" line="418"/>
         <source>Can&apos;t find the player&apos;s window. Play the video on this PC again, then turn on Play on phone.</source>
         <translation>Не удаётся найти окно плеера. Снова включите видео на этом ПК, затем включите «Смотреть на телефоне».</translation>
     </message>
@@ -7551,102 +7566,102 @@ What it needs
 <context>
     <name>PhoneInstall</name>
     <message>
-        <location filename="rust_strings.h" line="418"/>
+        <location filename="rust_strings.h" line="419"/>
         <source>Android said: %1</source>
         <translation>Android сообщает: %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="419"/>
+        <location filename="rust_strings.h" line="420"/>
         <source>Another build of NectarLink is on this phone</source>
         <translation>На этом телефоне другая сборка NectarLink</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="420"/>
+        <location filename="rust_strings.h" line="421"/>
         <source>Check this PC&apos;s internet connection and try again. (%1)</source>
         <translation>Проверьте подключение этого ПК к интернету и попробуйте снова. (%1)</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="421"/>
+        <location filename="rust_strings.h" line="422"/>
         <source>Couldn&apos;t download the phone app</source>
         <translation>Не удалось скачать приложение для телефона</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="422"/>
+        <location filename="rust_strings.h" line="423"/>
         <source>Free up some storage on the phone, then try again.</source>
         <translation>Освободите место на телефоне и попробуйте снова.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="423"/>
+        <location filename="rust_strings.h" line="424"/>
         <source>In Developer options, turn on Install via USB, then try again. On Xiaomi, Redmi and POCO phones it may ask you to sign in to a Xiaomi account first.</source>
         <translation>В параметрах разработчика включите «Установка через USB» и попробуйте снова. На телефонах Xiaomi, Redmi и POCO для этого может понадобиться войти в аккаунт Xiaomi.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="424"/>
+        <location filename="rust_strings.h" line="425"/>
         <source>It didn&apos;t match its checksum, so it wasn&apos;t installed. Try again.</source>
         <translation>Файл не совпал с контрольной суммой, поэтому не был установлен. Попробуйте снова.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="425"/>
+        <location filename="rust_strings.h" line="426"/>
         <source>It was signed differently (a test build, or one from another store), so Android won&apos;t update it. Replacing it removes it with its data, including the PCs it&apos;s paired with, then installs this one.</source>
         <translation>Она подписана иначе (тестовая сборка или из другого магазина), поэтому Android её не обновит. Замена удалит её вместе с данными, включая сопряжённые ПК, и установит эту.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="426"/>
+        <location filename="rust_strings.h" line="427"/>
         <source>Keep it plugged in and unlocked until the install is done, then try again.</source>
         <translation>Не отключайте и не блокируйте телефон, пока установка не закончится, и попробуйте снова.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="427"/>
+        <location filename="rust_strings.h" line="428"/>
         <source>NectarLink needs Android 8.0 or newer.</source>
         <translation>NectarLink нужен Android 8.0 или новее.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="428"/>
+        <location filename="rust_strings.h" line="429"/>
         <source>The download was damaged</source>
         <translation>Загрузка повреждена</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="429"/>
+        <location filename="rust_strings.h" line="430"/>
         <source>The install was stopped on the phone</source>
         <translation>Установка остановлена на телефоне</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="430"/>
+        <location filename="rust_strings.h" line="431"/>
         <source>The phone already has a newer version</source>
         <translation>На телефоне уже более новая версия</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="431"/>
+        <location filename="rust_strings.h" line="432"/>
         <source>The phone asked whether to allow it and the answer was no, or Google Play Protect stopped it. Try again and allow it on the phone. If Play Protect stops it, turn off Verify apps over USB in Developer options for the install.</source>
         <translation>Телефон спросил, разрешить ли установку, и ответ был «нет», или её остановил Google Play Protect. Попробуйте снова и разрешите на телефоне. Если её останавливает Play Protect, отключите «Проверять приложения при установке через USB» в параметрах разработчика на время установки.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="432"/>
+        <location filename="rust_strings.h" line="433"/>
         <source>The phone blocks installs over USB</source>
         <translation>Телефон запрещает установку через USB</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="433"/>
+        <location filename="rust_strings.h" line="434"/>
         <source>The phone didn&apos;t install it</source>
         <translation>Телефон не установил приложение</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="434"/>
+        <location filename="rust_strings.h" line="435"/>
         <source>The phone is out of space</source>
         <translation>На телефоне закончилось место</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="435"/>
+        <location filename="rust_strings.h" line="436"/>
         <source>The phone stopped answering</source>
         <translation>Телефон перестал отвечать</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="436"/>
+        <location filename="rust_strings.h" line="437"/>
         <source>There&apos;s nothing to install. Open NectarLink on the phone to pair it.</source>
         <translation>Устанавливать нечего. Откройте NectarLink на телефоне, чтобы выполнить сопряжение.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="437"/>
+        <location filename="rust_strings.h" line="438"/>
         <source>This phone&apos;s Android is too old</source>
         <translation>Android на этом телефоне слишком старый</translation>
     </message>
@@ -7923,17 +7938,17 @@ What it needs
 <context>
     <name>PhoneMic</name>
     <message>
-        <location filename="rust_strings.h" line="438"/>
+        <location filename="rust_strings.h" line="439"/>
         <source>Tap Start on %1 to use its microphone.</source>
         <translation>Нажмите «Начать» на %1, чтобы использовать его микрофон.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="439"/>
+        <location filename="rust_strings.h" line="440"/>
         <source>The microphone is turned off for this PC on %1.</source>
         <translation>Микрофон для этого ПК выключен на %1.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="440"/>
+        <location filename="rust_strings.h" line="441"/>
         <source>Update NectarLink on %1 to use its microphone.</source>
         <translation>Обновите NectarLink на %1, чтобы использовать его микрофон.</translation>
     </message>
@@ -7941,22 +7956,22 @@ What it needs
 <context>
     <name>PhoneSound</name>
     <message>
-        <location filename="rust_strings.h" line="441"/>
+        <location filename="rust_strings.h" line="442"/>
         <source>%1 couldn&apos;t ask to share its sound. Check that NectarLink can show notifications on the phone.</source>
         <translation>%1 не смог запросить передачу звука. Проверьте, что NectarLink может показывать уведомления на телефоне.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="442"/>
+        <location filename="rust_strings.h" line="443"/>
         <source>Mirroring is turned off for this phone.</source>
         <translation>Показ экрана выключен для этого телефона.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="443"/>
+        <location filename="rust_strings.h" line="444"/>
         <source>The phone isn&apos;t connected.</source>
         <translation>Телефон не подключён.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="444"/>
+        <location filename="rust_strings.h" line="445"/>
         <source>Update NectarLink on %1 to play its sound here.</source>
         <translation>Обновите NectarLink на %1, чтобы воспроизводить его звук здесь.</translation>
     </message>
@@ -7964,62 +7979,62 @@ What it needs
 <context>
     <name>PhotoBackup</name>
     <message>
-        <location filename="rust_strings.h" line="445"/>
+        <location filename="rust_strings.h" line="446"/>
         <source>Can&apos;t write to the backup folder.</source>
         <translation>Не удаётся записать в папку резервных копий.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="446"/>
+        <location filename="rust_strings.h" line="447"/>
         <source>Copying, %1 left</source>
         <translation>Копирование, осталось %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="447"/>
+        <location filename="rust_strings.h" line="448"/>
         <source>Looking for new photos…</source>
         <translation>Поиск новых фото…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="448"/>
+        <location filename="rust_strings.h" line="449"/>
         <source>Off</source>
         <translation>Выкл.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="449"/>
+        <location filename="rust_strings.h" line="450"/>
         <source>Photos are turned off for this PC on %1.</source>
         <translation>Фото для этого ПК выключены на %1.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="450"/>
+        <location filename="rust_strings.h" line="451"/>
         <source>The backup folder&apos;s drive is full.</source>
         <translation>Диск папки резервных копий заполнен.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="451"/>
+        <location filename="rust_strings.h" line="452"/>
         <source>The backup stopped. It tries again in a few minutes.</source>
         <translation>Резервное копирование остановилось. Повтор через несколько минут.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="452"/>
+        <location filename="rust_strings.h" line="453"/>
         <source>Up to date</source>
         <translation>Всё актуально</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="453"/>
+        <location filename="rust_strings.h" line="454"/>
         <source>Up to date, %1 backed up</source>
         <translation>Всё актуально, сохранено: %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="454"/>
+        <location filename="rust_strings.h" line="455"/>
         <source>Update NectarLink on %1 to back up its photos.</source>
         <translation>Обновите NectarLink на %1, чтобы сохранять его фото.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="455"/>
+        <location filename="rust_strings.h" line="456"/>
         <source>Waiting for %1</source>
         <translation>Ожидание %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="456"/>
+        <location filename="rust_strings.h" line="457"/>
         <source>Waiting for Wi-Fi</source>
         <translation>Ожидание Wi-Fi</translation>
     </message>
@@ -8027,87 +8042,87 @@ What it needs
 <context>
     <name>Photos</name>
     <message>
-        <location filename="rust_strings.h" line="457"/>
+        <location filename="rust_strings.h" line="458"/>
         <source>%1 of %2 couldn&apos;t be moved to %3. They&apos;re in Downloads\Nectarlink.</source>
         <translation>Не удалось переместить %1 из %2 в %3. Они в Downloads\Nectarlink.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="458"/>
+        <location filename="rust_strings.h" line="459"/>
         <source>Copied to clipboard.</source>
         <translation>Скопировано в буфер обмена.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="459"/>
+        <location filename="rust_strings.h" line="460"/>
         <source>Couldn&apos;t open the share window. Try Save instead.</source>
         <translation>Не удалось открыть окно «Поделиться». Попробуйте «Сохранить».</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="461"/>
+        <location filename="rust_strings.h" line="462"/>
         <source>From %1</source>
         <translation>С %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="462"/>
+        <location filename="rust_strings.h" line="463"/>
         <source>New photo</source>
         <translation>Новое фото</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="463"/>
+        <location filename="rust_strings.h" line="464"/>
         <source>New screenshot</source>
         <translation>Новый скриншот</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="464"/>
+        <location filename="rust_strings.h" line="465"/>
         <source>No recent photos found on the phone.</source>
         <translation>На телефоне нет недавних фото.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="465"/>
+        <location filename="rust_strings.h" line="466"/>
         <source>Opening latest photo…</source>
         <translation>Открытие последнего фото…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="466"/>
+        <location filename="rust_strings.h" line="467"/>
         <source>Saved %1 items to %2.</source>
         <translation>Сохранено элементов: %1 в %2.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="467"/>
+        <location filename="rust_strings.h" line="468"/>
         <source>Saved %1 to %2.</source>
         <translation>%1 сохранён в %2.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="471"/>
+        <location filename="rust_strings.h" line="472"/>
         <source>The phone kept them. Deleting from the PC needs All files access on the phone (Android 11 or later).</source>
         <translation>Телефон их оставил. Для удаления с ПК на телефоне нужен доступ ко всем файлам (Android 11 или новее).</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="460"/>
+        <location filename="rust_strings.h" line="461"/>
         <source>Deleted %1 of %2.</source>
         <translation>Удалено %1 из %2.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="468"/>
+        <location filename="rust_strings.h" line="469"/>
         <source>That photo isn&apos;t on the phone anymore.</source>
         <translation>Этого фото больше нет на телефоне.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="469"/>
+        <location filename="rust_strings.h" line="470"/>
         <source>The phone doesn&apos;t share photos or files with this PC.</source>
         <translation>Телефон не открывает этому ПК фото и файлы.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="470"/>
+        <location filename="rust_strings.h" line="471"/>
         <source>The phone isn&apos;t connected right now.</source>
         <translation>Телефон сейчас не подключён.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="472"/>
+        <location filename="rust_strings.h" line="473"/>
         <source>The photo couldn&apos;t be copied to the clipboard.</source>
         <translation>Не удалось скопировать фото в буфер обмена.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="473"/>
+        <location filename="rust_strings.h" line="474"/>
         <source>The photo couldn&apos;t be copied. It&apos;s in Downloads\Nectarlink.</source>
         <translation>Не удалось скопировать фото. Оно в Downloads\Nectarlink.</translation>
     </message>
@@ -8408,32 +8423,32 @@ What it needs
 <context>
     <name>PlayOnPhone</name>
     <message>
-        <location filename="rust_strings.h" line="474"/>
+        <location filename="rust_strings.h" line="475"/>
         <source>Connect your phone to play on it.</source>
         <translation>Подключите телефон, чтобы воспроизводить на нём.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="475"/>
+        <location filename="rust_strings.h" line="476"/>
         <source>Media is turned off for %1.</source>
         <translation>Медиа выключены для %1.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="476"/>
+        <location filename="rust_strings.h" line="477"/>
         <source>Opening in %1 on %2. Tap the notification there.</source>
         <translation>Открывается в %1 на %2. Нажмите там на уведомление.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="477"/>
+        <location filename="rust_strings.h" line="478"/>
         <source>Sent to %1. Tap the notification there.</source>
         <translation>Отправлено на %1. Нажмите там на уведомление.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="478"/>
+        <location filename="rust_strings.h" line="479"/>
         <source>Tap the notification on %1 to watch.</source>
         <translation>Нажмите на уведомление на %1, чтобы смотреть.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="479"/>
+        <location filename="rust_strings.h" line="480"/>
         <source>Update NectarLink on %1 to play on it.</source>
         <translation>Обновите NectarLink на %1, чтобы воспроизводить на нём.</translation>
     </message>
@@ -8441,7 +8456,7 @@ What it needs
 <context>
     <name>Prefs</name>
     <message>
-        <location filename="rust_strings.h" line="480"/>
+        <location filename="rust_strings.h" line="481"/>
         <source>Connected to OBS.</source>
         <translation>Подключено к OBS.</translation>
     </message>
@@ -8449,7 +8464,7 @@ What it needs
 <context>
     <name>Recordings</name>
     <message>
-        <location filename="rust_strings.h" line="481"/>
+        <location filename="rust_strings.h" line="482"/>
         <source>Recording from %1 saved</source>
         <translation>Запись с %1 сохранена</translation>
     </message>
@@ -8636,42 +8651,42 @@ What it needs
 <context>
     <name>ReportRequests</name>
     <message>
-        <location filename="rust_strings.h" line="482"/>
+        <location filename="rust_strings.h" line="483"/>
         <source>%1 asks for this PC&apos;s log</source>
         <translation>%1 запрашивает журнал этого ПК</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="483"/>
+        <location filename="rust_strings.h" line="484"/>
         <source>Don&apos;t share</source>
         <translation>Не делиться</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="484"/>
+        <location filename="rust_strings.h" line="485"/>
         <source>For a problem report you&apos;re making. The log has no names, messages, files, numbers or addresses. You see the whole report before it&apos;s sent.</source>
         <translation>Для отчёта о проблеме, который вы составляете. В журнале нет имён, сообщений, файлов, номеров и адресов. Вы увидите весь отчёт перед отправкой.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="485"/>
+        <location filename="rust_strings.h" line="486"/>
         <source>Report #%1. Open it to read it on GitHub.</source>
         <translation>Отчёт #%1. Откройте, чтобы прочитать на GitHub.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="486"/>
+        <location filename="rust_strings.h" line="487"/>
         <source>Share</source>
         <translation>Поделиться</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="487"/>
+        <location filename="rust_strings.h" line="488"/>
         <source>There&apos;s a reply to your report</source>
         <translation>На ваш отчёт ответили</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="488"/>
+        <location filename="rust_strings.h" line="489"/>
         <source>Your phone</source>
         <translation>Ваш телефон</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="489"/>
+        <location filename="rust_strings.h" line="490"/>
         <source>Your report was closed</source>
         <translation>Ваш отчёт закрыт</translation>
     </message>
@@ -8879,57 +8894,57 @@ What it needs
 <context>
     <name>SendTo</name>
     <message>
-        <location filename="rust_strings.h" line="490"/>
+        <location filename="rust_strings.h" line="491"/>
         <source>Copied to your phone&apos;s clipboard.</source>
         <translation>Скопировано в буфер обмена телефона.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="491"/>
+        <location filename="rust_strings.h" line="492"/>
         <source>Couldn&apos;t reach %1.</source>
         <translation>Не удалось связаться с %1.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="492"/>
+        <location filename="rust_strings.h" line="493"/>
         <source>Couldn&apos;t send %1</source>
         <translation>Не удалось отправить %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="493"/>
+        <location filename="rust_strings.h" line="494"/>
         <source>Couldn&apos;t send to %1</source>
         <translation>Не удалось отправить на %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="494"/>
+        <location filename="rust_strings.h" line="495"/>
         <source>Couldn&apos;t share with %1</source>
         <translation>Не удалось поделиться с %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="495"/>
+        <location filename="rust_strings.h" line="496"/>
         <source>File failed integrity check; partial file kept to resume.</source>
         <translation>Файл не прошёл проверку целостности; часть файла сохранена для докачки.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="496"/>
+        <location filename="rust_strings.h" line="497"/>
         <source>Send to %1 with NectarLink</source>
         <translation>Отправить на %1 через NectarLink</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="497"/>
+        <location filename="rust_strings.h" line="498"/>
         <source>Sending to %1…</source>
         <translation>Отправка на %1…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="498"/>
+        <location filename="rust_strings.h" line="499"/>
         <source>Sent to %1</source>
         <translation>Отправлено на %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="499"/>
+        <location filename="rust_strings.h" line="500"/>
         <source>The transfer didn&apos;t go through.</source>
         <translation>Передача не прошла.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="500"/>
+        <location filename="rust_strings.h" line="501"/>
         <source>Waiting for %1…</source>
         <translation>Ожидание %1…</translation>
     </message>
@@ -11306,72 +11321,72 @@ What it needs
 <context>
     <name>Setup</name>
     <message>
-        <location filename="rust_strings.h" line="501"/>
+        <location filename="rust_strings.h" line="502"/>
         <source>Choose a folder on a drive inside this PC, not a USB or network drive.</source>
         <translation>Выберите папку на диске внутри этого ПК, а не на USB- или сетевом диске.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="502"/>
+        <location filename="rust_strings.h" line="503"/>
         <source>Choose a folder on one of this PC&apos;s drives.</source>
         <translation>Выберите папку на одном из дисков этого ПК.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="503"/>
+        <location filename="rust_strings.h" line="504"/>
         <source>Couldn&apos;t start setup: %1</source>
         <translation>Не удалось запустить установку: %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="504"/>
+        <location filename="rust_strings.h" line="505"/>
         <source>Couldn&apos;t uninstall NectarLink: %1</source>
         <translation>Не удалось удалить NectarLink: %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="505"/>
+        <location filename="rust_strings.h" line="506"/>
         <source>Setup can&apos;t use that folder. Choose another one.</source>
         <translation>Установка не может использовать эту папку. Выберите другую.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="506"/>
+        <location filename="rust_strings.h" line="507"/>
         <source>Setup is taking too long. Try again after restarting the PC.</source>
         <translation>Установка идёт слишком долго. Попробуйте снова после перезагрузки ПК.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="507"/>
+        <location filename="rust_strings.h" line="508"/>
         <source>Setup stopped with code %1.</source>
         <translation>Установка остановилась с кодом %1.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="508"/>
+        <location filename="rust_strings.h" line="509"/>
         <source>That drive can&apos;t keep the app&apos;s files safe (it isn&apos;t NTFS). Choose another drive.</source>
         <translation>Этот диск не может надёжно хранить файлы приложения (он не NTFS). Выберите другой диск.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="509"/>
+        <location filename="rust_strings.h" line="510"/>
         <source>That folder&apos;s path is too long. Choose one closer to the top of a drive.</source>
         <translation>Путь к этой папке слишком длинный. Выберите папку ближе к корню диска.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="510"/>
+        <location filename="rust_strings.h" line="511"/>
         <source>The uninstaller is missing. Reinstall NectarLink, then uninstall it.</source>
         <translation>Нет программы удаления. Переустановите NectarLink, затем удалите его.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="511"/>
+        <location filename="rust_strings.h" line="512"/>
         <source>There&apos;s a file named %1 there. Choose another place.</source>
         <translation>Там есть файл с именем %1. Выберите другое место.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="512"/>
+        <location filename="rust_strings.h" line="513"/>
         <source>There&apos;s already a %1 folder there with files in it. Choose another place.</source>
         <translation>Там уже есть папка %1 с файлами. Выберите другое место.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="513"/>
+        <location filename="rust_strings.h" line="514"/>
         <source>Uninstall stopped with code %1.</source>
         <translation>Удаление остановилось с кодом %1.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="514"/>
+        <location filename="rust_strings.h" line="515"/>
         <source>Updates here will ask for your permission each time.</source>
         <translation>Обновления здесь каждый раз будут спрашивать разрешение.</translation>
     </message>
@@ -11810,17 +11825,17 @@ What it needs
 <context>
     <name>Storage</name>
     <message>
-        <location filename="rust_strings.h" line="515"/>
+        <location filename="rust_strings.h" line="516"/>
         <source>%1&apos;s files aren&apos;t shared with this PC</source>
         <translation>Файлы %1 не открыты этому ПК</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="516"/>
+        <location filename="rust_strings.h" line="517"/>
         <source>On the phone, allow All files access for NectarLink.</source>
         <translation>На телефоне разрешите NectarLink доступ ко всем файлам.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="517"/>
+        <location filename="rust_strings.h" line="518"/>
         <source>On the phone, turn on Browse this phone&apos;s storage in File Explorer in NectarLink.</source>
         <translation>На телефоне включите в NectarLink «Просматривать хранилище телефона в Проводнике».</translation>
     </message>
@@ -11828,147 +11843,147 @@ What it needs
 <context>
     <name>Timeline</name>
     <message>
-        <location filename="rust_strings.h" line="518"/>
+        <location filename="rust_strings.h" line="519"/>
         <source>App window #%1</source>
         <translation>Окно приложения №%1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="519"/>
+        <location filename="rust_strings.h" line="520"/>
         <source>Clip (removed from clipboard history)</source>
         <translation>Фрагмент (удалён из истории буфера обмена)</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="520"/>
+        <location filename="rust_strings.h" line="521"/>
         <source>Copied image</source>
         <translation>Изображение скопировано</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="521"/>
+        <location filename="rust_strings.h" line="522"/>
         <source>Copied link to clipboard.</source>
         <translation>Ссылка скопирована в буфер обмена.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="522"/>
+        <location filename="rust_strings.h" line="523"/>
         <source>Copied to clipboard.</source>
         <translation>Скопировано в буфер обмена.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="523"/>
+        <location filename="rust_strings.h" line="524"/>
         <source>From %1</source>
         <translation>С %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="524"/>
+        <location filename="rust_strings.h" line="525"/>
         <source>In progress</source>
         <translation>В процессе</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="525"/>
+        <location filename="rust_strings.h" line="526"/>
         <source>No phone is paired yet.</source>
         <translation>Телефон ещё не связан.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="526"/>
+        <location filename="rust_strings.h" line="527"/>
         <source>Opened from %1</source>
         <translation>Открыто с %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="527"/>
+        <location filename="rust_strings.h" line="528"/>
         <source>Opened on %1</source>
         <translation>Открыто на %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="528"/>
+        <location filename="rust_strings.h" line="529"/>
         <source>Phone microphone</source>
         <translation>Микрофон телефона</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="529"/>
+        <location filename="rust_strings.h" line="530"/>
         <source>Phone webcam</source>
         <translation>Веб-камера телефона</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="530"/>
+        <location filename="rust_strings.h" line="531"/>
         <source>Recorded on %1</source>
         <translation>Записано на %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="531"/>
+        <location filename="rust_strings.h" line="532"/>
         <source>Saved from %1</source>
         <translation>Сохранено с %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="532"/>
+        <location filename="rust_strings.h" line="533"/>
         <source>Screen mirroring</source>
         <translation>Экран телефона</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="533"/>
+        <location filename="rust_strings.h" line="534"/>
         <source>Sending to %1…</source>
         <translation>Отправка на %1…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="534"/>
+        <location filename="rust_strings.h" line="535"/>
         <source>Sent clip to %1.</source>
         <translation>Фрагмент отправлен на %1.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="535"/>
+        <location filename="rust_strings.h" line="536"/>
         <source>Sent to %1</source>
         <translation>Отправлено на %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="536"/>
+        <location filename="rust_strings.h" line="537"/>
         <source>Session</source>
         <translation>Сеанс</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="537"/>
+        <location filename="rust_strings.h" line="538"/>
         <source>That clip is no longer in clipboard history.</source>
         <translation>Этого фрагмента больше нет в истории буфера обмена.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="538"/>
+        <location filename="rust_strings.h" line="539"/>
         <source>That entry couldn&apos;t be removed. Try again.</source>
         <translation>Не удалось удалить запись. Попробуйте ещё раз.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="539"/>
+        <location filename="rust_strings.h" line="540"/>
         <source>That file was moved or deleted.</source>
         <translation>Этот файл перемещён или удалён.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="540"/>
+        <location filename="rust_strings.h" line="541"/>
         <source>That isn&apos;t a web link.</source>
         <translation>Это не веб-ссылка.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="541"/>
+        <location filename="rust_strings.h" line="542"/>
         <source>That photo was moved or deleted.</source>
         <translation>Это фото перемещено или удалено.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="542"/>
+        <location filename="rust_strings.h" line="543"/>
         <source>The Timeline couldn&apos;t be cleared. Try again.</source>
         <translation>Не удалось очистить хронологию. Попробуйте ещё раз.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="543"/>
+        <location filename="rust_strings.h" line="544"/>
         <source>The photo couldn&apos;t be copied to the clipboard.</source>
         <translation>Не удалось скопировать фото в буфер обмена.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="544"/>
+        <location filename="rust_strings.h" line="545"/>
         <source>Voice recording</source>
         <translation>Голосовая запись</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="545"/>
+        <location filename="rust_strings.h" line="546"/>
         <source>With %1</source>
         <translation>С %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="546"/>
+        <location filename="rust_strings.h" line="547"/>
         <source>device</source>
         <translation>устройство</translation>
     </message>
@@ -12299,37 +12314,37 @@ What it needs
 <context>
     <name>Transfers</name>
     <message>
-        <location filename="rust_strings.h" line="547"/>
+        <location filename="rust_strings.h" line="548"/>
         <source>Accept in NectarLink to save to Downloads\Nectarlink</source>
         <translation>Примите в NectarLink, чтобы сохранить в Downloads\Nectarlink</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="548"/>
+        <location filename="rust_strings.h" line="549"/>
         <source>Files are turned off for that device.</source>
         <translation>Файлы выключены для этого устройства.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="549"/>
+        <location filename="rust_strings.h" line="550"/>
         <source>From %1, opened from Downloads\Nectarlink</source>
         <translation>С %1, открыто из Downloads\Nectarlink</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="550"/>
+        <location filename="rust_strings.h" line="551"/>
         <source>From %1, saved in Downloads\Nectarlink</source>
         <translation>С %1, сохранено в Downloads\Nectarlink</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="551"/>
+        <location filename="rust_strings.h" line="552"/>
         <source>Nearby device</source>
         <translation>Устройство рядом</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="552"/>
+        <location filename="rust_strings.h" line="553"/>
         <source>That&apos;s too many files to send at once.</source>
         <translation>Слишком много файлов, чтобы отправить за раз.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="553"/>
+        <location filename="rust_strings.h" line="554"/>
         <source>There&apos;s nothing to send in there.</source>
         <translation>Там нечего отправлять.</translation>
     </message>
@@ -12337,12 +12352,12 @@ What it needs
 <context>
     <name>Unlock</name>
     <message>
-        <location filename="rust_strings.h" line="554"/>
+        <location filename="rust_strings.h" line="555"/>
         <source>Set up unlocking with %1 again</source>
         <translation>Снова настройте разблокировку с %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="555"/>
+        <location filename="rust_strings.h" line="556"/>
         <source>Windows didn&apos;t accept the password saved for it, so it was probably changed. Set it up again under Unlock this PC with the phone.</source>
         <translation>Windows не принял сохранённый пароль — вероятно, он был изменён. Настройте заново в разделе «Разблокировать этот ПК телефоном».</translation>
     </message>
@@ -12350,82 +12365,82 @@ What it needs
 <context>
     <name>Updater</name>
     <message>
-        <location filename="rust_strings.h" line="556"/>
+        <location filename="rust_strings.h" line="557"/>
         <source>Couldn&apos;t check for updates. Check your internet connection.</source>
         <translation>Не удалось проверить обновления. Проверьте подключение к интернету.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="557"/>
+        <location filename="rust_strings.h" line="558"/>
         <source>NectarLink %1 is available</source>
         <translation>Доступен NectarLink %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="558"/>
+        <location filename="rust_strings.h" line="559"/>
         <source>NectarLink %1 is available.</source>
         <translation>Доступен NectarLink %1.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="559"/>
+        <location filename="rust_strings.h" line="560"/>
         <source>NectarLink is still on the version you had. Try again from Settings.</source>
         <translation>NectarLink остался на прежней версии. Попробуйте снова из настроек.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="560"/>
+        <location filename="rust_strings.h" line="561"/>
         <source>NectarLink is up to date.</source>
         <translation>NectarLink обновлён до последней версии.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="561"/>
+        <location filename="rust_strings.h" line="562"/>
         <source>NectarLink is updated to %1</source>
         <translation>NectarLink обновлён до %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="562"/>
+        <location filename="rust_strings.h" line="563"/>
         <source>Nightly %1</source>
         <translation>Nightly %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="563"/>
+        <location filename="rust_strings.h" line="564"/>
         <source>Nightly %1 (%2)</source>
         <translation>Nightly %1 (%2)</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="564"/>
+        <location filename="rust_strings.h" line="565"/>
         <source>The download was damaged, so it wasn&apos;t installed. Try again.</source>
         <translation>Загрузка повреждена, поэтому не установлена. Попробуйте ещё раз.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="565"/>
+        <location filename="rust_strings.h" line="566"/>
         <source>The update couldn&apos;t be downloaded. Check your internet connection and try again.</source>
         <translation>Не удалось загрузить обновление. Проверьте подключение к интернету и попробуйте ещё раз.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="566"/>
+        <location filename="rust_strings.h" line="567"/>
         <source>The update couldn&apos;t be saved. Check that there&apos;s free space and try again.</source>
         <translation>Не удалось сохранить обновление. Проверьте, что есть свободное место, и попробуйте ещё раз.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="567"/>
+        <location filename="rust_strings.h" line="568"/>
         <source>The update couldn&apos;t be started. Try again.</source>
         <translation>Не удалось запустить обновление. Попробуйте ещё раз.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="568"/>
+        <location filename="rust_strings.h" line="569"/>
         <source>The update didn&apos;t install</source>
         <translation>Обновление не установилось</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="569"/>
+        <location filename="rust_strings.h" line="570"/>
         <source>The update is installed. Restart NectarLink to use it.</source>
         <translation>Обновление установлено. Перезапустите NectarLink, чтобы его использовать.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="570"/>
+        <location filename="rust_strings.h" line="571"/>
         <source>Update now, or later from Settings.</source>
         <translation>Обновите сейчас или позже в настройках.</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="571"/>
+        <location filename="rust_strings.h" line="572"/>
         <source>Your phone reconnects on its own.</source>
         <translation>Телефон переподключится сам.</translation>
     </message>
@@ -12983,12 +12998,12 @@ What it needs
 <context>
     <name>Webcam</name>
     <message>
-        <location filename="rust_strings.h" line="572"/>
+        <location filename="rust_strings.h" line="573"/>
         <source>Starting camera on %1…</source>
         <translation>Запуск камеры на %1…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="573"/>
+        <location filename="rust_strings.h" line="574"/>
         <source>Streaming %1 × %2 · %3 fps from %4</source>
         <translation>Трансляция %1 × %2 · %3 к/с с %4</translation>
     </message>

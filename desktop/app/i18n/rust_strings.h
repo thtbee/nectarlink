@@ -403,6 +403,7 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Mirror", "Wait for the screen to appear first."), // desktop/app/src/mirror.rs
     QT_TRANSLATE_NOOP("Mp4", "No video frames were recorded yet."), // desktop/app/src/win/mp4.rs
     QT_TRANSLATE_NOOP("Notifications", "Code copied"), // desktop/app/src/notifications.rs
+    QT_TRANSLATE_NOOP("Notifications", "Copied"), // desktop/app/src/notifications.rs
     QT_TRANSLATE_NOOP("Notifications", "Copy code"), // desktop/app/src/notifications.rs
     QT_TRANSLATE_NOOP("Notifications", "Dismissed %1 from %2"), // desktop/app/src/bridge/notifications.rs
     QT_TRANSLATE_NOOP("Notifications", "Dismissed %1 notifications"), // desktop/app/src/bridge/notifications.rs

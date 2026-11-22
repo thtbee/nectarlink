@@ -156,6 +156,10 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "copyCode"]
         fn copy_code(self: &NotificationList, code: &QString);
+        /// Copies a notification's text (and its title, when given) to the PC clipboard.
+        #[qinvokable]
+        #[cxx_name = "copyText"]
+        fn copy_text(self: &NotificationList, title: &QString, text: &QString);
     }
 
     impl cxx_qt::Threading for NotificationList {}
@@ -636,6 +640,10 @@ impl qobject::NotificationList {
 
     pub fn copy_code(&self, code: &QString) {
         crate::notifications::copy_otp(&String::from(code));
+    }
+
+    pub fn copy_text(&self, title: &QString, text: &QString) {
+        crate::notifications::copy_text(&String::from(title), &String::from(text));
     }
 
     fn set_history_enabled(mut self: Pin<&mut Self>, on: bool) {

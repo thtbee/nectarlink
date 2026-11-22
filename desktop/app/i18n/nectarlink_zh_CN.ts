@@ -5010,13 +5010,13 @@ What it needs
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="520"/>
-        <location filename="../qml/pages/HomePage.qml" line="3276"/>
+        <location filename="../qml/pages/HomePage.qml" line="3302"/>
         <source>Transfers</source>
         <translation>传输</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="529"/>
-        <location filename="../qml/pages/HomePage.qml" line="3293"/>
+        <location filename="../qml/pages/HomePage.qml" line="3319"/>
         <source>Clear finished</source>
         <translation>清除已完成</translation>
     </message>
@@ -5048,13 +5048,13 @@ What it needs
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1157"/>
-        <location filename="../qml/pages/HomePage.qml" line="3180"/>
+        <location filename="../qml/pages/HomePage.qml" line="3206"/>
         <source>Away · %1 ms</source>
         <translation>离开 · %1 ms</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1157"/>
-        <location filename="../qml/pages/HomePage.qml" line="3180"/>
+        <location filename="../qml/pages/HomePage.qml" line="3206"/>
         <source>Away</source>
         <translation>离开</translation>
     </message>
@@ -5094,19 +5094,19 @@ What it needs
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1166"/>
-        <location filename="../qml/pages/HomePage.qml" line="3182"/>
+        <location filename="../qml/pages/HomePage.qml" line="3208"/>
         <source>Not reconnecting</source>
         <translation>不自动重连</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1167"/>
-        <location filename="../qml/pages/HomePage.qml" line="3183"/>
+        <location filename="../qml/pages/HomePage.qml" line="3209"/>
         <source>Offline · %1</source>
         <translation>离线 · %1</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1168"/>
-        <location filename="../qml/pages/HomePage.qml" line="3184"/>
+        <location filename="../qml/pages/HomePage.qml" line="3210"/>
         <source>Offline</source>
         <translation>离线</translation>
     </message>
@@ -5116,7 +5116,17 @@ What it needs
         <translation>排查问题</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3244"/>
+        <location filename="../qml/pages/HomePage.qml" line="2643"/>
+        <source>Copy text</source>
+        <translation>复制文本</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="2651"/>
+        <source>Copy title and text</source>
+        <translation>复制标题和文本</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="3270"/>
         <source>Sync clipboard is off in Settings, so copies only go over with Send clipboard.</source>
         <translation>设置中已关闭“同步剪贴板”，复制的内容只能通过“发送剪贴板”传过去。</translation>
     </message>
@@ -5157,32 +5167,32 @@ What it needs
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1324"/>
-        <location filename="../qml/pages/HomePage.qml" line="3206"/>
-        <location filename="../qml/pages/HomePage.qml" line="3812"/>
+        <location filename="../qml/pages/HomePage.qml" line="3232"/>
+        <location filename="../qml/pages/HomePage.qml" line="3838"/>
         <source>Send files</source>
         <translation>发送文件</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1330"/>
-        <location filename="../qml/pages/HomePage.qml" line="3212"/>
+        <location filename="../qml/pages/HomePage.qml" line="3238"/>
         <source>Send a folder</source>
         <translation>发送文件夹</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1337"/>
-        <location filename="../qml/pages/HomePage.qml" line="3218"/>
+        <location filename="../qml/pages/HomePage.qml" line="3244"/>
         <source>Send clipboard</source>
         <translation>发送剪贴板</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1343"/>
-        <location filename="../qml/pages/HomePage.qml" line="2875"/>
+        <location filename="../qml/pages/HomePage.qml" line="2901"/>
         <source>Clipboard history</source>
         <translation>剪贴板历史记录</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1353"/>
-        <location filename="../qml/pages/HomePage.qml" line="3227"/>
+        <location filename="../qml/pages/HomePage.qml" line="3253"/>
         <source>Stop ringing</source>
         <translation>停止响铃</translation>
     </message>
@@ -5193,7 +5203,7 @@ What it needs
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1363"/>
-        <location filename="../qml/pages/HomePage.qml" line="3251"/>
+        <location filename="../qml/pages/HomePage.qml" line="3277"/>
         <source>Send to %1</source>
         <translation>发送到 %1</translation>
     </message>
@@ -5204,7 +5214,7 @@ What it needs
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1385"/>
-        <location filename="../qml/pages/HomePage.qml" line="3257"/>
+        <location filename="../qml/pages/HomePage.qml" line="3283"/>
         <source>Send a folder to %1</source>
         <translation>发送文件夹到 %1</translation>
     </message>
@@ -5272,13 +5282,13 @@ What it needs
         <location filename="../qml/pages/HomePage.qml" line="1569"/>
         <location filename="../qml/pages/HomePage.qml" line="2129"/>
         <location filename="../qml/pages/HomePage.qml" line="2221"/>
-        <location filename="../qml/pages/HomePage.qml" line="2718"/>
+        <location filename="../qml/pages/HomePage.qml" line="2744"/>
         <source>Cancel</source>
         <translation>取消</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="2520"/>
-        <location filename="../qml/pages/HomePage.qml" line="3285"/>
+        <location filename="../qml/pages/HomePage.qml" line="3311"/>
         <source>Timeline</source>
         <translation>时间线</translation>
     </message>
@@ -5555,7 +5565,7 @@ What it needs
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="2344"/>
-        <location filename="../qml/pages/HomePage.qml" line="3408"/>
+        <location filename="../qml/pages/HomePage.qml" line="3434"/>
         <source>When connected</source>
         <translation>连接后</translation>
     </message>
@@ -5601,241 +5611,241 @@ What it needs
         <translation>没有最近活动</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2628"/>
+        <location filename="../qml/pages/HomePage.qml" line="2633"/>
         <source>%1 notifications</source>
         <translation>%1 条通知</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2631"/>
+        <location filename="../qml/pages/HomePage.qml" line="2657"/>
         <source>Show</source>
         <translation>显示</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2632"/>
+        <location filename="../qml/pages/HomePage.qml" line="2658"/>
         <source>No pop-ups</source>
         <translation>不弹出提示</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2633"/>
+        <location filename="../qml/pages/HomePage.qml" line="2659"/>
         <source>Hide</source>
         <translation>隐藏</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2647"/>
+        <location filename="../qml/pages/HomePage.qml" line="2673"/>
         <source>Hidden on this PC.</source>
         <translation>已在本机隐藏。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2649"/>
+        <location filename="../qml/pages/HomePage.qml" line="2675"/>
         <source>Shown in feed without pop-ups.</source>
         <translation>在信息流中显示，但不弹出提示。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2652"/>
+        <location filename="../qml/pages/HomePage.qml" line="2678"/>
         <source>Shown in feed and as desktop pop-ups.</source>
         <translation>在信息流中显示，并作为桌面弹窗提示。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2651"/>
+        <location filename="../qml/pages/HomePage.qml" line="2677"/>
         <source>Shown in feed and as Windows pop-ups.</source>
         <translation>在信息流中显示，并作为 Windows 弹窗提示。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2656"/>
-        <location filename="../qml/pages/HomePage.qml" line="2852"/>
-        <location filename="../qml/pages/HomePage.qml" line="3095"/>
-        <location filename="../qml/pages/HomePage.qml" line="3889"/>
+        <location filename="../qml/pages/HomePage.qml" line="2682"/>
+        <location filename="../qml/pages/HomePage.qml" line="2878"/>
+        <location filename="../qml/pages/HomePage.qml" line="3121"/>
+        <location filename="../qml/pages/HomePage.qml" line="3915"/>
         <source>Done</source>
         <translation>完成</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2723"/>
+        <location filename="../qml/pages/HomePage.qml" line="2749"/>
         <source>Save</source>
         <translation>保存</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2744"/>
+        <location filename="../qml/pages/HomePage.qml" line="2770"/>
         <source>Notification history</source>
         <translation>通知历史记录</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2752"/>
-        <location filename="../qml/pages/HomePage.qml" line="2883"/>
+        <location filename="../qml/pages/HomePage.qml" line="2778"/>
+        <location filename="../qml/pages/HomePage.qml" line="2909"/>
         <source>Clear history</source>
         <translation>清除历史记录</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2762"/>
+        <location filename="../qml/pages/HomePage.qml" line="2788"/>
         <source>Dismissed notifications from the last 24 hours.</source>
         <translation>最近 24 小时内已忽略的通知。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2763"/>
+        <location filename="../qml/pages/HomePage.qml" line="2789"/>
         <source>No recent notifications.</source>
         <translation>没有最近的通知。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2805"/>
-        <location filename="../qml/pages/HomePage.qml" line="2811"/>
+        <location filename="../qml/pages/HomePage.qml" line="2831"/>
+        <location filename="../qml/pages/HomePage.qml" line="2837"/>
         <source>Search notification history</source>
         <translation>搜索通知历史记录</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2848"/>
-        <location filename="../qml/pages/HomePage.qml" line="3091"/>
+        <location filename="../qml/pages/HomePage.qml" line="2874"/>
+        <location filename="../qml/pages/HomePage.qml" line="3117"/>
         <source>Nothing matches “%1”.</source>
         <translation>没有匹配“%1”的内容。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2893"/>
+        <location filename="../qml/pages/HomePage.qml" line="2919"/>
         <source>Last 50 shared clips.</source>
         <translation>最近 50 条共享剪贴内容。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2894"/>
+        <location filename="../qml/pages/HomePage.qml" line="2920"/>
         <source>No shared clips yet.</source>
         <translation>还没有共享的剪贴内容。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2934"/>
-        <location filename="../qml/pages/HomePage.qml" line="2940"/>
+        <location filename="../qml/pages/HomePage.qml" line="2960"/>
+        <location filename="../qml/pages/HomePage.qml" line="2966"/>
         <source>Search clipboard history</source>
         <translation>搜索剪贴板历史记录</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2960"/>
+        <location filename="../qml/pages/HomePage.qml" line="2986"/>
         <source>From %1</source>
         <translation>来自 %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2960"/>
+        <location filename="../qml/pages/HomePage.qml" line="2986"/>
         <source>From phone</source>
         <translation>来自手机</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2961"/>
+        <location filename="../qml/pages/HomePage.qml" line="2987"/>
         <source>Sent to %1</source>
         <translation>已发送到 %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2961"/>
+        <location filename="../qml/pages/HomePage.qml" line="2987"/>
         <source>From this PC</source>
         <translation>来自本机</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2967"/>
+        <location filename="../qml/pages/HomePage.qml" line="2993"/>
         <source>Image</source>
         <translation>图片</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3005"/>
+        <location filename="../qml/pages/HomePage.qml" line="3031"/>
         <source>Pinned</source>
         <translation>已固定</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3049"/>
+        <location filename="../qml/pages/HomePage.qml" line="3075"/>
         <source>Open on phone</source>
         <translation>在手机上打开</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3058"/>
+        <location filename="../qml/pages/HomePage.qml" line="3084"/>
         <source>Send to phone</source>
         <translation>发送到手机</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3066"/>
+        <location filename="../qml/pages/HomePage.qml" line="3092"/>
         <source>Copy</source>
         <translation>复制</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3072"/>
+        <location filename="../qml/pages/HomePage.qml" line="3098"/>
         <source>Unpin</source>
         <translation>取消固定</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3072"/>
+        <location filename="../qml/pages/HomePage.qml" line="3098"/>
         <source>Pin</source>
         <translation>固定</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3077"/>
+        <location filename="../qml/pages/HomePage.qml" line="3103"/>
         <source>Delete</source>
         <translation>删除</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3181"/>
+        <location filename="../qml/pages/HomePage.qml" line="3207"/>
         <source>Connected · %1 ms</source>
         <translation>已连接 · %1 毫秒</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3181"/>
+        <location filename="../qml/pages/HomePage.qml" line="3207"/>
         <source>Connected</source>
         <translation>已连接</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3186"/>
+        <location filename="../qml/pages/HomePage.qml" line="3212"/>
         <source>%1% · charging</source>
         <translation>%1% · 正在充电</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3187"/>
-        <location filename="../qml/pages/HomePage.qml" line="3581"/>
-        <location filename="../qml/pages/HomePage.qml" line="3592"/>
+        <location filename="../qml/pages/HomePage.qml" line="3213"/>
+        <location filename="../qml/pages/HomePage.qml" line="3607"/>
+        <location filename="../qml/pages/HomePage.qml" line="3618"/>
         <source>%1%</source>
         <translation>%1%</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3227"/>
+        <location filename="../qml/pages/HomePage.qml" line="3253"/>
         <source>Ring PC</source>
         <translation>让电脑响铃</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3243"/>
+        <location filename="../qml/pages/HomePage.qml" line="3269"/>
         <source>What you copy here also goes to %1, and what you copy there comes here.</source>
         <translation>在这里复制的内容也会发到 %1，在那边复制的内容会传到这里。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3733"/>
+        <location filename="../qml/pages/HomePage.qml" line="3759"/>
         <source>LocalSend nearby · %1</source>
         <translation>LocalSend 附近 · %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3734"/>
+        <location filename="../qml/pages/HomePage.qml" line="3760"/>
         <source>LocalSend nearby</source>
         <translation>LocalSend 附近</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3743"/>
+        <location filename="../qml/pages/HomePage.qml" line="3769"/>
         <source>Refresh</source>
         <translation>刷新</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3754"/>
+        <location filename="../qml/pages/HomePage.qml" line="3780"/>
         <source>Listening for LocalSend devices on your Wi‑Fi network.</source>
         <translation>正在您的 Wi‑Fi 网络上监听 LocalSend 设备。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3755"/>
+        <location filename="../qml/pages/HomePage.qml" line="3781"/>
         <source>LocalSend port 53317 is busy on this PC (another LocalSend app may be running).</source>
         <translation>本机的 LocalSend 端口 53317 已被占用（可能正在运行另一个 LocalSend 应用）。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3794"/>
+        <location filename="../qml/pages/HomePage.qml" line="3820"/>
         <source>Nearby device</source>
         <translation>附近设备</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3850"/>
+        <location filename="../qml/pages/HomePage.qml" line="3876"/>
         <source>Image preview</source>
         <translation>图片预览</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3857"/>
+        <location filename="../qml/pages/HomePage.qml" line="3883"/>
         <source>Close</source>
         <translation>关闭</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3885"/>
+        <location filename="../qml/pages/HomePage.qml" line="3911"/>
         <source>Open externally</source>
         <translation>用外部程序打开</translation>
     </message>
@@ -5855,12 +5865,12 @@ What it needs
         <translation>先在手机上点一下文本框，然后输入</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2685"/>
+        <location filename="../qml/pages/HomePage.qml" line="2711"/>
         <source>Phone nickname</source>
         <translation>手机昵称</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2693"/>
+        <location filename="../qml/pages/HomePage.qml" line="2719"/>
         <source>Set a custom name for this phone on your PC. Leave blank to use &quot;%1&quot;.</source>
         <translation>在您的电脑上为此手机设置自定义名称。留空以使用“%1”。</translation>
     </message>
@@ -7223,41 +7233,46 @@ What it needs
     </message>
     <message>
         <location filename="rust_strings.h" line="406"/>
+        <source>Copied</source>
+        <translation>已复制</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="407"/>
         <source>Copy code</source>
         <translation>复制验证码</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="407"/>
+        <location filename="rust_strings.h" line="408"/>
         <source>Dismissed %1 from %2</source>
         <translation>已清除 %2 的 %1 条通知</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="408"/>
+        <location filename="rust_strings.h" line="409"/>
         <source>Dismissed %1 notifications</source>
         <translation>已清除 %1 条通知</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="409"/>
+        <location filename="rust_strings.h" line="410"/>
         <source>Dismissed from %1</source>
         <translation>已清除来自 %1 的通知</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="410"/>
+        <location filename="rust_strings.h" line="411"/>
         <source>Notification dismissed</source>
         <translation>已清除通知</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="411"/>
+        <location filename="rust_strings.h" line="412"/>
         <source>Open</source>
         <translation>打开</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="412"/>
+        <location filename="rust_strings.h" line="413"/>
         <source>Reply</source>
         <translation>回复</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="413"/>
+        <location filename="rust_strings.h" line="414"/>
         <source>That notification is gone from the phone.</source>
         <translation>该通知已不在手机上。</translation>
     </message>
@@ -7373,17 +7388,17 @@ What it needs
 <context>
     <name>Obs</name>
     <message>
-        <location filename="rust_strings.h" line="414"/>
+        <location filename="rust_strings.h" line="415"/>
         <source>OBS isn&apos;t reachable on port %1. Turn on its WebSocket server.</source>
         <translation>无法通过端口 %1 连接 OBS。请开启其 WebSocket 服务器。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="415"/>
+        <location filename="rust_strings.h" line="416"/>
         <source>OBS: %1</source>
         <translation>OBS：%1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="416"/>
+        <location filename="rust_strings.h" line="417"/>
         <source>The service on that port isn&apos;t OBS.</source>
         <translation>该端口上的服务不是 OBS。</translation>
     </message>
@@ -7568,7 +7583,7 @@ What it needs
 <context>
     <name>PcMirror</name>
     <message>
-        <location filename="rust_strings.h" line="417"/>
+        <location filename="rust_strings.h" line="418"/>
         <source>Can&apos;t find the player&apos;s window. Play the video on this PC again, then turn on Play on phone.</source>
         <translation>找不到播放器的窗口。请在此电脑上重新播放视频，然后打开“在手机上播放”。</translation>
     </message>
@@ -7576,102 +7591,102 @@ What it needs
 <context>
     <name>PhoneInstall</name>
     <message>
-        <location filename="rust_strings.h" line="418"/>
+        <location filename="rust_strings.h" line="419"/>
         <source>Android said: %1</source>
         <translation>Android 提示：%1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="419"/>
+        <location filename="rust_strings.h" line="420"/>
         <source>Another build of NectarLink is on this phone</source>
         <translation>这部手机上有另一个版本的 NectarLink</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="420"/>
+        <location filename="rust_strings.h" line="421"/>
         <source>Check this PC&apos;s internet connection and try again. (%1)</source>
         <translation>请检查这台电脑的网络连接，然后重试。（%1）</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="421"/>
+        <location filename="rust_strings.h" line="422"/>
         <source>Couldn&apos;t download the phone app</source>
         <translation>无法下载手机应用</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="422"/>
+        <location filename="rust_strings.h" line="423"/>
         <source>Free up some storage on the phone, then try again.</source>
         <translation>请在手机上腾出一些存储空间，然后重试。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="423"/>
+        <location filename="rust_strings.h" line="424"/>
         <source>In Developer options, turn on Install via USB, then try again. On Xiaomi, Redmi and POCO phones it may ask you to sign in to a Xiaomi account first.</source>
         <translation>请在开发者选项中开启“USB 安装”，然后重试。小米、红米和 POCO 手机可能需要先登录小米账号。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="424"/>
+        <location filename="rust_strings.h" line="425"/>
         <source>It didn&apos;t match its checksum, so it wasn&apos;t installed. Try again.</source>
         <translation>下载的文件与校验值不符，因此没有安装。请重试。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="425"/>
+        <location filename="rust_strings.h" line="426"/>
         <source>It was signed differently (a test build, or one from another store), so Android won&apos;t update it. Replacing it removes it with its data, including the PCs it&apos;s paired with, then installs this one.</source>
         <translation>它的签名不同（测试版本，或来自其他商店），所以 Android 无法更新它。替换会连同它的数据一起删除，包括已配对的电脑，然后安装这个版本。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="426"/>
+        <location filename="rust_strings.h" line="427"/>
         <source>Keep it plugged in and unlocked until the install is done, then try again.</source>
         <translation>请保持手机连接并解锁，直到安装完成，然后重试。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="427"/>
+        <location filename="rust_strings.h" line="428"/>
         <source>NectarLink needs Android 8.0 or newer.</source>
         <translation>NectarLink 需要 Android 8.0 或更高版本。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="428"/>
+        <location filename="rust_strings.h" line="429"/>
         <source>The download was damaged</source>
         <translation>下载的文件已损坏</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="429"/>
+        <location filename="rust_strings.h" line="430"/>
         <source>The install was stopped on the phone</source>
         <translation>安装在手机上被中止</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="430"/>
+        <location filename="rust_strings.h" line="431"/>
         <source>The phone already has a newer version</source>
         <translation>手机上已有更新的版本</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="431"/>
+        <location filename="rust_strings.h" line="432"/>
         <source>The phone asked whether to allow it and the answer was no, or Google Play Protect stopped it. Try again and allow it on the phone. If Play Protect stops it, turn off Verify apps over USB in Developer options for the install.</source>
         <translation>手机询问是否允许安装，而回答是否，或者被 Google Play Protect 阻止了。请重试并在手机上允许。如果被 Play Protect 阻止，安装期间请在开发者选项中关闭“通过 USB 验证应用”。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="432"/>
+        <location filename="rust_strings.h" line="433"/>
         <source>The phone blocks installs over USB</source>
         <translation>手机阻止通过 USB 安装</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="433"/>
+        <location filename="rust_strings.h" line="434"/>
         <source>The phone didn&apos;t install it</source>
         <translation>手机没有安装</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="434"/>
+        <location filename="rust_strings.h" line="435"/>
         <source>The phone is out of space</source>
         <translation>手机存储空间不足</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="435"/>
+        <location filename="rust_strings.h" line="436"/>
         <source>The phone stopped answering</source>
         <translation>手机已停止响应</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="436"/>
+        <location filename="rust_strings.h" line="437"/>
         <source>There&apos;s nothing to install. Open NectarLink on the phone to pair it.</source>
         <translation>没有需要安装的内容。在手机上打开 NectarLink 进行配对。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="437"/>
+        <location filename="rust_strings.h" line="438"/>
         <source>This phone&apos;s Android is too old</source>
         <translation>这部手机的 Android 版本太旧</translation>
     </message>
@@ -7948,17 +7963,17 @@ What it needs
 <context>
     <name>PhoneMic</name>
     <message>
-        <location filename="rust_strings.h" line="438"/>
+        <location filename="rust_strings.h" line="439"/>
         <source>Tap Start on %1 to use its microphone.</source>
         <translation>在 %1 上轻触“开始”以使用其麦克风。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="439"/>
+        <location filename="rust_strings.h" line="440"/>
         <source>The microphone is turned off for this PC on %1.</source>
         <translation>%1 上已为此电脑关闭麦克风。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="440"/>
+        <location filename="rust_strings.h" line="441"/>
         <source>Update NectarLink on %1 to use its microphone.</source>
         <translation>请更新 %1 上的 NectarLink 以使用其麦克风。</translation>
     </message>
@@ -7966,22 +7981,22 @@ What it needs
 <context>
     <name>PhoneSound</name>
     <message>
-        <location filename="rust_strings.h" line="441"/>
+        <location filename="rust_strings.h" line="442"/>
         <source>%1 couldn&apos;t ask to share its sound. Check that NectarLink can show notifications on the phone.</source>
         <translation>%1 无法请求共享声音。请检查手机上的 NectarLink 是否可以显示通知。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="442"/>
+        <location filename="rust_strings.h" line="443"/>
         <source>Mirroring is turned off for this phone.</source>
         <translation>已为此手机关闭镜像。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="443"/>
+        <location filename="rust_strings.h" line="444"/>
         <source>The phone isn&apos;t connected.</source>
         <translation>手机未连接。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="444"/>
+        <location filename="rust_strings.h" line="445"/>
         <source>Update NectarLink on %1 to play its sound here.</source>
         <translation>请在 %1 上更新 NectarLink，以在此播放其声音。</translation>
     </message>
@@ -7989,62 +8004,62 @@ What it needs
 <context>
     <name>PhotoBackup</name>
     <message>
-        <location filename="rust_strings.h" line="445"/>
+        <location filename="rust_strings.h" line="446"/>
         <source>Can&apos;t write to the backup folder.</source>
         <translation>无法写入备份文件夹。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="446"/>
+        <location filename="rust_strings.h" line="447"/>
         <source>Copying, %1 left</source>
         <translation>正在复制，还剩 %1 项</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="447"/>
+        <location filename="rust_strings.h" line="448"/>
         <source>Looking for new photos…</source>
         <translation>正在查找新照片…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="448"/>
+        <location filename="rust_strings.h" line="449"/>
         <source>Off</source>
         <translation>已关闭</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="449"/>
+        <location filename="rust_strings.h" line="450"/>
         <source>Photos are turned off for this PC on %1.</source>
         <translation>%1 上已为此电脑关闭照片。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="450"/>
+        <location filename="rust_strings.h" line="451"/>
         <source>The backup folder&apos;s drive is full.</source>
         <translation>备份文件夹所在的磁盘已满。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="451"/>
+        <location filename="rust_strings.h" line="452"/>
         <source>The backup stopped. It tries again in a few minutes.</source>
         <translation>备份已停止，几分钟后会再试。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="452"/>
+        <location filename="rust_strings.h" line="453"/>
         <source>Up to date</source>
         <translation>已是最新</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="453"/>
+        <location filename="rust_strings.h" line="454"/>
         <source>Up to date, %1 backed up</source>
         <translation>已是最新，已备份 %1 项</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="454"/>
+        <location filename="rust_strings.h" line="455"/>
         <source>Update NectarLink on %1 to back up its photos.</source>
         <translation>请在 %1 上更新 NectarLink 以备份其照片。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="455"/>
+        <location filename="rust_strings.h" line="456"/>
         <source>Waiting for %1</source>
         <translation>正在等待 %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="456"/>
+        <location filename="rust_strings.h" line="457"/>
         <source>Waiting for Wi-Fi</source>
         <translation>正在等待 Wi-Fi</translation>
     </message>
@@ -8052,87 +8067,87 @@ What it needs
 <context>
     <name>Photos</name>
     <message>
-        <location filename="rust_strings.h" line="457"/>
+        <location filename="rust_strings.h" line="458"/>
         <source>%1 of %2 couldn&apos;t be moved to %3. They&apos;re in Downloads\Nectarlink.</source>
         <translation>%2 项中有 %1 项无法移动到 %3。它们在 Downloads\Nectarlink 中。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="458"/>
+        <location filename="rust_strings.h" line="459"/>
         <source>Copied to clipboard.</source>
         <translation>已复制到剪贴板。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="459"/>
+        <location filename="rust_strings.h" line="460"/>
         <source>Couldn&apos;t open the share window. Try Save instead.</source>
         <translation>无法打开分享窗口。请改用“保存”。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="461"/>
+        <location filename="rust_strings.h" line="462"/>
         <source>From %1</source>
         <translation>来自 %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="462"/>
+        <location filename="rust_strings.h" line="463"/>
         <source>New photo</source>
         <translation>新照片</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="463"/>
+        <location filename="rust_strings.h" line="464"/>
         <source>New screenshot</source>
         <translation>新截图</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="464"/>
+        <location filename="rust_strings.h" line="465"/>
         <source>No recent photos found on the phone.</source>
         <translation>手机上没有最近的照片。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="465"/>
+        <location filename="rust_strings.h" line="466"/>
         <source>Opening latest photo…</source>
         <translation>正在打开最新照片…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="466"/>
+        <location filename="rust_strings.h" line="467"/>
         <source>Saved %1 items to %2.</source>
         <translation>已将 %1 个项目保存到 %2。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="467"/>
+        <location filename="rust_strings.h" line="468"/>
         <source>Saved %1 to %2.</source>
         <translation>已将 %1 保存到 %2。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="471"/>
+        <location filename="rust_strings.h" line="472"/>
         <source>The phone kept them. Deleting from the PC needs All files access on the phone (Android 11 or later).</source>
         <translation>手机保留了这些项目。从电脑删除需要手机开启“所有文件访问权限”（Android 11 或更高版本）。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="460"/>
+        <location filename="rust_strings.h" line="461"/>
         <source>Deleted %1 of %2.</source>
         <translation>已删除 %1 个，共 %2 个。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="468"/>
+        <location filename="rust_strings.h" line="469"/>
         <source>That photo isn&apos;t on the phone anymore.</source>
         <translation>该照片已不在手机上。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="469"/>
+        <location filename="rust_strings.h" line="470"/>
         <source>The phone doesn&apos;t share photos or files with this PC.</source>
         <translation>手机未与此电脑共享照片或文件。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="470"/>
+        <location filename="rust_strings.h" line="471"/>
         <source>The phone isn&apos;t connected right now.</source>
         <translation>手机当前未连接。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="472"/>
+        <location filename="rust_strings.h" line="473"/>
         <source>The photo couldn&apos;t be copied to the clipboard.</source>
         <translation>无法将照片复制到剪贴板。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="473"/>
+        <location filename="rust_strings.h" line="474"/>
         <source>The photo couldn&apos;t be copied. It&apos;s in Downloads\Nectarlink.</source>
         <translation>无法复制照片。它在 Downloads\Nectarlink 中。</translation>
     </message>
@@ -8433,32 +8448,32 @@ What it needs
 <context>
     <name>PlayOnPhone</name>
     <message>
-        <location filename="rust_strings.h" line="474"/>
+        <location filename="rust_strings.h" line="475"/>
         <source>Connect your phone to play on it.</source>
         <translation>请连接手机后再在其上播放。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="475"/>
+        <location filename="rust_strings.h" line="476"/>
         <source>Media is turned off for %1.</source>
         <translation>已为 %1 关闭媒体。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="476"/>
+        <location filename="rust_strings.h" line="477"/>
         <source>Opening in %1 on %2. Tap the notification there.</source>
         <translation>正在 %2 上用 %1 打开。请轻触那里的通知。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="477"/>
+        <location filename="rust_strings.h" line="478"/>
         <source>Sent to %1. Tap the notification there.</source>
         <translation>已发送到 %1。请轻触那里的通知。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="478"/>
+        <location filename="rust_strings.h" line="479"/>
         <source>Tap the notification on %1 to watch.</source>
         <translation>轻触 %1 上的通知即可观看。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="479"/>
+        <location filename="rust_strings.h" line="480"/>
         <source>Update NectarLink on %1 to play on it.</source>
         <translation>请更新 %1 上的 NectarLink 以在其上播放。</translation>
     </message>
@@ -8466,7 +8481,7 @@ What it needs
 <context>
     <name>Prefs</name>
     <message>
-        <location filename="rust_strings.h" line="480"/>
+        <location filename="rust_strings.h" line="481"/>
         <source>Connected to OBS.</source>
         <translation>已连接到 OBS。</translation>
     </message>
@@ -8474,7 +8489,7 @@ What it needs
 <context>
     <name>Recordings</name>
     <message>
-        <location filename="rust_strings.h" line="481"/>
+        <location filename="rust_strings.h" line="482"/>
         <source>Recording from %1 saved</source>
         <translation>已保存来自 %1 的录音</translation>
     </message>
@@ -8661,42 +8676,42 @@ What it needs
 <context>
     <name>ReportRequests</name>
     <message>
-        <location filename="rust_strings.h" line="482"/>
+        <location filename="rust_strings.h" line="483"/>
         <source>%1 asks for this PC&apos;s log</source>
         <translation>%1 请求这台电脑的日志</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="483"/>
+        <location filename="rust_strings.h" line="484"/>
         <source>Don&apos;t share</source>
         <translation>不分享</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="484"/>
+        <location filename="rust_strings.h" line="485"/>
         <source>For a problem report you&apos;re making. The log has no names, messages, files, numbers or addresses. You see the whole report before it&apos;s sent.</source>
         <translation>用于你正在制作的问题报告。日志中没有名称、消息、文件、号码或地址。发送前你会看到完整报告。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="485"/>
+        <location filename="rust_strings.h" line="486"/>
         <source>Report #%1. Open it to read it on GitHub.</source>
         <translation>报告 #%1。打开即可在 GitHub 上阅读。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="486"/>
+        <location filename="rust_strings.h" line="487"/>
         <source>Share</source>
         <translation>分享</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="487"/>
+        <location filename="rust_strings.h" line="488"/>
         <source>There&apos;s a reply to your report</source>
         <translation>你的报告有新回复</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="488"/>
+        <location filename="rust_strings.h" line="489"/>
         <source>Your phone</source>
         <translation>你的手机</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="489"/>
+        <location filename="rust_strings.h" line="490"/>
         <source>Your report was closed</source>
         <translation>你的报告已关闭</translation>
     </message>
@@ -8904,57 +8919,57 @@ What it needs
 <context>
     <name>SendTo</name>
     <message>
-        <location filename="rust_strings.h" line="490"/>
+        <location filename="rust_strings.h" line="491"/>
         <source>Copied to your phone&apos;s clipboard.</source>
         <translation>已复制到手机的剪贴板。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="491"/>
+        <location filename="rust_strings.h" line="492"/>
         <source>Couldn&apos;t reach %1.</source>
         <translation>无法连接 %1。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="492"/>
+        <location filename="rust_strings.h" line="493"/>
         <source>Couldn&apos;t send %1</source>
         <translation>无法发送 %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="493"/>
+        <location filename="rust_strings.h" line="494"/>
         <source>Couldn&apos;t send to %1</source>
         <translation>无法发送到 %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="494"/>
+        <location filename="rust_strings.h" line="495"/>
         <source>Couldn&apos;t share with %1</source>
         <translation>无法与 %1 共享</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="495"/>
+        <location filename="rust_strings.h" line="496"/>
         <source>File failed integrity check; partial file kept to resume.</source>
         <translation>文件未通过完整性校验；已保留部分文件以便继续。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="496"/>
+        <location filename="rust_strings.h" line="497"/>
         <source>Send to %1 with NectarLink</source>
         <translation>用 NectarLink 发送到 %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="497"/>
+        <location filename="rust_strings.h" line="498"/>
         <source>Sending to %1…</source>
         <translation>正在发送到 %1…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="498"/>
+        <location filename="rust_strings.h" line="499"/>
         <source>Sent to %1</source>
         <translation>已发送到 %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="499"/>
+        <location filename="rust_strings.h" line="500"/>
         <source>The transfer didn&apos;t go through.</source>
         <translation>传输未完成。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="500"/>
+        <location filename="rust_strings.h" line="501"/>
         <source>Waiting for %1…</source>
         <translation>正在等待 %1…</translation>
     </message>
@@ -11343,72 +11358,72 @@ What it needs
 <context>
     <name>Setup</name>
     <message>
-        <location filename="rust_strings.h" line="501"/>
+        <location filename="rust_strings.h" line="502"/>
         <source>Choose a folder on a drive inside this PC, not a USB or network drive.</source>
         <translation>请选择这台电脑内部驱动器上的文件夹，不要选 USB 或网络驱动器。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="502"/>
+        <location filename="rust_strings.h" line="503"/>
         <source>Choose a folder on one of this PC&apos;s drives.</source>
         <translation>请选择这台电脑某个驱动器上的文件夹。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="503"/>
+        <location filename="rust_strings.h" line="504"/>
         <source>Couldn&apos;t start setup: %1</source>
         <translation>无法启动安装程序：%1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="504"/>
+        <location filename="rust_strings.h" line="505"/>
         <source>Couldn&apos;t uninstall NectarLink: %1</source>
         <translation>无法卸载 NectarLink：%1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="505"/>
+        <location filename="rust_strings.h" line="506"/>
         <source>Setup can&apos;t use that folder. Choose another one.</source>
         <translation>安装程序无法使用该文件夹。请选择其他文件夹。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="506"/>
+        <location filename="rust_strings.h" line="507"/>
         <source>Setup is taking too long. Try again after restarting the PC.</source>
         <translation>安装时间过长。请重启电脑后再试。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="507"/>
+        <location filename="rust_strings.h" line="508"/>
         <source>Setup stopped with code %1.</source>
         <translation>安装已停止，代码 %1。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="508"/>
+        <location filename="rust_strings.h" line="509"/>
         <source>That drive can&apos;t keep the app&apos;s files safe (it isn&apos;t NTFS). Choose another drive.</source>
         <translation>该驱动器无法保护应用的文件（不是 NTFS）。请选择其他驱动器。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="509"/>
+        <location filename="rust_strings.h" line="510"/>
         <source>That folder&apos;s path is too long. Choose one closer to the top of a drive.</source>
         <translation>该文件夹的路径太长。请选择更靠近驱动器顶层的文件夹。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="510"/>
+        <location filename="rust_strings.h" line="511"/>
         <source>The uninstaller is missing. Reinstall NectarLink, then uninstall it.</source>
         <translation>缺少卸载程序。请重新安装 NectarLink，然后再卸载。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="511"/>
+        <location filename="rust_strings.h" line="512"/>
         <source>There&apos;s a file named %1 there. Choose another place.</source>
         <translation>那里已有名为 %1 的文件。请选择其他位置。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="512"/>
+        <location filename="rust_strings.h" line="513"/>
         <source>There&apos;s already a %1 folder there with files in it. Choose another place.</source>
         <translation>那里已有一个包含文件的 %1 文件夹。请选择其他位置。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="513"/>
+        <location filename="rust_strings.h" line="514"/>
         <source>Uninstall stopped with code %1.</source>
         <translation>卸载已停止，代码 %1。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="514"/>
+        <location filename="rust_strings.h" line="515"/>
         <source>Updates here will ask for your permission each time.</source>
         <translation>在这里，每次更新都会请求你的许可。</translation>
     </message>
@@ -11863,17 +11878,17 @@ What it needs
 <context>
     <name>Storage</name>
     <message>
-        <location filename="rust_strings.h" line="515"/>
+        <location filename="rust_strings.h" line="516"/>
         <source>%1&apos;s files aren&apos;t shared with this PC</source>
         <translation>%1 的文件未与此电脑共享</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="516"/>
+        <location filename="rust_strings.h" line="517"/>
         <source>On the phone, allow All files access for NectarLink.</source>
         <translation>请在手机上为 NectarLink 开启“所有文件访问权限”。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="517"/>
+        <location filename="rust_strings.h" line="518"/>
         <source>On the phone, turn on Browse this phone&apos;s storage in File Explorer in NectarLink.</source>
         <translation>请在手机的 NectarLink 中打开“在文件资源管理器中浏览此手机的存储”。</translation>
     </message>
@@ -11881,147 +11896,147 @@ What it needs
 <context>
     <name>Timeline</name>
     <message>
-        <location filename="rust_strings.h" line="518"/>
+        <location filename="rust_strings.h" line="519"/>
         <source>App window #%1</source>
         <translation>应用窗口 #%1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="519"/>
+        <location filename="rust_strings.h" line="520"/>
         <source>Clip (removed from clipboard history)</source>
         <translation>剪贴内容（已从剪贴板历史中删除）</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="520"/>
+        <location filename="rust_strings.h" line="521"/>
         <source>Copied image</source>
         <translation>已复制的图片</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="521"/>
+        <location filename="rust_strings.h" line="522"/>
         <source>Copied link to clipboard.</source>
         <translation>已将链接复制到剪贴板。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="522"/>
+        <location filename="rust_strings.h" line="523"/>
         <source>Copied to clipboard.</source>
         <translation>已复制到剪贴板。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="523"/>
+        <location filename="rust_strings.h" line="524"/>
         <source>From %1</source>
         <translation>来自 %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="524"/>
+        <location filename="rust_strings.h" line="525"/>
         <source>In progress</source>
         <translation>进行中</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="525"/>
+        <location filename="rust_strings.h" line="526"/>
         <source>No phone is paired yet.</source>
         <translation>尚未配对手机。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="526"/>
+        <location filename="rust_strings.h" line="527"/>
         <source>Opened from %1</source>
         <translation>从 %1 打开</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="527"/>
+        <location filename="rust_strings.h" line="528"/>
         <source>Opened on %1</source>
         <translation>在 %1 上打开</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="528"/>
+        <location filename="rust_strings.h" line="529"/>
         <source>Phone microphone</source>
         <translation>手机麦克风</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="529"/>
+        <location filename="rust_strings.h" line="530"/>
         <source>Phone webcam</source>
         <translation>手机摄像头</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="530"/>
+        <location filename="rust_strings.h" line="531"/>
         <source>Recorded on %1</source>
         <translation>在 %1 上录制</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="531"/>
+        <location filename="rust_strings.h" line="532"/>
         <source>Saved from %1</source>
         <translation>从 %1 保存</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="532"/>
+        <location filename="rust_strings.h" line="533"/>
         <source>Screen mirroring</source>
         <translation>屏幕镜像</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="533"/>
+        <location filename="rust_strings.h" line="534"/>
         <source>Sending to %1…</source>
         <translation>正在发送到 %1…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="534"/>
+        <location filename="rust_strings.h" line="535"/>
         <source>Sent clip to %1.</source>
         <translation>已将剪贴内容发送到 %1。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="535"/>
+        <location filename="rust_strings.h" line="536"/>
         <source>Sent to %1</source>
         <translation>已发送到 %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="536"/>
+        <location filename="rust_strings.h" line="537"/>
         <source>Session</source>
         <translation>会话</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="537"/>
+        <location filename="rust_strings.h" line="538"/>
         <source>That clip is no longer in clipboard history.</source>
         <translation>该剪贴内容已不在剪贴板历史中。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="538"/>
+        <location filename="rust_strings.h" line="539"/>
         <source>That entry couldn&apos;t be removed. Try again.</source>
         <translation>无法删除该条目，请重试。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="539"/>
+        <location filename="rust_strings.h" line="540"/>
         <source>That file was moved or deleted.</source>
         <translation>该文件已被移动或删除。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="540"/>
+        <location filename="rust_strings.h" line="541"/>
         <source>That isn&apos;t a web link.</source>
         <translation>这不是网页链接。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="541"/>
+        <location filename="rust_strings.h" line="542"/>
         <source>That photo was moved or deleted.</source>
         <translation>该照片已被移动或删除。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="542"/>
+        <location filename="rust_strings.h" line="543"/>
         <source>The Timeline couldn&apos;t be cleared. Try again.</source>
         <translation>无法清除时间线，请重试。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="543"/>
+        <location filename="rust_strings.h" line="544"/>
         <source>The photo couldn&apos;t be copied to the clipboard.</source>
         <translation>无法将照片复制到剪贴板。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="544"/>
+        <location filename="rust_strings.h" line="545"/>
         <source>Voice recording</source>
         <translation>录音</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="545"/>
+        <location filename="rust_strings.h" line="546"/>
         <source>With %1</source>
         <translation>与 %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="546"/>
+        <location filename="rust_strings.h" line="547"/>
         <source>device</source>
         <translation>设备</translation>
     </message>
@@ -12352,37 +12367,37 @@ What it needs
 <context>
     <name>Transfers</name>
     <message>
-        <location filename="rust_strings.h" line="547"/>
+        <location filename="rust_strings.h" line="548"/>
         <source>Accept in NectarLink to save to Downloads\Nectarlink</source>
         <translation>在 NectarLink 中接受即可保存到 Downloads\Nectarlink</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="548"/>
+        <location filename="rust_strings.h" line="549"/>
         <source>Files are turned off for that device.</source>
         <translation>已为该设备关闭文件。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="549"/>
+        <location filename="rust_strings.h" line="550"/>
         <source>From %1, opened from Downloads\Nectarlink</source>
         <translation>来自 %1，已从 Downloads\Nectarlink 打开</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="550"/>
+        <location filename="rust_strings.h" line="551"/>
         <source>From %1, saved in Downloads\Nectarlink</source>
         <translation>来自 %1，已保存到 Downloads\Nectarlink</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="551"/>
+        <location filename="rust_strings.h" line="552"/>
         <source>Nearby device</source>
         <translation>附近的设备</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="552"/>
+        <location filename="rust_strings.h" line="553"/>
         <source>That&apos;s too many files to send at once.</source>
         <translation>文件太多，无法一次发送。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="553"/>
+        <location filename="rust_strings.h" line="554"/>
         <source>There&apos;s nothing to send in there.</source>
         <translation>那里没有可发送的内容。</translation>
     </message>
@@ -12390,12 +12405,12 @@ What it needs
 <context>
     <name>Unlock</name>
     <message>
-        <location filename="rust_strings.h" line="554"/>
+        <location filename="rust_strings.h" line="555"/>
         <source>Set up unlocking with %1 again</source>
         <translation>重新设置用 %1 解锁</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="555"/>
+        <location filename="rust_strings.h" line="556"/>
         <source>Windows didn&apos;t accept the password saved for it, so it was probably changed. Set it up again under Unlock this PC with the phone.</source>
         <translation>Windows 没有接受为此保存的密码，密码可能已更改。请在“用手机解锁这台电脑”中重新设置。</translation>
     </message>
@@ -12403,82 +12418,82 @@ What it needs
 <context>
     <name>Updater</name>
     <message>
-        <location filename="rust_strings.h" line="556"/>
+        <location filename="rust_strings.h" line="557"/>
         <source>Couldn&apos;t check for updates. Check your internet connection.</source>
         <translation>无法检查更新。请检查网络连接。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="557"/>
+        <location filename="rust_strings.h" line="558"/>
         <source>NectarLink %1 is available</source>
         <translation>NectarLink %1 已发布</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="558"/>
+        <location filename="rust_strings.h" line="559"/>
         <source>NectarLink %1 is available.</source>
         <translation>NectarLink %1 已发布。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="559"/>
+        <location filename="rust_strings.h" line="560"/>
         <source>NectarLink is still on the version you had. Try again from Settings.</source>
         <translation>NectarLink 仍是原来的版本。请在设置中重试。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="560"/>
+        <location filename="rust_strings.h" line="561"/>
         <source>NectarLink is up to date.</source>
         <translation>NectarLink 已是最新版本。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="561"/>
+        <location filename="rust_strings.h" line="562"/>
         <source>NectarLink is updated to %1</source>
         <translation>NectarLink 已更新到 %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="562"/>
+        <location filename="rust_strings.h" line="563"/>
         <source>Nightly %1</source>
         <translation>Nightly %1</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="563"/>
+        <location filename="rust_strings.h" line="564"/>
         <source>Nightly %1 (%2)</source>
         <translation>Nightly %1（%2）</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="564"/>
+        <location filename="rust_strings.h" line="565"/>
         <source>The download was damaged, so it wasn&apos;t installed. Try again.</source>
         <translation>下载的文件已损坏，因此未安装。请重试。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="565"/>
+        <location filename="rust_strings.h" line="566"/>
         <source>The update couldn&apos;t be downloaded. Check your internet connection and try again.</source>
         <translation>无法下载更新。请检查网络连接后重试。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="566"/>
+        <location filename="rust_strings.h" line="567"/>
         <source>The update couldn&apos;t be saved. Check that there&apos;s free space and try again.</source>
         <translation>无法保存更新。请确认有足够的空间后重试。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="567"/>
+        <location filename="rust_strings.h" line="568"/>
         <source>The update couldn&apos;t be started. Try again.</source>
         <translation>无法启动更新。请重试。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="568"/>
+        <location filename="rust_strings.h" line="569"/>
         <source>The update didn&apos;t install</source>
         <translation>更新未安装</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="569"/>
+        <location filename="rust_strings.h" line="570"/>
         <source>The update is installed. Restart NectarLink to use it.</source>
         <translation>更新已安装。请重新启动 NectarLink 以使用新版本。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="570"/>
+        <location filename="rust_strings.h" line="571"/>
         <source>Update now, or later from Settings.</source>
         <translation>立即更新，或稍后在设置中更新。</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="571"/>
+        <location filename="rust_strings.h" line="572"/>
         <source>Your phone reconnects on its own.</source>
         <translation>手机会自动重新连接。</translation>
     </message>
@@ -13036,12 +13051,12 @@ What it needs
 <context>
     <name>Webcam</name>
     <message>
-        <location filename="rust_strings.h" line="572"/>
+        <location filename="rust_strings.h" line="573"/>
         <source>Starting camera on %1…</source>
         <translation>正在启动 %1 上的相机…</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="573"/>
+        <location filename="rust_strings.h" line="574"/>
         <source>Streaming %1 × %2 · %3 fps from %4</source>
         <translation>正在从 %4 传输 %1 × %2 · %3 fps</translation>
     </message>

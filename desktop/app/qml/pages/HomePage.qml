@@ -1729,7 +1729,7 @@ Item {
                                 height: visible ? implicitHeight : 0
                                 canOpenApp: home.feature("mirroring.app_windows").state === "available" && app.length > 0
                                 onOpenAppRequested: Mirror.startApp(deviceId, app, appName.length > 0 ? appName : app)
-                                onOptionsRequested: appSheet.openFor(app, appName)
+                                onOptionsRequested: appSheet.openFor(app, appName, title, text)
                                 onImageClicked: (url) => imagePreviewSheet.openFor(url, title.length > 0 ? title : appName)
                             }
                         }
@@ -2615,10 +2615,15 @@ Item {
         property string app
         property string appName
         property string rule: "show"
+        // The notification whose menu was opened, to copy from (#526).
+        property string noteTitle
+        property string noteText
         cardWidth: 420
-        function openFor(app, name) {
+        function openFor(app, name, title, text) {
             appSheet.app = app
             appSheet.appName = name
+            appSheet.noteTitle = title || ""
+            appSheet.noteText = text || ""
             appSheet.rule = NotificationList.appRule(app)
             open()
         }
@@ -2626,6 +2631,27 @@ Item {
             width: parent.width
             spacing: 16
             Txt { width: parent.width; text: qsTr("%1 notifications").arg(appSheet.appName); role: "headline"; wrapMode: Text.WordWrap }
+            Flow {
+                width: parent.width
+                spacing: 8
+                visible: appSheet.noteText.length > 0 || appSheet.noteTitle.length > 0
+                Button {
+                    visible: appSheet.noteText.length > 0
+                    variant: "tonal"
+                    size: "sm"
+                    iconPath: Icons.copy
+                    text: qsTr("Copy text")
+                    onClicked: { NotificationList.copyText("", appSheet.noteText); appSheet.close() }
+                }
+                Button {
+                    visible: appSheet.noteTitle.length > 0 && appSheet.noteText.length > 0
+                    variant: "tonal"
+                    size: "sm"
+                    iconPath: Icons.copy
+                    text: qsTr("Copy title and text")
+                    onClicked: { NotificationList.copyText(appSheet.noteTitle, appSheet.noteText); appSheet.close() }
+                }
+            }
             Segmented {
                 options: [
                     { value: "show", label: qsTr("Show") },
