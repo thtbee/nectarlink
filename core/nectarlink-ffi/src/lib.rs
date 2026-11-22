@@ -169,7 +169,9 @@ pub enum PairingFailure {
     Unreachable,
     /// Reached, but not on its pairing screen.
     NotPairing,
-    Other { message: String },
+    Other {
+        message: String,
+    },
 }
 
 /// What unlocks a feature (see docs/architecture/capabilities.md).

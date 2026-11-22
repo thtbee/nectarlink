@@ -117,6 +117,8 @@ pub mod qobject {
         #[qproperty(QString, wake_state)]
         /// True when `wake_adapter` is wired Ethernet, false for Wi-Fi or none.
         #[qproperty(bool, wake_wired)]
+        /// Running under the Niri compositor, where an idle Island still takes clicks.
+        #[qproperty(bool, on_niri)]
         /// Selected navigation page and device index, kept in Rust across tray
         /// unloads so the window can be destroyed in the background.
         #[qproperty(QString, current_page)]
@@ -518,6 +520,7 @@ pub struct AppControllerRust {
     wake_adapter: QString,
     wake_state: QString,
     wake_wired: bool,
+    on_niri: bool,
     current_page: QString,
     current_device: i32,
     pending_dial: QString,
@@ -839,6 +842,7 @@ fn spawn_data_retention_refresh(qt: CxxQtThread<qobject::AppController>) {
 impl cxx_qt::Initialize for qobject::AppController {
     fn initialize(mut self: Pin<&mut Self>) {
         self.as_mut().set_version(QString::from(env!("CARGO_PKG_VERSION")));
+        self.as_mut().set_on_niri(cfg!(target_os = "linux") && std::env::var_os("NIRI_SOCKET").is_some());
         self.as_mut().set_notifications_paused(crate::notifications::paused());
         self.as_mut()
             .set_whats_new_pending(nectarlink_core::whats_new::pending(&crate::core_host::host().data_dir));

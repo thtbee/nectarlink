@@ -294,7 +294,8 @@ Window {
             // Coming back while kept: the window is already up, so drop in here.
             if (keptForMinutes && visible && !Theme.reduceMotion)
                 dropInAnim.restart()
-            keptForMinutes = onWayland
+            // Not on Niri: there an empty window still catches clicks (D511).
+            keptForMinutes = onWayland && !AppController.onNiri
         } else if (keptForMinutes) {
             keepTimer.restart()
         }

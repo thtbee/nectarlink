@@ -1973,6 +1973,10 @@ mod imp {
         started: Instant,
         child: std::process::Child,
         latest_frame: LatestFrame,
+        /// The frame size the pipeline scales to.
+        size: (u32, u32),
+        /// Frames go through OpenGL.
+        gl: bool,
     }
 
     #[cfg(target_os = "linux")]
@@ -1995,6 +1999,7 @@ mod imp {
             node_id: u32,
             dst_w: u32,
             dst_h: u32,
+            gl: bool,
         ) -> std::io::Result<(std::process::Child, LatestFrame)> {
             use std::io::Read;
             use std::os::fd::AsRawFd;
@@ -2003,7 +2008,7 @@ mod imp {
 
             let raw = remote.as_raw_fd();
             let mut cmd = Command::new("gst-launch-1.0");
-            cmd.args(pipeline_args(node_id, dst_w, dst_h))
+            cmd.args(pipeline_args(node_id, dst_w, dst_h, gl))
                 .stdin(Stdio::null())
                 .stdout(Stdio::piped())
                 .stderr(Stdio::null());
@@ -2050,17 +2055,43 @@ mod imp {
         }
 
         fn start(portal: win::screen_portal::ScreenPortal, dst_w: u32, dst_h: u32) -> anyhow::Result<Self> {
-            let (child, latest_frame) = Self::spawn_pipeline(&portal.remote, portal.node_id, dst_w, dst_h)?;
-            Ok(Self { portal, started: Instant::now(), child, latest_frame })
+            let gl = USE_GL.load(std::sync::atomic::Ordering::Relaxed);
+            let (child, latest_frame) =
+                Self::spawn_pipeline(&portal.remote, portal.node_id, dst_w, dst_h, gl)?;
+            Ok(Self { portal, started: Instant::now(), child, latest_frame, size: (dst_w, dst_h), gl })
+        }
+
+        /// No frame yet through the CPU pipeline: GPU buffers (NVIDIA's
+        /// DMABuf) only come through OpenGL, so try that, once, and keep
+        /// using it for later captures (D511).
+        fn switch_to_gl(&mut self) -> anyhow::Result<()> {
+            let (dst_w, dst_h) = self.size;
+            let _ = self.child.kill();
+            let _ = self.child.wait();
+            let (child, latest_frame) =
+                Self::spawn_pipeline(&self.portal.remote, self.portal.node_id, dst_w, dst_h, true)?;
+            tracing::info!("no frames from PipeWire on the CPU; capturing through OpenGL");
+            USE_GL.store(true, std::sync::atomic::Ordering::Relaxed);
+            self.child = child;
+            self.latest_frame = latest_frame;
+            self.started = Instant::now();
+            self.gl = true;
+            Ok(())
         }
 
         fn capture(&mut self, bgra: &mut Vec<u8>) -> anyhow::Result<bool> {
             const FRAME_TIMEOUT: Duration = Duration::from_secs(8);
+            const TRY_GL_AFTER: Duration = Duration::from_secs(3);
             if self.portal.is_closed() {
                 anyhow::bail!("the Wayland portal closed the screen sharing session");
             }
             if let Some(status) = self.child.try_wait()? {
                 anyhow::bail!("the PipeWire capture process exited ({status})");
+            }
+            let nothing_yet = self.latest_frame.lock().unwrap_or_else(|e| e.into_inner()).is_none();
+            if nothing_yet && !self.gl && self.started.elapsed() >= TRY_GL_AFTER && gl_elements_installed() {
+                self.switch_to_gl()?;
+                return Ok(false);
             }
             let latest = self.latest_frame.lock().unwrap_or_else(|e| e.into_inner());
             if latest.as_ref().map_or(self.started, |(at, _)| *at).elapsed() >= FRAME_TIMEOUT {
@@ -2073,10 +2104,27 @@ mod imp {
         }
     }
 
-    /// gst-launch arguments: read stream `node_id` through the portal's
-    /// PipeWire connection (fd 3) and write raw BGRx frames to stdout.
+    /// Capture through OpenGL from the start: an earlier CPU capture got no frames.
     #[cfg(target_os = "linux")]
-    pub(crate) fn pipeline_args(node_id: u32, dst_w: u32, dst_h: u32) -> Vec<String> {
+    static USE_GL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+    /// Whether GStreamer's OpenGL elements are installed (gst-plugins-base's gl).
+    #[cfg(target_os = "linux")]
+    fn gl_elements_installed() -> bool {
+        static HAS: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+        *HAS.get_or_init(|| {
+            ["glupload", "glcolorconvert", "gldownload"].iter().all(|element| {
+                win::run_cmd_timeout("gst-inspect-1.0", &["--exists", element], Duration::from_secs(2))
+                    .is_some_and(|out| out.status.success())
+            })
+        })
+    }
+
+    /// gst-launch arguments: read stream `node_id` through the portal's
+    /// PipeWire connection (fd 3) and write raw BGRx frames to stdout. With
+    /// `gl`, frames go through OpenGL first, for GPU (DMABuf) buffers.
+    #[cfg(target_os = "linux")]
+    pub(crate) fn pipeline_args(node_id: u32, dst_w: u32, dst_h: u32, gl: bool) -> Vec<String> {
         static HAS_ON_DISCONNECT: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
         let mut args = vec![
             "-q".to_owned(),
@@ -2093,6 +2141,12 @@ mod imp {
             )
         }) {
             args.push("on-disconnect=error".to_owned());
+        }
+        if gl {
+            args.extend(
+                ["!", "glupload", "!", "glcolorconvert", "!", "gldownload", "!", "video/x-raw,format=RGBA"]
+                    .map(str::to_owned),
+            );
         }
         args.extend([
             "!".to_owned(),
@@ -2778,12 +2832,20 @@ mod imp {
         #[cfg(target_os = "linux")]
         #[test]
         fn wayland_capture_reads_the_stream_through_the_portal_connection() {
-            let args = pipeline_args(57, 1280, 720);
+            let args = pipeline_args(57, 1280, 720, false);
             assert_eq!(args[1], "pipewiresrc");
             assert!(args.contains(&"fd=3".to_owned()), "the portal's PipeWire connection, as fd 3");
             assert!(args.contains(&"path=57".to_owned()));
             assert!(args.contains(&"video/x-raw,format=BGRx,width=1280,height=720".to_owned()));
             assert_eq!(args.last().map(String::as_str), Some("fd=1"));
+            assert!(!args.iter().any(|a| a.starts_with("gl")));
+
+            // Through OpenGL: GPU buffers downloaded as RGBA, then the same tail.
+            let gl = pipeline_args(57, 1280, 720, true);
+            let at = |name: &str| gl.iter().position(|a| a == name).unwrap_or(usize::MAX);
+            assert!(at("glupload") < at("glcolorconvert") && at("glcolorconvert") < at("gldownload"));
+            assert!(at("gldownload") < at("videoconvert"));
+            assert!(gl.contains(&"video/x-raw,format=BGRx,width=1280,height=720".to_owned()));
         }
 
         #[test]

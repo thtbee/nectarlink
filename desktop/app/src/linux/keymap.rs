@@ -11,7 +11,8 @@
 use std::{
     collections::HashMap,
     ffi::{CString, c_char, c_int, c_void},
-    sync::OnceLock,
+    sync::{Arc, Mutex, OnceLock},
+    time::{Duration, Instant},
 };
 
 /// What the virtual keyboard presses for one character.
@@ -52,8 +53,14 @@ impl Keymap {
 /// The keymap for the desktop's current layout, compiled once. `None` when
 /// the layout can't be found or compiled: callers then must not type through
 /// uinput, since guessing a layout types the wrong characters.
-pub fn current() -> Option<&'static Keymap> {
-    static KEYMAP: OnceLock<Option<Keymap>> = OnceLock::new();
+pub fn current() -> Option<Arc<Keymap>> {
+    // Niri says which of its layouts is active, and that changes as the user
+    // switches: ask it (at most once a second) and compile each layout once.
+    // If it can't say, typing would guess, so don't (D511).
+    if std::env::var_os("NIRI_SOCKET").is_some() {
+        return niri_layout().and_then(|layout| compiled(&layout));
+    }
+    static KEYMAP: OnceLock<Option<Arc<Keymap>>> = OnceLock::new();
     KEYMAP
         .get_or_init(|| {
             let layout = detect_layout()?;
@@ -61,9 +68,107 @@ pub fn current() -> Option<&'static Keymap> {
             if keymap.is_none() {
                 tracing::warn!(layout = %layout.layout, "can't compile the keyboard layout");
             }
-            keymap
+            keymap.map(Arc::new)
         })
-        .as_ref()
+        .clone()
+}
+
+/// `layout`'s keymap, compiled the first time it's asked for.
+fn compiled(layout: &Layout) -> Option<Arc<Keymap>> {
+    static CACHE: Mutex<Vec<(Layout, Option<Arc<Keymap>>)>> = Mutex::new(Vec::new());
+    let mut cache = CACHE.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some((_, keymap)) = cache.iter().find(|(l, _)| l == layout) {
+        return keymap.clone();
+    }
+    let keymap = compile(layout).map(Arc::new);
+    if keymap.is_none() {
+        tracing::warn!(layout = %layout.layout, "can't compile the keyboard layout");
+    }
+    cache.push((layout.clone(), keymap.clone()));
+    keymap
+}
+
+/// Niri's active layout, as an XKB layout and variant.
+fn niri_layout() -> Option<Layout> {
+    static LAST: Mutex<Option<(Instant, Option<Layout>)>> = Mutex::new(None);
+    let mut last = LAST.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some((at, layout)) = last.as_ref()
+        && at.elapsed() < Duration::from_secs(1)
+    {
+        return layout.clone();
+    }
+    let layout = std::process::Command::new("niri")
+        .args(["msg", "-j", "keyboard-layouts"])
+        .stdin(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+        .and_then(|o| parse_niri_layouts(&String::from_utf8_lossy(&o.stdout)))
+        .and_then(|name| {
+            let rules = xkb_rules_xml()?;
+            let found = layout_for_description(&rules, &name);
+            if found.is_none() {
+                tracing::warn!(layout = %name, "Niri's keyboard layout isn't in the XKB rules");
+            }
+            found
+        });
+    *last = Some((Instant::now(), layout.clone()));
+    layout
+}
+
+/// The active layout's name from `niri msg -j keyboard-layouts`
+/// (`{"names": ["English (US)", "Russian"], "current_idx": 1}`).
+pub(crate) fn parse_niri_layouts(json: &str) -> Option<String> {
+    let value: serde_json::Value = serde_json::from_str(json).ok()?;
+    let index = usize::try_from(value.get("current_idx")?.as_u64()?).ok()?;
+    Some(value.get("names")?.as_array()?.get(index)?.as_str()?.to_owned())
+}
+
+/// The XKB rules file that lists every layout by its description.
+fn xkb_rules_xml() -> Option<String> {
+    let roots = std::env::var("XKB_CONFIG_ROOT").ok().into_iter().chain(
+        ["/usr/share/X11/xkb", "/run/current-system/sw/share/X11/xkb", "/usr/share/xkeyboard-config-2"]
+            .map(String::from),
+    );
+    roots
+        .flat_map(|root| ["evdev.xml", "base.xml"].map(|f| std::path::Path::new(&root).join("rules").join(f)))
+        .find_map(|path| std::fs::read_to_string(path).ok())
+}
+
+/// The layout and variant whose description is `description` in an XKB
+/// rules file. `None` when none or more than one match: never guess.
+pub(crate) fn layout_for_description(rules: &str, description: &str) -> Option<Layout> {
+    let tag = |text: &str, name: &str| -> Option<String> {
+        let start = text.find(&format!("<{name}>"))? + name.len() + 2;
+        let end = start + text[start..].find(&format!("</{name}>"))?;
+        Some(unescape_xml(text[start..end].trim()))
+    };
+    let mut found = Vec::new();
+    for block in rules.split("<layout>").skip(1) {
+        let block = block.split("</layout>").next().unwrap_or_default();
+        let (base, variants) = block.split_once("<variantList>").unwrap_or((block, ""));
+        let Some(layout) = tag(base, "name") else { continue };
+        if tag(base, "description").as_deref() == Some(description) {
+            found.push(Layout { layout: layout.clone(), ..Layout::default() });
+        }
+        for variant in variants.split("<variant>").skip(1) {
+            if tag(variant, "description").as_deref() == Some(description)
+                && let Some(name) = tag(variant, "name")
+            {
+                found.push(Layout { layout: layout.clone(), variant: name, ..Layout::default() });
+            }
+        }
+    }
+    (found.len() == 1).then(|| found.remove(0))
+}
+
+fn unescape_xml(text: &str) -> String {
+    text.replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&quot;", "\"")
+        .replace("&apos;", "'")
+        .replace("&amp;", "&")
 }
 
 const KEY_TAB: u16 = 15;
@@ -309,6 +414,29 @@ pub fn compile(layout: &Layout) -> Option<Keymap> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reads_the_active_niri_layout() {
+        let json = r#"{"names":["English (US)","Russian","German (no dead keys)"],"current_idx":2}"#;
+        assert_eq!(parse_niri_layouts(json).as_deref(), Some("German (no dead keys)"));
+        assert_eq!(parse_niri_layouts(r#"{"names":["English (US)"],"current_idx":3}"#), None);
+        assert_eq!(parse_niri_layouts("not json"), None);
+
+        let rules = r#"<xkbConfigRegistry><layoutList>
+          <layout><configItem><name>us</name><shortDescription>en</shortDescription><description>English (US)</description></configItem>
+            <variantList><variant><configItem><name>intl</name><description>English (US, intl., with dead keys)</description></configItem></variant></variantList></layout>
+          <layout><configItem><name>de</name><description>German</description></configItem>
+            <variantList><variant><configItem><name>nodeadkeys</name><description>German (no dead keys)</description></configItem></variant></variantList></layout>
+          <layout><configItem><name>ru</name><description>Russian</description></configItem></layout>
+          <layout><configItem><name>gb</name><description>English (UK) &amp; more</description></configItem></layout>
+        </layoutList></xkbConfigRegistry>"#;
+        let found = |d: &str| layout_for_description(rules, d).map(|l| (l.layout, l.variant));
+        assert_eq!(found("English (US)"), Some(("us".into(), String::new())));
+        assert_eq!(found("German (no dead keys)"), Some(("de".into(), "nodeadkeys".into())));
+        assert_eq!(found("Russian"), Some(("ru".into(), String::new())));
+        assert_eq!(found("English (UK) & more"), Some(("gb".into(), String::new())));
+        assert_eq!(found("Klingon"), None);
+    }
 
     #[test]
     fn reads_the_layout_from_each_desktop() {
