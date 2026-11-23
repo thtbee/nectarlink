@@ -483,6 +483,9 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **HEIC photos show in the Photos viewer.** The PC can't read HEIC itself, so the viewer
+  stayed empty; it now shows the photo's preview and says that Open in Photos shows it in full
+  ([#559](https://github.com/thtbee/nectarlink/issues/559)).
 - **Folder sync is quicker with many files.** Comparing a big folder no longer slows down
   with the square of its file count. Thanks to [@aihehye](https://github.com/aihehye)
   ([#537](https://github.com/thtbee/nectarlink/pull/537)).
