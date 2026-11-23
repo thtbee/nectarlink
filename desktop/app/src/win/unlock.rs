@@ -756,6 +756,7 @@ fn answer(user: &str) -> (wire::Status, Vec<u8>) {
         });
         match asked {
             Ok(Ok(password)) => return (wire::Status::Ok, password.expose().to_vec()),
+            // Not connected, or only away from this network: the next phone may be here.
             Ok(Err(Error::Offline)) => last = wire::Status::PhoneAway,
             Ok(Err(Error::NotFound)) => last = wire::Status::NotEnrolled,
             Ok(Err(Error::Denied)) if node.unlock_locked_out() => {

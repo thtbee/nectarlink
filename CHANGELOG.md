@@ -483,6 +483,10 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **Unlock with phone asks the next phone.** With several phones set up, one that's
+  connected but away from the PC's network said "Not confirmed on the phone" and stopped
+  there; the PC now goes on to the next phone that's on the network
+  ([#535](https://github.com/thtbee/nectarlink/issues/535)).
 - **Folder sync is quicker with many files.** Comparing a big folder no longer slows down
   with the square of its file count. Thanks to [@aihehye](https://github.com/aihehye)
   ([#537](https://github.com/thtbee/nectarlink/pull/537)).
