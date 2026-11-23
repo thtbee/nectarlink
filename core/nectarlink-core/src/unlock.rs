@@ -39,6 +39,7 @@ pub const ENROLL_TTL: Duration = Duration::from_secs(90);
 pub const KEY: &str = unlock::CAP_KEY;
 /// Capability a PC offers when it can unlock its locked session with a phone.
 pub const PC: &str = unlock::CAP_PC;
+pub const FROM_PHONE: &str = unlock::CAP_FROM_PHONE;
 /// The per-device toggle, off by default on both sides.
 pub const TOGGLE: &str = unlock::TOGGLE;
 /// Failed unlocks allowed within [`FAILURE_WINDOW`] before a lockout.
@@ -419,6 +420,15 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
             }
             _ => Envelope::error(ErrorCode::BadMessage, "invalid unlock.request"),
         },
+        types::UNLOCK_FROM_PHONE => {
+            if env.b.is_some() {
+                Envelope::error(ErrorCode::BadMessage, "invalid unlock.from-phone")
+            } else if !allowed(shared, session) || !shared.platform.unlock_from_phone(session.peer) {
+                Envelope::error(ErrorCode::Denied, "unlock needs an enrolled phone and a locked session")
+            } else {
+                Envelope::empty(types::UNLOCK_FROM_PHONE)
+            }
+        }
         // Either side: the other one turned it off.
         types::UNLOCK_FORGET => {
             // No user means every user; a body that doesn't parse, or names a user
@@ -441,6 +451,18 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
     };
     session.send(reply.reply_to(env.id)).await?;
     Ok(true)
+}
+
+pub(crate) async fn request_from_phone(shared: &Shared, session: &Session) -> Result<()> {
+    if !allowed(shared, session) {
+        return Err(Error::Denied);
+    }
+    if !shared.offers(&session.peer, FROM_PHONE).unwrap_or(false) {
+        return Err(Error::Unsupported);
+    }
+    let reply =
+        session.request(Envelope::empty(types::UNLOCK_FROM_PHONE), crate::session::REQUEST_TIMEOUT).await?;
+    Ok(reply.expect(types::UNLOCK_FROM_PHONE)?)
 }
 
 /// PC side: enrolls `user` to unlock with `phone`. The phone's owner agrees

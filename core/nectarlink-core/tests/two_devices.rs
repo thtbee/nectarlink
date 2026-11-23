@@ -90,6 +90,7 @@ struct RecordingPlatform {
     unlock_asks: Mutex<Vec<nectarlink_core::unlock::Ask>>,
     unlock_answer: Mutex<FakeKeystore>,
     unlock_forgotten: Mutex<Vec<(nectarlink_core::DeviceId, Option<String>)>>,
+    unlock_initiator: Mutex<Option<nectarlink_core::DeviceId>>,
     linux_unlock_asks: Mutex<Vec<nectarlink_core::linux_unlock::Ask>>,
     linux_unlock_keys: Mutex<std::collections::HashMap<(nectarlink_core::DeviceId, u32), Vec<u8>>>,
     linux_enrollment_pause: Mutex<Option<LinuxUnlockPause>>,
@@ -653,6 +654,9 @@ impl Platform for RecordingPlatform {
     fn set_phone_toggle(&self, id: &str, value: &nectarlink_core::PhoneToggleValue) -> Result<(), String> {
         self.phone_toggles.lock().unwrap().push((id.to_owned(), value.clone()));
         Ok(())
+    }
+    fn unlock_from_phone(&self, phone: nectarlink_core::DeviceId) -> bool {
+        *self.unlock_initiator.lock().unwrap() == Some(phone)
     }
     fn unlock_wrap(
         &self,
@@ -4144,6 +4148,31 @@ async fn linux_unlock_over_a_usb_only_session() {
     })
     .await;
     assert!(phone.platform.linux_unlock_keys.lock().unwrap().is_empty());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn phone_initiated_unlock_requires_both_toggles_and_pc_acceptance() {
+    use nectarlink_core::unlock::{FROM_PHONE, KEY, PC, TOGGLE};
+
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[PC, FROM_PHONE]).await;
+    let mut phone = device_with("Pixel", DeviceKind::Phone, &[KEY]).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+    let request = || phone.node.unlock_from_phone(pc_id);
+
+    assert!(matches!(request().await, Err(Error::Denied)));
+    phone.node.set_device_toggle(pc_id, TOGGLE, true).unwrap();
+    assert!(matches!(request().await, Err(Error::Denied)));
+
+    pc.node.set_device_toggle(phone_id, TOGGLE, true).unwrap();
+    assert!(matches!(request().await, Err(Error::Denied)), "the PC platform refused the request");
+
+    *pc.platform.unlock_initiator.lock().unwrap() = Some(phone_id);
+    request().await.unwrap();
+    assert!(phone.platform.unlock_asks.lock().unwrap().is_empty(), "the request itself starts no biometric");
+
+    pc.node.set_device_toggle(phone_id, TOGGLE, false).unwrap();
+    assert!(matches!(request().await, Err(Error::Denied)));
 }
 
 #[tokio::test(flavor = "multi_thread")]

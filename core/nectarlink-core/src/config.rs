@@ -231,6 +231,11 @@ pub trait Platform: Send + Sync + 'static {
         Err("this device has no clipboard".into())
     }
 
+    /// Requests a fresh biometric prompt for an already locked, signed-in session.
+    fn unlock_from_phone(&self, _phone: crate::DeviceId) -> bool {
+        false
+    }
+
     /// Lock or sleep this PC (a paired phone asked). Runs after the phone
     /// got its answer. `Err` holds a reason for logs.
     fn power(&self, _action: crate::actions::PowerAction) -> Result<(), String> {

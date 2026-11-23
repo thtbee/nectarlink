@@ -964,6 +964,7 @@ private fun App(
                                     onPairNew = { pairing = true },
                                     onRefresh = core::refresh,
                                     onPower = core::pcPower,
+                                    onUnlock = core::unlockPc,
                                     onHibernate = core::pcHibernate,
                                     onShutdown = core::pcShutdown,
                                     onPhoneSoundOnPc = core::askPcForPhoneSound,

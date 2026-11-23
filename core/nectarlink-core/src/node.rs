@@ -4015,6 +4015,12 @@ impl Node {
         crate::unlock::enroll(&self.shared, &session, user, user_name, &password).await
     }
 
+    /// Phone side: asks the paired PC to start a fresh biometric prompt.
+    pub async fn unlock_from_phone(&self, pc: DeviceId) -> Result<()> {
+        let session = self.connected(&pc)?;
+        crate::unlock::request_from_phone(&self.shared, &session).await
+    }
+
     /// PC side: asks `phone` to release `user`'s password for one unlock. The
     /// phone's owner confirms with their biometric. `Denied` when declined,
     /// off, or locked out after repeated failures; `NotFound` when `user`

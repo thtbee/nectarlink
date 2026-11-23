@@ -19,6 +19,8 @@ pub fn pipe_name(session: u32) -> String {
 
 /// Starts every request, so a stray connection isn't read as one.
 const MAGIC: &[u8; 4] = b"NLU1";
+pub const PEEK_PHONE_REQUEST: &[u8; 4] = b"NLP1";
+const FROM_PHONE: &[u8; 4] = b"NLF1";
 /// Starts a notice that Windows refused the password it was given.
 const REJECTED: &[u8; 4] = b"NLR1";
 /// Longest security identifier accepted.
@@ -48,6 +50,8 @@ pub enum Status {
     Failed = 5,
     /// Nobody has typed the password since a restart: it's needed once first.
     PasswordFirst = 6,
+    /// A phone requested a fresh unlock. No credential is attached.
+    Ready = 7,
 }
 
 impl Status {
@@ -60,6 +64,7 @@ impl Status {
             4 => Status::LockedOut,
             5 => Status::Failed,
             6 => Status::PasswordFirst,
+            7 => Status::Ready,
             _ => return None,
         })
     }
@@ -81,6 +86,14 @@ pub fn request(user: &str) -> Option<Vec<u8>> {
 /// The user a request names, if it's a whole, valid request.
 pub fn parse_request(bytes: &[u8]) -> Option<String> {
     named(MAGIC, bytes)
+}
+
+pub fn phone_request(user: &str) -> Option<Vec<u8>> {
+    naming(FROM_PHONE, user)
+}
+
+pub fn parse_phone_request(bytes: &[u8]) -> Option<String> {
+    named(FROM_PHONE, bytes)
 }
 
 /// The notice that Windows refused `user`'s password from the phone (it changed
@@ -210,6 +223,17 @@ mod tests {
         assert_eq!(split_qualified(r"PC-NAME\bee"), ("PC-NAME", "bee"));
         assert_eq!(split_qualified("bee"), (".", "bee"));
         assert_eq!(split_qualified(r"\bee"), (".", r"\bee"));
+    }
+
+    #[test]
+    fn phone_intent_is_separate_from_manual_unlock() {
+        let user = "S-1-5-21-100";
+        let request = phone_request(user).unwrap();
+        assert_eq!(parse_phone_request(&request).as_deref(), Some(user));
+        assert!(parse_request(&request).is_none());
+        assert!(parse_phone_request(PEEK_PHONE_REQUEST).is_none());
+        let reply = answer(Status::Ready, Some(b"ignored"));
+        assert_eq!(parse_answer(&reply), Some((Status::Ready, Vec::new())));
     }
 
     #[test]

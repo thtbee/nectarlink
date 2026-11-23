@@ -4485,6 +4485,13 @@ impl NectarlinkNode {
             .collect()
     }
 
+    /// Requests an unlock prompt for an already signed-in, locked Windows session.
+    pub async fn unlock_from_phone(&self, id: String) -> Result<()> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.unlock_from_phone(id).await?) }).await
+    }
+
     /// Locks a paired PC (`sleep`: puts it to sleep instead).
     pub async fn pc_power(&self, id: String, sleep: bool) -> Result<()> {
         let id = parse_id(&id)?;

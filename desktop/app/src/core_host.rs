@@ -232,6 +232,7 @@ pub fn compute_capabilities(
     #[cfg(windows)]
     if crate::win::unlock::is_registered() {
         caps.push(nectarlink_core::unlock::PC.into());
+        caps.push(nectarlink_core::unlock::FROM_PHONE.into());
         crate::win::unlock::serve();
     }
     #[cfg(target_os = "linux")]
@@ -331,6 +332,9 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
         max_entries: nectarlink_core::DEFAULT_TIMELINE_MAX_ENTRIES,
     });
     let _ = host.node.set(node);
+    // Existing phone enrollment can only be read after the node is published.
+    #[cfg(windows)]
+    crate::win::unlock::serve();
     host.hub.update(|s| {
         let mut changes = s.set_devices(devices);
         for m in matrices {

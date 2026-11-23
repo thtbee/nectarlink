@@ -202,16 +202,26 @@ pub fn server_present() -> bool {
 
 /// Asks this session's NectarLink to unlock `user` (a security identifier). The
 /// returned password is UTF-8: wipe it after use.
-pub fn ask(user: &str) -> Result<(Status, Vec<u8>), AskError> {
-    let request = wire::request(user).ok_or(AskError::Broken)?;
-    let pipe = connect()?;
+pub fn ask(user: &str, from_phone: bool) -> Result<(Status, Vec<u8>), AskError> {
+    let request = if from_phone { wire::phone_request(user) } else { wire::request(user) };
+    exchange(&request.ok_or(AskError::Broken)?, wire::ANSWER_TIMEOUT_MS, 2_000)
+}
+
+pub fn phone_request_waiting() -> Result<bool, AskError> {
+    exchange(wire::PEEK_PHONE_REQUEST, 500, 20).map(|(status, mut body)| {
+        wire::wipe(&mut body);
+        status == Status::Ready
+    })
+}
+
+fn exchange(request: &[u8], timeout: u32, connect_timeout: u32) -> Result<(Status, Vec<u8>), AskError> {
+    let pipe = connect(connect_timeout)?;
     // SAFETY (both closures): `request` and `answer` outlive the operations,
     // which `overlapped` waits for (or cancels and waits for) before returning.
-    overlapped(pipe.0, 5_000, |ov| unsafe { WriteFile(pipe.0, Some(&request), None, Some(ov)) })?;
+    overlapped(pipe.0, timeout.min(5_000), |ov| unsafe { WriteFile(pipe.0, Some(request), None, Some(ov)) })?;
     let mut answer = vec![0u8; 1 + 4 + wire::MAX_PASSWORD];
-    let read = overlapped(pipe.0, wire::ANSWER_TIMEOUT_MS, |ov| unsafe {
-        ReadFile(pipe.0, Some(&mut answer), None, Some(ov))
-    });
+    let read =
+        overlapped(pipe.0, timeout, |ov| unsafe { ReadFile(pipe.0, Some(&mut answer), None, Some(ov)) });
     let result = match read {
         Ok(n) => wire::parse_answer(&answer[..n as usize]).ok_or(AskError::Broken),
         Err(e) => Err(e),
@@ -224,7 +234,7 @@ pub fn ask(user: &str) -> Result<(Status, Vec<u8>), AskError> {
 /// the phone, so it stops offering one that no longer works.
 pub fn tell_rejected(user: &str) -> Result<(), AskError> {
     let notice = wire::rejected(user).ok_or(AskError::Broken)?;
-    let pipe = connect()?;
+    let pipe = connect(2_000)?;
     // SAFETY: `notice` outlives the operation, which `overlapped` waits for.
     overlapped(pipe.0, 5_000, |ov| unsafe { WriteFile(pipe.0, Some(&notice), None, Some(ov)) })?;
     Ok(())
@@ -232,14 +242,14 @@ pub fn tell_rejected(user: &str) -> Result<(), AskError> {
 
 /// Opens this session's unlock pipe, served by the NectarLink installed next to
 /// this DLL and nothing else.
-fn connect() -> Result<Handle, AskError> {
+fn connect(wait: u32) -> Result<Handle, AskError> {
     let mut session = 0u32;
     // SAFETY: valid out pointer.
     unsafe { ProcessIdToSessionId(GetCurrentProcessId(), &mut session) }.map_err(|_| AskError::NotRunning)?;
     let name = HSTRING::from(wire::pipe_name(session));
     // SAFETY: `name` outlives the calls.
     unsafe {
-        if !WaitNamedPipeW(&name, 2_000).as_bool() {
+        if !WaitNamedPipeW(&name, wait).as_bool() {
             return Err(AskError::NotRunning);
         }
     }
