@@ -483,6 +483,10 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **Unlock with phone asks the next phone.** With several phones set up, one that's
+  connected but away from the PC's network said "Not confirmed on the phone" and stopped
+  there; the PC now goes on to the next phone that's on the network
+  ([#535](https://github.com/thtbee/nectarlink/issues/535)).
 - **The PC's mouse goes over to phones on Android 13 and older.** The phone measured its
   pointer from a status line only newer Android versions have, so the mouse came over for a
   moment and went straight back ([#107](https://github.com/thtbee/nectarlink/issues/107)).
