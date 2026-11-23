@@ -79,7 +79,7 @@ pub fn watch(callback: impl Fn() + Send + Sync + 'static) {
         }
 
         let mut h = HANDLE::default();
-        let status = NotifyRouteChange2(AF_UNSPEC, Some(on_route_change), None, false, &mut h);
+        let status = NotifyRouteChange2(AF_UNSPEC, Some(on_route_change), std::ptr::null(), false, &mut h);
         if status == NO_ERROR {
             handles.push(h.0 as isize);
         } else {

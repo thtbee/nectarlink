@@ -1035,10 +1035,13 @@ impl Shared {
 
     pub(crate) fn is_usb_connection(&self, conn: &Connection) -> bool {
         let peer = crate::device_id(&conn.remote_id());
-        let paths = conn.paths();
-        paths.iter().find(|p| p.is_selected()).or_else(|| paths.iter().next()).is_some_and(
-            |p| matches!(p.remote_addr(), iroh::TransportAddr::Ip(addr) if self.is_usb_addr_for(&peer, addr)),
-        )
+        if self.usb_peer_addr(&peer).is_some() {
+            return true;
+        }
+        conn.paths().iter().any(|p| match p.remote_addr() {
+            iroh::TransportAddr::Ip(addr) => self.is_usb_addr_for(&peer, addr),
+            _ => false,
+        })
     }
 
     /// Verifies that if `conn` uses a local USB bridge port, its QUIC TLS `DeviceId`
@@ -1410,6 +1413,7 @@ impl Shared {
     /// Re-reads this device's Tailscale addresses: what the platform confirmed,
     /// plus (on Linux) those of a Tailscale interface. Returns whether they changed.
     pub(crate) fn refresh_tailscale_ips(&self) -> bool {
+        #[allow(unused_mut)]
         let mut ips: Vec<std::net::IpAddr> = lock(&self.platform_tailscale_ips).clone();
         #[cfg(target_os = "linux")]
         if self.tailscale_interfaces {
@@ -2792,8 +2796,8 @@ impl Node {
     /// notifications and media here, this device's there).
     pub async fn refresh(&self) {
         self.shared.usb_poke.notify_one();
-        self.shared.retry_usb_auto_pair();
         self.network_changed().await;
+        self.shared.retry_usb_auto_pair();
         self.shared.refresh_all_capabilities();
         self.shared.localsend.refresh(&self.shared);
         let local_device = self.shared.local.read().unwrap_or_else(|e| e.into_inner()).device.clone();
