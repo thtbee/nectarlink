@@ -301,6 +301,8 @@
     <string name="update_current_version">NectarLink %1$s を使用中です。</string>
     <string name="update_check_failed">アップデートを確認できませんでした。インターネット接続を確認してください。</string>
     <string name="action_lock_pc">PCをロック</string>
+    <string name="action_unlock_pc">PCのロックを解除</string>
+    <string name="pc_unlock_unavailable">PCをロックし、両方の端末が同じネットワークに接続されている状態でもう一度お試しください。</string>
     <string name="action_sleep_pc">スリープ</string>
     <string name="action_hibernate_pc">ハイバネート</string>
     <string name="action_phone_sound_on_pc">スマートフォンの音声をPCで再生</string>

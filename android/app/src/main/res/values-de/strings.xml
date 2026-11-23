@@ -302,6 +302,8 @@
     <string name="update_current_version">Du verwendest NectarLink %1$s.</string>
     <string name="update_check_failed">Suche nach Updates fehlgeschlagen. Prüfe deine Internetverbindung.</string>
     <string name="action_lock_pc">PC sperren</string>
+    <string name="action_unlock_pc">PC entsperren</string>
+    <string name="pc_unlock_unavailable">Sperre den PC und versuche es erneut, wenn beide Geräte mit demselben Netzwerk verbunden sind.</string>
     <string name="action_sleep_pc">Energie sparen</string>
     <string name="action_hibernate_pc">Ruhezustand</string>
     <string name="action_phone_sound_on_pc">Smartphone-Ton auf dem PC abspielen</string>

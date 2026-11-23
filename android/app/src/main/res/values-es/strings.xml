@@ -305,6 +305,8 @@
     <string name="update_current_version">Tienes NectarLink %1$s.</string>
     <string name="update_check_failed">No se pudieron buscar actualizaciones. Comprueba tu conexión a Internet.</string>
     <string name="action_lock_pc">Bloquear PC</string>
+    <string name="action_unlock_pc">Desbloquear PC</string>
+    <string name="pc_unlock_unavailable">Bloquea el PC y vuelve a intentarlo cuando ambos dispositivos estén conectados a la misma red.</string>
     <string name="action_sleep_pc">Suspender</string>
     <string name="action_hibernate_pc">Hibernar</string>
     <string name="action_phone_sound_on_pc">Reproducir el sonido del teléfono en el PC</string>
