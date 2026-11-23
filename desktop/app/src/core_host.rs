@@ -270,6 +270,8 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
     };
     let first = config();
     let initial_caps = first.capabilities.clone();
+    #[cfg(windows)]
+    let hevc_probe = tokio::task::spawn_blocking(crate::webcam::probe_hevc);
     let mut started = Node::start(first, platform.clone()).await;
     for wait in START_RETRIES {
         match &started {
@@ -294,6 +296,8 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
         }
     };
     let post_start_caps = compute_capabilities(Some(&node));
+    #[cfg(windows)]
+    let post_start_has_hevc = post_start_caps.iter().any(|c| c == nectarlink_core::WEBCAM_HEVC);
     if post_start_caps != initial_caps {
         node.update_power(nectarlink_core::PowerLevel::Basic, post_start_caps).await;
     }
@@ -326,6 +330,14 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
         max_entries: nectarlink_core::DEFAULT_TIMELINE_MAX_ENTRIES,
     });
     let _ = host.node.set(node);
+    #[cfg(windows)]
+    if !post_start_has_hevc {
+        spawn(async move {
+            if matches!(hevc_probe.await, Ok(true)) {
+                refresh_capabilities();
+            }
+        });
+    }
     host.hub.update(|s| {
         let mut changes = s.set_devices(devices);
         for m in matrices {
