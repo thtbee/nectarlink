@@ -272,6 +272,17 @@
             </intent-filter>
         </service>
 
+        <service
+            android:name=".service.UsbOnlyTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_usb"
+            android:label="@string/usb_only_tile_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
         <!-- Mirroring notifications to PCs; the user grants access in Settings. -->
         <service
             android:name=".notifications.NotificationListener"
@@ -415,10 +426,18 @@
             android:turnScreenOn="true"
             android:theme="@style/Theme.Nectarlink" />
 
+        <!-- Exported for a PC's adb to start it while the phone is plugged in with USB only on
+             (usb.rs); the DUMP permission is the shell's, so no other app can. -->
         <service
             android:name=".service.ConnectionService"
-            android:exported="false"
+            android:exported="true"
+            android:permission="android.permission.DUMP"
             android:foregroundServiceType="connectedDevice" />
+
+        <receiver
+            android:name=".service.UsbWakeReceiver"
+            android:exported="true"
+            android:permission="android.permission.DUMP" />
 
         <!-- A call's sound carried to a PC (docs/protocol/calls.md §2.6). -->
         <service

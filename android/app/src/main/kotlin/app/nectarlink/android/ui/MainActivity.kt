@@ -1137,6 +1137,7 @@ private fun App(
                                     onClearEverything = core::clearEverything,
                                     onToggleLocalSend = core::setLocalSendEnabled,
                                     onToggleAwayMode = core::setAwayMode,
+                                    onToggleUsbOnly = core::setUsbOnly,
                                     onOpenRelaySettings = { relaySettingsOpen = true },
                                     onOpenWalkthrough = {
                                         preferences.updateWalkthrough { it.goToStep(WalkthroughStep.Welcome) }

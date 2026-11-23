@@ -456,12 +456,14 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             // Today's count, and a report that couldn't be sent before; off the start path.
             currentRunScope.launch(Dispatchers.IO) { runCatching { app.nectarlink.android.diag.Reports.followUp(context) } }
             val initialAwayMode = app.nectarlink.android.ui.Preferences.isAwayModeEnabled(context)
+            val initialUsbOnly = app.nectarlink.android.ui.Preferences.isUsbOnlyEnabled(context)
             val options = NodeOptions(
                 dataDir = context.noBackupFilesDir.resolve("core").absolutePath,
                 device = deviceInfo(context),
                 appVersion = BuildConfig.VERSION_NAME,
                 power = PowerLevel.BASIC,
                 awayMode = initialAwayMode,
+                usbOnly = initialUsbOnly,
                 downloadsDir = context.cacheDir.resolve("received").absolutePath,
                 usbPort = 53319u.toUShort(),
             )
@@ -511,6 +513,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                     timelineRetentionDays = retention?.maxDays ?: 90u,
                     localsendEnabled = lsEnabled,
                     awayMode = initialAwayMode,
+                    usbOnly = initialUsbOnly,
                     localsendPeers = lsPeers,
                 )
             }
@@ -1665,7 +1668,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         }
         runCatching { node?.setLocalNetwork(local && reconnect.allows(id)) }
         val pause = when {
-            !local -> null
+            !local || _state.value.usbOnly -> null
             reconnect.gaveUp -> DialingPause.GaveUp
             reconnect.unknownNetwork(id) -> DialingPause.UnknownNetwork
             else -> null
@@ -1678,7 +1681,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     private fun reviewDialing() {
         val state = _state.value
         val anyOnline = state.devices.any { it.online }
-        val trying = state.hasNetwork && state.dialingPause == null && !state.awayMode &&
+        val trying = state.hasNetwork && state.dialingPause == null && !state.awayMode && !state.usbOnly &&
             state.devices.any { !it.isAndroid && it.reconnect }
         val now = android.os.SystemClock.elapsedRealtime()
         val gaveUpBefore = reconnect.gaveUp
@@ -1758,6 +1761,23 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         onDialing { reviewDialing() }
     }
 
+    /** Reaches PCs only through a USB cable (the Quick Settings tile and Settings both switch this). */
+    fun setUsbOnly(enabled: Boolean) {
+        app.nectarlink.android.ui.Preferences.setUsbOnlyEnabled(context, enabled)
+        _state.update { it.copy(usbOnly = enabled) }
+        if (!enabled) {
+            // Back to the usual: running, and in the foreground while a PC is paired.
+            start()
+            if (_state.value.devices.isNotEmpty()) ConnectionService.start(context)
+        }
+        scope.launch(Dispatchers.IO) {
+            startJob?.join()
+            runCatching { node?.setUsbOnly(enabled) }
+            updateLocalSendMulticast(_state.value.localsendEnabled)
+        }
+        onDialing { applyDialing() }
+    }
+
     internal fun onScreenInteractiveChanged(interactive: Boolean) {
         updateLocalSendMulticast(_state.value.localsendEnabled, interactive)
     }
@@ -1766,7 +1786,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         enabled: Boolean,
         interactive: Boolean = context.getSystemService(android.os.PowerManager::class.java)?.isInteractive != false,
     ) {
-        val shouldHold = enabled && interactive && isRunning
+        val shouldHold = enabled && interactive && isRunning && !_state.value.usbOnly
         localsendMulticast?.runCatching { if (shouldHold) { if (!isHeld) acquire() } else if (isHeld) release() }
     }
 

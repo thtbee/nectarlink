@@ -65,15 +65,89 @@ const SPARE_PORT_MAX_DELAY: Duration = Duration::from_secs(30);
 /// in it and never open a new one until the cable is replugged.
 const TUNNEL_SILENCE_LIMIT: Duration = Duration::from_secs(60);
 
+/// The phone app's id, and the pieces of it the PC starts through adb. Both
+/// are protected by `android.permission.DUMP`, which only the shell holds.
+const PHONE_PACKAGE: &str = "app.nectarlink";
+const WAKE_ACTION: &str = "app.nectarlink.action.USB_WAKE";
+const WAKE_RECEIVER: &str = "app.nectarlink.android.service.UsbWakeReceiver";
+const WAKE_SERVICE: &str = "app.nectarlink.android.service.ConnectionService";
+/// How often, at most, a phone nobody answers on is woken.
+const WAKE_EVERY: Duration = Duration::from_secs(15);
+/// How long to leave a phone alone after waking it failed (the app isn't installed, say).
+const WAKE_AFTER_ERROR: Duration = Duration::from_secs(300);
+
+/// What the PC asks of a phone's app through adb.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Wake {
+    /// Start the app's process and its core, so the tunnel's port answers. Runs even
+    /// when Android won't let the app start a foreground service.
+    Process,
+    /// Start the connection service in the foreground, which shows the app is connected.
+    Service,
+}
+
+impl Wake {
+    fn command(self) -> String {
+        match self {
+            // `-f 32`: also reaches an app that was force-stopped.
+            Wake::Process => {
+                format!("am broadcast -n {PHONE_PACKAGE}/{WAKE_RECEIVER} -a {WAKE_ACTION} -f 32")
+            }
+            Wake::Service => {
+                format!("am start-foreground-service -n {PHONE_PACKAGE}/{WAKE_SERVICE} -a {WAKE_ACTION}")
+            }
+        }
+    }
+}
+
+/// Whether what `am` printed says it went through.
+fn wake_went_through(output: &str) -> bool {
+    !output.contains("Error") && !output.contains("Exception")
+}
+
+/// Wakes a phone no more often than [`WAKE_EVERY`], and rarely after a failure.
+#[derive(Default)]
+struct WakeGate {
+    next: Option<Instant>,
+}
+
+impl WakeGate {
+    fn due(&self, now: Instant) -> bool {
+        self.next.is_none_or(|next| now >= next)
+    }
+
+    fn note(&mut self, now: Instant, went_through: bool) {
+        self.next = Some(now + if went_through { WAKE_EVERY } else { WAKE_AFTER_ERROR });
+    }
+}
+
+async fn wake_phone(adb_addr: SocketAddr, serial: &str, wake: Wake) -> bool {
+    match nectarlink_adb::shell_output(adb_addr, serial, &wake.command(), 1024).await {
+        Ok(output) => {
+            let ok = wake_went_through(&output);
+            tracing::debug!(%serial, ?wake, ok, output = output.trim(), "woke a USB phone's app");
+            ok
+        }
+        Err(e) => {
+            tracing::debug!(%serial, ?wake, error = %e, "couldn't wake a USB phone's app");
+            false
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct UsbHello {
     v: u8,
     id: String,
     name: String,
+    /// The phone only connects through the cable: the PC starts its service
+    /// while the cable is connected, and wakes it when it isn't running.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    usb_only: bool,
 }
 
-async fn write_hello(stream: &mut TcpStream, id: &DeviceId, name: &str) -> Result<()> {
-    let hello = UsbHello { v: 1, id: id.to_string(), name: name.to_owned() };
+async fn write_hello(stream: &mut TcpStream, id: &DeviceId, name: &str, usb_only: bool) -> Result<()> {
+    let hello = UsbHello { v: 1, id: id.to_string(), name: name.to_owned(), usb_only };
     let payload = serde_json::to_vec(&hello).map_err(|e| Error::Internal(e.to_string()))?;
     if payload.is_empty() || payload.len() > MAX_HELLO_BYTES {
         return Err(Error::Protocol("invalid USB hello length".into()));
@@ -88,7 +162,7 @@ async fn write_hello(stream: &mut TcpStream, id: &DeviceId, name: &str) -> Resul
     Ok(())
 }
 
-async fn read_hello(stream: &mut TcpStream) -> Result<(DeviceId, String)> {
+async fn read_hello(stream: &mut TcpStream) -> Result<(DeviceId, String, bool)> {
     let mut magic = [0u8; 4];
     stream.read_exact(&mut magic).await.map_err(|e| Error::Network(e.to_string()))?;
     if &magic != MAGIC {
@@ -107,16 +181,16 @@ async fn read_hello(stream: &mut TcpStream) -> Result<(DeviceId, String)> {
     let peer_id: DeviceId =
         hello.id.parse().map_err(|_| Error::Protocol("invalid DeviceId in USB hello".into()))?;
     let name: String = hello.name.trim().chars().take(64).collect();
-    Ok((peer_id, name))
+    Ok((peer_id, name, hello.usb_only))
 }
 
 async fn exchange_hello(
     stream: &mut TcpStream,
     local_id: &DeviceId,
     local_name: &str,
-) -> Result<(DeviceId, String)> {
+) -> Result<(DeviceId, String, bool)> {
     tokio::time::timeout(HELLO_TIMEOUT, async {
-        write_hello(stream, local_id, local_name).await?;
+        write_hello(stream, local_id, local_name, false).await?;
         read_hello(stream).await
     })
     .await
@@ -173,7 +247,7 @@ pub(crate) fn start_phone_listener(shared: &Arc<Shared>, preferred_port: u16) ->
             let Some(node) = weak.upgrade() else { return };
             tokio::spawn(async move {
                 let local_name = node.local.read().unwrap_or_else(|e| e.into_inner()).device.name.clone();
-                let Ok(Ok((pc_id, pc_name))) =
+                let Ok(Ok((pc_id, pc_name, _))) =
                     tokio::time::timeout(HELLO_TIMEOUT, read_hello(&mut stream)).await
                 else {
                     return;
@@ -191,8 +265,11 @@ pub(crate) fn start_phone_listener(shared: &Arc<Shared>, preferred_port: u16) ->
                 node.on_usb_tunnel_accepted(pc_id, pc_name, bridge_addr, tunnel_cancel.clone());
 
                 if !matches!(
-                    tokio::time::timeout(HELLO_TIMEOUT, write_hello(&mut stream, &node.id, &local_name))
-                        .await,
+                    tokio::time::timeout(
+                        HELLO_TIMEOUT,
+                        write_hello(&mut stream, &node.id, &local_name, node.usb_only())
+                    )
+                    .await,
                     Ok(Ok(()))
                 ) {
                     node.unregister_usb_bridge_port(bridge_port);
@@ -222,7 +299,7 @@ pub(crate) async fn connect_usb_tunnel(shared: &Arc<Shared>, forwarded_tcp: Sock
     let _ = stream.set_nodelay(true);
 
     let local_name = shared.local.read().unwrap_or_else(|e| e.into_inner()).device.name.clone();
-    let (phone_id, phone_name) = exchange_hello(&mut stream, &shared.id, &local_name).await?;
+    let (phone_id, phone_name, _) = exchange_hello(&mut stream, &shared.id, &local_name).await?;
     if phone_id == shared.id {
         return Err(Error::Protocol("cannot connect USB tunnel to self".into()));
     }
@@ -391,6 +468,7 @@ async fn run_port_worker(
     profiles: Arc<Mutex<SerialProfiles>>,
 ) {
     let mut delay = ADB_RETRY_DELAY;
+    let mut wake_gate = WakeGate::default();
     while !cancel.is_cancelled() {
         if !nectarlink_adb::is_serial_allowed(&serial) {
             return;
@@ -407,6 +485,17 @@ async fn run_port_worker(
             };
             answered = run_forwarded_session(&shared, forwarded, &cancel, target).await;
             let _ = nectarlink_adb::kill_forward_tcp(adb_addr, &serial, host_port).await;
+        }
+        // Nobody on the usual port: the app may not be running (a phone that only
+        // connects through the cable stops while it's idle), or too frozen to answer.
+        // Also when this app started with the cable already in.
+        if !answered && phone_port == DEFAULT_USB_PORT && wake_gate.due(Instant::now()) {
+            let went_through = wake_phone(adb_addr, &serial, Wake::Process).await;
+            wake_gate.note(Instant::now(), went_through);
+            if went_through {
+                // Soon enough for the app to have started.
+                delay = ADB_RETRY_DELAY;
+            }
         }
         // The usual port is kept up; the others usually have nobody listening (one
         // profile), so they're tried less and less often until something answers.
@@ -454,7 +543,9 @@ async fn run_forwarded_session(
     };
     let _ = stream.set_nodelay(true);
     let local_name = shared.local.read().unwrap_or_else(|e| e.into_inner()).device.name.clone();
-    let Ok((phone_id, phone_name)) = exchange_hello(&mut stream, &shared.id, &local_name).await else {
+    let Ok((phone_id, phone_name, phone_usb_only)) =
+        exchange_hello(&mut stream, &shared.id, &local_name).await
+    else {
         return false;
     };
     if phone_id == shared.id {
@@ -487,6 +578,14 @@ async fn run_forwarded_session(
         Some((target.serial.clone(), target.adb_addr)),
         Some(on_verified),
     );
+    if phone_usb_only {
+        // Connected: it should run in the foreground, with its notification. Android
+        // may refuse the app that, from the background; the shell may ask.
+        let (adb_addr, serial) = (target.adb_addr, target.serial.clone());
+        tokio::spawn(async move {
+            wake_phone(adb_addr, &serial, Wake::Service).await;
+        });
+    }
 
     let default_target = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), iroh_port);
     relay_tcp_udp(stream, udp, default_target, tunnel_cancel).await;
@@ -592,6 +691,50 @@ async fn relay_until_silent(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_phone_is_woken_once_in_a_while_and_rarely_after_it_failed() {
+        let t0 = Instant::now();
+        let mut gate = WakeGate::default();
+        assert!(gate.due(t0), "the first time is at once: the cable may have been in when this started");
+        gate.note(t0, true);
+        assert!(!gate.due(t0 + WAKE_EVERY - Duration::from_secs(1)));
+        assert!(gate.due(t0 + WAKE_EVERY));
+        gate.note(t0 + WAKE_EVERY, false);
+        assert!(!gate.due(t0 + WAKE_EVERY + WAKE_EVERY * 2), "after an error, not for a good while");
+        assert!(gate.due(t0 + WAKE_EVERY + WAKE_AFTER_ERROR));
+    }
+
+    #[test]
+    fn waking_names_the_apps_own_protected_components_and_reads_am_errors() {
+        let process = Wake::Process.command();
+        assert!(
+            process
+                .starts_with("am broadcast -n app.nectarlink/app.nectarlink.android.service.UsbWakeReceiver")
+        );
+        assert!(Wake::Service.command().starts_with("am start-foreground-service -n app.nectarlink/"));
+        // Nothing but letters, digits and the punctuation a shell reads as one word.
+        for command in [process, Wake::Service.command()] {
+            assert!(command.chars().all(|c| c.is_ascii_alphanumeric() || " ._/=-:".contains(c)), "{command}");
+        }
+        assert!(wake_went_through("Broadcast completed: result=0\n"));
+        assert!(wake_went_through("Starting service: Intent { act=app.nectarlink.action.USB_WAKE }"));
+        assert!(!wake_went_through("Error: Not found; no service started."));
+        assert!(!wake_went_through("java.lang.SecurityException: Permission Denial"));
+    }
+
+    #[test]
+    fn a_hello_without_the_usb_only_flag_reads_as_off() {
+        let old: UsbHello = serde_json::from_str(r#"{"v":1,"id":"x","name":"Pixel"}"#).unwrap();
+        assert!(!old.usb_only);
+        let off =
+            serde_json::to_string(&UsbHello { v: 1, id: "x".into(), name: "n".into(), usb_only: false })
+                .unwrap();
+        assert!(!off.contains("usb_only"), "older apps get what they always got: {off}");
+        let on = serde_json::to_string(&UsbHello { v: 1, id: "x".into(), name: "n".into(), usb_only: true })
+            .unwrap();
+        assert!(on.contains(r#""usb_only":true"#));
+    }
 
     /// Tests that bind real ports run one at a time, or one's probing takes another's port.
     static PORTS: Mutex<()> = Mutex::new(());

@@ -33,6 +33,7 @@ import app.nectarlink.android.ui.Preferences
 import app.nectarlink.android.ui.RingActivity
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -82,6 +83,26 @@ class ConnectionService : LifecycleService() {
                             .notify(ONGOING_ID, ongoingNotification(status))
                     }
                 }
+        }
+        // USB only: with no PC on the cable there's nothing to keep running or to show. The
+        // PC starts this again when it connects (usb.rs). The wait covers the PC's first
+        // connection after it woke the app, and a cable that's briefly out.
+        lifecycleScope.launch {
+            core.state
+                .map { it.usbOnly && it.status is app.nectarlink.android.core.CoreStatus.Ready && it.devices.none { d -> d.online } }
+                .distinctUntilChanged()
+                .collectLatest { idle ->
+                    if (!idle) return@collectLatest
+                    delay(USB_IDLE_GRACE_MS)
+                    stopSelf()
+                    (application as NectarlinkApplication).onUsbIdle()
+                }
+        }
+        // USB only doesn't need Wi-Fi to stay awake for multicast.
+        lifecycleScope.launch {
+            core.state.map { it.usbOnly }.distinctUntilChanged().collect {
+                setDiscoveryLock(getSystemService(PowerManager::class.java)?.isInteractive != false)
+            }
         }
         // Updates while the app is in the background (they install by themselves when
         // allowed). AppUpdater checks at most once a day, so waking now and then is cheap.
@@ -149,6 +170,14 @@ class ConnectionService : LifecycleService() {
             (application as? NectarlinkApplication)?.onBackgroundServiceDisabled()
             return START_NOT_STICKY
         }
+        if (intent?.action == ACTION_USB_WAKE) {
+            // The PC started this through adb. Settings that want no service here say so.
+            if (!Preferences.isUsbOnlyEnabled(this) && !Preferences.isBackgroundServiceEnabled(this)) {
+                stopSelf()
+                return START_NOT_STICKY
+            }
+            (application as NectarlinkApplication).core.start()
+        }
         if (intent?.action == ACTION_STOP_RINGING) {
             (application as NectarlinkApplication).core.stopRinging()
         }
@@ -173,7 +202,8 @@ class ConnectionService : LifecycleService() {
      * screen holds a lock of its own.
      */
     private fun setDiscoveryLock(on: Boolean) {
-        multicastLock?.runCatching { if (on) { if (!isHeld) acquire() } else if (isHeld) release() }
+        val hold = on && (application as? NectarlinkApplication)?.core?.state?.value?.usbOnly != true
+        multicastLock?.runCatching { if (hold) { if (!isHeld) acquire() } else if (isHeld) release() }
         (application as? NectarlinkApplication)?.core?.onScreenInteractiveChanged(on)
     }
 
@@ -238,14 +268,16 @@ class ConnectionService : LifecycleService() {
         val paired: Int,
         val noNetwork: Boolean,
         val pause: app.nectarlink.android.core.DialingPause?,
+        val usbOnly: Boolean,
     ) {
         companion object {
             fun of(state: CoreState) = Status(
                 state.devices.filter { it.online }.map { it.name },
                 state.devices.size,
                 // Not trying to reach PCs then (#397), so it shouldn't look like it is.
-                noNetwork = !state.hasNetwork && !state.awayMode,
+                noNetwork = !state.hasNetwork && !state.awayMode && !state.usbOnly,
                 pause = state.dialingPause.takeIf { !state.awayMode },
+                usbOnly = state.usbOnly,
             )
         }
     }
@@ -259,6 +291,7 @@ class ConnectionService : LifecycleService() {
                 status.connected.size,
             )
             status.paired == 0 -> getString(R.string.notification_not_paired)
+            status.usbOnly -> getString(R.string.notification_usb_only)
             status.noNetwork -> getString(R.string.notification_waiting_network)
             status.pause == app.nectarlink.android.core.DialingPause.GaveUp ->
                 getString(R.string.notification_stopped_looking)
@@ -338,17 +371,26 @@ class ConnectionService : LifecycleService() {
         private const val CHANNEL_CONNECTION = "connection"
         private const val CHANNEL_RINGING = "ringing"
         private const val ACTION_STOP_RINGING = "app.nectarlink.action.STOP_RINGING"
+        /** Sent by a PC's adb (the shell holds the DUMP permission both components ask for), see usb.rs. */
+        internal const val ACTION_USB_WAKE = "app.nectarlink.action.USB_WAKE"
+        private const val USB_IDLE_GRACE_MS = 20_000L
         internal const val ACTION_STOP_SERVICE = "app.nectarlink.action.STOP_SERVICE"
 
         /** Starts the service when allowed by Android's foreground-service rules. */
         fun start(context: Context) {
             if (!Preferences.isBackgroundServiceEnabled(context)) return
+            // USB only runs in the foreground while a PC is on the cable, which the PC asks for.
+            if (Preferences.isUsbOnlyEnabled(context) && !usbConnected(context)) return
             runCatching {
                 ContextCompat.startForegroundService(context, Intent(context, ConnectionService::class.java))
             }.onFailure {
                 android.util.Log.w("ConnectionService", "can't start in background", it)
             }
         }
+
+        private fun usbConnected(context: Context): Boolean =
+            (context.applicationContext as? NectarlinkApplication)?.core?.state?.value
+                ?.devices?.any { it.online } == true
 
         fun stop(context: Context) {
             runCatching {

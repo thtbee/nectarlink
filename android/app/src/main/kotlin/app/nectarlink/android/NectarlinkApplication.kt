@@ -98,7 +98,7 @@ class NectarlinkApplication : Application(), DefaultLifecycleObserver {
     override fun onStop(owner: LifecycleOwner) {
         // Android may end the app without warning from here on.
         runCatching { app.nectarlink.core.flushHealth() }
-        if (!Preferences.isBackgroundServiceEnabled(this)) {
+        if (!Preferences.isBackgroundServiceEnabled(this) || Preferences.isUsbOnlyEnabled(this)) {
             scheduleStop()
         }
     }
@@ -113,7 +113,16 @@ class NectarlinkApplication : Application(), DefaultLifecycleObserver {
         ProcessLifecycleOwner.get().lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
 
     private fun isStopEligible(): Boolean =
-        !isInForeground() && !Preferences.isBackgroundServiceEnabled(this)
+        !isInForeground() && (!Preferences.isBackgroundServiceEnabled(this) || isUsbOnlyIdle())
+
+    /** USB only with no PC on the cable: nothing to keep running; the PC starts it again. */
+    private fun isUsbOnlyIdle(): Boolean =
+        Preferences.isUsbOnlyEnabled(this) && core.state.value.devices.none { it.online }
+
+    /** The connection service ended because USB only has no PC to serve. */
+    fun onUsbIdle() {
+        if (!isInForeground()) scheduleStop()
+    }
 
     private fun scheduleStop() {
         pendingStopJob?.cancel()

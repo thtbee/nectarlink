@@ -351,6 +351,7 @@
         <item quantity="other">Connected to %1$d PCs</item>
     </plurals>
     <string name="notification_waiting">Waiting for your PC</string>
+    <string name="notification_usb_only">USB only: waiting for a cable</string>
     <string name="notification_waiting_network">Waiting for Wi-Fi to reach your PC</string>
     <string name="reconnect_known_only_title">Only on networks where a PC was found</string>
     <string name="reconnect_known_only_body">Looks for your PCs by itself only on Wi-Fi where it reached one before. Elsewhere a PC can still reach the phone.</string>
@@ -1457,6 +1458,9 @@
     <string name="settings_category_devices">Devices</string>
     <string name="settings_category_features">Features &amp; Data</string>
     <string name="settings_theme_artwork_color">Media artwork color</string>
+    <string name="settings_usb_only_title">USB only</string>
+    <string name="settings_usb_only_body">Connect to PCs only through a USB cable: no Wi-Fi, mobile data or local discovery</string>
+    <string name="usb_only_tile_label">USB only</string>
     <string name="settings_mobile_data_body">Stay connected over LTE/5G or relay when away from Wi-Fi</string>
     <string name="settings_background_clipboard_title">Background clipboard access</string>
     <string name="settings_guide_card_body">Browse every feature, check live requirements, or jump straight to its controls.</string>

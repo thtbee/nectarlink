@@ -149,6 +149,7 @@ fun SettingsScreen(
     onClearEverything: () -> Unit = {},
     onToggleLocalSend: (Boolean) -> Unit = {},
     onToggleAwayMode: (Boolean) -> Unit = {},
+    onToggleUsbOnly: (Boolean) -> Unit = {},
     onOpenRelaySettings: () -> Unit = {},
     onOpenWalkthrough: () -> Unit = {},
     onOpenFeaturesGuide: () -> Unit = {},
@@ -792,6 +793,24 @@ fun SettingsScreen(
                     }
                     FilledTonalButton(onClick = onOpenRelaySettings) {
                         Text(stringResource(R.string.relay_settings_title))
+                    }
+                    SettingRowDivider()
+                    val usbOnlyTitle = stringResource(R.string.settings_usb_only_title)
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                            Text(usbOnlyTitle, style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                stringResource(R.string.settings_usb_only_body),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(
+                            checked = state.usbOnly,
+                            onCheckedChange = onToggleUsbOnly,
+                            colors = app.nectarlink.android.ui.theme.nectarSwitchColors(),
+                            modifier = Modifier.semantics { contentDescription = usbOnlyTitle },
+                        )
                     }
                     SettingRowDivider()
                     ReconnectSettings()

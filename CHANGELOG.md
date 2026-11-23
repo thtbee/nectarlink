@@ -8,6 +8,14 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **USB only (phone).** **Settings › Devices › USB only**, or a **USB only** Quick Settings
+  tile, makes the phone reach PCs only through a USB cable: no dialing or accepting over
+  Wi-Fi, mobile data or relays, no local discovery or LocalSend, and the multicast lock is
+  released. Other connections close when you turn it on. It's silent while no PC is on the
+  cable: the app stops and shows no notification. Plug the cable in and the PC (with USB
+  debugging allowed) starts the app through adb, even when the PC app was started with the
+  cable already in; the usual notification shows while connected. Asked for in
+  [#481](https://github.com/thtbee/nectarlink/discussions/481).
 - **Report a problem.** **Settings › Connection & About › Report a problem** on the PC (and at
   the bottom of the Connection Doctor) puts what you say went wrong together with what helps
   find the cause: versions, the Doctor's checks, how features have been doing, recent crashes
