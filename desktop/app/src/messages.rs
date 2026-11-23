@@ -1549,9 +1549,10 @@ struct OpenFor {
 static NOTIFICATION: Mutex<Option<OpenFor>> = Mutex::new(None);
 
 /// Opens the conversation a text's notification is from, with its message in
-/// view. False when the notification isn't from an SMS app.
+/// view. False when the notification isn't from an SMS app, or when Messages
+/// can't show this phone's texts (permission off, or SMS not shared).
 pub fn open_from_notification(device: DeviceId, n: TextNotification) -> bool {
-    if !SMS_APPS.contains(&n.app.as_str()) {
+    if !SMS_APPS.contains(&n.app.as_str()) || !messages_available(device) {
         return false;
     }
     open_device(device);
@@ -1566,6 +1567,14 @@ pub fn open_from_notification(device: DeviceId, n: TextNotification) -> bool {
     }
     crate::bridge::app::show_messages(device);
     true
+}
+
+/// Whether Messages can show this phone's texts.
+fn messages_available(device: DeviceId) -> bool {
+    core_host::host().hub.read(|s| {
+        s.matrices.get(&device).and_then(|m| m.state("messages.sms"))
+            == Some(nectarlink_core::FeatureState::Available)
+    })
 }
 
 /// Opens the waiting notification's conversation, if the phone's list has it
