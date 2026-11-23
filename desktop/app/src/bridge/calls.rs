@@ -252,8 +252,12 @@ impl qobject::PhoneCall {
     }
 
     pub fn copy(&self, text: &QString) {
-        if let Err(reason) = crate::win::clipboard::write(&String::from(text)) {
-            tracing::warn!(reason, "can't copy");
+        match crate::win::clipboard::write(&String::from(text)) {
+            Ok(()) => crate::bridge::app::show_message(crate::i18n::tr!("App", "Copied to clipboard.")),
+            Err(reason) => {
+                tracing::warn!(reason, "can't copy");
+                crate::bridge::app::show_message(crate::i18n::tr!("App", "Could not copy to the clipboard."));
+            }
         }
     }
 

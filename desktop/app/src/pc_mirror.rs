@@ -130,7 +130,9 @@ mod imp {
             if !can_encode {
                 return false;
             }
-            let has_x11 = std::env::var_os("DISPLAY").is_some() && x11_api().is_some();
+            // XWayland's root window isn't the desktop: a Wayland session
+            // shares the screen through the portal only (#548).
+            let has_x11 = !wayland_session() && std::env::var_os("DISPLAY").is_some() && x11_api().is_some();
             has_x11 || is_wayland_screencast_available()
         }
     }
@@ -1803,6 +1805,35 @@ mod imp {
         free: unsafe extern "C" fn(*mut std::ffi::c_void) -> std::ffi::c_int,
     }
 
+    /// Xlib's own error handler ends the process. A failed capture call
+    /// (BadMatch from XGetImage, #548) only fails that frame instead.
+    #[cfg(target_os = "linux")]
+    unsafe extern "C" fn x11_capture_error(
+        _display: *mut std::ffi::c_void,
+        event: *mut XErrorEvent,
+    ) -> std::ffi::c_int {
+        // SAFETY: Xlib passes a valid event for the call.
+        let (code, request) = unsafe { ((*event).error_code, (*event).request_code) };
+        tracing::warn!(code, request, "X11 error during screen capture");
+        0
+    }
+
+    #[cfg(target_os = "linux")]
+    #[repr(C)]
+    struct XErrorEvent {
+        kind: std::ffi::c_int,
+        display: *mut std::ffi::c_void,
+        resourceid: std::ffi::c_ulong,
+        serial: std::ffi::c_ulong,
+        error_code: u8,
+        request_code: u8,
+        minor_code: u8,
+    }
+
+    #[cfg(target_os = "linux")]
+    type XErrorHandler =
+        Option<unsafe extern "C" fn(*mut std::ffi::c_void, *mut XErrorEvent) -> std::ffi::c_int>;
+
     #[cfg(target_os = "linux")]
     fn x11_api() -> Option<&'static X11Api> {
         static API: std::sync::OnceLock<Option<X11Api>> = std::sync::OnceLock::new();
@@ -1818,6 +1849,9 @@ mod imp {
             if lib.is_null() {
                 return None;
             }
+            let set_error_handler: unsafe extern "C" fn(XErrorHandler) -> XErrorHandler =
+                dl_sym(lib, c"XSetErrorHandler")?;
+            set_error_handler(Some(x11_capture_error));
             Some(X11Api {
                 open_display: dl_sym(lib, c"XOpenDisplay")?,
                 default_root_window: dl_sym(lib, c"XDefaultRootWindow")?,
@@ -1941,8 +1975,13 @@ mod imp {
     }
 
     #[cfg(target_os = "linux")]
+    fn wayland_session() -> bool {
+        std::env::var_os("WAYLAND_DISPLAY").is_some_and(|v| !v.is_empty())
+    }
+
+    #[cfg(target_os = "linux")]
     fn is_wayland_screencast_available() -> bool {
-        if std::env::var_os("WAYLAND_DISPLAY").is_none() {
+        if !wayland_session() {
             return false;
         }
         static AVAILABLE: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
@@ -1965,7 +2004,52 @@ mod imp {
     }
 
     #[cfg(target_os = "linux")]
-    type LatestFrame = Arc<Mutex<Option<(Instant, Vec<u8>)>>>;
+    type LatestFrame = Arc<Mutex<Option<WaylandFrame>>>;
+
+    #[cfg(target_os = "linux")]
+    struct WaylandFrame {
+        received: Instant,
+        pixels: Vec<u8>,
+        black_since: Option<Instant>,
+    }
+
+    #[cfg(target_os = "linux")]
+    const WAYLAND_BLACK_TIMEOUT: Duration = Duration::from_secs(3);
+
+    #[cfg(target_os = "linux")]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    enum WaylandCaptureMode {
+        PipeWire,
+        OpenGl,
+        RetryPipeWire,
+        LastOpenGl,
+    }
+
+    #[cfg(target_os = "linux")]
+    impl WaylandCaptureMode {
+        fn uses_gl(self) -> bool {
+            matches!(self, Self::OpenGl | Self::LastOpenGl)
+        }
+
+        fn fallback(self) -> Option<Self> {
+            match self {
+                Self::PipeWire => Some(Self::OpenGl),
+                Self::OpenGl => Some(Self::RetryPipeWire),
+                Self::RetryPipeWire => Some(Self::LastOpenGl),
+                Self::LastOpenGl => None,
+            }
+        }
+    }
+
+    /// A black desktop can be legitimate. Use this only to trigger one retry,
+    /// allowing a few non-black samples for the cursor embedded by the portal.
+    #[cfg(target_os = "linux")]
+    fn wayland_frame_is_nearly_black(pixels: &[u8]) -> bool {
+        const SAMPLE_STRIDE: usize = 257;
+        let samples = pixels.as_chunks::<4>().0.iter().step_by(SAMPLE_STRIDE);
+        let allowed = samples.len() / 100;
+        samples.filter(|pixel| pixel[..3].iter().any(|&value| value > 4)).nth(allowed).is_none()
+    }
 
     #[cfg(target_os = "linux")]
     struct WaylandScreenCaster {
@@ -1975,8 +2059,7 @@ mod imp {
         latest_frame: LatestFrame,
         /// The frame size the pipeline scales to.
         size: (u32, u32),
-        /// Frames go through OpenGL.
-        gl: bool,
+        mode: WaylandCaptureMode,
     }
 
     #[cfg(target_os = "linux")]
@@ -1992,26 +2075,27 @@ mod imp {
         /// The fd number the portal's PipeWire connection gets in the capture process.
         const REMOTE_FD: i32 = 3;
 
-        /// Starts gst-launch reading the stream through `remote` and writing
+        /// Starts gst-launch reading the portal's stream and writing
         /// raw BGRx frames of `dst_w` x `dst_h` to its stdout.
         fn spawn_pipeline(
-            remote: &std::os::fd::OwnedFd,
-            node_id: u32,
-            dst_w: u32,
-            dst_h: u32,
-            gl: bool,
-        ) -> std::io::Result<(std::process::Child, LatestFrame)> {
-            use std::io::Read;
+            runtime: &tokio::runtime::Runtime,
+            portal: &win::screen_portal::ScreenPortal,
+            (dst_w, dst_h): (u32, u32),
+            mode: WaylandCaptureMode,
+        ) -> anyhow::Result<(std::process::Child, LatestFrame)> {
+            use std::io::{BufRead, BufReader, Read};
             use std::os::fd::AsRawFd;
             use std::os::unix::process::CommandExt;
             use std::process::{Command, Stdio};
 
+            let remote = runtime.block_on(portal.open_remote())?;
             let raw = remote.as_raw_fd();
+            let node_id = portal.node_id;
             let mut cmd = Command::new("gst-launch-1.0");
-            cmd.args(pipeline_args(node_id, dst_w, dst_h, gl))
+            cmd.args(pipeline_args(node_id, dst_w, dst_h, mode.uses_gl()))
                 .stdin(Stdio::null())
                 .stdout(Stdio::piped())
-                .stderr(Stdio::null());
+                .stderr(Stdio::piped());
             // SAFETY: runs in the child between fork and exec and only makes
             // async-signal-safe system calls.
             unsafe {
@@ -2029,84 +2113,126 @@ mod imp {
                 });
             }
             let mut child = cmd.spawn()?;
+            drop(remote);
             let mut stdout = child.stdout.take().expect("GStreamer stdout is piped");
+            let stderr = child.stderr.take().expect("GStreamer stderr is piped");
             let latest_frame = Arc::new(Mutex::new(None));
             let frame_slot = Arc::clone(&latest_frame);
             let frame_bytes = (dst_w as usize) * (dst_h as usize) * 4;
-
-            let reader =
+            let started = Instant::now();
+            let diagnostics =
+                std::thread::Builder::new().name("wayland-screencast-log".into()).spawn(move || {
+                    for (index, line) in BufReader::new(stderr).lines().map_while(Result::ok).enumerate() {
+                        if index < 20 {
+                            tracing::warn!(node_id, ?mode, detail = %line, "GStreamer screen capture");
+                        }
+                    }
+                });
+            let readers = diagnostics.and_then(|_| {
                 std::thread::Builder::new().name("wayland-screencast-reader".into()).spawn(move || {
                     let mut buf = vec![0u8; frame_bytes];
+                    let mut first_frame = true;
+                    let mut black_since = None;
                     while stdout.read_exact(&mut buf).is_ok() {
+                        let received = Instant::now();
+                        if first_frame {
+                            first_frame = false;
+                            tracing::info!(
+                                node_id,
+                                ?mode,
+                                elapsed_ms = started.elapsed().as_millis() as u64,
+                                "received the first Wayland screen capture frame"
+                            );
+                        }
+                        if mode == WaylandCaptureMode::OpenGl && wayland_frame_is_nearly_black(&buf) {
+                            black_since.get_or_insert(received);
+                        } else {
+                            black_since = None;
+                        }
                         for chunk in buf.as_chunks_mut::<4>().0 {
                             chunk[3] = 0xFF;
                         }
                         *frame_slot.lock().unwrap_or_else(|e| e.into_inner()) =
-                            Some((Instant::now(), buf.clone()));
+                            Some(WaylandFrame { received, pixels: buf.clone(), black_since });
                     }
-                });
-            if let Err(error) = reader {
+                })
+            });
+            if let Err(error) = readers {
                 let _ = child.kill();
                 let _ = child.wait();
-                return Err(error);
+                return Err(error.into());
             }
 
             Ok((child, latest_frame))
         }
 
-        fn start(portal: win::screen_portal::ScreenPortal, dst_w: u32, dst_h: u32) -> anyhow::Result<Self> {
-            let gl = USE_GL.load(std::sync::atomic::Ordering::Relaxed);
-            let (child, latest_frame) =
-                Self::spawn_pipeline(&portal.remote, portal.node_id, dst_w, dst_h, gl)?;
-            Ok(Self { portal, started: Instant::now(), child, latest_frame, size: (dst_w, dst_h), gl })
+        fn start(
+            runtime: &tokio::runtime::Runtime,
+            portal: win::screen_portal::ScreenPortal,
+            size: (u32, u32),
+        ) -> anyhow::Result<Self> {
+            let mode = WaylandCaptureMode::PipeWire;
+            let (child, latest_frame) = Self::spawn_pipeline(runtime, &portal, size, mode)?;
+            Ok(Self { portal, started: Instant::now(), child, latest_frame, size, mode })
         }
 
-        /// No frame yet through the CPU pipeline: GPU buffers (NVIDIA's
-        /// DMABuf) only come through OpenGL, so try that, once, and keep
-        /// using it for later captures (D511).
-        fn switch_to_gl(&mut self) -> anyhow::Result<()> {
-            let (dst_w, dst_h) = self.size;
+        fn recover(&mut self, runtime: &tokio::runtime::Runtime, reason: &str) -> anyhow::Result<bool> {
+            let Some(next) = self.mode.fallback().filter(|next| !next.uses_gl() || gl_elements_installed())
+            else {
+                anyhow::bail!("{reason}");
+            };
+            tracing::warn!(node_id = self.portal.node_id, from = ?self.mode, to = ?next, reason,
+                "switching Wayland screen capture pipeline");
             let _ = self.child.kill();
             let _ = self.child.wait();
-            let (child, latest_frame) =
-                Self::spawn_pipeline(&self.portal.remote, self.portal.node_id, dst_w, dst_h, true)?;
-            tracing::info!("no frames from PipeWire on the CPU; capturing through OpenGL");
-            USE_GL.store(true, std::sync::atomic::Ordering::Relaxed);
+            let (child, latest_frame) = Self::spawn_pipeline(runtime, &self.portal, self.size, next)?;
             self.child = child;
             self.latest_frame = latest_frame;
             self.started = Instant::now();
-            self.gl = true;
-            Ok(())
+            self.mode = next;
+            Ok(false)
         }
 
-        fn capture(&mut self, bgra: &mut Vec<u8>) -> anyhow::Result<bool> {
+        fn capture(&mut self, runtime: &tokio::runtime::Runtime, bgra: &mut Vec<u8>) -> anyhow::Result<bool> {
             const FRAME_TIMEOUT: Duration = Duration::from_secs(8);
             const TRY_GL_AFTER: Duration = Duration::from_secs(3);
             if self.portal.is_closed() {
                 anyhow::bail!("the Wayland portal closed the screen sharing session");
             }
             if let Some(status) = self.child.try_wait()? {
-                anyhow::bail!("the PipeWire capture process exited ({status})");
-            }
-            let nothing_yet = self.latest_frame.lock().unwrap_or_else(|e| e.into_inner()).is_none();
-            if nothing_yet && !self.gl && self.started.elapsed() >= TRY_GL_AFTER && gl_elements_installed() {
-                self.switch_to_gl()?;
-                return Ok(false);
+                return self.recover(runtime, &format!("GStreamer capture exited ({status})"));
             }
             let latest = self.latest_frame.lock().unwrap_or_else(|e| e.into_inner());
-            if latest.as_ref().map_or(self.started, |(at, _)| *at).elapsed() >= FRAME_TIMEOUT {
-                anyhow::bail!("the PipeWire capture process stopped supplying frames");
-            }
-            let Some((_, frame)) = latest.as_ref() else { return Ok(false) };
-            bgra.clear();
-            bgra.extend_from_slice(frame);
-            Ok(true)
+            let reason = match latest.as_ref() {
+                Some(frame) if frame.received.elapsed() >= FRAME_TIMEOUT => {
+                    "capture stopped supplying frames"
+                }
+                Some(frame)
+                    if frame.black_since.is_some_and(|at| frame.received - at >= WAYLAND_BLACK_TIMEOUT) =>
+                {
+                    "OpenGL capture has been nearly black for 3 seconds"
+                }
+                Some(frame) => {
+                    bgra.clear();
+                    bgra.extend_from_slice(&frame.pixels);
+                    return Ok(true);
+                }
+                None if self.started.elapsed() >= FRAME_TIMEOUT => "capture supplied no frames",
+                None if !self.mode.uses_gl() && self.started.elapsed() >= TRY_GL_AFTER => {
+                    drop(latest);
+                    if !gl_elements_installed()
+                        || self.latest_frame.lock().unwrap_or_else(|e| e.into_inner()).is_some()
+                    {
+                        return Ok(false);
+                    }
+                    return self.recover(runtime, "PipeWire capture supplied no frame in 3 seconds");
+                }
+                None => return Ok(false),
+            };
+            drop(latest);
+            self.recover(runtime, reason)
         }
     }
-
-    /// Capture through OpenGL from the start: an earlier CPU capture got no frames.
-    #[cfg(target_os = "linux")]
-    static USE_GL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
     /// Whether GStreamer's OpenGL elements are installed (gst-plugins-base's gl).
     #[cfg(target_os = "linux")]
@@ -2147,6 +2273,10 @@ mod imp {
                 ["!", "glupload", "!", "glcolorconvert", "!", "gldownload", "!", "video/x-raw,format=RGBA"]
                     .map(str::to_owned),
             );
+        } else {
+            // Request system memory from PipeWire. videoconvert also accepts
+            // DMA-BUF caps, which would let the two paths select the same buffers.
+            args.extend(["!", "video/x-raw"].map(str::to_owned));
         }
         args.extend([
             "!".to_owned(),
@@ -2285,6 +2415,10 @@ mod imp {
             return;
         };
         let runtime = &core_host::host().runtime;
+        // Dropping the Wayland portal's zbus signal stream schedules a Tokio task.
+        // Keep the runtime entered through capture and teardown on this thread.
+        #[cfg(target_os = "linux")]
+        let _runtime_guard = runtime.enter();
         #[cfg(target_os = "linux")]
         let (mut wayland, wayland_dims) = if options.watch.is_none() && is_wayland_screencast_available() {
             let portal = runtime.block_on(win::screen_portal::ScreenPortal::open(
@@ -2294,7 +2428,7 @@ mod imp {
             ));
             match portal.and_then(|portal| {
                 let dims = target_dimensions(portal.size.0, portal.size.1, options.max_size);
-                WaylandScreenCaster::start(portal, dims.0, dims.1).map(|caster| (caster, dims))
+                WaylandScreenCaster::start(runtime, portal, dims).map(|caster| (caster, dims))
             }) {
                 Ok((caster, dims)) => {
                     if caster.portal.input {
@@ -2310,6 +2444,14 @@ mod imp {
                     return;
                 }
             }
+        } else if options.watch.is_none() && wayland_session() {
+            // X11 capture of XWayland fails on Wayland, and some compositors
+            // answer it with an error that used to end the app (#548).
+            let error = anyhow::anyhow!(
+                "sharing the screen on Wayland needs xdg-desktop-portal and GStreamer's PipeWire plugin (gst-launch-1.0 and pipewiresrc)"
+            );
+            finish_failed_capture(peer, &stop, &error);
+            return;
         } else {
             (None, None)
         };
@@ -2411,7 +2553,7 @@ mod imp {
         #[cfg(target_os = "linux")]
         let mut capture_failed = None;
         #[cfg(target_os = "linux")]
-        let mut last_video = Instant::now();
+        let mut last_video = None;
         while !stop.load(Ordering::Relaxed) && !sender.is_closed() {
             let tick_start = Instant::now();
 
@@ -2481,13 +2623,19 @@ mod imp {
 
             #[cfg(target_os = "linux")]
             if let Some(caster) = wayland.as_mut() {
-                if last_video.elapsed() >= Duration::from_secs(12) {
-                    capture_failed = Some(anyhow::anyhow!("the video encoder stopped producing frames"));
-                    break;
-                }
-                match caster.capture(&mut bgra) {
-                    Ok(true) => {}
+                match caster.capture(runtime, &mut bgra) {
+                    Ok(true) => {
+                        if last_video.is_none() && encoder.is_some() {
+                            force_keyframe.store(true, Ordering::Relaxed);
+                        }
+                        if last_video.get_or_insert_with(Instant::now).elapsed() >= Duration::from_secs(12) {
+                            capture_failed =
+                                Some(anyhow::anyhow!("the video encoder stopped producing frames"));
+                            break;
+                        }
+                    }
                     Ok(false) => {
+                        last_video = None;
                         std::thread::sleep(frame_interval);
                         continue;
                     }
@@ -2560,7 +2708,7 @@ mod imp {
                     Ok(packets) => {
                         #[cfg(target_os = "linux")]
                         if !packets.is_empty() {
-                            last_video = Instant::now();
+                            last_video = Some(Instant::now());
                         }
                         let mut send_failed = false;
                         for (is_keyframe, bytes) in packets {
@@ -2839,13 +2987,42 @@ mod imp {
             assert!(args.contains(&"video/x-raw,format=BGRx,width=1280,height=720".to_owned()));
             assert_eq!(args.last().map(String::as_str), Some("fd=1"));
             assert!(!args.iter().any(|a| a.starts_with("gl")));
+            assert!(args.windows(3).any(|args| args == ["video/x-raw", "!", "videoconvert"]));
 
             // Through OpenGL: GPU buffers downloaded as RGBA, then the same tail.
             let gl = pipeline_args(57, 1280, 720, true);
             let at = |name: &str| gl.iter().position(|a| a == name).unwrap_or(usize::MAX);
             assert!(at("glupload") < at("glcolorconvert") && at("glcolorconvert") < at("gldownload"));
             assert!(at("gldownload") < at("videoconvert"));
+            assert!(!gl.iter().any(|arg| arg == "video/x-raw"));
             assert!(gl.contains(&"video/x-raw,format=BGRx,width=1280,height=720".to_owned()));
+        }
+
+        #[cfg(target_os = "linux")]
+        #[test]
+        fn wayland_capture_can_return_to_pipewire_without_looping() {
+            use WaylandCaptureMode::{LastOpenGl, OpenGl, PipeWire, RetryPipeWire};
+
+            assert_eq!(PipeWire.fallback(), Some(OpenGl));
+            assert_eq!(OpenGl.fallback(), Some(RetryPipeWire));
+            assert!(!RetryPipeWire.uses_gl());
+            assert_eq!(RetryPipeWire.fallback(), Some(LastOpenGl));
+            assert!(LastOpenGl.uses_gl());
+            assert_eq!(LastOpenGl.fallback(), None);
+        }
+
+        #[cfg(target_os = "linux")]
+        #[test]
+        fn wayland_black_frame_probe_ignores_alpha_and_small_cursor() {
+            let mut frame = [0u8; 320 * 240 * 4];
+            for pixel in frame.as_chunks_mut::<4>().0 {
+                pixel[3] = 255;
+            }
+            frame[..4].fill(255);
+            assert!(wayland_frame_is_nearly_black(&frame));
+
+            frame[320 * 4 * 100..320 * 4 * 120].fill(20);
+            assert!(!wayland_frame_is_nearly_black(&frame));
         }
 
         #[test]

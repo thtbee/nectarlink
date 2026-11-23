@@ -9,6 +9,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.RemoteInput
@@ -28,7 +29,10 @@ import kotlinx.coroutines.launch
  * still open behind it.
  */
 object PairingNotification {
-    private const val CHANNEL = "elevated"
+    /** Set up to come through Do Not Disturb (#496); channels can't change that later. */
+    private const val CHANNEL = "elevated_pairing"
+    /** The first channel, without that. */
+    private const val OLD_CHANNEL = "elevated"
     private const val ID = 7
     private const val KEY_CODE = "code"
     /** How long the receiver waits for pairing before letting Android move on. */
@@ -48,9 +52,21 @@ object PairingNotification {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             return false
         }
-        context.getSystemService(NotificationManager::class.java).createNotificationChannel(
-            NotificationChannel(CHANNEL, context.getString(R.string.channel_elevated), NotificationManager.IMPORTANCE_HIGH),
+        val manager = context.getSystemService(NotificationManager::class.java)
+        manager.deleteNotificationChannel(OLD_CHANNEL)
+        // The user asked for the code just now, so it may pass Do Not Disturb.
+        // Android only honours that with DND access and a mode that lets
+        // priority channels through, so say why the code may not show (#496).
+        manager.createNotificationChannel(
+            NotificationChannel(CHANNEL, context.getString(R.string.channel_elevated), NotificationManager.IMPORTANCE_HIGH)
+                .apply { setBypassDnd(true) },
         )
+        val dnd = manager.currentInterruptionFilter.let {
+            it != NotificationManager.INTERRUPTION_FILTER_ALL && it != NotificationManager.INTERRUPTION_FILTER_UNKNOWN
+        }
+        if (dnd) {
+            Toast.makeText(context, R.string.elevated_pair_dnd, Toast.LENGTH_LONG).show()
+        }
         val reply = PendingIntent.getBroadcast(
             context, ID, Intent(context, Receiver::class.java),
             PendingIntent.FLAG_MUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,

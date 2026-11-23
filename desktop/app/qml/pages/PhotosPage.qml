@@ -1034,6 +1034,11 @@ Item {
 
             Image {
                 id: stageImage
+                // The full photo couldn't be shown here (HEIC, which Qt can't
+                // read, #559): the preview stays, and Open in Photos shows it.
+                property bool fullFailed: false
+                readonly property string fullUrl: page.viewedItem && page.viewedItem.fullUrl ? page.viewedItem.fullUrl : ""
+                onFullUrlChanged: fullFailed = false
                 anchors.fill: parent
                 anchors.margins: 32
                 asynchronous: true
@@ -1042,9 +1047,30 @@ Item {
                 mipmap: true
                 source: {
                     if (!page.viewedItem) return ""
-                    if (page.viewedItem.fullUrl && page.viewedItem.fullUrl.length > 0)
-                        return page.viewedItem.fullUrl
+                    if (fullUrl.length > 0 && !fullFailed)
+                        return fullUrl
                     return page.viewedItem.thumb || ""
+                }
+                onStatusChanged: if (status === Image.Error && fullUrl.length > 0 && source == fullUrl) fullFailed = true
+            }
+
+            Rectangle {
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: 20
+                anchors.horizontalCenter: parent.horizontalCenter
+                visible: stageImage.fullFailed
+                width: Math.min(parent.width - 48, cannotShow.implicitWidth + 28)
+                height: cannotShow.implicitHeight + 16
+                radius: Theme.radiusMd
+                color: Theme.surfaceContainerHigh
+                Txt {
+                    id: cannotShow
+                    anchors.centerIn: parent
+                    width: Math.min(implicitWidth, parent.width - 28)
+                    role: "bodySmall"
+                    wrapMode: Text.WordWrap
+                    horizontalAlignment: Text.AlignHCenter
+                    text: qsTr("This photo's format can't be shown here at full size. Open in Photos shows it.")
                 }
             }
 

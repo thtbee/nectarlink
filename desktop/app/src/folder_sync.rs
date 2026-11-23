@@ -6,7 +6,7 @@
 
 use crate::i18n::tr;
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     path::{Path, PathBuf},
     sync::{Mutex, OnceLock},
     time::{Duration, SystemTime, UNIX_EPOCH},
@@ -224,12 +224,13 @@ pub fn plan_removals(
     pc_files: &[SyncEntry],
     last_synced: &HashMap<String, (u64, i64)>,
 ) -> Vec<String> {
-    if phone_files.is_empty() {
+    if phone_files.is_empty() || pc_files.is_empty() {
         return Vec::new();
     }
+    let phone_paths: HashSet<&str> = phone_files.iter().map(|ph| ph.rel_path.as_str()).collect();
     pc_files
         .iter()
-        .filter(|pc| !phone_files.iter().any(|ph| ph.rel_path == pc.rel_path))
+        .filter(|pc| !phone_paths.contains(pc.rel_path.as_str()))
         .filter(|pc| last_synced.get(&pc.rel_path).is_some_and(|base| matches_state(pc, *base)))
         .map(|pc| pc.rel_path.clone())
         .collect()
@@ -257,6 +258,46 @@ pub fn plan_two_way_removals(
         return (Vec::new(), Vec::new());
     }
     (from_pc, from_phone)
+}
+
+/// Drops copy actions for files already scheduled for removal in this pass so
+/// a removed file isn't copied back from the side it's leaving.
+fn filter_removed_actions(
+    actions: Vec<SyncAction>,
+    removals: &[String],
+    phone_removals: &[String],
+) -> Vec<SyncAction> {
+    if removals.is_empty() && phone_removals.is_empty() {
+        return actions;
+    }
+    let removal_set: HashSet<&str> = removals.iter().map(String::as_str).collect();
+    let phone_removal_set: HashSet<&str> = phone_removals.iter().map(String::as_str).collect();
+    actions
+        .into_iter()
+        .filter(|action| match action {
+            SyncAction::PullToPc { rel_path } => !phone_removal_set.contains(rel_path.as_str()),
+            SyncAction::PushToPhone { rel_path } => !removal_set.contains(rel_path.as_str()),
+            SyncAction::ConflictRenamePcAndPull { .. } => true,
+        })
+        .collect()
+}
+
+/// Prunes baseline entries gone from both sides and records files currently in
+/// sync across phone and PC.
+fn reconcile_baseline(
+    mut last_synced: HashMap<String, (u64, i64)>,
+    phone_files: &[SyncEntry],
+    pc_files: &[SyncEntry],
+) -> HashMap<String, (u64, i64)> {
+    let phone_paths: HashSet<&str> = phone_files.iter().map(|e| e.rel_path.as_str()).collect();
+    let pc_map: HashMap<&str, &SyncEntry> = pc_files.iter().map(|e| (e.rel_path.as_str(), e)).collect();
+    last_synced.retain(|rel, _| phone_paths.contains(rel.as_str()) || pc_map.contains_key(rel.as_str()));
+    for ph in phone_files {
+        if pc_map.get(ph.rel_path.as_str()).is_some_and(|pc| matches_state(pc, (ph.size, ph.modified_ms))) {
+            last_synced.insert(ph.rel_path.clone(), (ph.size, ph.modified_ms));
+        }
+    }
+    last_synced
 }
 
 /// Pure reconciliation planner for the one-way ([`MODE_PHONE_TO_PC`],
@@ -774,27 +815,8 @@ pub async fn sync_now(node: &Node) -> SyncReport {
             (Vec::new(), Vec::new())
         };
         // What's being removed isn't copied back from the side it's leaving.
-        let actions: Vec<SyncAction> = actions
-            .into_iter()
-            .filter(|action| match action {
-                SyncAction::PullToPc { rel_path } => !phone_removals.contains(rel_path),
-                SyncAction::PushToPhone { rel_path } => !removals.contains(rel_path),
-                SyncAction::ConflictRenamePcAndPull { .. } => true,
-            })
-            .collect();
-        let mut updated_baseline = last_synced;
-        updated_baseline.retain(|rel, _| {
-            phone_files.iter().any(|e| e.rel_path == *rel) || pc_files.iter().any(|e| e.rel_path == *rel)
-        });
-        for ph in &phone_files {
-            if pc_files.iter().any(|pc| {
-                pc.rel_path == ph.rel_path
-                    && pc.size == ph.size
-                    && (pc.modified_ms - ph.modified_ms).abs() <= 2_000
-            }) {
-                updated_baseline.insert(ph.rel_path.clone(), (ph.size, ph.modified_ms));
-            }
-        }
+        let actions = filter_removed_actions(actions, &removals, &phone_removals);
+        let mut updated_baseline = reconcile_baseline(last_synced, &phone_files, &pc_files);
 
         // A quiet notification with a bar while files go across (#491).
         let total = actions.len();
@@ -1200,5 +1222,112 @@ mod tests {
             assert_eq!(suggested_pc_folder("Download"), Some(documents.join("Phone Download")));
         }
         assert_eq!(suggested_pc_folder(".."), None);
+    }
+
+    #[test]
+    fn reconcile_baseline_prunes_vanished_and_records_matching_entries() {
+        let base = HashMap::from([
+            ("vanished.txt".to_owned(), (10, 1_000)),
+            ("pc_only.txt".to_owned(), (20, 2_000)),
+            ("diverged.txt".to_owned(), (30, 3_000)),
+            ("synced.txt".to_owned(), (40, 4_000)),
+        ]);
+        let phone = vec![
+            entry("diverged.txt", 31, 9_000),
+            entry("synced.txt", 40, 5_000),
+            entry("newly_matched.txt", 50, 6_000),
+        ];
+        let pc = vec![
+            entry("pc_only.txt", 20, 2_000),
+            entry("diverged.txt", 32, 9_500),
+            entry("synced.txt", 40, 6_500),
+            entry("newly_matched.txt", 50, 7_500),
+        ];
+
+        let updated = reconcile_baseline(base, &phone, &pc);
+        assert!(!updated.contains_key("vanished.txt"));
+        assert_eq!(updated.get("pc_only.txt"), Some(&(20, 2_000)));
+        assert_eq!(updated.get("diverged.txt"), Some(&(30, 3_000)));
+        assert_eq!(updated.get("synced.txt"), Some(&(40, 5_000)));
+        assert_eq!(updated.get("newly_matched.txt"), Some(&(50, 6_000)));
+        assert_eq!(updated.len(), 4);
+    }
+
+    #[test]
+    fn filter_removed_actions_drops_only_scheduled_removals() {
+        let actions = vec![
+            SyncAction::PullToPc { rel_path: "del_phone.txt".into() },
+            SyncAction::PullToPc { rel_path: "keep_pull.txt".into() },
+            SyncAction::PushToPhone { rel_path: "del_pc.txt".into() },
+            SyncAction::PushToPhone { rel_path: "keep_push.txt".into() },
+            SyncAction::ConflictRenamePcAndPull {
+                rel_path: "del_pc.txt".into(),
+                conflict_rel_path: "del_pc (conflict).txt".into(),
+            },
+        ];
+        let filtered =
+            filter_removed_actions(actions, &["del_pc.txt".to_owned()], &["del_phone.txt".to_owned()]);
+        assert_eq!(
+            filtered,
+            vec![
+                SyncAction::PullToPc { rel_path: "keep_pull.txt".into() },
+                SyncAction::PushToPhone { rel_path: "keep_push.txt".into() },
+                SyncAction::ConflictRenamePcAndPull {
+                    rel_path: "del_pc.txt".into(),
+                    conflict_rel_path: "del_pc (conflict).txt".into(),
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn large_scale_removal_and_baseline_reconciliation_matches_expected_sets() {
+        let total = 5_000usize;
+        let mut phone = Vec::with_capacity(total);
+        let mut pc = Vec::with_capacity(total);
+        let mut base = HashMap::with_capacity(total + 200);
+
+        for i in 0..total {
+            let name = format!("dir_{}/file_{i:04}.jpg", i % 20);
+            let e = entry(&name, 1_000 + i as u64, 1_700_000_000_000 + i as i64);
+            if i < 50 {
+                // Deleted from phone, unchanged on PC -> remove from PC.
+                pc.push(e.clone());
+                base.insert(name, (e.size, e.modified_ms));
+            } else if i < 100 {
+                // Deleted from PC, unchanged on phone -> remove from phone.
+                phone.push(e.clone());
+                base.insert(name, (e.size, e.modified_ms));
+            } else if i < 200 {
+                // Newly matching on both sides, not yet in baseline.
+                phone.push(e.clone());
+                pc.push(e);
+            } else {
+                // Unchanged and present on both sides.
+                phone.push(e.clone());
+                pc.push(e.clone());
+                base.insert(name, (e.size, e.modified_ms));
+            }
+        }
+        // Vanished from both sides -> should be pruned from baseline.
+        for i in 0..200 {
+            base.insert(format!("vanished/old_{i:04}.jpg"), (500, 1_000));
+        }
+
+        let one_way = plan_removals(&phone, &pc, &base);
+        assert_eq!(one_way.len(), 50);
+        assert_eq!(one_way[0], "dir_0/file_0000.jpg");
+        assert_eq!(one_way[49], "dir_9/file_0049.jpg");
+
+        let (from_pc, from_phone) = plan_two_way_removals(&phone, &pc, &base);
+        assert_eq!(from_pc.len(), 50);
+        assert_eq!(from_phone.len(), 50);
+        assert_eq!(from_phone[0], "dir_10/file_0050.jpg");
+        assert_eq!(from_phone[49], "dir_19/file_0099.jpg");
+
+        let reconciled = reconcile_baseline(base, &phone, &pc);
+        assert_eq!(reconciled.len(), total);
+        assert!(!reconciled.contains_key("vanished/old_0000.jpg"));
+        assert!(reconciled.contains_key("dir_10/file_0150.jpg"));
     }
 }

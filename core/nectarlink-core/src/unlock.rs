@@ -497,8 +497,13 @@ pub(crate) async fn password(shared: &Arc<Shared>, session: &Arc<Session>, user:
     if !shared.offers(&session.peer, KEY)? || !shared.we_offer(PC) {
         return Err(Error::Unsupported);
     }
-    if !allowed(shared, session) {
-        return Err(Error::Denied);
+    // Not a no from the phone's owner, so the PC can go on to another phone
+    // (#535): one with unlocking off can't, one away from this network is away.
+    if !shared.toggle_on(&session.peer, TOGGLE) {
+        return Err(Error::Unsupported);
+    }
+    if !on_local_network(shared, session) {
+        return Err(Error::Offline);
     }
     let entry = shared.store.unlock_entry(&session.peer, user)?.ok_or(Error::NotFound)?;
     let id = lock(&shared.unlock_requests).begin(session.peer, user, Instant::now()).map_err(refused)?;

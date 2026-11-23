@@ -119,7 +119,8 @@
     <string name="elevated_pair_title">Связать NectarLink с отладкой по Wi-Fi</string>
     <string name="elevated_pair_text">В разделе «Отладка по Wi-Fi» нажмите «Подключить устройство с помощью кода подключения», затем введите код здесь.</string>
     <string name="elevated_pair_action">Ввести код</string>
-    <string name="elevated_pair_collapsed">Потяните это уведомление вниз, затем нажмите «Ввести код».</string>
+    <string name="elevated_pair_collapsed">Потяните это уведомление вниз (на телефонах Xiaomi нажмите и удерживайте его), затем нажмите «Ввести код».</string>
+    <string name="elevated_pair_dnd">Включён режим «Не беспокоить», поэтому уведомление с кодом сопряжения может не появиться. Выключите его, пока сопряжение не завершится.</string>
     <string name="elevated_pair_hint">6-значный код подключения</string>
     <string name="elevated_pairing">Связывание…</string>
     <string name="elevated_no_dialog">Код подключения не показан. В разделе «Отладка по Wi-Fi» нажмите «Подключить устройство с помощью кода подключения», затем введите его здесь.</string>

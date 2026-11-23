@@ -35,7 +35,6 @@ pub(crate) struct ScreenPortal {
     conn: Connection,
     path: OwnedObjectPath,
     closed: MessageStream,
-    pub(crate) remote: OwnedFd,
     pub(crate) node_id: u32,
     pub(crate) size: (u32, u32),
     pub(crate) input: bool,
@@ -83,6 +82,23 @@ impl ScreenPortal {
             Pin::new(&mut self.closed).poll_next(&mut TaskContext::from_waker(Waker::noop())),
             Poll::Pending
         )
+    }
+
+    /// Each GStreamer process needs its own PipeWire connection to this session.
+    pub(crate) async fn open_remote(&self) -> Result<OwnedFd> {
+        let reply = self
+            .conn
+            .call_method(
+                Some(PORTAL),
+                DESKTOP,
+                Some(SCREEN_CAST),
+                "OpenPipeWireRemote",
+                &(&self.path, Options::new()),
+            )
+            .await
+            .context("open the portal's PipeWire connection")?;
+        let remote: zbus::zvariant::OwnedFd = reply.body().deserialize()?;
+        Ok(remote.into())
     }
 
     pub(crate) fn input_portal(&self) -> super::input::RemoteDesktopPortal {
@@ -210,28 +226,7 @@ impl PortalRequest {
             .map(|(w, h)| (w as u32, h as u32))
             .unwrap_or((1920, 1080));
 
-        self.method = "OpenPipeWireRemote";
-        let reply = self
-            .conn
-            .call_method(
-                Some(PORTAL),
-                DESKTOP,
-                Some(SCREEN_CAST),
-                "OpenPipeWireRemote",
-                &(&path, Options::new()),
-            )
-            .await
-            .context("open the portal's PipeWire connection")?;
-        let remote: zbus::zvariant::OwnedFd = reply.body().deserialize()?;
-        Ok(ScreenPortal {
-            conn: self.conn.clone(),
-            path,
-            closed,
-            remote: remote.into(),
-            node_id,
-            size,
-            input,
-        })
+        Ok(ScreenPortal { conn: self.conn.clone(), path, closed, node_id, size, input })
     }
 
     async fn input_available(&self) -> bool {

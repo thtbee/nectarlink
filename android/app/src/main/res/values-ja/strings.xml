@@ -126,6 +126,7 @@
     <string name="elevated_pair_text">「ワイヤレス デバッグ」で「ペアリングコードでデバイスをペアリング」をタップし、ここにコードを入力してください。</string>
     <string name="elevated_pair_action">コードを入力</string>
     <string name="elevated_pair_collapsed">この通知を下にスワイプし（Xiaomi製スマートフォンの場合は長押し）、「コードを入力」をタップしてください。</string>
+    <string name="elevated_pair_dnd">サイレントモードがオンのため、ペア設定コードの通知が表示されないことがあります。ペア設定が終わるまでオフにしてください。</string>
     <string name="elevated_pair_hint">6桁のペアリングコード</string>
     <string name="elevated_pairing">ペアリング…</string>
     <string name="elevated_no_dialog">ペアリングコードが表示されていません。「ワイヤレス デバッグ」で「ペアリングコードでデバイスをペアリング」をタップし、ここに入力してください。</string>

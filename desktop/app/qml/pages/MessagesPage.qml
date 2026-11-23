@@ -133,14 +133,31 @@ Item {
         }
     }
 
+    // The message a clicked notification is about, ringed for a moment.
+    property string focusId: ""
+    Timer {
+        id: focusTimer
+        interval: 2600
+        onTriggered: page.focusId = ""
+    }
+
     Connections {
         target: Messages
         function onComposeToChanged() { page.applyComposeTarget() }
         function onThreadChanged() {
             page.switchDraft()
+            // A conversation opens at its latest message, whatever was read before.
+            messageList.openedAtEnd()
             if (Messages.thread.length > 0) {
                 page.composing = false
                 Qt.callLater(() => composer.focusText())
+            }
+        }
+        function onFocusMessageChanged() {
+            page.focusId = Messages.focusMessage
+            if (page.focusId.length > 0) {
+                focusTimer.restart()
+                messageList.keepPlace()
             }
         }
     }
@@ -402,6 +419,7 @@ Item {
         }
 
         ScrollRail { flick: threadList }
+        WheelScroll { flick: threadList }
         ListView {
             id: threadList
             anchors.top: appFilterBar.bottom
@@ -715,6 +733,13 @@ Item {
         }
 
         ScrollRail { flick: messageList }
+        WheelScroll {
+            id: wheelScroll
+            flick: messageList
+            // Same as a drag: the reader is somewhere else than the latest.
+            onMoved: { messageList.followLatest = false; page.focusId = "" }
+            onSettled: messageList.notePlace()
+        }
         ListView {
             id: messageList
             anchors.top: chatHeader.bottom
@@ -734,12 +759,32 @@ Item {
             // replaces the whole list, which puts a list view back at the top, and
             // pictures grow a bubble once loaded: stay where the reader was. By the
             // message at the top of the view, since a list of bubbles of different
-            // heights only estimates how tall it is.
+            // heights only estimates how tall it is. Only the reader's own scrolling
+            // lets go of the latest: a list being rebuilt moves by itself.
             property bool followLatest: true
             property string keptId: ""
             property real keptOffset: 0
-            property string lastThreadId: ""
+            // Being rebuilt: nothing it does then is the reader's.
+            property bool settling: false
+            readonly property bool readerMoving: moving || dragging || flicking || wheelScroll.active
+            function openedAtEnd() {
+                followLatest = true
+                keptId = ""
+                Qt.callLater(keepPlace)
+            }
             function keepPlace() {
+                if (page.focusId.length > 0) {
+                    const at = page.messages.findIndex(m => m.id === page.focusId)
+                    if (at >= 0) {
+                        // The latest is at the end, and goes on following.
+                        followLatest = at === page.messages.length - 1
+                        if (followLatest)
+                            positionViewAtEnd()
+                        else
+                            positionViewAtIndex(at, ListView.Contain)
+                        return
+                    }
+                }
                 if (followLatest) {
                     positionViewAtEnd()
                     return
@@ -765,28 +810,30 @@ Item {
                     keptOffset = contentY - bubble.y
                 }
             }
+            // Near the top, by the reader's own scrolling.
+            function loadOlderIfNeeded() {
+                if (settling || !readerMoving || !Messages.more || count === 0 || Messages.loadingOlder)
+                    return
+                if (contentY - (originY - topMargin) > 160)
+                    return
+                notePlace()
+                followLatest = false
+                Messages.loadOlder()
+            }
             onModelChanged: {
-                if (Messages.thread !== lastThreadId) {
-                    lastThreadId = Messages.thread
-                    followLatest = true
-                }
+                settling = true
                 forceLayout()
                 keepPlace()
+                settling = false
             }
-            onContentHeightChanged: if (followLatest) Qt.callLater(positionViewAtEnd)
-            onHeightChanged: if (followLatest) Qt.callLater(positionViewAtEnd)
+            onContentHeightChanged: if (followLatest || page.focusId.length > 0) Qt.callLater(keepPlace)
+            onHeightChanged: if (followLatest || page.focusId.length > 0) Qt.callLater(keepPlace)
+            onContentYChanged: loadOlderIfNeeded()
             // Before it ends, or the height changing as bubbles load pulls the reader
             // back down mid-scroll.
-            onMovementStarted: followLatest = false
+            onMovementStarted: { followLatest = false; page.focusId = "" }
             onMovementEnded: notePlace()
             onFlickEnded: notePlace()
-            onAtYBeginningChanged: {
-                if (atYBeginning && Messages.more && count > 0 && !Messages.loadingOlder) {
-                    notePlace()
-                    followLatest = false
-                    Messages.loadOlder()
-                }
-            }
             header: Item {
                 width: messageList.width
                 height: Messages.loadingOlder ? 40 : 0
@@ -900,6 +947,8 @@ Item {
                 }
                 else
                     Messages.send(input.text)
+                // Your own message is where you look next, wherever you had scrolled to.
+                messageList.openedAtEnd()
                 input.text = ""
                 Messages.saveDraft(page.draftKey, "")
                 page.composing = false
@@ -1402,6 +1451,17 @@ Item {
                 selectionColor: Theme.primary
                 selectedTextColor: Theme.primaryContent
             }
+        }
+        // Ringed for a moment when a clicked notification brought it here.
+        Rectangle {
+            anchors.fill: content
+            anchors.margins: -3
+            radius: content.radius + 3
+            color: "transparent"
+            border.width: 2
+            border.color: Theme.primary
+            opacity: page.focusId === bubble.message.id ? 1 : 0
+            Behavior on opacity { NumberAnimation { duration: Theme.fadeFast } }
         }
         Txt {
             id: meta

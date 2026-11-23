@@ -128,6 +128,7 @@
     <string name="elevated_pair_text">In Wireless debugging, tap Pair device with pairing code, then type the code here.</string>
     <string name="elevated_pair_action">Enter code</string>
     <string name="elevated_pair_collapsed">Swipe this notification down (on Xiaomi phones, long-press it), then tap Enter code.</string>
+    <string name="elevated_pair_dnd">Do Not Disturb is on, so the pairing code notification may not show. Turn it off until pairing is done.</string>
     <string name="elevated_pair_hint">6-digit pairing code</string>
     <string name="elevated_pairing">Pairing…</string>
     <string name="elevated_no_dialog">The pairing code isn\'t showing. In Wireless debugging, tap Pair device with pairing code, then type it here.</string>
