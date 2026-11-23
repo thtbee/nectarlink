@@ -30,6 +30,13 @@ Tap **Control PC** on the Android Home screen. The first time you open it, click
 - **Right-click**: Tap with two fingers, or tap the **Right** button.
 - **Middle-click**: Tap the **Middle** button.
 - **Scroll**: Drag two fingers up, down, left, or right.
+- **Zoom**: Spread or pinch two fingers.
+- **Task View** and **show the desktop**: Swipe three fingers up or down.
+- **Switch apps**: Swipe three fingers left or right and keep them down to go through the app switcher; lift them to open the app picked.
+- **Switch virtual desktops**: Swipe four fingers left or right.
+- **Search**: Tap with three fingers. **Notifications**: Tap with four fingers.
+
+  These work as on a Windows laptop's touchpad, and on Linux with the desktop's own keys. They need the PC on the newest NectarLink; macOS doesn't take them yet.
 - **Click and drag**: Double-tap and hold with one finger, then drag.
 
 #### Air Mouse Mode

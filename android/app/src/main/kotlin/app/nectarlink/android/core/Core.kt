@@ -2731,6 +2731,10 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     fun remoteKey(id: String, key: String, mods: List<String> = emptyList(), onStatus: ((RemoteAccess) -> Unit)? = null) =
         remoteCommand(onStatus) { it.remoteKey(id, key, mods) }
 
+    /** Sends a touchpad gesture (`"task_view"`, `"switcher_next"`...) to a PC that offers `input.gestures`. */
+    fun remoteGesture(id: String, gesture: String, onStatus: ((RemoteAccess) -> Unit)? = null) =
+        remoteCommand(onStatus) { it.remoteGesture(id, gesture) }
+
     /** Sends a presentation slide command (`"next"`, `"previous"`, `"start"`, `"stop"`, `"black"`). */
     fun remoteSlide(id: String, action: String, onStatus: ((RemoteAccess) -> Unit)? = null) =
         remoteCommand(onStatus) { it.remoteSlide(id, action) }

@@ -74,6 +74,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -553,6 +554,7 @@ fun PcMirrorView(
     onStatus: (Core.RemoteAccess) -> Unit = {},
 ) {
     val context = LocalContext.current
+    val gestures = core.state.collectAsState().value.devices.firstOrNull { it.id == pcId }?.has("input.gestures") == true
     val view = LocalView.current
     val configuration = LocalConfiguration.current
     val reducedMotion = LocalReducedMotion.current
@@ -1064,7 +1066,7 @@ fun PcMirrorView(
                 modifier = Modifier
                     .fillMaxSize()
                     .semantics { contentDescription = viewportDescription }
-                    .pointerInput(pcId, watch, touchpadActive, touchpadSensitivity) {
+                    .pointerInput(pcId, watch, touchpadActive, touchpadSensitivity, gestures) {
                         if (watch != null) {
                             // Watching: nothing goes to the PC.
                             detectTapGestures(onTap = { onTap() })
@@ -1077,6 +1079,7 @@ fun PcMirrorView(
                                 sensitivity = touchpadSensitivity,
                                 onStatus = onStatus,
                                 onTap = { bumpOverlay() },
+                                gestures = gestures,
                             )
                             return@pointerInput
                         }

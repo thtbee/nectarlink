@@ -4618,6 +4618,32 @@ impl NectarlinkNode {
         .await
     }
 
+    /// Sends a touchpad gesture to a paired PC that offers `input.gestures`:
+    /// `"search"`, `"notifications"`, `"task_view"`, `"show_desktop"`,
+    /// `"switcher_next"`, `"switcher_previous"`, `"switcher_done"`,
+    /// `"desktop_next"`, `"desktop_previous"`, `"zoom_in"` or `"zoom_out"`.
+    pub async fn remote_gesture(&self, id: String, gesture: String) -> Result<()> {
+        let id = parse_id(&id)?;
+        use core::TouchGesture as G;
+        let gesture = match gesture.as_str() {
+            "search" => G::Search,
+            "notifications" => G::Notifications,
+            "task_view" => G::TaskView,
+            "show_desktop" => G::ShowDesktop,
+            "switcher_next" => G::SwitcherNext,
+            "switcher_previous" => G::SwitcherPrevious,
+            "switcher_done" => G::SwitcherDone,
+            "desktop_next" => G::DesktopNext,
+            "desktop_previous" => G::DesktopPrevious,
+            "zoom_in" => G::ZoomIn,
+            "zoom_out" => G::ZoomOut,
+            _ => return Err(NectarlinkError::Internal { reason: format!("invalid gesture: {gesture}") }),
+        };
+        let node = self.node.clone();
+        self.run(async move { Ok(node.remote_input(id, core::RemoteInput::Gesture { gesture }).await?) })
+            .await
+    }
+
     /// Sends a presentation slide command (`"next"`, `"previous"`, `"start"`,
     /// `"stop"` or `"black"`) to a paired PC.
     pub async fn remote_slide(&self, id: String, action: String) -> Result<()> {

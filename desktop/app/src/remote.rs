@@ -65,6 +65,7 @@ pub fn handle_input(peer: &DeviceId, input: RemoteInput) {
             }
         }
         RemoteInput::Laser { on: false, .. } => hide_laser(),
+        RemoteInput::Gesture { gesture } => win::input::gesture(gesture),
         // These go to `gamepad` through the platform's `remote_pad`.
         RemoteInput::Pad { .. } | RemoteInput::PadOff => {}
     }
@@ -75,6 +76,7 @@ pub fn handle_input(peer: &DeviceId, input: RemoteInput) {
 pub fn stop_all() {
     let _ = crate::input_share::leave_remote();
     win::input::release_held_buttons();
+    win::input::close_switcher();
     crate::gamepad::stop_all();
     hide_laser();
 }

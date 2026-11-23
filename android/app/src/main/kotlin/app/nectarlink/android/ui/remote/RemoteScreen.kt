@@ -74,6 +74,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -501,6 +502,7 @@ private fun TouchpadSurface(
 ) {
     var dragging by remember { mutableStateOf(false) }
     var touchPoint by remember { mutableStateOf<Offset?>(null) }
+    val gestures = core.state.collectAsState().value.devices.firstOrNull { it.id == pcId }?.has("input.gestures") == true
     val primaryColor = MaterialTheme.colorScheme.primary
     val outlineColor = MaterialTheme.colorScheme.outlineVariant
     val touchpadDesc = stringResource(R.string.remote_mode_touchpad)
@@ -513,7 +515,7 @@ private fun TouchpadSurface(
         ),
         modifier = modifier
             .semantics { contentDescription = touchpadDesc }
-            .pointerInput(pcId, sensitivity) {
+            .pointerInput(pcId, sensitivity, gestures) {
                 touchpadGestures(
                     pcId = pcId,
                     core = core,
@@ -521,6 +523,7 @@ private fun TouchpadSurface(
                     onStatus = onStatus,
                     onTouch = { touchPoint = it },
                     onDragging = { dragging = it },
+                    gestures = gestures,
                 )
             },
     ) {

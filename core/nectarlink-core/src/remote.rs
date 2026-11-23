@@ -10,7 +10,7 @@ use std::{
 use bytes::Bytes;
 use iroh::endpoint::{RecvStream, SendStream};
 pub use nectarlink_protocol::messages::{
-    ButtonAction, KeyMod, MouseButton, PadState, RemoteInput, SlideAction, remote_keys,
+    ButtonAction, KeyMod, MouseButton, PadState, RemoteInput, SlideAction, TouchGesture, remote_keys,
 };
 use nectarlink_protocol::{
     DeviceId, Envelope, ErrorCode,
@@ -28,6 +28,9 @@ pub const INPUT_INJECT: &str = "input.inject";
 /// controller for a phone (`docs/protocol/remote.md` §3.1). Offered with
 /// [`INPUT_INJECT`], under the same per-device toggle.
 pub const INPUT_GAMEPAD: &str = "input.gamepad";
+/// A PC that does touchpad gestures (three and four fingers, pinch) the
+/// way its own touchpad would.
+pub const INPUT_GESTURES: &str = "input.gestures";
 
 /// What a PC's platform answers (and the PC sends back as `unsupported`)
 /// when it can't plug in a controller yet: on Windows, the driver for it
@@ -165,7 +168,8 @@ fn check_allowed(shared: &Shared, peer: &DeviceId) -> std::result::Result<(), (E
 
 /// Whether this PC takes `event`: a controller only where it offers one.
 fn takes(shared: &Shared, event: &RemoteInput) -> bool {
-    !is_pad(event) || shared.we_offer(INPUT_GAMEPAD)
+    (!is_pad(event) || shared.we_offer(INPUT_GAMEPAD))
+        && (!matches!(event, RemoteInput::Gesture { .. }) || shared.we_offer(INPUT_GESTURES))
 }
 
 /// Hands `event` to the platform; `wait` for a reliable request.
@@ -204,6 +208,8 @@ pub(crate) async fn input(shared: &Arc<Shared>, session: &Arc<Session>, event: R
     }
     if !peer_offers(shared, &session.peer, INPUT_INJECT)?
         || (is_pad(&event) && !peer_offers(shared, &session.peer, INPUT_GAMEPAD)?)
+        || (matches!(event, RemoteInput::Gesture { .. })
+            && !peer_offers(shared, &session.peer, INPUT_GESTURES)?)
     {
         return Err(Error::Unsupported);
     }

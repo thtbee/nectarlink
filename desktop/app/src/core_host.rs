@@ -219,6 +219,7 @@ pub fn compute_capabilities(
         if crate::gamepad::is_supported() {
             caps.push(nectarlink_core::INPUT_GAMEPAD.into());
         }
+        caps.push(nectarlink_core::INPUT_GESTURES.into());
     }
     if crate::win::vcam::is_registered() {
         caps.push(nectarlink_core::WEBCAM_ADDON_VCAM.into());

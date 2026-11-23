@@ -3708,6 +3708,33 @@ pub mod remote_keys {
     }
 }
 
+/// A touchpad gesture with more than two fingers, or a pinch, done the way
+/// the PC's own touchpad would (`input.gestures`, `docs/protocol/remote.md`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TouchGesture {
+    /// Three-finger tap.
+    Search,
+    /// Four-finger tap.
+    Notifications,
+    /// Three or four fingers up.
+    TaskView,
+    /// Three or four fingers down.
+    ShowDesktop,
+    /// Three fingers sideways: the app switcher opens and stays open until
+    /// [`TouchGesture::SwitcherDone`], moving one app each time.
+    SwitcherNext,
+    SwitcherPrevious,
+    /// The fingers lifted: the app picked in the switcher comes up.
+    SwitcherDone,
+    /// Four fingers sideways.
+    DesktopNext,
+    DesktopPrevious,
+    /// Two fingers spreading or closing, one step each.
+    ZoomIn,
+    ZoomOut,
+}
+
 /// An input event sent from a phone to a PC (`docs/protocol/remote.md`).
 #[derive(Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
@@ -3745,6 +3772,8 @@ pub enum RemoteInput {
     /// The phone closed its game controller: the PC unplugs it.
     #[serde(rename = "pad_off")]
     PadOff,
+    /// A touchpad gesture. Only to PCs that offer `input.gestures`.
+    Gesture { gesture: TouchGesture },
 }
 
 /// Never prints typed text (protocol v0 §11).
@@ -3762,6 +3791,7 @@ impl std::fmt::Debug for RemoteInput {
             RemoteInput::Laser { on: true, x, y } => write!(f, "Laser({x}, {y})"),
             RemoteInput::Pad { pad } => write!(f, "Pad({pad:?})"),
             RemoteInput::PadOff => f.write_str("PadOff"),
+            RemoteInput::Gesture { gesture } => write!(f, "Gesture({gesture:?})"),
         }
     }
 }
@@ -3796,6 +3826,7 @@ impl RemoteInput {
             }
             RemoteInput::Pad { pad } => pad.is_valid(),
             RemoteInput::PadOff => true,
+            RemoteInput::Gesture { .. } => true,
         }
     }
 
@@ -6908,6 +6939,16 @@ mod tests {
         let env_secret = Envelope::new(types::CLIP_SET, &secret).unwrap();
         let back_secret: ClipSet = Envelope::from_cbor(&env_secret.to_cbor()).unwrap().body().unwrap();
         assert!(back_secret.sensitive);
+    }
+
+    #[test]
+    fn touch_gestures_round_trip_by_name() {
+        let input = RemoteInput::Gesture { gesture: TouchGesture::SwitcherNext };
+        assert!(input.is_valid());
+        assert_eq!(format!("{input:?}"), "Gesture(SwitcherNext)");
+        let env = Envelope::new(types::REMOTE_INPUT, &input).unwrap();
+        let back: RemoteInput = Envelope::from_cbor(&env.to_cbor()).unwrap().body().unwrap();
+        assert_eq!(back, input);
     }
 
     #[test]
