@@ -128,6 +128,7 @@
     <string name="elevated_pair_text">En Depuración inalámbrica, toca Emparejar dispositivo con código de emparejamiento y escribe el código aquí.</string>
     <string name="elevated_pair_action">Introducir código</string>
     <string name="elevated_pair_collapsed">Desliza esta notificación hacia abajo y toca Introducir código.</string>
+    <string name="elevated_pair_dnd">No molestar está activado, así que puede que no aparezca la notificación del código de emparejamiento. Desactívalo hasta terminar el emparejamiento.</string>
     <string name="elevated_pair_hint">Código de emparejamiento de 6 dígitos</string>
     <string name="elevated_pairing">Emparejando…</string>
     <string name="elevated_no_dialog">No se muestra el código de emparejamiento. En Depuración inalámbrica, toca Emparejar dispositivo con código de emparejamiento y escríbelo aquí.</string>

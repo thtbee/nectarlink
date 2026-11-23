@@ -128,6 +128,7 @@
     <string name="elevated_pair_text">W ustawieniach debugowania bezprzewodowego dotknij Sparuj urządzenie za pomocą kodu parowania, a następnie wpisz kod tutaj.</string>
     <string name="elevated_pair_action">Wpisz kod</string>
     <string name="elevated_pair_collapsed">Przeciągnij to powiadomienie w dół (na telefonach Xiaomi przytrzymaj je), a następnie dotknij Wpisz kod.</string>
+    <string name="elevated_pair_dnd">Tryb Nie przeszkadzać jest włączony, więc powiadomienie z kodem parowania może się nie pojawić. Wyłącz go do końca parowania.</string>
     <string name="elevated_pair_hint">6-cyfrowy kod parowania</string>
     <string name="elevated_pairing">Parowanie…</string>
     <string name="elevated_no_dialog">Kod parowania nie jest wyświetlany. W ustawieniach debugowania bezprzewodowego dotknij Sparuj urządzenie za pomocą kodu parowania, a następnie wpisz go tutaj.</string>
