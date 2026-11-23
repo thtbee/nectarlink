@@ -13,6 +13,7 @@ mod agents;
 mod app_links;
 mod app_shortcuts;
 mod automations;
+mod badges;
 mod battery;
 mod bridge;
 mod call_audio;

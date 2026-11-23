@@ -11,6 +11,14 @@ change things that need a step from you, and its notes say so.
 - **Copy part of a notification.** A notification's **...** menu on the PC's Home shows its
   whole text, and any part of it can be selected and copied with Ctrl+C. Thanks to
   [@korry73](https://github.com/korry73) ([#526](https://github.com/thtbee/nectarlink/issues/526)).
+- **The device you're on, and badges, on the PC's left rail.** The device the pages show sits
+  at the bottom of the rail, with a dot for whether it's connected; click it to pick another
+  (or pair a new one). **Messages** shows how many texts came in that you haven't read on the
+  PC, and **Calls** how many calls were missed. A conversation's texts stop counting when you
+  open it, and missed calls when you open **Calls**. When other devices have something waiting,
+  the device button shows their total, and the list that opens shows each device's own number. Only what arrives after a phone first
+  shows here counts, so a phone's older unread texts, which only its own messaging app can
+  clear, don't leave a number up.
 - **Report a problem.** **Settings › Connection & About › Report a problem** on the PC (and at
   the bottom of the Connection Doctor) puts what you say went wrong together with what helps
   find the cause: versions, the Doctor's checks, how features have been doing, recent crashes

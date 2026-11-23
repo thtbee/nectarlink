@@ -293,6 +293,7 @@ fn changed(device: DeviceId, call: &CallState) {
         "ended" if call.missed => {
             stop_ringing(device);
             show_missed(device, call);
+            crate::badges::missed_call(device);
         }
         // Answered (here or on the phone) or over.
         _ => stop_ringing(device),

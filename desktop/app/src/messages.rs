@@ -269,6 +269,17 @@ fn load_seen(device: DeviceId) -> HashMap<String, i64> {
     std::fs::read(seen_file(device)).ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_default()
 }
 
+/// What was read here on `device`, by conversation, to the date of the latest message.
+pub(crate) fn seen_for(device: DeviceId) -> HashMap<String, i64> {
+    state(|s| if s.device == Some(device) { Some(s.seen.clone()) } else { None })
+        .unwrap_or_else(|| load_seen(device))
+}
+
+/// The conversation open on `device`, if it's the one shown.
+pub(crate) fn open_thread_of(device: DeviceId) -> Option<String> {
+    state(|s| if s.device == Some(device) { s.thread.clone() } else { None })
+}
+
 /// Remembers reading `thread`'s messages up to `date`.
 fn note_seen(s: &mut State, thread: &str, date: i64) -> Option<(DeviceId, HashMap<String, i64>)> {
     if s.seen.get(thread).is_some_and(|seen| *seen >= date) {
@@ -884,6 +895,7 @@ pub fn open_thread(thread: String) {
         changed();
         load_messages(None);
     }
+    crate::badges::publish();
 }
 
 /// Opens an existing 1-on-1 conversation with `number` on `device`, or starts
@@ -1658,6 +1670,15 @@ pub fn reload() {
 pub fn close_thread() {
     PENDING_OPEN.lock().unwrap_or_else(|e| e.into_inner()).take();
     NOTIFICATION.lock().unwrap_or_else(|e| e.into_inner()).take();
+    // What came in while it was open was read there.
+    let seen = state(|s| {
+        let thread = s.thread.clone()?;
+        let date = s.threads.iter().find(|t| t.id == thread)?.date;
+        note_seen(s, &thread, date)
+    });
+    if let Some((device, seen)) = seen {
+        std::thread::spawn(move || save_seen(device, &seen));
+    }
     state(|s| {
         s.thread = None;
         s.focus_message = None;
@@ -1669,6 +1690,7 @@ pub fn close_thread() {
         s.staged_attachment = None;
     });
     changed();
+    crate::badges::publish();
 }
 
 pub fn on_event(event: &NodeEvent) {
