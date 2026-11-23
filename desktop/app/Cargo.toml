@@ -15,25 +15,20 @@ name = "nectarlink-desktop"
 path = "src/main.rs"
 
 [dependencies]
-aes-gcm = { version = "0.10", default-features = false, features = ["aes", "alloc"] }
 anyhow.workspace = true
 blake3.workspace = true
-bytes.workspace = true
 cxx.workspace = true
 cxx-qt.workspace = true
 cxx-qt-lib.workspace = true
 data-encoding.workspace = true
 dirs.workspace = true
 hostname.workspace = true
-http-body-util = "0.1"
-hyper = { version = "1", features = ["http1", "server"] }
-hyper-util = { version = "0.1", features = ["tokio"] }
 iroh.workspace = true
-iroh-relay = { version = "1.3", default-features = false }
 material-colors.workspace = true
 # Inflates Google's platform-tools zip (Settings > Install on a phone).
 miniz_oxide = "0.9"
 nectarlink-adb.workspace = true
+nectarlink-anysend.workspace = true
 nectarlink-core.workspace = true
 nectarlink-actions.workspace = true
 # Protocol names the core doesn't re-export (the chat's capability, Linux messages).
@@ -44,7 +39,6 @@ n0-future.workspace = true
 percent-encoding = "2.3"
 qrcode.workspace = true
 rand.workspace = true
-ring = "0.17"
 serde.workspace = true
 serde_json.workspace = true
 sha1_smol = "1"

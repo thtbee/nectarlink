@@ -146,6 +146,7 @@ async function transfer() {
     const key = nacl.hash(join(fileKey, peer, seed, publicKey, route, shared)).subarray(0, 32);
     await transferFile(send, listen, key, useLan ? lanChunkBytes : relayChunkBytes, view, signal);
   } catch (error) {
+    console.debug('AnySend transfer failed', error);
     view.error(error.message);
   } finally {
     clearTimeout(timeout);

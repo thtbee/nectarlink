@@ -16,7 +16,7 @@ export function connectRelay(url, identity, receive, challengeHash, signal, disc
       else reject(error);
     }
     const abort = () => fail(signal.reason);
-    const timeout = setTimeout(() => fail(Error('Relay timeout')), 10000);
+    const timeout = setTimeout(() => fail(Error('Relay timeout')), 20000);
     signal.addEventListener('abort', abort, {once: true});
     socket.onerror = socket.onclose = () => fail(Error('Relay offline'));
     socket.onmessage = ({data}) => {

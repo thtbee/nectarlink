@@ -14,8 +14,8 @@ use tokio::{net::TcpListener, task::JoinSet};
 
 use super::{Route, Shared, transfer::WINDOW};
 
-const PAGE: &[u8] = include_bytes!("../../anysend-web/site/index.html");
-const SCRIPT: &[u8] = include_bytes!("../../anysend-web/site/receive.js");
+const PAGE: &[u8] = include_bytes!("../../../desktop/app/anysend-web/site/index.html");
+const SCRIPT: &[u8] = include_bytes!("../../../desktop/app/anysend-web/site/receive.js");
 
 pub(super) async fn serve(listener: TcpListener, session: Shared, site_origin: String) -> Result<()> {
     let host = listener.local_addr()?.to_string();

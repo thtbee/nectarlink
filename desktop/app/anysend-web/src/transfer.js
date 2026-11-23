@@ -3,10 +3,9 @@ import {gcm} from '@noble/ciphers/aes.js';
 import {join, utf8} from './bytes.js';
 import {
   batchSize, completeContext, completeIndex, errorIndex, indexBytes, maxFileBytes,
-  readIndex, requestContext, uploadContext,
+  readIndex, relayChunkBytes, requestContext, uploadContext,
 } from './file-protocol.js';
 
-const inFlightBatches = 4;
 const text = new TextDecoder();
 
 async function createCipher(key) {
@@ -32,6 +31,8 @@ async function createCipher(key) {
 }
 
 export async function transferFile(send, listen, key, chunkBytes, view, signal) {
+  const relay = chunkBytes === relayChunkBytes;
+  const inFlightBatches = relay ? 16 : 4;
   const cipher = await createCipher(key);
   const exchanges = new Map();
   const activityTimers = new Set();
@@ -150,8 +151,10 @@ export async function transferFile(send, listen, key, chunkBytes, view, signal) 
   const [response] = await pull(0, 1);
   const metadata = JSON.parse(text.decode(response));
   if (metadata.direction === 'upload') {
-    const file = await view.chooseFile(maxFileBytes, signal);
-    view.file(file.name, file.size);
+    const limit = relay ? maxFileBytes : metadata.maxSize ?? null;
+    const file = await view.chooseFile(limit, relay, signal);
+    if (Math.ceil(file.size / chunkBytes) >= completeIndex) throw Error('Invalid file size');
+    view.file(file.size);
     const info = await push(0, utf8.encode(JSON.stringify({name: file.name, size: file.size})));
     await exchange(0, 1, () => send([info]));
     let sent = 0;
@@ -168,10 +171,12 @@ export async function transferFile(send, listen, key, chunkBytes, view, signal) 
     return;
   }
   const {name, size} = metadata;
-  if (typeof name !== 'string' || !Number.isInteger(size) || size < 0 || size > maxFileBytes) {
+  if (typeof name !== 'string' || !Number.isSafeInteger(size) || size < 0 ||
+      Math.ceil(size / chunkBytes) >= completeIndex) {
     throw Error('Invalid file metadata');
   }
-  view.file(name, size);
+  if (relay && size > maxFileBytes) throw Error('The relay file limit is 128 MiB.');
+  view.file(size);
   const count = Math.ceil(size / chunkBytes);
   const chunks = new Array(count);
   let received = 0;

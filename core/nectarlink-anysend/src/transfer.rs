@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     io::{self, SeekFrom},
     path::{Path, PathBuf},
     sync::Arc,
 };
 
-use aes_gcm::Aes256Gcm;
 use anyhow::{Context, Result, bail};
 use bytes::Bytes;
 use iroh::{PublicKey, SecretKey};
+use nectarlink_core::FileSource;
 use serde::{Deserialize, Serialize};
 use tokio::{
     fs::File,
@@ -21,11 +21,10 @@ use tokio::{
 
 use super::{
     Event, Report, Route, Selection,
-    protocol::{self, COMPLETE, COMPLETE_INDEX, ERROR_INDEX, PULL, PUSH, open, read_index, seal},
+    protocol::{self, COMPLETE, COMPLETE_INDEX, Cipher, ERROR_INDEX, PULL, PUSH, open, read_index, seal},
 };
 
 pub(super) const WINDOW: usize = 8;
-const MAX_SIZE: u64 = 128 * 1024 * 1024;
 
 #[derive(PartialEq, Serialize, Deserialize)]
 struct FileInfo {
@@ -67,7 +66,7 @@ struct Guest {
     route: Route,
     key: [u8; 32],
     ack: Bytes,
-    cipher: Aes256Gcm,
+    cipher: Cipher,
     sent: Chunks,
     incoming: Option<Incoming>,
     finished: bool,
@@ -77,18 +76,13 @@ struct Guest {
 
 #[derive(Default)]
 struct Chunks {
-    seen: Vec<bool>,
+    seen: HashSet<usize>,
     bytes: u64,
 }
 
 impl Chunks {
-    fn new(size: u64, route: Route) -> Self {
-        Self { seen: vec![false; size.div_ceil(route.chunk() as u64) as usize], bytes: 0 }
-    }
-
     fn record(&mut self, index: usize, length: usize, total: u64, report: Option<&Report>) {
-        if !self.seen[index] {
-            self.seen[index] = true;
+        if self.seen.insert(index) {
             let before = self.bytes;
             self.bytes += length as u64;
             if let Some(report) = report
@@ -110,14 +104,22 @@ impl Session {
         report: Report,
     ) -> Result<Self> {
         let offer = match selection {
-            Selection::Send(path) => {
-                let file = File::open(&path).await.context("Could not open the selected file.")?;
+            Selection::Send { source, name } => {
+                let (file, name) = match source {
+                    FileSource::Path(path) => {
+                        let file = File::open(&path).await.context("Could not open the selected file.")?;
+                        let name =
+                            name.or_else(|| path.file_name().map(|name| name.to_string_lossy().into_owned()));
+                        (file, name)
+                    }
+                    FileSource::File(file) => (File::from_std(file), name),
+                };
                 let metadata = file.metadata().await?;
                 let size = metadata.len();
-                if !metadata.is_file() || size > MAX_SIZE {
-                    bail!("Choose a file up to 128 MiB.");
+                if !metadata.is_file() || !Route::Lan.supports_size(size) {
+                    bail!("Choose a regular file supported by AnySend.");
                 }
-                let name = path.file_name().context("The file has no name.")?.to_string_lossy().into_owned();
+                let name = name.context("The file has no name.")?;
                 Offer::Send { file: Arc::new(file.into_std().await), info: FileInfo { name, size } }
             }
             Selection::Receive(directory) => {
@@ -155,10 +157,6 @@ impl Session {
         let Ok((cipher, ack)) = protocol::accept_claim(&self.host, &self.ticket, id, route, key) else {
             return denied();
         };
-        let sent = match &self.offer {
-            Offer::Send { info, .. } => Chunks::new(info.size, route),
-            Offer::Receive(_) => Chunks::default(),
-        };
         guests.entries.insert(
             id,
             Arc::new(Mutex::new(Guest {
@@ -166,7 +164,7 @@ impl Session {
                 key,
                 ack: ack.clone(),
                 cipher,
-                sent,
+                sent: Chunks::default(),
                 incoming: None,
                 finished: false,
                 saved: None,
@@ -201,12 +199,15 @@ impl Session {
         match result {
             Ok(replies) => {
                 if !was_finished && guest.finished {
-                    let saved = guest.saved.take().filter(|_| self.limit == 1);
+                    let saved = guest.saved.take();
                     let mut guests = self.guests.lock().await;
                     guests.completed += 1;
+                    if let Some(path) = &saved {
+                        (self.report)(Event::Received(path.clone()));
+                    }
                     self.report_guests(&guests);
                     if guests.completed == self.limit {
-                        (self.report)(Event::Finished(saved));
+                        (self.report)(Event::Finished(saved.filter(|_| self.limit == 1)));
                     }
                 }
                 replies
@@ -284,18 +285,21 @@ impl Guest {
                 Offer::Send { info, .. } => serde_json::to_vec(info)?,
                 Offer::Receive(_) => serde_json::to_vec(&serde_json::json!({
                     "direction": "upload",
-                    "maxSize": MAX_SIZE,
+                    "maxSize": self.route.file_limit(),
                 }))?,
             };
             return Ok(vec![seal(&self.cipher, 0, &metadata)?]);
         }
         let Offer::Send { file, info } = &session.offer else { return Ok(Vec::new()) };
+        if !self.route.supports_size(info.size) {
+            bail!("The relay file limit is 128 MiB.");
+        }
+        let chunk = self.route.chunk();
         let first = (index - 1) as usize;
-        let end = first.saturating_add(count).min(self.sent.seen.len());
+        let end = first.saturating_add(count).min(info.size.div_ceil(chunk as u64) as usize);
         if first >= end {
             return Ok(Vec::new());
         }
-        let chunk = self.route.chunk();
         let offset = first as u64 * chunk as u64;
         let length = ((end - first) * chunk).min((info.size - offset) as usize);
         let file = file.clone();
@@ -322,8 +326,11 @@ impl Guest {
         let chunk = self.route.chunk();
         if index == 0 {
             let info: FileInfo = serde_json::from_slice(plaintext).context("Invalid file information.")?;
-            if info.size > MAX_SIZE || !safe_filename(&info.name) {
-                bail!("The file name is invalid or the file is larger than 128 MiB.");
+            if !self.route.supports_size(info.size) {
+                bail!("The relay file limit is 128 MiB.");
+            }
+            if !safe_filename(&info.name) {
+                bail!("The file name is invalid.");
             }
             if let Some(incoming) = &self.incoming {
                 if incoming.info != info {
@@ -338,7 +345,7 @@ impl Guest {
                 file: BufWriter::with_capacity(1024 * 1024, File::from_std(file)),
                 position: 0,
                 temp,
-                chunks: Chunks::new(info.size, self.route),
+                chunks: Chunks::default(),
                 info,
             });
         } else {
@@ -346,10 +353,12 @@ impl Guest {
                 bail!("File information must be sent before the upload.");
             };
             let i = (index - 1) as usize;
-            if i >= file.chunks.seen.len() || plaintext.len() != chunk_len(file.info.size, i, chunk) {
+            if i as u64 >= file.info.size.div_ceil(chunk as u64)
+                || plaintext.len() != chunk_len(file.info.size, i, chunk)
+            {
                 bail!("The upload contains an invalid file chunk.");
             }
-            if !file.chunks.seen[i] {
+            if !file.chunks.seen.contains(&i) {
                 let offset = i as u64 * chunk as u64;
                 if file.position != offset {
                     file.file.seek(SeekFrom::Start(offset)).await?;

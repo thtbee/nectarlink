@@ -1,16 +1,19 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-use std::{path::PathBuf, pin::Pin, sync::Arc};
+use std::{
+    net::{Ipv4Addr, UdpSocket},
+    path::PathBuf,
+    pin::Pin,
+    sync::Arc,
+};
 
 use cxx_qt::{CxxQtType, Threading};
 use cxx_qt_lib::{QString, QUrl};
-use iroh::RelayUrl;
+use nectarlink_anysend::{self as anysend, Event, Network, Route, Selection};
+use nectarlink_core::FileSource;
 use tokio::task::JoinHandle;
 
-use crate::{
-    anysend::{self, Event, Route, Selection},
-    core_host, qr,
-};
+use crate::{core_host, qr};
 
 #[cxx_qt::bridge]
 pub mod qobject {
@@ -109,9 +112,13 @@ impl qobject::AnySend {
                 return;
             }
         };
-        let selected = if receive { Selection::Receive(path) } else { Selection::Send(path) };
+        let selected = if receive {
+            Selection::Receive(path)
+        } else {
+            Selection::Send { source: FileSource::Path(path), name: None }
+        };
         let interface = interface.to_string();
-        let relays = relay_candidates();
+        let relays = anysend::relay_candidates(core_host::node().map(|node| node.relay_snapshot()));
         self.as_mut().set_limit(limit);
         self.as_mut().set_phase(QString::from("waiting"));
         let qt = self.qt_thread();
@@ -124,7 +131,8 @@ impl qobject::AnySend {
             });
         });
         let task = core_host::host().runtime.spawn(async move {
-            if let Err(error) = anysend::run(selected, site, interface, relays, limit, report.clone()).await {
+            let network = Network { lan_ip: lan_ip(&interface), relay_interface: interface, relays };
+            if let Err(error) = anysend::run(selected, site, network, limit, report.clone()).await {
                 report(Event::Failed(error.to_string()));
             }
         });
@@ -207,6 +215,7 @@ impl qobject::AnySend {
             Event::Progress(bytes, total) => {
                 self.as_mut().set_progress(bytes as f64 / total as f64);
             }
+            Event::Received(_) => {}
             Event::Finished(path) => {
                 if let Some(path) = path {
                     self.as_mut().set_saved_path(QString::from(path.to_string_lossy().as_ref()));
@@ -242,18 +251,24 @@ impl qobject::AnySend {
     }
 }
 
-fn relay_candidates() -> Vec<RelayUrl> {
-    let Some(snapshot) = core_host::node().map(|node| node.relay_snapshot()) else {
-        return Vec::new();
-    };
-    let mut servers: Vec<_> = snapshot.servers.into_iter().filter(|server| server.enabled).collect();
-    servers.sort_by_key(|server| {
-        let home = snapshot.home.iter().any(|entry| entry.connected && entry.url == server.url);
-        (!home, !server.provider.is_empty())
-    });
-    servers
+fn lan_ip(selected: &str) -> Option<Ipv4Addr> {
+    // Prefer the default route unless the user selected a specific interface.
+    let route_ip = UdpSocket::bind((Ipv4Addr::UNSPECIFIED, 0))
+        .and_then(|socket| {
+            socket.connect((Ipv4Addr::new(192, 0, 2, 1), 9))?;
+            socket.local_addr()
+        })
+        .ok()
+        .map(|address| address.ip());
+    netdev::get_interfaces()
         .into_iter()
-        .filter_map(|server| server.url.parse::<RelayUrl>().ok())
-        .filter(|url| url.scheme() == "https")
-        .collect()
+        .filter(|interface| {
+            interface.is_up()
+                && !interface.is_loopback()
+                && if selected.is_empty() { interface.is_physical() } else { interface.name == selected }
+        })
+        .flat_map(|interface| interface.ipv4.into_iter())
+        .map(|network| network.addr())
+        .filter(|ip| !ip.is_unspecified() && !ip.is_loopback() && !ip.is_link_local())
+        .min_by_key(|ip| route_ip != Some((*ip).into()))
 }

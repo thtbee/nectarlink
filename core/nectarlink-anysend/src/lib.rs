@@ -6,7 +6,7 @@ mod protocol;
 mod transfer;
 
 use std::{
-    net::{Ipv4Addr, SocketAddrV4, UdpSocket},
+    net::{Ipv4Addr, SocketAddrV4},
     path::PathBuf,
     sync::Arc,
     time::{Duration, SystemTime, UNIX_EPOCH},
@@ -16,19 +16,21 @@ use anyhow::{Context, Result, bail};
 use iroh::{PublicKey, RelayUrl, SecretKey, dns::DnsResolver};
 use iroh_relay::{
     client::{Client, ClientBuilder},
-    protos::relay::{ClientToRelayMsg, RelayToClientMsg},
+    protos::relay::{ClientToRelayMsg, RelayToClientMsg, Status},
     tls::{CaTlsConfig, default_provider},
 };
 use n0_future::{BufferedStreamExt, SinkExt, StreamExt, stream};
+use nectarlink_core::{FileSource, relays::RelaySnapshot};
 use tokio::{net::TcpListener, sync::mpsc, time::Instant};
 use url::Url;
 
-pub(crate) const DEFAULT_SITE: &str = "https://anysend-nectarlink.netlify.app/";
+pub const DEFAULT_SITE: &str = "https://anysend-nectarlink.netlify.app/";
 const LIFETIME: Duration = Duration::from_secs(600);
-pub(crate) const MAX_GUESTS: i32 = 100;
+pub const MAX_GUESTS: i32 = 100;
+pub const MAX_FILE_BYTES: u64 = 128 * 1024 * 1024;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Route {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Route {
     Lan,
     Relay,
 }
@@ -47,19 +49,34 @@ impl Route {
             Self::Relay => 60 * 1024,
         }
     }
+
+    fn file_limit(self) -> Option<u64> {
+        match self {
+            Self::Lan => None,
+            Self::Relay => Some(MAX_FILE_BYTES),
+        }
+    }
+
+    fn supports_size(self, size: u64) -> bool {
+        let protocol_limit = u64::from(protocol::COMPLETE_INDEX - 1) * self.chunk() as u64;
+        size <= self.file_limit().unwrap_or(protocol_limit)
+    }
 }
 
-pub(crate) enum Selection {
-    Send(PathBuf),
+#[derive(Debug)]
+pub enum Selection {
+    Send { source: FileSource, name: Option<String> },
     Receive(PathBuf),
 }
 
-pub(crate) enum Event {
+#[derive(Debug)]
+pub enum Event {
     Ticket(Route, Url),
     Unavailable(Route, String),
     Started(Route),
     Guests { connected: usize, completed: usize, failed: usize },
     Progress(u64, u64),
+    Received(PathBuf),
     Finished(Option<PathBuf>),
     Failed(String),
     Expired,
@@ -68,7 +85,28 @@ pub(crate) enum Event {
 type Report = Arc<dyn Fn(Event) + Send + Sync>;
 type Shared = Arc<transfer::Session>;
 
-pub(crate) fn site(input: &str) -> Result<Url> {
+#[derive(Debug, Default)]
+pub struct Network {
+    pub lan_ip: Option<Ipv4Addr>,
+    pub relay_interface: String,
+    pub relays: Vec<RelayUrl>,
+}
+
+pub fn relay_candidates(snapshot: Option<RelaySnapshot>) -> Vec<RelayUrl> {
+    let Some(snapshot) = snapshot else { return Vec::new() };
+    let mut servers: Vec<_> = snapshot.servers.into_iter().filter(|server| server.enabled).collect();
+    servers.sort_by_key(|server| {
+        let home = snapshot.home.iter().any(|entry| entry.connected && entry.url == server.url);
+        (!home, !server.provider.is_empty())
+    });
+    servers
+        .into_iter()
+        .filter_map(|server| server.url.parse::<RelayUrl>().ok())
+        .filter(|url| url.scheme() == "https")
+        .collect()
+}
+
+pub fn site(input: &str) -> Result<Url> {
     let input = input.trim();
     let url = if input.is_empty() {
         Url::parse(DEFAULT_SITE)?
@@ -89,11 +127,10 @@ pub(crate) fn site(input: &str) -> Result<Url> {
     Ok(url)
 }
 
-pub(crate) async fn run(
+pub async fn run(
     selection: Selection,
     site: Url,
-    interface: String,
-    relays: Vec<RelayUrl>,
+    network: Network,
     limit: i32,
     report: Report,
 ) -> Result<()> {
@@ -115,7 +152,7 @@ pub(crate) async fn run(
         )
         .await?,
     );
-    let listener = match bind_lan(&interface).await {
+    let listener = match bind_lan(network.lan_ip).await {
         Ok(listener) => Some(listener),
         Err(error) => {
             report(Event::Unavailable(Route::Lan, error.to_string()));
@@ -135,11 +172,11 @@ pub(crate) async fn run(
     let global = async {
         let result = async {
             #[cfg(target_os = "linux")]
-            let connector = if interface.is_empty() {
+            let connector = if network.relay_interface.is_empty() {
                 None
             } else {
                 Some(
-                    nectarlink_core::direct_network::RelayConnector::start(interface.clone())
+                    nectarlink_core::direct_network::RelayConnector::start(network.relay_interface)
                         .await
                         .context("Could not route the relay through the selected interface.")?,
                 )
@@ -148,7 +185,7 @@ pub(crate) async fn run(
             let proxy = connector.as_ref().map(|connector| connector.url());
             #[cfg(not(target_os = "linux"))]
             let proxy = None;
-            let (url, client) = connect_relay(relays, &host, proxy).await?;
+            let (url, client) = connect_relay(network.relays, &host, proxy).await?;
             let mut relay = (*url).clone();
             if relay.domain().is_some_and(|domain| domain.ends_with('.')) {
                 let domain = relay.domain().unwrap_or_default().trim_end_matches('.').to_owned();
@@ -180,34 +217,11 @@ pub(crate) async fn run(
     Ok(())
 }
 
-async fn bind_lan(interface: &str) -> Result<(SocketAddrV4, TcpListener)> {
-    let ip = lan_ip(interface).context("No IPv4 address on the selected LAN interface.")?;
+async fn bind_lan(ip: Option<Ipv4Addr>) -> Result<(SocketAddrV4, TcpListener)> {
+    let ip = ip.context("No IPv4 address on a LAN interface.")?;
     let listener = TcpListener::bind((ip, 0)).await.context("Could not start the LAN listener.")?;
     let address = SocketAddrV4::new(ip, listener.local_addr()?.port());
     Ok((address, listener))
-}
-
-fn lan_ip(selected: &str) -> Option<Ipv4Addr> {
-    // Prefer the interface used for the default route, provided it is physical.
-    // An explicit NectarLink choice takes priority, including a LAN without Internet.
-    let route_ip = UdpSocket::bind((Ipv4Addr::UNSPECIFIED, 0))
-        .and_then(|socket| {
-            socket.connect((Ipv4Addr::new(192, 0, 2, 1), 9))?;
-            socket.local_addr()
-        })
-        .ok()
-        .map(|address| address.ip());
-    netdev::get_interfaces()
-        .into_iter()
-        .filter(|interface| {
-            interface.is_up()
-                && !interface.is_loopback()
-                && if selected.is_empty() { interface.is_physical() } else { interface.name == selected }
-        })
-        .flat_map(|interface| interface.ipv4.into_iter())
-        .map(|network| network.addr())
-        .filter(|ip| !ip.is_unspecified() && !ip.is_loopback() && !ip.is_link_local())
-        .min_by_key(|ip| route_ip != Some((*ip).into()))
 }
 
 async fn connect_relay(
@@ -227,15 +241,25 @@ async fn connect_relay(
             builder = builder.proxy_url(proxy.clone());
         }
         async move {
-            let client = tokio::time::timeout(Duration::from_secs(5), builder.connect()).await.ok()?.ok()?;
+            let client = match tokio::time::timeout(Duration::from_secs(15), builder.connect()).await {
+                Ok(Ok(client)) => client,
+                Ok(Err(error)) => {
+                    tracing::debug!(relay = %url, %error, "AnySend relay connection failed");
+                    return None;
+                }
+                Err(_) => {
+                    tracing::debug!(relay = %url, "AnySend relay connection timed out");
+                    return None;
+                }
+            };
             Some((url, client))
         }
     };
     let mut relays = relays.into_iter();
-    if let Some(first) = relays.next() {
-        if let Some(client) = dial(first).await {
-            return Ok(client);
-        }
+    if let Some(first) = relays.next()
+        && let Some(client) = dial(first).await
+    {
+        return Ok(client);
     }
     let mut candidates = stream::iter(relays).map(dial).buffered_unordered(4);
     while let Some(candidate) = candidates.next().await {
@@ -254,6 +278,10 @@ async fn relay_loop(client: Client, session: &Shared) -> Result<()> {
             .map(|message| async move {
                 let replies = match message.map_err(|_| anyhow::anyhow!("The relay connection closed."))? {
                     RelayToClientMsg::Ping(nonce) => vec![ClientToRelayMsg::Pong(nonce)],
+                    RelayToClientMsg::Status(Status::RateLimited) => {
+                        tracing::debug!("AnySend relay is throttling this connection");
+                        Vec::new()
+                    }
                     RelayToClientMsg::Datagrams { remote_endpoint_id, datagrams }
                         if datagrams.segment_size.is_none() =>
                     {
@@ -281,8 +309,9 @@ async fn relay_loop(client: Client, session: &Shared) -> Result<()> {
         bail!("The relay connection closed.")
     };
     let writer = async {
-        while let Some(replies) = receive.recv().await {
-            for reply in replies {
+        let mut queued = Vec::with_capacity(16);
+        while receive.recv_many(&mut queued, 16).await > 0 {
+            for reply in queued.drain(..).flatten() {
                 sink.feed(reply).await?;
             }
             sink.flush().await?;

@@ -46,7 +46,7 @@ Sheet {
         }
         Txt {
             width: parent.width
-            text: qsTr("Exchange one file up to 128 MiB with a browser.")
+            text: qsTr("Exchange one file with a browser. The relay limit is 128 MiB.")
             wrapMode: Text.WordWrap
             muted: true
         }

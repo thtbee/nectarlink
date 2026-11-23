@@ -644,7 +644,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_away_mode(settings.away_mode);
         self.as_mut().set_network_interface(QString::from(&settings.network_interface));
         self.as_mut().set_anysend_site(QString::from(if settings.anysend_site.is_empty() {
-            crate::anysend::DEFAULT_SITE
+            nectarlink_anysend::DEFAULT_SITE
         } else {
             settings.anysend_site.as_str()
         }));

@@ -2458,6 +2458,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "nectarlink-anysend"
+version = "0.1.5"
+dependencies = [
+ "anyhow",
+ "bytes",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
+ "iroh",
+ "iroh-relay",
+ "n0-future",
+ "nectarlink-core",
+ "rand",
+ "ring",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "tokio",
+ "tracing",
+ "url",
+]
+
+[[package]]
 name = "nectarlink-cli"
 version = "0.1.5"
 dependencies = [
@@ -2527,10 +2551,8 @@ dependencies = [
 name = "nectarlink-desktop"
 version = "0.1.5"
 dependencies = [
- "aes-gcm",
  "anyhow",
  "blake3",
- "bytes",
  "cc",
  "cxx",
  "cxx-qt",
@@ -2540,17 +2562,14 @@ dependencies = [
  "dirs",
  "embed-resource",
  "hostname",
- "http-body-util",
- "hyper",
- "hyper-util",
  "iroh",
- "iroh-relay",
  "libc",
  "material-colors",
  "miniz_oxide",
  "n0-future",
  "nectarlink-actions",
  "nectarlink-adb",
+ "nectarlink-anysend",
  "nectarlink-core",
  "nectarlink-protocol",
  "nectarlink-vcam",
@@ -2559,7 +2578,6 @@ dependencies = [
  "pkg-config",
  "qrcode",
  "rand",
- "ring",
  "serde",
  "serde_json",
  "sha1_smol",

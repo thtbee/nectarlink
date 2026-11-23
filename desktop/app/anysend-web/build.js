@@ -16,9 +16,8 @@ const page = `<!doctype html>
 <meta name="referrer" content="no-referrer">
 <meta ${siteMarker}>
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self' http: wss:; base-uri 'none'; form-action 'none'">
-<title>AnySend</title>
-<p>Loading AnySend…</p>
-<script src="./receive.js?v=2" integrity="sha256-${integrity}" crossorigin="anonymous" defer></script>
+<title></title>
+<script src="./receive.js?v=3" integrity="sha256-${integrity}" crossorigin="anonymous" defer></script>
 </html>
 `;
 await mkdir('site', {recursive: true});

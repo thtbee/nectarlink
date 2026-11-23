@@ -1,103 +1,73 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 import css from './receiver.css' with {type: 'text'};
 
 const copy = {
   en: {
-    title: 'Receive a file',
-    connecting: 'Connecting to the sender…',
-    waiting: 'Getting file details…',
-    receiving: 'Receiving and verifying the file…',
-    ready: 'Your file is ready to save.',
+    upload: 'Choose a file to upload',
     download: 'Download file',
-    hold: 'Keep the sender app open until the transfer finishes.',
-    private: 'End-to-end encrypted transfer',
+    lan: 'Local network',
+    relay: 'Internet',
+    waiting: 'Connecting',
+    transfer: 'File transfer',
+    sent: 'File sent',
+    error: 'Transfer failed',
     expired: 'This link has expired.',
-    used: 'This link has expired or has already been used.',
-    unreachable: 'Could not reach the sender.',
-    corrupt: 'The transfer could not be verified.',
-    invalid: 'This AnySend link is incomplete or invalid.',
-    failed: 'The transfer could not be completed.',
-    newTicket: 'Ask the sender to generate a fresh QR code.',
-    progress: 'File transfer progress',
-    route: 'Use the local network if both devices are on it.',
-    local: 'Local network',
-    internet: 'Internet',
-    sendTitle: 'Send a file',
-    choose: 'Choose a file to send to the PC.',
-    tooLarge: 'Choose a file up to 128 MiB.',
-    sending: 'Sending the file…',
-    sent: 'The file was saved on the PC.',
-    units: ['B', 'KiB', 'MiB'],
+    size: 'The Internet route accepts files up to 128 MiB. Use the local link for larger files.',
+    linkSize: 'This link accepts files up to 128 MiB.',
   },
   ru: {
-    title: 'Получить файл',
-    connecting: 'Подключаемся к отправителю…',
-    waiting: 'Получаем сведения о файле…',
-    receiving: 'Получаем и проверяем файл…',
-    ready: 'Файл готов к сохранению.',
+    upload: 'Выбрать файл для отправки',
     download: 'Скачать файл',
-    hold: 'Оставьте приложение отправителя открытым до конца передачи.',
-    private: 'Передача со сквозным шифрованием',
+    lan: 'Локальная сеть',
+    relay: 'Интернет',
+    waiting: 'Подключение',
+    transfer: 'Передача файла',
+    sent: 'Файл отправлен',
+    error: 'Не удалось передать файл',
     expired: 'Срок действия ссылки истёк.',
-    used: 'Ссылка уже использована или срок её действия истёк.',
-    unreachable: 'Не удалось связаться с отправителем.',
-    corrupt: 'Не удалось проверить целостность передачи.',
-    invalid: 'Ссылка AnySend неполная или повреждена.',
-    failed: 'Не удалось завершить передачу.',
-    newTicket: 'Попросите отправителя создать новый QR-код.',
-    progress: 'Ход передачи файла',
-    route: 'Если оба устройства в одной сети, выберите локальную сеть.',
-    local: 'Локальная сеть',
-    internet: 'Интернет',
-    sendTitle: 'Отправить файл',
-    choose: 'Выберите файл для отправки на ПК.',
-    tooLarge: 'Выберите файл размером до 128 МиБ.',
-    sending: 'Отправляем файл…',
-    sent: 'Файл сохранён на ПК.',
-    units: ['Б', 'КиБ', 'МиБ'],
+    size: 'Через интернет можно передать файл до 128 МиБ. Для большего файла откройте локальную ссылку.',
+    linkSize: 'По этой ссылке можно передать файл до 128 МиБ.',
   },
+};
+
+const icons = {
+  upload: '<path d="M12 16V3m-5 5 5-5 5 5M4 16v5h16v-5"/>',
+  download: '<path d="M12 3v13m-5-5 5 5 5-5M4 16v5h16v-5"/>',
+  lan: '<path d="M2 8a16 16 0 0 1 20 0M5 12a11 11 0 0 1 14 0m-11 4a6 6 0 0 1 8 0m-4 4h.01"/>',
+  relay: '<circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18"/>',
+  waiting: '<path d="M21 12a9 9 0 1 0-9 9"/>',
+  sent: '<path d="m5 12 4 4L19 6"/>',
+  error: '<circle cx="12" cy="12" r="9"/><path d="M12 7v6m0 4h.01"/>',
 };
 
 export function createReceiverView() {
   const locale = navigator.language?.startsWith('ru') ? 'ru' : 'en';
   const strings = copy[locale];
-  const number = new Intl.NumberFormat(locale, {maximumFractionDigits: 1});
   document.documentElement.lang = locale;
-  document.title = `${strings.title} · AnySend`;
-  const viewport = document.createElement('meta');
-  viewport.name = 'viewport';
-  viewport.content = 'width=device-width, initial-scale=1';
   const style = document.createElement('style');
   style.textContent = css;
-  document.head.append(viewport, style);
+  document.head.append(style);
 
-  document.body.innerHTML = `
-    <main class="shell">
-      <header class="brand"><span class="mark" aria-hidden="true">↓</span><span>AnySend</span></header>
-      <section class="card" aria-labelledby="title">
-        <h1 id="title">${strings.title}</h1>
-        <p id="status" role="status" aria-live="polite">${strings.connecting}</p>
-        <div class="file" id="file" hidden>
-          <span class="file-icon" aria-hidden="true"><i></i></span>
-          <div class="file-detail"><strong id="name" dir="auto"></strong><span id="size"></span></div>
-        </div>
-        <div class="transfer" id="transfer">
-          <progress id="progress" max="100" aria-label="${strings.progress}"></progress>
-          <div class="progress-detail" id="progress-detail" hidden aria-hidden="true">
-            <span id="bytes"></span><span id="percent"></span>
-          </div>
-        </div>
-        <div id="actions" hidden></div>
-        <div id="hint" class="hint">${strings.hold}</div>
-      </section>
-      <footer><span class="lock" aria-hidden="true"></span>${strings.private}</footer>
-    </main>`;
-
-  const get = (id) => document.getElementById(id);
-  const status = get('status'), file = get('file'), transfer = get('transfer');
-  const progress = get('progress'), details = get('progress-detail'), hint = get('hint');
-  const actions = get('actions');
-  let uploading = false;
-  let total = 0;
+  const actions = document.createElement('main');
+  document.body.replaceChildren(actions);
+  let activity, total, direction = 'download';
+  function decorate(control, icon, label) {
+    control.className = 'control';
+    control.setAttribute('aria-label', label);
+    control.innerHTML = `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${icons[icon]}</svg>`;
+    return control;
+  }
+  function button(icon, label = strings[icon], onClick) {
+    const control = decorate(document.createElement('button'), icon, label);
+    control.type = 'button';
+    control.disabled = !onClick;
+    control.onclick = onClick;
+    return control;
+  }
+  function show(...controls) {
+    actions.replaceChildren(...controls);
+  }
   function waitForChoice(signal, setup) {
     signal.throwIfAborted();
     return new Promise((resolve, reject) => {
@@ -105,112 +75,70 @@ export function createReceiverView() {
       signal.addEventListener('abort', abort, {once: true});
       setup((choice) => {
         signal.removeEventListener('abort', abort);
-        actions.hidden = true;
-        actions.replaceChildren();
-        transfer.hidden = false;
+        view.waiting();
         resolve(choice);
       });
     });
   }
-  function formatBytes(bytes) {
-    const unit = bytes < 1024 ? 0 : bytes < 1024 ** 2 ? 1 : 2;
-    return `${number.format(bytes / 1024 ** unit)} ${strings.units[unit]}`;
-  }
-  function update(received) {
-    const percent = total ? Math.floor(received / total * 100) : 100;
-    progress.value = percent;
-    get('bytes').textContent = `${formatBytes(received)} / ${formatBytes(total)}`;
-    get('percent').textContent = `${percent}%`;
-  }
-  return {
-    async chooseLocal(signal) {
-      status.textContent = strings.route;
-      transfer.hidden = true;
-      actions.hidden = false;
-      const local = document.createElement('button');
-      const internet = document.createElement('button');
-      local.textContent = strings.local;
-      internet.textContent = strings.internet;
-      actions.append(local, internet);
-      const useLocal = await waitForChoice(signal, (select) => {
-        local.onclick = () => select(true);
-        internet.onclick = () => select(false);
-      });
-      status.textContent = strings.connecting;
-      return useLocal;
+  const view = {
+    chooseLocal(signal) {
+      return waitForChoice(signal, (select) => show(
+        button('lan', strings.lan, () => select(true)),
+        button('relay', strings.relay, () => select(false)),
+      ));
     },
     waiting() {
-      status.textContent = strings.waiting;
+      activity = button('waiting');
+      activity.classList.add('waiting');
+      show(activity);
     },
-    chooseFile(limit, signal) {
-      uploading = true;
-      get('title').textContent = strings.sendTitle;
-      document.title = `${strings.sendTitle} · AnySend`;
-      status.textContent = strings.choose;
-      transfer.hidden = true;
+    chooseFile(limit, relay, signal) {
+      direction = 'upload';
       const input = document.createElement('input');
       input.type = 'file';
-      input.setAttribute('aria-label', strings.choose);
-      actions.replaceChildren(input);
-      actions.hidden = false;
+      input.hidden = true;
       return waitForChoice(signal, (select) => {
         input.onchange = () => {
           const file = input.files[0];
           if (!file) return;
-          if (file.size > limit) {
-            status.textContent = strings.tooLarge;
+          if (limit !== null && file.size > limit) {
             input.value = '';
+            alert(relay ? strings.size : strings.linkSize);
             return;
           }
           select(file);
         };
+        show(button('upload', strings.upload, () => input.click()), input);
       });
     },
-    file(name, size) {
+    file(size) {
       total = size;
-      get('name').textContent = name;
-      get('size').textContent = formatBytes(size);
-      file.hidden = false;
-      transfer.hidden = false;
-      details.hidden = false;
-      status.textContent = uploading ? strings.sending : strings.receiving;
-      update(0);
+      activity = button(direction, strings.transfer);
+      activity.classList.add('transfer');
+      activity.setAttribute('role', 'progressbar');
+      show(activity);
+      view.progress(0);
     },
-    progress: update,
+    progress(bytes) {
+      const percent = total ? Math.floor(bytes / total * 100) : 100;
+      activity.setAttribute('aria-valuenow', percent);
+      activity.style.setProperty('--progress', `${percent}%`);
+    },
     ready(link) {
-      update(total);
-      status.textContent = strings.ready;
-      status.dataset.result = 'ok';
-      hint.hidden = true;
-      transfer.hidden = true;
-      link.textContent = strings.download;
-      actions.append(link);
-      actions.hidden = false;
+      show(decorate(link, 'download', strings.download));
     },
     sent() {
-      status.textContent = strings.sent;
-      status.dataset.result = 'ok';
-      hint.hidden = true;
-      transfer.hidden = true;
+      show(button('sent'));
     },
     error(message) {
-      const label = {
-        'Ticket expired': 'expired',
-        'Ticket used or expired': 'used',
-        'Invalid ticket': 'invalid',
-        'No reply': 'unreachable',
-        'Relay offline': 'unreachable',
-        'Relay timeout': 'unreachable',
-        'Relay denied': 'unreachable',
-        'Client digest mismatch': 'corrupt',
-        'File authentication failed': 'corrupt',
-      }[message] ?? 'failed';
-      status.textContent = strings[label];
-      status.dataset.result = 'error';
-      transfer.hidden = true;
-      actions.hidden = true;
-      actions.replaceChildren();
-      hint.textContent = strings.newTicket;
+      const detail = {
+        'Ticket expired': strings.expired,
+        'The relay file limit is 128 MiB.': strings.size,
+      }[message] ?? strings.error;
+      show(button('error', detail, () => alert(detail)));
+      if (detail === strings.size) alert(detail);
     },
   };
+  view.waiting();
+  return view;
 }
