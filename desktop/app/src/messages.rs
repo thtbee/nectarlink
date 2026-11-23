@@ -18,7 +18,10 @@ use nectarlink_core::{
 };
 use serde_json::{Value, json};
 
-use crate::{core_host, state::Changes};
+use crate::{
+    core_host,
+    state::{AppState, Changes},
+};
 
 /// Conversations listed, and messages read at a time.
 const THREADS: u32 = 60;
@@ -348,9 +351,13 @@ pub struct View {
 }
 
 pub fn view() -> View {
+    // Read before taking the Messages lock so the two locks never nest.
+    let hidden = core_host::try_host().map(|host| host.hub.read(AppState::hidden_apps)).unwrap_or_default();
     state(|s| {
+        // A filter on an app that has since been hidden shows everything.
+        let app_filter = if hidden.contains(&s.app_filter) { "" } else { s.app_filter.as_str() };
         let mut combined: Vec<(i64, String, Value)> = Vec::new();
-        if s.app_filter.is_empty() || s.app_filter == "sms" {
+        if app_filter.is_empty() || app_filter == "sms" {
             for t in &s.threads {
                 let mut json = thread_json(t, s.photos.get(&t.id));
                 if s.seen.get(&t.id).is_some_and(|seen| *seen >= t.date) {
@@ -359,9 +366,9 @@ pub fn view() -> View {
                 combined.push((t.date, t.id.clone(), json));
             }
         }
-        if s.app_filter != "sms" {
-            for ct in &s.chat_threads {
-                if s.app_filter.is_empty() || ct.app == s.app_filter {
+        if app_filter != "sms" {
+            for ct in s.chat_threads.iter().filter(|ct| !hidden.contains(&ct.app)) {
+                if app_filter.is_empty() || ct.app == app_filter {
                     combined.push((
                         ct.updated_ms,
                         ct.thread_id.clone(),
@@ -375,7 +382,7 @@ pub fn view() -> View {
 
         let mut apps = vec![json!({ "key": "", "label": "All" }), json!({ "key": "sms", "label": "SMS" })];
         let mut seen = HashSet::new();
-        for ct in &s.chat_threads {
+        for ct in s.chat_threads.iter().filter(|ct| !hidden.contains(&ct.app)) {
             if !ct.app.is_empty() && seen.insert(ct.app.clone()) {
                 let label = if ct.app_name.trim().is_empty() { ct.app.clone() } else { ct.app_name.clone() };
                 apps.push(json!({ "key": ct.app, "label": label }));
@@ -443,9 +450,9 @@ pub fn view() -> View {
             sending: s.sending,
             compose_to: s.compose_to.clone(),
             compose_name: s.compose_name.clone(),
-            app_filter: s.app_filter.clone(),
+            app_filter: app_filter.to_owned(),
             available_apps,
-            has_chat_threads: !s.chat_threads.is_empty(),
+            has_chat_threads: s.chat_threads.iter().any(|ct| !hidden.contains(&ct.app)),
             current_is_chat,
             current_app_name,
             current_can_reply,

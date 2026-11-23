@@ -914,11 +914,13 @@ async fn handle_get_messages(query: &HashMap<String, String>) -> (u16, &'static 
             .collect::<Vec<_>>()
     })
     .unwrap_or_default();
+    // Chats from apps hidden on the PC stay out, as their notifications do (#530).
+    let hidden = with_state(crate::state::AppState::hidden_apps).unwrap_or_default();
     let mut threads: Vec<(i64, Value)> = Vec::new();
     let mut unread_total: u64 = 0;
     if let Some(node) = try_node() {
         for (id, ask_phone) in devices {
-            for t in node.chat_threads(id) {
+            for t in node.chat_threads(id).into_iter().filter(|t| !hidden.contains(&t.app)) {
                 unread_total += u64::from(t.unread);
                 threads.push((
                     t.updated_ms,
