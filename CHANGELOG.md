@@ -507,6 +507,18 @@ change things that need a step from you, and its notes say so.
   cleanup, and when the OpenGL capture stalls or comes out black it tries the plain PipeWire
   path again on a fresh connection. Thanks to [@krakotay](https://github.com/krakotay)
   ([#540](https://github.com/thtbee/nectarlink/pull/540)).
+- **A text's notification opens the conversation.** Clicking a text message's notification on
+  the PC brings up NectarLink on that phone's Messages page, with the conversation open at the
+  message, ringed for a moment. This works wherever a notification reports its click: Windows
+  and Linux now, and macOS once its notifications do. Thanks to
+  [@farfromrefug](https://github.com/farfromrefug) ([#551](https://github.com/thtbee/nectarlink/pull/551)).
+- **Conversations open at the latest message**, every time: on the first sync, when you open
+  one again, and after you send a message, which no longer jumps somewhere else.
+- **Scrolling Messages follows the system's scroll speed on macOS**, for a mouse wheel as for a
+  trackpad. Qt dropped the speed and acceleration set in System Settings for a wheel, so
+  scrolling felt slow beside other apps.
+- **Copying a message or a phone number** from Messages or Calls says **Copied to clipboard.**
+
 - **A phone app's shortcut can be taken away again.** Once an app has a shortcut, its menu
   on the PC's Apps page says **Remove from app menu** (Linux, where app menus have no way to
   delete an entry) or **Remove from desktop** (Windows). Thanks to
