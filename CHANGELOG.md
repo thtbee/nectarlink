@@ -483,6 +483,9 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **The PC's mouse goes over to phones on Android 13 and older.** The phone measured its
+  pointer from a status line only newer Android versions have, so the mouse came over for a
+  moment and went straight back ([#107](https://github.com/thtbee/nectarlink/issues/107)).
 - **Folder sync is quicker with many files.** Comparing a big folder no longer slows down
   with the square of its file count. Thanks to [@aihehye](https://github.com/aihehye)
   ([#537](https://github.com/thtbee/nectarlink/pull/537)).
