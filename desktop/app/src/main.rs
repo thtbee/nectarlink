@@ -694,6 +694,7 @@ fn main() -> ExitCode {
             Ok(()) => ExitCode::SUCCESS,
             Err(e) => {
                 eprintln!("nectarlink: unlock with phone: {e}");
+                win::unlock::note_failure(&e);
                 ExitCode::FAILURE
             }
         };

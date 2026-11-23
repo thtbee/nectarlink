@@ -79,6 +79,25 @@ const PUBLIC_KEY_VALUE: &str = "UnlockKey";
 pub const REGISTER_ARG: &str = "--register-unlock";
 pub const UNREGISTER_ARG: &str = "--unregister-unlock";
 
+/// Where the elevated step leaves why it failed, for the app to log (#567).
+/// The same user's temp folder, unless another account approved the prompt.
+fn failure_note() -> PathBuf {
+    std::env::temp_dir().join("nectarlink-unlock-setup-error.txt")
+}
+
+/// Elevated side: keeps `reason` for the app that asked.
+pub fn note_failure(reason: &str) {
+    let _ = std::fs::write(failure_note(), reason);
+}
+
+/// Why the last elevated step failed, if it said; read once.
+pub fn take_failure() -> Option<String> {
+    let path = failure_note();
+    let reason = std::fs::read_to_string(&path).ok();
+    let _ = std::fs::remove_file(&path);
+    reason.map(|r| r.trim().to_owned()).filter(|r| !r.is_empty())
+}
+
 const CLASSES: &str = r"SOFTWARE\Classes\CLSID";
 const PROVIDERS: &str = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\Credential Providers";
 /// `WTS_SESSIONSTATE_LOCK` in `WTSINFOEX_LEVEL1_W::SessionFlags`.
