@@ -130,7 +130,9 @@ mod imp {
             if !can_encode {
                 return false;
             }
-            let has_x11 = std::env::var_os("DISPLAY").is_some() && x11_api().is_some();
+            // XWayland's root window isn't the desktop: a Wayland session
+            // shares the screen through the portal only (#548).
+            let has_x11 = !wayland_session() && std::env::var_os("DISPLAY").is_some() && x11_api().is_some();
             has_x11 || is_wayland_screencast_available()
         }
     }
@@ -1803,6 +1805,35 @@ mod imp {
         free: unsafe extern "C" fn(*mut std::ffi::c_void) -> std::ffi::c_int,
     }
 
+    /// Xlib's own error handler ends the process. A failed capture call
+    /// (BadMatch from XGetImage, #548) only fails that frame instead.
+    #[cfg(target_os = "linux")]
+    unsafe extern "C" fn x11_capture_error(
+        _display: *mut std::ffi::c_void,
+        event: *mut XErrorEvent,
+    ) -> std::ffi::c_int {
+        // SAFETY: Xlib passes a valid event for the call.
+        let (code, request) = unsafe { ((*event).error_code, (*event).request_code) };
+        tracing::warn!(code, request, "X11 error during screen capture");
+        0
+    }
+
+    #[cfg(target_os = "linux")]
+    #[repr(C)]
+    struct XErrorEvent {
+        kind: std::ffi::c_int,
+        display: *mut std::ffi::c_void,
+        resourceid: std::ffi::c_ulong,
+        serial: std::ffi::c_ulong,
+        error_code: u8,
+        request_code: u8,
+        minor_code: u8,
+    }
+
+    #[cfg(target_os = "linux")]
+    type XErrorHandler =
+        Option<unsafe extern "C" fn(*mut std::ffi::c_void, *mut XErrorEvent) -> std::ffi::c_int>;
+
     #[cfg(target_os = "linux")]
     fn x11_api() -> Option<&'static X11Api> {
         static API: std::sync::OnceLock<Option<X11Api>> = std::sync::OnceLock::new();
@@ -1818,6 +1849,9 @@ mod imp {
             if lib.is_null() {
                 return None;
             }
+            let set_error_handler: unsafe extern "C" fn(XErrorHandler) -> XErrorHandler =
+                dl_sym(lib, c"XSetErrorHandler")?;
+            set_error_handler(Some(x11_capture_error));
             Some(X11Api {
                 open_display: dl_sym(lib, c"XOpenDisplay")?,
                 default_root_window: dl_sym(lib, c"XDefaultRootWindow")?,
@@ -1941,8 +1975,13 @@ mod imp {
     }
 
     #[cfg(target_os = "linux")]
+    fn wayland_session() -> bool {
+        std::env::var_os("WAYLAND_DISPLAY").is_some_and(|v| !v.is_empty())
+    }
+
+    #[cfg(target_os = "linux")]
     fn is_wayland_screencast_available() -> bool {
-        if std::env::var_os("WAYLAND_DISPLAY").is_none() {
+        if !wayland_session() {
             return false;
         }
         static AVAILABLE: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
@@ -2405,6 +2444,14 @@ mod imp {
                     return;
                 }
             }
+        } else if options.watch.is_none() && wayland_session() {
+            // X11 capture of XWayland fails on Wayland, and some compositors
+            // answer it with an error that used to end the app (#548).
+            let error = anyhow::anyhow!(
+                "sharing the screen on Wayland needs xdg-desktop-portal and GStreamer's PipeWire plugin (gst-launch-1.0 and pipewiresrc)"
+            );
+            finish_failed_capture(peer, &stop, &error);
+            return;
         } else {
             (None, None)
         };
