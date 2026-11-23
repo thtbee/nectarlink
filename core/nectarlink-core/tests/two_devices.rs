@@ -101,6 +101,12 @@ struct RecordingPlatform {
     pc_audio_outputs: Mutex<Vec<String>>,
     tasks: Mutex<Vec<nectarlink_core::TaskNotify>>,
     storage: Mutex<Option<nectarlink_core::FolderStorage>>,
+    /// Devices whose held remote input was released.
+    remote_releases: Mutex<Vec<nectarlink_core::DeviceId>>,
+    route_sets: Mutex<Vec<nectarlink_core::AudioRouteSet>>,
+    route_pcm: Mutex<Vec<nectarlink_core::AudioRoutePcm>>,
+    route_levels: Mutex<Vec<nectarlink_core::AudioRouteLevels>>,
+    mic_setups: Mutex<u32>,
 }
 
 impl Platform for RecordingPlatform {
@@ -793,6 +799,74 @@ impl Platform for RecordingPlatform {
         let storage = guard.as_ref().ok_or(nectarlink_core::StorageError::Unsupported)?;
         storage.delete(path, confirmed)
     }
+    fn remote_release(&self, peer: nectarlink_core::DeviceId) {
+        self.remote_releases.lock().unwrap().push(peer);
+    }
+    fn remote_info(&self) -> nectarlink_core::RemoteInfo {
+        nectarlink_core::RemoteInfo {
+            profile: "test".into(),
+            supported_actions: vec![nectarlink_core::GestureAction::SwitchNext],
+            monitors: vec![nectarlink_core::RemoteMonitorRect {
+                name: "Main".into(),
+                x: 0,
+                y: 0,
+                width: 1920,
+                height: 1080,
+                primary: true,
+            }],
+        }
+    }
+    fn on_audio_route_set(
+        &self,
+        _peer: nectarlink_core::DeviceId,
+        set: nectarlink_core::AudioRouteSet,
+    ) -> Result<nectarlink_core::AudioRouteStatus, String> {
+        let status = nectarlink_core::AudioRouteStatus {
+            generation: set.generation,
+            role: set.role,
+            active: set.role != nectarlink_core::AudioRouteRole::Idle,
+            local_paused: false,
+            speaker_muted_by_route: set.silence_local_speaker,
+            output_id: None,
+            reason: None,
+        };
+        self.route_sets.lock().unwrap().push(set);
+        Ok(status)
+    }
+    fn on_audio_route_pcm(&self, _peer: nectarlink_core::DeviceId, pcm: nectarlink_core::AudioRoutePcm) {
+        self.route_pcm.lock().unwrap().push(pcm);
+    }
+    fn on_audio_route_levels(
+        &self,
+        _peer: nectarlink_core::DeviceId,
+        levels: nectarlink_core::AudioRouteLevels,
+    ) {
+        self.route_levels.lock().unwrap().push(levels);
+    }
+    fn on_mic_status_request(
+        &self,
+        _peer: nectarlink_core::DeviceId,
+    ) -> Result<nectarlink_core::MicStatus, String> {
+        Ok(test_mic_status())
+    }
+    fn on_mic_setup_request(
+        &self,
+        _peer: nectarlink_core::DeviceId,
+    ) -> Result<nectarlink_core::MicSetupResponse, String> {
+        *self.mic_setups.lock().unwrap() += 1;
+        Ok(nectarlink_core::MicSetupResponse { ok: true, message: None })
+    }
+}
+
+fn test_mic_status() -> nectarlink_core::MicStatus {
+    nectarlink_core::MicStatus {
+        ready: true,
+        active: false,
+        is_default_input: true,
+        device_name: Some("NectarLink Microphone".into()),
+        setup_reason: None,
+        can_open_setup: true,
+    }
 }
 
 #[derive(Debug, Default)]
@@ -915,6 +989,7 @@ async fn start_in(dir: TempDir, name: &'static str, kind: DeviceKind) -> TestDev
     config.private_clip_lifetime = Duration::from_millis(300);
     config.lan_discovery = false;
     config.away_mode = false;
+    config.tailscale_interfaces = false;
     config.key_protector = Some(Arc::new(PlainKeyProtector));
     config.capabilities = vec!["media.control".into()];
     let platform = Arc::new(RecordingPlatform::default());
@@ -1443,8 +1518,13 @@ async fn nearby_pair(pc: &mut TestDevice, phone: &mut TestDevice) {
     pc.node.pairing_start_qr().await.unwrap();
     phone.node.add_known_addrs(pc_id, &pc.node.direct_addrs().await);
     let initiator = phone.node.clone();
-    let task = tokio::spawn(async move { initiator.pairing_start_nearby(pc_id).await });
-    let (phone_code, pc_code) = (sas_code(phone).await, sas_code(pc).await);
+    let mut task = tokio::spawn(async move { initiator.pairing_start_nearby(pc_id).await });
+    // A pairing that fails before the code shows says why, instead of timing out.
+    let phone_code = tokio::select! {
+        ended = &mut task => panic!("nearby pairing ended before the code: {ended:?}"),
+        code = sas_code(phone) => code,
+    };
+    let pc_code = sas_code(pc).await;
     assert_eq!(phone_code, pc_code);
     phone.node.pairing_confirm(true).unwrap();
     pc.node.pairing_confirm(true).unwrap();
@@ -6226,6 +6306,7 @@ async fn start_localsend_in(dir: TempDir, name: &'static str, kind: DeviceKind, 
     let mut config = NodeConfig::new(dir.path(), info(name, kind), "0.0.1-test");
     config.lan_discovery = false;
     config.away_mode = false;
+    config.tailscale_interfaces = false;
     config.localsend_port = port;
     config.key_protector = Some(Arc::new(PlainKeyProtector));
     config.capabilities = vec!["media.control".into()];
@@ -7032,6 +7113,7 @@ async fn start_usb_device_in(
     let mut config = NodeConfig::new(dir.path(), info(name, kind), "0.0.1-test");
     config.lan_discovery = false;
     config.away_mode = false;
+    config.tailscale_interfaces = false;
     config.usb_port = usb_port;
     config.adb_server = None;
     config.key_protector = Some(Arc::new(PlainKeyProtector));
@@ -8630,6 +8712,7 @@ async fn phone_with_install_id(name: &'static str, install_id: &str) -> TestDevi
     let mut config = NodeConfig::new(dir.path(), phone_info, "0.0.1-test");
     config.lan_discovery = false;
     config.away_mode = false;
+    config.tailscale_interfaces = false;
     config.key_protector = Some(Arc::new(PlainKeyProtector));
     config.capabilities = vec!["media.control".into()];
     let platform = Arc::new(RecordingPlatform::default());
@@ -8925,4 +9008,358 @@ async fn report_parts_come_at_once_and_logs_only_when_shared() {
 
     // An answer with no request behind it does nothing.
     with_timeout("unasked", phone.node.diag_log_answer(pc_id, true)).await.unwrap();
+}
+
+// ---- AudioLink: managed audio routes and the virtual microphone ----
+
+fn route(
+    generation: u64,
+    role: nectarlink_core::AudioRouteRole,
+    sources: &[String],
+) -> nectarlink_core::AudioRouteSet {
+    nectarlink_core::AudioRouteSet {
+        generation,
+        role,
+        target_device_id: None,
+        output_id: None,
+        master_gain: 1.0,
+        master_muted: false,
+        silence_local_speaker: true,
+        include_phone_audio: false,
+        latency_preset: nectarlink_core::AudioLatencyPreset::Balanced,
+        playback_policy: nectarlink_core::AudioPlaybackPolicy::Pause,
+        selective_resume: true,
+        phone_playback_active: false,
+        lanes: sources
+            .iter()
+            .map(|id| nectarlink_core::AudioRouteLane { source_id: id.clone(), gain: 1.0, muted: false })
+            .collect(),
+    }
+}
+
+/// A 48 kHz mono frame; `seq` marks it.
+fn frame(generation: u64, seq: u32, source: &str, frames: u16) -> nectarlink_core::AudioRoutePcm {
+    nectarlink_core::AudioRoutePcm {
+        generation,
+        seq,
+        sample_rate: 48_000,
+        channels: 1,
+        frame_count: frames,
+        source_id: source.into(),
+        pcm: vec![seq as u8; usize::from(frames) * 2],
+    }
+}
+
+/// Waits until `platform` got the frame marked `seq`.
+async fn wait_route_frame(platform: &RecordingPlatform, seq: u32) {
+    let deadline = tokio::time::Instant::now() + WAIT;
+    while !platform.route_pcm.lock().unwrap().iter().any(|p| p.seq == seq) {
+        assert!(tokio::time::Instant::now() < deadline, "timed out waiting for managed frame {seq}");
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn managed_audio_routes_carry_pcm_only_for_the_route_that_was_set() {
+    use nectarlink_core::{AUDIO_ROUTE_CONTROLLER, AUDIO_ROUTE_SINK, AUDIO_ROUTE_SOURCE, AudioRouteRole};
+
+    let mut pc = device_with(
+        "Desktop",
+        DeviceKind::Desktop,
+        &[AUDIO_ROUTE_CONTROLLER, AUDIO_ROUTE_SOURCE, AUDIO_ROUTE_SINK],
+    )
+    .await;
+    let mut phone = device_with("Pixel", DeviceKind::Phone, &[AUDIO_ROUTE_SINK, AUDIO_ROUTE_SOURCE]).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+    let pc_lane = pc_id.to_string();
+
+    // A phone that doesn't control routes can't set one.
+    let playback = route(1, AudioRouteRole::PhonePlayback, std::slice::from_ref(&pc_lane));
+    assert!(matches!(phone.node.set_audio_route(pc_id, playback.clone()).await, Err(Error::Unsupported)));
+
+    // With `media` off on the phone for this PC, the phone refuses the route.
+    phone.node.set_device_toggle(pc_id, "media", false).unwrap();
+    assert!(matches!(pc.node.set_audio_route(phone_id, playback.clone()).await, Err(Error::Denied)));
+    assert!(phone.platform.route_sets.lock().unwrap().is_empty());
+    phone.node.set_device_toggle(pc_id, "media", true).unwrap();
+
+    let status =
+        with_timeout("route set", pc.node.set_audio_route(phone_id, playback.clone())).await.unwrap();
+    assert_eq!((status.generation, status.role, status.active), (1, AudioRouteRole::PhonePlayback, true));
+    assert_eq!(phone.platform.route_sets.lock().unwrap().as_slice(), std::slice::from_ref(&playback));
+    assert_eq!(phone.node.audio_route(), Some(playback));
+
+    // Frames for another generation, or claiming another source, are dropped.
+    pc.node.send_route_pcm(phone_id, frame(2, 1, &pc_lane, 240)).unwrap();
+    pc.node.send_route_pcm(phone_id, frame(1, 2, &phone_id.to_string(), 240)).unwrap();
+    // A small frame goes as an NLRP datagram, a big one as `audio.route.pcm`.
+    pc.node.send_route_pcm(phone_id, frame(1, 3, &pc_lane, 240)).unwrap();
+    pc.node.send_route_pcm(phone_id, frame(1, 4, &pc_lane, 2400)).unwrap();
+    let got = wait_for(&mut phone, "managed frame", |e| match e {
+        NodeEvent::AudioRoutePcm { device, pcm } if *device == pc_id && pcm.seq == 3 => Some(pcm.clone()),
+        _ => None,
+    })
+    .await;
+    assert_eq!(got, frame(1, 3, &pc_lane, 240));
+    wait_route_frame(&phone.platform, 4).await;
+    let seqs: Vec<u32> = phone.platform.route_pcm.lock().unwrap().iter().map(|p| p.seq).collect();
+    assert!(!seqs.contains(&1) && !seqs.contains(&2), "{seqs:?}");
+    // Too big for the control stream: refused rather than queued.
+    assert!(pc.node.send_route_pcm(phone_id, frame(1, 5, &pc_lane, 20_000)).is_err());
+
+    // The phone's sink reports levels and changes to the controller.
+    let levels = nectarlink_core::AudioRouteLevels {
+        generation: 1,
+        levels: vec![nectarlink_core::AudioLaneLevel {
+            source_id: pc_lane.clone(),
+            peak: 0.25,
+            active: true,
+        }],
+    };
+    phone.node.send_audio_route_levels(pc_id, levels.clone()).unwrap();
+    let heard = wait_for(&mut pc, "route levels", |e| match e {
+        NodeEvent::AudioRouteLevels { device, levels } if *device == phone_id => Some(levels.0.clone()),
+        _ => None,
+    })
+    .await;
+    assert_eq!(heard, levels);
+    let changed = nectarlink_core::AudioRouteStatus { local_paused: true, ..status };
+    phone.node.send_audio_route_status(pc_id, changed.clone()).await.unwrap();
+    let heard = wait_for(&mut pc, "route status", |e| match e {
+        NodeEvent::AudioRouteStatus { device, status } if *device == phone_id => Some(status.clone()),
+        _ => None,
+    })
+    .await;
+    assert_eq!(heard, changed);
+
+    // The PC mixes the phone's audio itself: its own route enrols the phone.
+    // A phone's audio needs `mirroring` on too.
+    pc.node.set_local_audio_route(Some(route(7, AudioRouteRole::Sink, &[phone_id.to_string()]))).unwrap();
+    pc.node.set_device_toggle(phone_id, "mirroring", false).unwrap();
+    phone.node.send_route_pcm(pc_id, frame(7, 10, &phone_id.to_string(), 240)).unwrap();
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    assert!(pc.platform.route_pcm.lock().unwrap().is_empty(), "no phone audio with mirroring off");
+    pc.node.set_device_toggle(phone_id, "mirroring", true).unwrap();
+    phone.node.send_route_pcm(pc_id, frame(7, 11, &phone_id.to_string(), 240)).unwrap();
+    wait_route_frame(&pc.platform, 11).await;
+
+    // Idle stops the route: its frames no longer play.
+    pc.node.set_audio_route(phone_id, route(8, AudioRouteRole::Idle, &[])).await.unwrap();
+    assert_eq!(phone.node.audio_route(), None);
+    phone.platform.route_pcm.lock().unwrap().clear();
+    pc.node.send_route_pcm(phone_id, frame(1, 12, &pc_lane, 240)).unwrap();
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    assert!(phone.platform.route_pcm.lock().unwrap().is_empty());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn the_virtual_microphone_reports_and_opens_setup_with_the_mic_toggle() {
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[nectarlink_core::MIC_STATUS]).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+
+    let status = with_timeout("mic status", phone.node.request_mic_status(pc_id)).await.unwrap();
+    assert_eq!(status, test_mic_status());
+    let setup = with_timeout("mic setup", phone.node.request_mic_setup(pc_id)).await.unwrap();
+    assert!(setup.ok);
+    assert_eq!(*pc.platform.mic_setups.lock().unwrap(), 1);
+
+    pc.node
+        .send_mic_status(phone_id, nectarlink_core::MicStatus { active: true, ..test_mic_status() })
+        .await
+        .unwrap();
+    let heard = wait_for(&mut phone, "mic status event", |e| match e {
+        NodeEvent::MicStatus { device, status } if *device == pc_id => Some(status.clone()),
+        _ => None,
+    })
+    .await;
+    assert!(heard.active);
+
+    // The phone doesn't offer it, so the PC can't ask it.
+    assert!(matches!(pc.node.request_mic_status(phone_id).await, Err(Error::Unsupported)));
+    // With `mic` off on the PC, it refuses; off on the phone, the phone doesn't ask.
+    pc.node.set_device_toggle(phone_id, "mic", false).unwrap();
+    assert!(matches!(phone.node.request_mic_status(pc_id).await, Err(Error::Denied)));
+    assert!(matches!(phone.node.request_mic_setup(pc_id).await, Err(Error::Denied)));
+    assert_eq!(*pc.platform.mic_setups.lock().unwrap(), 1);
+    phone.node.set_device_toggle(pc_id, "mic", false).unwrap();
+    assert!(matches!(phone.node.request_mic_status(pc_id).await, Err(Error::Denied)));
+}
+
+// ---- Drift: precision remote input ----
+
+/// Waits until the PC injected an input `pick` matches.
+async fn wait_remote_input(
+    platform: &RecordingPlatform,
+    what: &str,
+    pick: impl Fn(&nectarlink_core::RemoteInput) -> bool,
+) {
+    let deadline = tokio::time::Instant::now() + WAIT;
+    while !platform.remote_inputs.lock().unwrap().iter().any(&pick) {
+        assert!(tokio::time::Instant::now() < deadline, "timed out waiting for {what}");
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+}
+
+async fn wait_releases(platform: &RecordingPlatform, count: usize, what: &str) {
+    let deadline = tokio::time::Instant::now() + WAIT;
+    while platform.remote_releases.lock().unwrap().len() < count {
+        assert!(tokio::time::Instant::now() < deadline, "timed out waiting for a release on {what}");
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn precision_input_needs_the_capability_and_keeps_absolute_moves_in_order() {
+    use nectarlink_core::{
+        ButtonAction, GestureAction, INPUT_INJECT, INPUT_PRECISION, KeyMod, MouseButton, RemoteInput,
+    };
+
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[INPUT_INJECT]).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+    pc.node.set_device_toggle(phone_id, "remote_input", true).unwrap();
+    with_timeout("check", phone.node.remote_check(pc_id)).await.unwrap();
+
+    // A PC without `input.precision` gets none of it.
+    assert!(matches!(phone.node.remote_move_precise(pc_id, 1.0, 1.0).await, Err(Error::Unsupported)));
+    assert!(matches!(phone.node.remote_zoom(pc_id, 1.0).await, Err(Error::Unsupported)));
+    assert!(matches!(phone.node.remote_info(pc_id).await, Err(Error::Unsupported)));
+    assert!(matches!(
+        phone.node.remote_gesture(pc_id, GestureAction::SwitchNext).await,
+        Err(Error::Unsupported)
+    ));
+    assert!(matches!(
+        phone
+            .node
+            .remote_input(
+                pc_id,
+                RemoteInput::Button { button: MouseButton::Back, action: ButtonAction::Click }
+            )
+            .await,
+        Err(Error::Unsupported)
+    ));
+
+    pc.node
+        .update_power(
+            PowerLevel::NotApplicable,
+            vec!["media.control".into(), INPUT_INJECT.into(), INPUT_PRECISION.into()],
+        )
+        .await;
+    wait_for(&mut phone, "input.precision available", |e| match e {
+        NodeEvent::Capabilities(m)
+            if m.device == pc_id && m.state("input.precision") == Some(FeatureState::Available) =>
+        {
+            Some(())
+        }
+        _ => None,
+    })
+    .await;
+
+    // Presence reaches the PC.
+    with_timeout("presence", phone.node.remote_check_with_presence(pc_id, Some(true))).await.unwrap();
+    wait_for(&mut pc, "presence", |e| match e {
+        NodeEvent::RemotePresence { device, present: true } if *device == phone_id => Some(()),
+        _ => None,
+    })
+    .await;
+    let info = with_timeout("remote info", phone.node.remote_info(pc_id)).await.unwrap();
+    assert_eq!(info.profile, "test");
+    assert_eq!(info.supported_actions, [GestureAction::SwitchNext]);
+
+    // A click goes reliably; a lossy move older than it is dropped; a newer
+    // one (across the wrap) arrives.
+    let abs = |seq: u32, click: Option<MouseButton>| RemoteInput::MoveAbsolute { x: 0.5, y: 0.5, seq, click };
+    with_timeout(
+        "click",
+        phone.node.remote_move_absolute(pc_id, 0.5, 0.5, u32::MAX, Some(MouseButton::Left)),
+    )
+    .await
+    .unwrap();
+    assert!(pc.platform.remote_inputs.lock().unwrap().contains(&abs(u32::MAX, Some(MouseButton::Left))));
+    phone.node.remote_move_absolute(pc_id, 0.5, 0.5, u32::MAX - 5, None).await.unwrap();
+    phone.node.remote_move_absolute(pc_id, 0.5, 0.5, 2, None).await.unwrap();
+    wait_remote_input(&pc.platform, "newer absolute move", |i| *i == abs(2, None)).await;
+    // And a reliable click older than what arrived is still applied: it's a click.
+    assert!(
+        !pc.platform.remote_inputs.lock().unwrap().contains(&abs(u32::MAX - 5, None)),
+        "stale move injected"
+    );
+
+    phone.node.remote_move_precise(pc_id, 3.5, -2.25).await.unwrap();
+    wait_remote_input(&pc.platform, "precise move", |i| {
+        *i == RemoteInput::MovePrecise { dx: 3.5, dy: -2.25 }
+    })
+    .await;
+    with_timeout("zoom", phone.node.remote_zoom(pc_id, 2.0)).await.unwrap();
+    with_timeout("gesture", phone.node.remote_gesture(pc_id, GestureAction::SwitchNext)).await.unwrap();
+    with_timeout(
+        "modified button",
+        phone.node.remote_modified_button(pc_id, MouseButton::Back, ButtonAction::Click, vec![KeyMod::Ctrl]),
+    )
+    .await
+    .unwrap();
+    let recorded = pc.platform.remote_inputs.lock().unwrap().clone();
+    assert!(recorded.contains(&RemoteInput::Zoom { delta: 2.0 }));
+    assert!(recorded.contains(&RemoteInput::Gesture { action: GestureAction::SwitchNext }));
+    assert!(recorded.contains(&RemoteInput::ModifiedButton {
+        button: MouseButton::Back,
+        action: ButtonAction::Click,
+        mods: vec![KeyMod::Ctrl]
+    }));
+
+    // Leaving the remote screen releases anything held.
+    assert!(pc.platform.remote_releases.lock().unwrap().is_empty());
+    phone.node.remote_check_with_presence(pc_id, Some(false)).await.unwrap();
+    wait_releases(&pc.platform, 1, "leaving the remote screen").await;
+    // So does turning `remote_input` off.
+    pc.node.set_device_toggle(phone_id, "remote_input", false).unwrap();
+    wait_releases(&pc.platform, 2, "turning remote input off").await;
+    pc.node.set_device_toggle(phone_id, "remote_input", true).unwrap();
+    // And the connection ending.
+    phone.node.shutdown().await;
+    wait_releases(&pc.platform, 3, "disconnect").await;
+    assert!(pc.platform.remote_releases.lock().unwrap().iter().all(|id| *id == phone_id));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn unpairing_releases_held_remote_input() {
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[nectarlink_core::INPUT_INJECT]).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+    phone.node.unpair(pc_id).await.unwrap();
+    wait_for(&mut pc, "unpaired", |e| match e {
+        NodeEvent::DeviceRemoved(id) if *id == phone_id => Some(()),
+        _ => None,
+    })
+    .await;
+    wait_releases(&pc.platform, 1, "unpair").await;
+}
+
+/// Each side advertises its LAN addresses in its hello, and the other keeps
+/// them as that device's own.
+#[tokio::test(flavor = "multi_thread")]
+async fn the_hello_carries_each_sides_lan_addresses() {
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let phone_id = phone.node.device_id();
+    let has_lan = phone.node.direct_addrs().await.iter().any(|a| match a.ip() {
+        std::net::IpAddr::V4(v4) => v4.is_private(),
+        std::net::IpAddr::V6(_) => false,
+    });
+    let diag = pc.node.peer_addr_diagnostics(&phone_id).unwrap();
+    if has_lan {
+        assert!(
+            diag.candidates.iter().any(|c| c.source == nectarlink_core::CandidateSource::Advertised),
+            "{diag:?}"
+        );
+    }
+    // Never USB's or anyone's loopback.
+    assert!(diag.candidates.iter().all(|c| !c.addr.ip().is_loopback()), "{diag:?}");
+    assert!(diag.path.is_some());
 }

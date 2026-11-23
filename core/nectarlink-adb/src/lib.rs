@@ -225,7 +225,7 @@ pub fn is_network_serial(serial: &str) -> bool {
     }
     let host = host.trim_start_matches('[').trim_end_matches(']');
     match host.parse::<std::net::IpAddr>() {
-        Ok(ip) => !ip.is_loopback(),
+        Ok(ip) => !ip.to_canonical().is_loopback(),
         Err(_) => !host.eq_ignore_ascii_case("localhost"),
     }
 }
@@ -686,8 +686,14 @@ mod tests {
         ] {
             assert!(is_network_serial(serial), "{serial}");
         }
-        for serial in ["SYNTH_SERIAL_001", "emulator-5554", "127.0.0.1:5591", "localhost:5555", "[::1]:5555"]
-        {
+        for serial in [
+            "SYNTH_SERIAL_001",
+            "emulator-5554",
+            "127.0.0.1:5591",
+            "localhost:5555",
+            "[::1]:5555",
+            "[::ffff:127.0.0.1]:5555",
+        ] {
             assert!(!is_network_serial(serial), "{serial}");
         }
     }

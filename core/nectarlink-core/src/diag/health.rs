@@ -80,6 +80,7 @@ closed_enum! {
         Lan => "lan",
         Usb => "usb",
         Relay => "relay",
+        Tailscale => "tailscale",
         Cancelled => "cancelled",
         Denied => "denied",
         Declined => "declined",
@@ -93,7 +94,7 @@ closed_enum! {
     }
 }
 
-const CELLS: usize = 12 * 14;
+const CELLS: usize = 12 * 15;
 const _: () = assert!(Feature::ALL.len() * Code::ALL.len() == CELLS);
 
 static COUNTS: [AtomicU32; CELLS] = [const { AtomicU32::new(0) }; CELLS];
@@ -167,6 +168,7 @@ fn path_code(path: ConnectionPath) -> Code {
         ConnectionPath::Lan => Code::Lan,
         ConnectionPath::Usb => Code::Usb,
         ConnectionPath::Relay => Code::Relay,
+        ConnectionPath::Tailscale => Code::Tailscale,
     }
 }
 

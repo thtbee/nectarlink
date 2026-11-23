@@ -277,27 +277,40 @@ pub(crate) async fn start_host(shared: &Arc<Shared>) -> Result<PairingUri> {
         id: shared.id,
         secret,
         name,
-        addrs: link_addrs(shared.direct_addrs().await, default_route_ip()),
+        addrs: {
+            let mut addrs = shared.direct_addrs().await;
+            let tailscale: Vec<SocketAddr> =
+                shared.tailscale_sockets().into_iter().filter(|a| !addrs.contains(a)).collect();
+            addrs.extend(tailscale);
+            link_addrs(addrs, default_route_ip(), &shared.local_tailscale_ips())
+        },
     })
 }
 
 /// Most addresses a pairing link carries; more only make the QR code denser.
 const MAX_LINK_ADDRS: usize = 3;
 
-/// Picks the addresses worth putting in a pairing link: the one the default
-/// route leaves from (`preferred`), then private IPv4 (what a phone on the
-/// same network almost always uses), then other IPv4, then at most one IPv6.
-/// Among private ranges, home routers' `192.168/16` and `10/8` come before
-/// `172.16/12`, where Hyper-V, WSL and Docker put their adapters (#148). A
-/// tailnet address comes right after the preferred one: on a network that
-/// keeps devices apart it's the only one that works, and VMware's adapters
-/// use `192.168/16`, so they'd crowd it out otherwise.
-/// Link-local IPv6 is useless without a scope ID. Discovery on the network
-/// finds the device even if none of these work.
-fn link_addrs(mut addrs: Vec<SocketAddr>, preferred: Option<IpAddr>) -> Vec<SocketAddr> {
+/// Picks the addresses worth putting in a pairing link. The best LAN address
+/// always gets a slot: the one the default route leaves from (`preferred`),
+/// else private IPv4 (what a phone on the same network almost always uses),
+/// else other IPv4, else one IPv6. Among private ranges, home routers'
+/// `192.168/16` and `10/8` come before `172.16/12`, where Hyper-V, WSL and
+/// Docker put their adapters (#148). Then this device's Tailscale addresses,
+/// but only ones its own Tailscale confirms (`local_tailscale`): on a network
+/// that keeps devices apart they're the only ones that work, and VMware's
+/// adapters use `192.168/16`, so they'd crowd them out otherwise. A carrier's
+/// CGNAT address (also `100.64/10`) is just another IPv4 address. Remaining
+/// slots go to the next best LAN addresses. Link-local IPv6 is useless without
+/// a scope ID. Discovery on the network finds the device even if none of
+/// these work.
+fn link_addrs(
+    mut addrs: Vec<SocketAddr>,
+    preferred: Option<IpAddr>,
+    local_tailscale: &[IpAddr],
+) -> Vec<SocketAddr> {
+    let proven = |ip: IpAddr| crate::session::is_corroborated_tailnet_ip(ip, local_tailscale);
     let rank = |a: &SocketAddr| match a.ip() {
         ip if Some(ip) == preferred => 0,
-        ip if crate::session::is_tailnet_ip(ip) => 1,
         IpAddr::V4(v4) if v4.is_private() && v4.octets()[0] != 172 => 2,
         IpAddr::V4(v4) if v4.is_private() => 3,
         IpAddr::V4(v4) if v4.is_loopback() || v4.is_link_local() => 6,
@@ -312,21 +325,38 @@ fn link_addrs(mut addrs: Vec<SocketAddr>, preferred: Option<IpAddr>) -> Vec<Sock
         IpAddr::V6(v6) => !v6.is_loopback() && !v6.is_unicast_link_local(),
         IpAddr::V4(v4) => !has_non_loopback || !v4.is_loopback(),
     });
-    addrs.sort_by_key(rank);
+    addrs.dedup();
+    let (mut tailnet, mut lan): (Vec<SocketAddr>, Vec<SocketAddr>) =
+        addrs.into_iter().partition(|a| Some(a.ip()) != preferred && proven(a.ip()));
+    lan.sort_by_key(rank);
+    // IPv4 first: every tailnet has it, IPv6 is optional.
+    tailnet.sort_by_key(SocketAddr::is_ipv6);
+
     let mut picked = Vec::new();
+    let mut lan = lan.into_iter();
     let mut has_v6 = false;
-    for addr in addrs {
-        if addr.is_ipv6() {
-            if has_v6 {
-                continue;
+    let mut next_lan = |picked: &mut Vec<SocketAddr>| {
+        for addr in lan.by_ref() {
+            if addr.is_ipv6() {
+                if has_v6 {
+                    continue;
+                }
+                has_v6 = true;
             }
-            has_v6 = true;
+            picked.push(addr);
+            return true;
         }
-        picked.push(addr);
+        false
+    };
+    // The reserved LAN slot, then Tailscale, then more LAN.
+    next_lan(&mut picked);
+    for addr in tailnet {
         if picked.len() == MAX_LINK_ADDRS {
             break;
         }
+        picked.push(addr);
     }
+    while picked.len() < MAX_LINK_ADDRS && next_lan(&mut picked) {}
     picked
 }
 
@@ -367,7 +397,18 @@ pub(crate) async fn join_qr(shared: &Arc<Shared>, uri: &PairingUri) -> Result<()
         Ok((send, device)) => finish_initiator(&conn, send).await.map(|()| device),
         Err(e) => Err(e),
     };
-    settle_initiator(shared, &conn, uri.id, result).await
+    settle_initiator(shared, &conn, uri.id, result).await?;
+    // Only now is it a paired device: keep the link's addresses to reconnect by.
+    if let Err(e) = shared.store.replace_candidates(
+        &uri.id,
+        crate::store::CandidateSource::Discovery,
+        &uri.addrs,
+        crate::now_unix(),
+    ) {
+        tracing::debug!(error = %e, "couldn't keep the pairing link's addresses");
+    }
+    shared.refresh_lookup(&uri.id);
+    Ok(())
 }
 
 /// Starts the nearby (numeric comparison) flow with a device in pairing
@@ -755,70 +796,90 @@ fn default_route_ip() -> Option<IpAddr> {
 mod tests {
     use super::*;
 
+    fn strings(addrs: Vec<SocketAddr>) -> Vec<String> {
+        addrs.iter().map(ToString::to_string).collect()
+    }
+
+    fn parse(addrs: &[&str]) -> Vec<SocketAddr> {
+        addrs.iter().map(|a| a.parse().unwrap()).collect()
+    }
+
+    /// This device's own Tailscale, which proves `100.64/10` is a tailnet here.
+    fn tailscale() -> Vec<IpAddr> {
+        vec!["100.67.18.105".parse().unwrap()]
+    }
+
     #[test]
     fn pairing_links_carry_the_useful_addresses() {
-        let addrs: Vec<SocketAddr> = [
+        let addrs = parse(&[
             "[2001:db8:1::1]:5000",
             "[fe80::1]:5000",
             "100.64.0.1:5000",
             "[2001:db8:1::2]:5000",
             "192.168.1.20:5000",
             "127.0.0.1:5000",
-        ]
-        .iter()
-        .map(|a| a.parse().unwrap())
-        .collect();
-        let picked: Vec<String> = link_addrs(addrs, None).iter().map(ToString::to_string).collect();
-        assert_eq!(picked, ["100.64.0.1:5000", "192.168.1.20:5000", "[2001:db8:1::1]:5000"]);
-        let loopback_only: Vec<SocketAddr> = ["127.0.0.1:5000".parse().unwrap()].into();
-        let fallback: Vec<String> = link_addrs(loopback_only, None).iter().map(ToString::to_string).collect();
+        ]);
+        let picked = strings(link_addrs(addrs.clone(), None, &tailscale()));
+        assert_eq!(picked, ["192.168.1.20:5000", "100.64.0.1:5000", "[2001:db8:1::1]:5000"]);
+        let fallback = strings(link_addrs(parse(&["127.0.0.1:5000"]), None, &[]));
         assert_eq!(fallback, ["127.0.0.1:5000"]);
-        assert!(link_addrs(Vec::new(), None).is_empty());
+        assert!(link_addrs(Vec::new(), None, &[]).is_empty());
+    }
+
+    /// Without this device's own Tailscale, `100.64/10` is a carrier's CGNAT:
+    /// no reserved slot, just another IPv4 address after the LAN ones.
+    #[test]
+    fn a_cgnat_address_gets_no_tailscale_slot() {
+        let addrs =
+            parse(&["100.67.18.105:61845", "192.168.1.123:61845", "10.0.0.5:61845", "172.17.0.1:61845"]);
+        let picked = strings(link_addrs(addrs, None, &[]));
+        assert_eq!(picked, ["192.168.1.123:61845", "10.0.0.5:61845", "172.17.0.1:61845"]);
     }
 
     /// Virtual adapters used to fill the slots after Wi-Fi, leaving out Tailscale.
     #[test]
     fn pairing_links_keep_the_tailnet_address_beside_virtual_adapters() {
-        let addrs: Vec<SocketAddr> = [
+        let addrs = parse(&[
             "172.17.144.1:61845",
             "172.21.192.1:61845",
             "100.67.18.105:61845",
             "192.168.1.123:61845",
             "[fd7a:115c:a1e0::1]:61845",
-        ]
-        .iter()
-        .map(|a| a.parse().unwrap())
-        .collect();
-        let picked: Vec<String> = link_addrs(addrs, None).iter().map(ToString::to_string).collect();
-        assert_eq!(picked, ["100.67.18.105:61845", "[fd7a:115c:a1e0::1]:61845", "192.168.1.123:61845"]);
+        ]);
+        let picked = strings(link_addrs(addrs, None, &tailscale()));
+        assert_eq!(picked, ["192.168.1.123:61845", "100.67.18.105:61845", "[fd7a:115c:a1e0::1]:61845"]);
+    }
+
+    /// Tailscale never takes the only LAN slot, however many addresses it has.
+    #[test]
+    fn pairing_links_always_keep_one_lan_address() {
+        let addrs = parse(&[
+            "100.67.18.105:61845",
+            "[fd7a:115c:a1e0::1]:61845",
+            "[fd7a:115c:a1e0::2]:61845",
+            "10.20.30.40:61845",
+        ]);
+        let picked = strings(link_addrs(addrs, None, &tailscale()));
+        assert_eq!(picked, ["10.20.30.40:61845", "100.67.18.105:61845", "[fd7a:115c:a1e0::1]:61845"]);
     }
 
     /// VMware's VMnet1 and VMnet8 are `192.168` too, beside the Wi-Fi the route leaves from.
     #[test]
     fn pairing_links_keep_the_tailnet_address_beside_vmware() {
-        let addrs: Vec<SocketAddr> =
-            ["192.168.56.1:61845", "192.168.80.1:61845", "100.67.18.105:61845", "10.20.30.40:61845"]
-                .iter()
-                .map(|a| a.parse().unwrap())
-                .collect();
+        let addrs =
+            parse(&["192.168.56.1:61845", "192.168.80.1:61845", "100.67.18.105:61845", "10.20.30.40:61845"]);
         let wifi = "10.20.30.40".parse().ok();
-        let picked: Vec<String> = link_addrs(addrs, wifi).iter().map(ToString::to_string).collect();
+        let picked = strings(link_addrs(addrs, wifi, &tailscale()));
         assert_eq!(picked, ["10.20.30.40:61845", "100.67.18.105:61845", "192.168.56.1:61845"]);
     }
 
     /// #148: three Hyper-V adapters used to fill every slot, leaving out Wi-Fi.
     #[test]
     fn pairing_links_keep_the_lan_address_beside_virtual_adapters() {
-        let addrs: Vec<SocketAddr> =
-            ["172.17.144.1:61845", "172.21.192.1:61845", "172.27.208.1:61845", "192.168.1.123:61845"]
-                .iter()
-                .map(|a| a.parse().unwrap())
-                .collect();
-        let picked = |preferred: Option<&str>| -> Vec<String> {
-            link_addrs(addrs.clone(), preferred.map(|p| p.parse().unwrap()))
-                .iter()
-                .map(ToString::to_string)
-                .collect()
+        let addrs =
+            parse(&["172.17.144.1:61845", "172.21.192.1:61845", "172.27.208.1:61845", "192.168.1.123:61845"]);
+        let picked = |preferred: Option<&str>| {
+            strings(link_addrs(addrs.clone(), preferred.map(|p| p.parse().unwrap()), &[]))
         };
         // Without a default route, the home range still comes first.
         assert_eq!(picked(None), ["192.168.1.123:61845", "172.17.144.1:61845", "172.21.192.1:61845"]);
@@ -831,8 +892,7 @@ mod tests {
         let mut with_ten = addrs.clone();
         with_ten.pop();
         with_ten.push("10.0.0.5:61845".parse().unwrap());
-        let picked: Vec<String> = link_addrs(with_ten, None).iter().map(ToString::to_string).collect();
-        assert_eq!(picked[0], "10.0.0.5:61845");
+        assert_eq!(strings(link_addrs(with_ten, None, &[]))[0], "10.0.0.5:61845");
     }
 
     #[test]

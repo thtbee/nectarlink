@@ -54,14 +54,14 @@ pub(crate) const CLOSE_DUPLICATE: u32 = 100;
 /// QUIC close code for a normal shutdown.
 pub(crate) const CLOSE_NORMAL: u32 = 0;
 
-/// Returns true if `ip` is a local/private LAN or loopback address, or a
-/// Tailscale tailnet address (`100.64.0.0/10`, `fd7a:115c:a1e0::/48`).
+/// Returns true if `ip` is a local/private LAN or loopback address, or in
+/// Tailscale's ranges (`100.64.0.0/10`, `fd7a:115c:a1e0::/48`).
 /// Global internet addresses (public IPv4, `2000::/3`) are rejected.
 ///
-/// Tailnet addresses count as local: Tailscale's WireGuard network is private
-/// to the user's devices, and it's how a PC is reached from another network
-/// without relays. Carrier CGNAT shares `100.64.0.0/10`, but a direct path
-/// still needs the paired device's key, and relays stay off.
+/// A range check only, kept for apps' display. Carrier CGNAT shares
+/// `100.64.0.0/10`, so the core itself never trusts a tailnet-range address
+/// from this alone: it needs this device's own Tailscale addresses to
+/// confirm it ([`crate::Node::set_local_tailscale_ips`]).
 pub fn is_lan_ip(ip: std::net::IpAddr) -> bool {
     match ip.to_canonical() {
         std::net::IpAddr::V4(v4) => {
@@ -77,7 +77,9 @@ pub fn is_lan_ip(ip: std::net::IpAddr) -> bool {
 /// Returns true if `ip` reaches a peer on this network: a LAN address
 /// (`is_lan_ip`), or one the peer announced over mDNS here (`announced`).
 /// mDNS doesn't cross routers, so the second covers home networks numbered
-/// outside the private ranges (#131).
+/// outside the private ranges (#131). The node uses
+/// `Shared::is_lan_peer_ip`, which also needs Tailscale corroboration.
+#[cfg(test)]
 pub(crate) fn is_lan_peer_ip(ip: std::net::IpAddr, announced: &[std::net::SocketAddr]) -> bool {
     let ip = ip.to_canonical();
     is_lan_ip(ip) || announced.iter().any(|a| a.ip().to_canonical() == ip)
@@ -127,10 +129,19 @@ pub(crate) fn is_same_ipv6_subnet(a: std::net::Ipv6Addr, b: std::net::Ipv6Addr) 
     a.segments()[..4] == b.segments()[..4]
 }
 
+/// Whether `ip` is a tailnet address this device's own Tailscale confirms:
+/// in Tailscale's ranges, while this device has Tailscale addresses of its own.
+/// Without them a `100.64.0.0/10` address is carrier CGNAT as far as anyone knows.
+pub(crate) fn is_corroborated_tailnet_ip(ip: std::net::IpAddr, local_tailscale: &[std::net::IpAddr]) -> bool {
+    is_tailnet_ip(ip) && local_tailscale.iter().any(|own| is_tailnet_ip(*own))
+}
+
 /// Builds this device's hello from the shared local state.
 pub(crate) fn local_hello(shared: &Shared) -> Hello {
+    let direct_addrs = shared.advertised_direct_addrs();
     let local = shared.local.read().unwrap_or_else(|e| e.into_inner());
     Hello {
+        direct_addrs: Some(direct_addrs),
         proto: PROTOCOL_VERSION,
         min: MIN_PROTOCOL_VERSION,
         app: local.app_version.clone(),
@@ -242,6 +253,11 @@ pub(crate) struct Session {
     last_rx_ms: AtomicU64,
     usb_bridge_ports: Arc<Mutex<HashMap<u16, DeviceId>>>,
     usb_peers: Arc<Mutex<HashMap<DeviceId, (std::net::SocketAddr, CancellationToken)>>>,
+    /// This device's own Tailscale addresses, to tell a tailnet path from CGNAT.
+    tailscale_ips: Arc<std::sync::RwLock<Vec<std::net::IpAddr>>>,
+    /// Serializes remote input with release. Contains the newest absolute move
+    /// sequence so delayed lossy moves cannot rewind the pointer.
+    pub(crate) last_absolute_seq: Mutex<Option<u32>>,
     /// Apps whose notification icon this peer already got.
     sent_icons: crate::notifications::SentIcons,
     /// Serializes media snapshots and remembers the artwork queued for this device.
@@ -323,6 +339,8 @@ impl Session {
             last_rx_ms: AtomicU64::new(0),
             usb_bridge_ports: shared.usb_bridge_ports.clone(),
             usb_peers: shared.usb_peers.clone(),
+            tailscale_ips: shared.tailscale_ips.clone(),
+            last_absolute_seq: Mutex::new(None),
             sent_icons: Default::default(),
             sent_art: Default::default(),
             notifications_held: Default::default(),
@@ -409,10 +427,11 @@ impl Session {
         }
         let paths = self.conn.paths();
         let selected = paths.iter().find(|p| p.is_selected()).or_else(|| paths.iter().next());
-        match selected {
-            Some(p) if p.is_relay() => ConnectionPath::Relay,
-            Some(p) if matches!(p.remote_addr(), iroh::TransportAddr::Ip(addr) if self.is_usb_addr(addr)) => {
-                ConnectionPath::Usb
+        match selected.as_ref().map(|p| p.remote_addr()) {
+            Some(iroh::TransportAddr::Relay(_)) => ConnectionPath::Relay,
+            Some(iroh::TransportAddr::Ip(addr)) if self.is_usb_addr(addr) => ConnectionPath::Usb,
+            Some(iroh::TransportAddr::Ip(addr)) if self.is_tailscale_addr(addr.ip()) => {
+                ConnectionPath::Tailscale
             }
             _ => {
                 if paths.iter().any(
@@ -424,6 +443,11 @@ impl Session {
                 }
             }
         }
+    }
+
+    fn is_tailscale_addr(&self, ip: std::net::IpAddr) -> bool {
+        let local = self.tailscale_ips.read().unwrap_or_else(|e| e.into_inner());
+        is_corroborated_tailnet_ip(ip, &local)
     }
 
     /// The address of the path the connection uses now, when that's a direct IP path
@@ -749,6 +773,10 @@ async fn handle(
         }
         types::HELLO_UPDATE => {
             let update: HelloUpdate = env.body()?;
+            // Omitted keeps what the peer advertised before; `[]` withdraws it.
+            if let Some(addrs) = &update.direct_addrs {
+                shared.peer_advertised(&peer, addrs);
+            }
             if let Some(info) = update.device.map(DeviceInfo::sanitized) {
                 shared.store.update_info(&peer, &info)?;
                 let effective = shared.store.get_peer(&peer).ok().flatten().map(|p| p.info).unwrap_or(info);
@@ -799,6 +827,8 @@ async fn handle(
         t if (t.starts_with("mirror.") || t.starts_with("pointer."))
             && crate::mirror::handle(shared, session, &env).await? => {}
         t if t.starts_with("webcam.") && crate::webcam::handle(shared, session, &env).await? => {}
+        t if (t.starts_with("audio.route.") || t == types::MIC_STATUS || t == types::MIC_SETUP)
+            && crate::audio_route::handle(shared, session, &env).await? => {}
         t if t.starts_with("mic.") && crate::mic::handle(shared, session, &env).await? => {}
         t if t.starts_with("diag.") && crate::diag_ask::handle(shared, session, &env).await? => {}
         t if t.starts_with("elevated.usb") && crate::elevated_usb::handle(shared, session, &env).await? => {}
@@ -901,7 +931,9 @@ async fn datagrams(session: &Arc<Session>, shared: &Weak<Shared>) {
             Ok(bytes) => {
                 session.touch_rx();
                 let Some(shared) = shared.upgrade() else { return };
-                if bytes.len() > 10 && &bytes[0..4] == b"NLPA" {
+                if bytes.len() >= 4 && &bytes[0..4] == nectarlink_protocol::messages::NLRP_MAGIC {
+                    crate::audio_route::handle_datagram(&shared, session, &bytes);
+                } else if bytes.len() > 10 && &bytes[0..4] == b"NLPA" {
                     let sample_rate = u32::from_le_bytes([bytes[4], bytes[5], bytes[6], bytes[7]]);
                     let channels = bytes[8];
                     let pcm = bytes[10..].to_vec();
@@ -916,7 +948,7 @@ async fn datagrams(session: &Arc<Session>, shared: &Weak<Shared>) {
                         });
                     }
                 } else {
-                    crate::remote::handle_datagram(&shared, session.peer, &bytes);
+                    crate::remote::handle_datagram(&shared, session, &bytes);
                 }
             }
             Err(_) => {
@@ -1128,6 +1160,24 @@ mod tests {
             let ip: IpAddr = bad.parse().unwrap();
             assert!(!is_lan_ip(ip), "expected {bad} to be rejected as non-LAN IP");
         }
+    }
+
+    #[test]
+    fn a_cgnat_address_is_never_a_tailnet_one_without_local_tailscale() {
+        let remote: IpAddr = "100.101.102.103".parse().unwrap();
+        let remote_v6: IpAddr = "fd7a:115c:a1e0::42".parse().unwrap();
+        // Mobile data behind carrier NAT: this device's own 100.64/10 address isn't Tailscale's.
+        assert!(!super::is_corroborated_tailnet_ip(remote, &[]));
+        assert!(!super::is_corroborated_tailnet_ip(remote_v6, &[]));
+        assert!(!super::is_corroborated_tailnet_ip(remote, &["192.168.1.2".parse().unwrap()]));
+        // Confirmed by this device's own Tailscale interface.
+        let own = ["100.90.1.2".parse().unwrap()];
+        assert!(super::is_corroborated_tailnet_ip(remote, &own));
+        assert!(super::is_corroborated_tailnet_ip(remote_v6, &own));
+        assert!(!super::is_corroborated_tailnet_ip("192.168.1.9".parse().unwrap(), &own));
+        // A Tailscale path, proven or not, is never local enough to unlock with.
+        assert!(!is_private_lan_ip(remote));
+        assert!(!is_private_lan_ip(remote_v6));
     }
 
     #[test]

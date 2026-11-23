@@ -156,6 +156,10 @@ Available. Everything else in the matrix is identical on both devices.
 | `camera.webcam` | phone `camera.stream` (camera permission), desktop `camera.virtual`, desktop `addon.vcam`, Windows build ≥ 22000, toggle `webcam` | None | Locked → install virtual camera · ~1 min |
 | `media.play_on_phone` | desktop `media.stream`, phone `media.watch`, toggle `media` | None | Available |
 | `media.phone_mic` | phone `mic.stream`, desktop `mic.listen`, toggle `mic` | None | Available |
+| `media.audio_route_to_pc` | phone `audio.route.source.v1`, desktop `audio.route.sink.v1` and `audio.route.controller.v1`, toggles `media` and `mirroring` | None | Available |
+| `media.audio_route_to_phone` | desktop `audio.route.source.v1` and `audio.route.controller.v1`, phone `audio.route.sink.v1`, toggle `media` | None | Available |
+| `media.mic_status` | desktop `mic.status.v1`, toggle `mic` | None | Available |
+| `input.precision` | desktop `input.inject` and `input.precision` | None | Available |
 
 The full registry is `FEATURES` in `core/nectarlink-core/src/features.rs`.
 

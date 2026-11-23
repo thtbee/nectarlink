@@ -609,7 +609,82 @@ const MIGRATIONS: &[&str] = &[
         enrolled_at INTEGER NOT NULL,
         PRIMARY KEY (peer, user)
     ) STRICT;",
+    // v10: a paired device's direct addresses, kept per source (docs/technical/tailscale.md):
+    // what the user typed, what the device advertised, what a session used, what
+    // discovery or Tailscale found. The single `last_addrs` list becomes `legacy` rows,
+    // so an existing install still dials what it knew.
+    "CREATE TABLE peer_addrs (
+        peer        BLOB NOT NULL REFERENCES peers(id) ON DELETE CASCADE,
+        source      TEXT NOT NULL,
+        addr        TEXT NOT NULL,
+        first_seen  INTEGER NOT NULL,
+        last_seen   INTEGER NOT NULL,
+        PRIMARY KEY (peer, source, addr)
+    ) STRICT;
+    WITH RECURSIVE split(peer, at, addr, rest) AS (
+        SELECT id, COALESCE(last_seen, paired_at), '', last_addrs || ',' FROM peers
+        UNION ALL
+        SELECT peer, at, trim(substr(rest, 1, instr(rest, ',') - 1)), substr(rest, instr(rest, ',') + 1)
+        FROM split WHERE rest <> ''
+    )
+    INSERT OR IGNORE INTO peer_addrs (peer, source, addr, first_seen, last_seen)
+        SELECT peer, 'legacy', addr, at, at FROM split WHERE addr <> '';",
 ];
+
+/// Where a paired device's direct address came from. Each source is kept apart, so
+/// one replacing its list (a session that used another path) never erases another's.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CandidateSource {
+    /// Typed in by the user ([`crate::Node::set_manual_addrs`]).
+    Manual,
+    /// What the device advertised in its `hello` or `hello.update`.
+    Advertised,
+    /// The direct paths a session with the device used.
+    Observed,
+    /// Found by discovery: a pairing link, or Tailscale's peer list.
+    Discovery,
+    /// The one list earlier versions kept.
+    Legacy,
+}
+
+impl CandidateSource {
+    pub const ALL: [CandidateSource; 5] = [
+        CandidateSource::Manual,
+        CandidateSource::Advertised,
+        CandidateSource::Observed,
+        CandidateSource::Discovery,
+        CandidateSource::Legacy,
+    ];
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            CandidateSource::Manual => "manual",
+            CandidateSource::Advertised => "advertised",
+            CandidateSource::Observed => "observed",
+            CandidateSource::Discovery => "discovery",
+            CandidateSource::Legacy => "legacy",
+        }
+    }
+
+    fn from_str(s: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|c| c.as_str() == s)
+    }
+}
+
+/// Most addresses kept per device and source.
+pub const MAX_CANDIDATES_PER_SOURCE: usize = 16;
+
+/// One stored direct address of a paired device.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct AddrCandidate {
+    pub addr: SocketAddr,
+    pub source: CandidateSource,
+    /// Unix seconds this address was first stored from this source.
+    pub first_seen: i64,
+    /// Unix seconds this source last confirmed it.
+    pub last_seen: i64,
+}
 
 /// One Windows user enrolled to unlock with a phone (ADR 0009).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -628,7 +703,6 @@ pub(crate) struct PeerRecord {
     pub info: DeviceInfo,
     pub paired_at: i64,
     pub last_seen: Option<i64>,
-    pub last_addrs: Vec<SocketAddr>,
     /// Capabilities from the device's last `hello`.
     pub caps: BTreeSet<String>,
     pub power: PowerLevel,
@@ -950,15 +1024,91 @@ impl Store {
         })
     }
 
-    /// Records a successful connection and the peer's current direct addresses.
-    pub fn record_seen(&self, id: &DeviceId, at: i64, addrs: &[SocketAddr]) -> Result<()> {
-        let addrs: Vec<String> = addrs.iter().map(ToString::to_string).collect();
+    /// Records a successful connection. Its addresses are kept with
+    /// [`Store::replace_candidates`].
+    pub fn record_seen(&self, id: &DeviceId, at: i64) -> Result<()> {
         self.with(|c| {
-            c.execute(
-                "UPDATE peers SET last_seen = ?2, last_addrs = ?3 WHERE id = ?1",
-                params![id.as_bytes().as_slice(), at, addrs.join(",")],
-            )
-            .map(drop)
+            c.execute("UPDATE peers SET last_seen = ?2 WHERE id = ?1", params![id.as_bytes().as_slice(), at])
+                .map(drop)
+        })
+    }
+
+    /// Replaces a paired device's addresses from `source` with `addrs`, leaving every
+    /// other source alone. Addresses kept keep their first sighting. Loopback ones (a
+    /// USB tunnel's bridge) are never stored. Does nothing for a device not paired.
+    pub fn replace_candidates(
+        &self,
+        id: &DeviceId,
+        source: CandidateSource,
+        addrs: &[SocketAddr],
+        at: i64,
+    ) -> Result<()> {
+        let mut keep: Vec<String> = Vec::new();
+        for addr in addrs {
+            if addr.ip().to_canonical().is_loopback() || addr.port() == 0 {
+                continue;
+            }
+            let text = addr.to_string();
+            if !keep.contains(&text) {
+                keep.push(text);
+            }
+            if keep.len() == MAX_CANDIDATES_PER_SOURCE {
+                break;
+            }
+        }
+        self.with(|c| {
+            let tx = c.unchecked_transaction()?;
+            let paired =
+                tx.query_row("SELECT 1 FROM peers WHERE id = ?1", [id.as_bytes().as_slice()], |_| Ok(()))
+                    .optional()?
+                    .is_some();
+            if !paired {
+                return Ok(());
+            }
+            let stored: Vec<String> = {
+                let mut stmt = tx.prepare_cached("SELECT addr FROM peer_addrs WHERE peer = ?1 AND source = ?2")?;
+                stmt.query_map(params![id.as_bytes().as_slice(), source.as_str()], |r| r.get(0))?
+                    .collect::<rusqlite::Result<Vec<_>>>()?
+            };
+            for old in stored.iter().filter(|old| !keep.contains(old)) {
+                tx.execute(
+                    "DELETE FROM peer_addrs WHERE peer = ?1 AND source = ?2 AND addr = ?3",
+                    params![id.as_bytes().as_slice(), source.as_str(), old],
+                )?;
+            }
+            for addr in &keep {
+                tx.execute(
+                    "INSERT INTO peer_addrs (peer, source, addr, first_seen, last_seen) VALUES (?1, ?2, ?3, ?4, ?4)
+                     ON CONFLICT (peer, source, addr) DO UPDATE SET last_seen = excluded.last_seen",
+                    params![id.as_bytes().as_slice(), source.as_str(), addr, at],
+                )?;
+            }
+            tx.commit()
+        })
+    }
+
+    /// A paired device's stored addresses, every source, newest sighting first.
+    /// Rows that no longer parse are skipped.
+    pub fn candidates(&self, id: &DeviceId) -> Result<Vec<AddrCandidate>> {
+        self.with(|c| {
+            let mut stmt = c.prepare_cached(
+                "SELECT source, addr, first_seen, last_seen FROM peer_addrs WHERE peer = ?1
+                 ORDER BY last_seen DESC, source, addr",
+            )?;
+            let rows = stmt.query_map([id.as_bytes().as_slice()], |r| {
+                Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?, r.get::<_, i64>(2)?, r.get::<_, i64>(3)?))
+            })?;
+            let mut out = Vec::new();
+            for row in rows {
+                let (source, addr, first_seen, last_seen) = row?;
+                let (Some(source), Ok(addr)) =
+                    (CandidateSource::from_str(&source), addr.parse::<SocketAddr>())
+                else {
+                    continue;
+                };
+                out.push(AddrCandidate { addr, source, first_seen, last_seen });
+            }
+            Ok(out)
         })
     }
 
@@ -1118,6 +1268,7 @@ impl Store {
         self.with(|c| {
             let _ = c.execute("DELETE FROM chat_messages WHERE peer = ?1", [&peer_str]);
             let _ = c.execute("DELETE FROM chat_threads WHERE peer = ?1", [&peer_str]);
+            let _ = c.execute("DELETE FROM peer_addrs WHERE peer = ?1", [id.as_bytes().as_slice()]);
             let removed = c.execute("DELETE FROM peers WHERE id = ?1", [id.as_bytes().as_slice()])? > 0;
             // Its toggles went with it.
             self.toggle_cache().remove(id);
@@ -1141,6 +1292,7 @@ impl Store {
             tx.execute("DELETE FROM send_queue WHERE peer_id = ?1", [&peer_str])?;
             tx.execute("DELETE FROM chat_messages WHERE peer = ?1", [&peer_str])?;
             tx.execute("DELETE FROM chat_threads WHERE peer = ?1", [&peer_str])?;
+            tx.execute("DELETE FROM peer_addrs WHERE peer = ?1", [id.as_bytes().as_slice()])?;
             let existed = tx.execute("DELETE FROM peers WHERE id = ?1", [id.as_bytes().as_slice()])? > 0;
             tx.commit()?;
             Ok((existed, rows))
@@ -2609,7 +2761,7 @@ fn decode_queue_row(
     Some((item, payload, blob, raw.next_retry_ms))
 }
 
-const SELECT: &str = "SELECT id, name, kind, os, os_ver, model, accent, paired_at, last_seen, last_addrs, \
+const SELECT: &str = "SELECT id, name, kind, os, os_ver, model, accent, paired_at, last_seen, '', \
      caps, power, wake_info, screen, install_id FROM peers";
 
 /// The device's install ID when it's well formed (others are never stored).
@@ -2822,7 +2974,6 @@ fn row_to_peer(row: &rusqlite::Row<'_>) -> rusqlite::Result<PeerRecord> {
         .map_err(|_| rusqlite::Error::InvalidColumnType(0, "id".into(), rusqlite::types::Type::Blob))?;
     let kind: String = row.get(2)?;
     let accent: Option<i64> = row.get(6)?;
-    let addrs: String = row.get(9)?;
     let caps: String = row.get(10)?;
     let power: String = row.get(11)?;
     let wake_info: String = row.get(12)?;
@@ -2841,8 +2992,6 @@ fn row_to_peer(row: &rusqlite::Row<'_>) -> rusqlite::Result<PeerRecord> {
         },
         paired_at: row.get(7)?,
         last_seen: row.get(8)?,
-        // Skip entries that no longer parse instead of failing the whole read.
-        last_addrs: addrs.split(',').filter_map(|a| a.parse().ok()).collect(),
         caps: caps.split(',').filter(|c| !c.is_empty()).map(str::to_owned).collect(),
         power: power_from_str(&power),
         wake_info: PcWakeInfo::from_storage_str(&wake_info),
@@ -3049,6 +3198,54 @@ mod tests {
     }
 
     #[test]
+    fn candidates_are_kept_per_source_and_go_with_the_device() {
+        let store = Store::in_memory().unwrap();
+        let id = DeviceId([7; 32]);
+        let addr = |s: &str| s.parse::<SocketAddr>().unwrap();
+        // Not paired: nothing is stored.
+        store.replace_candidates(&id, CandidateSource::Observed, &[addr("192.168.1.5:7718")], 1).unwrap();
+        store.upsert_peer(&id, &info("Pixel"), 1).unwrap();
+        assert!(store.candidates(&id).unwrap().is_empty());
+
+        store.replace_candidates(&id, CandidateSource::Discovery, &[addr("100.100.1.2:7718")], 10).unwrap();
+        store
+            .replace_candidates(&id, CandidateSource::Advertised, &[addr("[fd7a:115c:a1e0::5]:7718")], 10)
+            .unwrap();
+        store.replace_candidates(&id, CandidateSource::Manual, &[addr("10.1.2.3:7718")], 10).unwrap();
+        // A LAN session replaces only what was observed, and loopback (USB) never lands.
+        store
+            .replace_candidates(
+                &id,
+                CandidateSource::Observed,
+                &[addr("192.168.1.5:7718"), addr("127.0.0.1:40000"), addr("192.168.1.5:7718")],
+                20,
+            )
+            .unwrap();
+        store.replace_candidates(&id, CandidateSource::Observed, &[addr("192.168.1.6:7718")], 30).unwrap();
+        let all = store.candidates(&id).unwrap();
+        let of = |source| all.iter().filter(|c| c.source == source).map(|c| c.addr).collect::<Vec<_>>();
+        assert_eq!(of(CandidateSource::Observed), [addr("192.168.1.6:7718")]);
+        assert_eq!(of(CandidateSource::Discovery), [addr("100.100.1.2:7718")]);
+        assert_eq!(of(CandidateSource::Advertised), [addr("[fd7a:115c:a1e0::5]:7718")]);
+        assert_eq!(of(CandidateSource::Manual), [addr("10.1.2.3:7718")]);
+
+        // A confirmed address keeps its first sighting.
+        store.replace_candidates(&id, CandidateSource::Manual, &[addr("10.1.2.3:7718")], 50).unwrap();
+        let manual =
+            store.candidates(&id).unwrap().into_iter().find(|c| c.source == CandidateSource::Manual).unwrap();
+        assert_eq!((manual.first_seen, manual.last_seen), (10, 50));
+        // An empty list withdraws that source only.
+        store.replace_candidates(&id, CandidateSource::Advertised, &[], 60).unwrap();
+        assert_eq!(store.candidates(&id).unwrap().len(), 3);
+
+        store.remove_peer_with_queue(&id).unwrap();
+        assert!(store.candidates(&id).unwrap().is_empty());
+        let rows: i64 =
+            store.with(|c| c.query_row("SELECT count(*) FROM peer_addrs", [], |r| r.get(0))).unwrap();
+        assert_eq!(rows, 0);
+    }
+
+    #[test]
     fn peer_lifecycle() {
         let store = Store::in_memory().unwrap();
         let id = DeviceId([1; 32]);
@@ -3059,17 +3256,20 @@ mod tests {
         assert_eq!(peer.info, info("Pixel"));
         assert_eq!(peer.paired_at, 100);
         assert_eq!(peer.last_seen, None);
-        assert!(peer.last_addrs.is_empty());
+        assert!(store.candidates(&id).unwrap().is_empty());
 
         let addrs: Vec<SocketAddr> =
             vec!["10.0.0.2:41641".parse().unwrap(), "[fe80::2]:41641".parse().unwrap()];
-        store.record_seen(&id, 200, &addrs).unwrap();
+        store.record_seen(&id, 200).unwrap();
+        store.replace_candidates(&id, CandidateSource::Observed, &addrs, 200).unwrap();
         let mut without_accent = info("Pixel 9");
         without_accent.accent = None;
         store.update_info(&id, &without_accent).unwrap();
         let peer = store.get_peer(&id).unwrap().unwrap();
         assert_eq!(peer.last_seen, Some(200));
-        assert_eq!(peer.last_addrs, addrs);
+        let stored: Vec<SocketAddr> = store.candidates(&id).unwrap().iter().map(|c| c.addr).collect();
+        assert_eq!(stored.len(), 2);
+        assert!(addrs.iter().all(|a| stored.contains(a)));
         assert_eq!(peer.info.name, "Pixel 9");
         // Stored accent is preserved when a later update omits it.
         assert_eq!(peer.info.accent, Some(0xFF8A5100));
@@ -3529,6 +3729,37 @@ mod tests {
     }
 
     #[test]
+    fn a_v9_database_keeps_every_last_address_as_a_legacy_candidate() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.pragma_update(None, "foreign_keys", "ON").unwrap();
+        for sql in &MIGRATIONS[..9] {
+            conn.execute_batch(sql).unwrap();
+        }
+        conn.pragma_update(None, "user_version", 9i64).unwrap();
+        let peer = DeviceId([9; 32]);
+        let never_seen = DeviceId([8; 32]);
+        for (id, seen, addrs) in [
+            (peer, Some(500i64), "192.168.1.10:42718,[fd7a:115c:a1e0::1]:42718,not-an-addr"),
+            (never_seen, None, ""),
+        ] {
+            conn.execute(
+                "INSERT INTO peers (id, name, kind, os, os_ver, paired_at, last_seen, last_addrs)
+                 VALUES (?1, 'Phone', 'phone', 'android', '15', 100, ?2, ?3)",
+                params![id.as_bytes().as_slice(), seen, addrs],
+            )
+            .unwrap();
+        }
+        let store = Store::init(conn).unwrap();
+        let got = store.candidates(&peer).unwrap();
+        let addrs: Vec<String> = got.iter().map(|c| c.addr.to_string()).collect();
+        assert_eq!(got.len(), 2, "{addrs:?}");
+        assert!(addrs.contains(&"192.168.1.10:42718".to_owned()));
+        assert!(addrs.contains(&"[fd7a:115c:a1e0::1]:42718".to_owned()));
+        assert!(got.iter().all(|c| c.source == CandidateSource::Legacy && c.last_seen == 500));
+        assert!(store.candidates(&never_seen).unwrap().is_empty());
+    }
+
+    #[test]
     fn migrates_from_every_historical_schema_version_v1_through_v6_to_v7() {
         use nectarlink_protocol::messages::{
             Notification, NotificationChatMessage, NotificationConversation, ScreenCorners, ScreenRect,
@@ -3635,7 +3866,11 @@ mod tests {
             assert_eq!(rec.info.accent, Some(0xFF3B82F6));
             assert_eq!(rec.paired_at, paired_at);
             assert_eq!(rec.last_seen, Some(last_seen));
-            assert_eq!(rec.last_addrs.len(), 1);
+            let legacy = store.candidates(&peer).unwrap();
+            assert_eq!(legacy.len(), 1, "last_addrs became one legacy candidate");
+            assert_eq!(legacy[0].source, CandidateSource::Legacy);
+            assert_eq!(legacy[0].addr, addrs_str.parse::<SocketAddr>().unwrap());
+            assert_eq!(legacy[0].last_seen, last_seen);
 
             if start_version >= 2 {
                 assert!(rec.caps.contains("clipboard"));

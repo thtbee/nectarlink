@@ -28,6 +28,9 @@ capability is missing.
 | `clip.image` | Accepts images on its clipboard ([clipboard service](clipboard.md)) | app update |
 | `media.control` | Shares its media players for remote control ([media service](media.md); phone: needs notification access) | phone: notification access · desktop: app update |
 | `media.remote` | Shows and controls other devices' media players | app update |
+| `audio.route.source.v1` | Sends audio to a managed route ([audio routing](audio-route.md)) | app update and audio capture support |
+| `audio.route.sink.v1` | Plays or mixes audio from a managed route ([audio routing](audio-route.md)) | app update and audio output support |
+| `audio.route.controller.v1` | Configures managed audio routes and receives status and levels ([audio routing](audio-route.md)) | app update |
 | `diag.report` | Answers `diag.ask` with its part of a problem report; shares its log only when its user taps Share ([problem reports](diag.md)) | app update |
 
 > **LocalSend v2.1 LAN interop:** Unpaired LocalSend discovery and file transfer
@@ -102,12 +105,14 @@ capability is missing.
 | `files.browse` | Lets a paired phone browse and fetch its files | app update |
 | `storage.mount` | Mounts a paired phone's shared storage in File Explorer ([storage](storage.md)) | app update |
 | `input.inject` | Accepts pointer, keyboard and presentation input ([remote input](remote.md)) | app update |
+| `input.precision` | Accepts precision pointer motion and gestures and provides a display map ([remote input](remote.md) §3.2). Offered with `input.inject` | app update |
 | `input.gamepad` | Plugs in a game controller for a phone's Gamepad ([remote input](remote.md) §3.1) | app update |
 | `recorder` | Saves and converts voice recordings from a phone ([recorder](recorder.md)) | app update |
 | `deck.actions` | Shares its Deck layout and live tile state and runs Deck actions ([deck](deck.md)) | app update |
 | `pc.audio` | Reports active audio output devices in `deck.state` and accepts `pc.audio.set` volume/mute changes ([deck](deck.md)) | app update |
 | `camera.virtual` | Receives and decodes a phone's camera stream ([webcam](webcam.md)) | app update |
 | `mic.listen` | Takes a phone's microphone and plays it into an output ([mic](mic.md)) | app update |
+| `mic.status.v1` | Reports virtual microphone readiness and offers local setup where supported ([audio routing](audio-route.md#virtual-microphone)) | app update |
 | `media.stream` | Streams a player's picture and sound to a phone that watches (Play on phone, [media](media.md) §4) | app update |
 | `addon.vcam` | The virtual camera add-on is installed ([webcam](webcam.md)) | installing the add-on |
 | `camera.continuity` | Requests and receives Continuity Camera photos and document scans ([Continuity Camera](v0.md#12-continuity-camera-cameracapture)) | app update |

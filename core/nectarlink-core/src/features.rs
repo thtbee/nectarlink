@@ -162,6 +162,7 @@ impl UpgradeAction {
             UpgradeAction::EnablePath(ConnectionPath::Relay) => ("enablePath", "relay".into()),
             UpgradeAction::EnablePath(ConnectionPath::Lan) => ("enablePath", "lan".into()),
             UpgradeAction::EnablePath(ConnectionPath::Usb) => ("enablePath", "usb".into()),
+            UpgradeAction::EnablePath(ConnectionPath::Tailscale) => ("enablePath", "tailscale".into()),
             UpgradeAction::EnableDeviceToggle(toggle) => ("enableToggle", toggle.into()),
             UpgradeAction::UpdateApp(Role::Phone) => ("updateApp", "phone".into()),
             UpgradeAction::UpdateApp(Role::Desktop) => ("updateApp", "desktop".into()),
@@ -1090,6 +1091,36 @@ pub const FEATURES: &[FeatureDef] = &[
         requires: &[phone("mic.stream", UPDATE), desktop("mic.listen", UPDATE), DeviceToggle("mic")],
         partial: None,
     },
+    // AudioLink (docs/protocol/audio-route.md): the PC controls the route.
+    FeatureDef {
+        id: "media.audio_route_to_pc",
+        group: FeatureGroup::Media,
+        requires: &[
+            phone(nectarlink_protocol::messages::CAP_AUDIO_ROUTE_SOURCE, UPDATE),
+            desktop(nectarlink_protocol::messages::CAP_AUDIO_ROUTE_SINK, UPDATE),
+            desktop(nectarlink_protocol::messages::CAP_AUDIO_ROUTE_CONTROLLER, UPDATE),
+            DeviceToggle("media"),
+            DeviceToggle("mirroring"),
+        ],
+        partial: None,
+    },
+    FeatureDef {
+        id: "media.audio_route_to_phone",
+        group: FeatureGroup::Media,
+        requires: &[
+            desktop(nectarlink_protocol::messages::CAP_AUDIO_ROUTE_SOURCE, UPDATE),
+            phone(nectarlink_protocol::messages::CAP_AUDIO_ROUTE_SINK, UPDATE),
+            desktop(nectarlink_protocol::messages::CAP_AUDIO_ROUTE_CONTROLLER, UPDATE),
+            DeviceToggle("media"),
+        ],
+        partial: None,
+    },
+    FeatureDef {
+        id: "media.mic_status",
+        group: FeatureGroup::Media,
+        requires: &[desktop(nectarlink_protocol::messages::CAP_MIC_STATUS, UPDATE), DeviceToggle("mic")],
+        partial: None,
+    },
     FeatureDef {
         id: "camera.continuity",
         group: FeatureGroup::Camera,
@@ -1105,6 +1136,15 @@ pub const FEATURES: &[FeatureDef] = &[
         id: "input.remote",
         group: FeatureGroup::Input,
         requires: &[desktop("input.inject", UPDATE)],
+        partial: None,
+    },
+    FeatureDef {
+        id: "input.precision",
+        group: FeatureGroup::Input,
+        requires: &[
+            desktop("input.inject", UPDATE),
+            desktop(nectarlink_protocol::messages::CAP_INPUT_PRECISION, UPDATE),
+        ],
         partial: None,
     },
     FeatureDef {

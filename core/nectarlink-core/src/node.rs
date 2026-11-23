@@ -78,6 +78,13 @@ const MDNS_SLOW: Duration = Duration::from_secs(30);
 /// How long opening a stream the PC asked for (its screen, an app window)
 /// waits for the connection to come back if it just dropped or was replaced.
 const STREAM_RECONNECT_WAIT: Duration = Duration::from_secs(10);
+/// How long a session on Tailscale waits for QUIC to switch to a LAN path it was
+/// just told of, before trying a LAN-only connection.
+const UPGRADE_WAIT: Duration = Duration::from_secs(3);
+/// The longest a LAN-only connection to replace a Tailscale session may take.
+const UPGRADE_DIAL: Duration = Duration::from_secs(5);
+/// The least time between two tries to move one device off Tailscale.
+const UPGRADE_RETRY: Duration = Duration::from_secs(30);
 
 /// Capabilities every build offers.
 const BASE_CAPABILITIES: &[&str] = &[
@@ -165,6 +172,24 @@ pub(crate) struct Shared {
     discovered: Mutex<HashMap<DeviceId, DiscoveredDevice>>,
     /// Last LAN mDNS sighting per peer (timestamp and announced socket addresses).
     lan_seen: Mutex<HashMap<DeviceId, (std::time::Instant, Vec<SocketAddr>)>>,
+    /// Addresses to try for a device that aren't stored: "connect by IP" hints and a
+    /// pairing link's addresses before pairing succeeded.
+    addr_hints: Mutex<HashMap<DeviceId, Vec<SocketAddr>>>,
+    /// This device's own Tailscale addresses: what the platform confirmed, plus a
+    /// Tailscale interface found here. Only these make a tailnet-range address a
+    /// Tailscale one rather than carrier CGNAT.
+    pub(crate) tailscale_ips: Arc<RwLock<Vec<std::net::IpAddr>>>,
+    /// What the platform last confirmed ([`Node::set_local_tailscale_ips`]).
+    platform_tailscale_ips: Mutex<Vec<std::net::IpAddr>>,
+    /// Whether to read Tailscale interfaces too ([`NodeConfig::tailscale_interfaces`]).
+    #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+    tailscale_interfaces: bool,
+    /// The direct addresses last advertised to peers (`hello.update` when they change).
+    advertised: Mutex<Option<Vec<String>>>,
+    /// When a move off a Tailscale path to a LAN one was last tried, per peer.
+    upgrades: Mutex<HashMap<DeviceId, std::time::Instant>>,
+    /// The managed audio route a controller last set here (`audio.route.set`).
+    pub(crate) audio_route: Mutex<Option<crate::audio_route::ActiveRoute>>,
     /// Each paired device's LocalSend fingerprint, from its hello: the
     /// LocalSend nearby list leaves those devices out.
     paired_localsend: Mutex<HashMap<DeviceId, String>>,
@@ -751,25 +776,132 @@ impl Shared {
 
     /// Whether `ip` reaches `peer` on this network (`session::is_lan_peer_ip`),
     /// from the addresses `peer` last announced over mDNS here.
+    /// A tailnet-range address counts only when this device's own Tailscale
+    /// confirms it ([`Shared::is_tailscale_ip`]): carrier CGNAT shares the range.
     pub(crate) fn is_lan_peer_ip(&self, peer: &DeviceId, ip: std::net::IpAddr) -> bool {
-        crate::session::is_lan_ip(ip)
+        let ip = ip.to_canonical();
+        if crate::session::is_tailnet_ip(ip) {
+            return self.is_tailscale_ip(ip);
+        }
+        crate::session::is_private_lan_ip(ip)
+            || self.is_own_ip(ip)
+            || self.is_on_link_ipv6(ip)
             || lock(&self.lan_seen)
                 .get(peer)
-                .is_some_and(|(_, announced)| crate::session::is_lan_peer_ip(ip, announced))
+                .is_some_and(|(_, announced)| announced.iter().any(|a| a.ip().to_canonical() == ip))
+    }
+
+    /// Whether `ip` is one of this device's own addresses: the peer runs on this
+    /// machine, which is as local as loopback (a tailnet or public address of
+    /// this machine routes back to it without leaving).
+    fn is_own_ip(&self, ip: std::net::IpAddr) -> bool {
+        let ip = ip.to_canonical();
+        !ip.is_unspecified() && self.endpoint.addr().ip_addrs().any(|own| own.ip().to_canonical() == ip)
+    }
+
+    /// Whether `ip` is a global IPv6 address in the same `/64` as one of this
+    /// device's own: the router hands that prefix to this link only. With both
+    /// address families bound, QUIC often picks such a path on a home network.
+    fn is_on_link_ipv6(&self, ip: std::net::IpAddr) -> bool {
+        let std::net::IpAddr::V6(ip) = ip else { return false };
+        if ip.is_loopback() || ip.is_unspecified() || crate::session::is_tailnet_ip(ip.into()) {
+            return false;
+        }
+        self.endpoint.addr().ip_addrs().any(|own| match own.ip().to_canonical() {
+            std::net::IpAddr::V6(own) => {
+                !own.is_loopback()
+                    && !own.is_unicast_link_local()
+                    && !crate::session::is_tailnet_ip(own.into())
+                    && crate::session::is_same_ipv6_subnet(own, ip)
+            }
+            std::net::IpAddr::V4(_) => false,
+        })
+    }
+
+    /// Whether `ip` is a Tailscale address this device's own Tailscale confirms.
+    pub(crate) fn is_tailscale_ip(&self, ip: std::net::IpAddr) -> bool {
+        let local = self.tailscale_ips.read().unwrap_or_else(|e| e.into_inner());
+        crate::session::is_corroborated_tailnet_ip(ip.to_canonical(), &local)
+    }
+
+    /// This device's confirmed Tailscale addresses.
+    pub(crate) fn local_tailscale_ips(&self) -> Vec<std::net::IpAddr> {
+        self.tailscale_ips.read().unwrap_or_else(|e| e.into_inner()).clone()
+    }
+
+    /// This device's confirmed Tailscale addresses with the port bound for
+    /// their family (the endpoint listens on every interface).
+    pub(crate) fn tailscale_sockets(&self) -> Vec<SocketAddr> {
+        let bound = self.endpoint.bound_sockets();
+        let port_for = |v4: bool| {
+            bound
+                .iter()
+                .find(|a| a.is_ipv4() == v4 && a.ip().is_unspecified() && a.port() != 0)
+                .map(|a| a.port())
+        };
+        self.local_tailscale_ips()
+            .into_iter()
+            .filter_map(|ip| port_for(ip.is_ipv4()).map(|port| SocketAddr::new(ip, port)))
+            .collect()
+    }
+
+    /// The direct addresses this device advertises in its `hello`: at most
+    /// [`MAX_DIRECT_ADDRS`](nectarlink_protocol::messages::MAX_DIRECT_ADDRS), LAN ones
+    /// first (IPv4, then IPv6), then confirmed Tailscale ones, and public ones only in
+    /// Away mode. Never loopback, link-local or carrier CGNAT.
+    pub(crate) fn advertised_direct_addrs(&self) -> Vec<String> {
+        use nectarlink_protocol::messages::{MAX_DIRECT_ADDRS, validate_direct_addrs};
+        let mut candidates: Vec<SocketAddr> = self.endpoint.addr().ip_addrs().copied().collect();
+        // Tailscale's own addresses, which interface listing may have missed.
+        candidates.extend(self.tailscale_sockets());
+        let away = self.away_mode();
+        let rank = |a: &SocketAddr| -> Option<u8> {
+            let ip = a.ip().to_canonical();
+            if a.port() == 0 || ip.is_loopback() || ip.is_unspecified() || ip.is_multicast() {
+                return None;
+            }
+            match ip {
+                std::net::IpAddr::V4(v4) if v4.is_link_local() => None,
+                std::net::IpAddr::V6(v6) if v6.is_unicast_link_local() => None,
+                _ if self.is_tailscale_ip(ip) => Some(if ip.is_ipv4() { 4 } else { 5 }),
+                _ if crate::session::is_tailnet_ip(ip) => None,
+                std::net::IpAddr::V4(v4) if v4.is_private() && v4.octets()[0] != 172 => Some(0),
+                std::net::IpAddr::V4(v4) if v4.is_private() => Some(1),
+                _ if crate::session::is_private_lan_ip(ip) => Some(2),
+                _ if away => Some(if ip.is_ipv4() { 6 } else { 7 }),
+                _ => None,
+            }
+        };
+        let mut ranked: Vec<(u8, SocketAddr)> =
+            candidates.into_iter().filter_map(|a| rank(&a).map(|r| (r, a))).collect();
+        ranked.sort_by_key(|(r, _)| *r);
+        let mut out: Vec<String> = Vec::new();
+        for (_, addr) in ranked {
+            let text = addr.to_string();
+            if !out.contains(&text) {
+                out.push(text);
+            }
+            if out.len() == MAX_DIRECT_ADDRS {
+                break;
+            }
+        }
+        // What peers check; anything it'd refuse goes.
+        out.retain(|a| validate_direct_addrs(std::slice::from_ref(a)).is_ok());
+        out
     }
 
     /// Whether `ip` is the peer's address on this network, strictly enough to unlock a
-    /// PC with: a private, link-local or loopback address (never a tailnet or CGNAT
-    /// one), or one the peer announced over mDNS here that's also on one of this
-    /// device's own subnets. An address announced here once but reached later from
+    /// PC with: a private, link-local or loopback address or one of this machine's
+    /// own (never another device's tailnet or CGNAT one), or one the peer announced
+    /// over mDNS here that's also on one of this device's own subnets. An address announced here once but reached later from
     /// elsewhere (a phone's mobile data address) doesn't count.
     pub(crate) fn is_unlock_local_ip(&self, peer: &DeviceId, ip: std::net::IpAddr) -> bool {
         let ip = ip.to_canonical();
-        if crate::session::is_private_lan_ip(ip) {
-            return true;
-        }
         if crate::session::is_tailnet_ip(ip) {
             return false;
+        }
+        if crate::session::is_private_lan_ip(ip) || self.is_own_ip(ip) {
+            return true;
         }
         let announced = lock(&self.lan_seen)
             .get(peer)
@@ -829,7 +961,14 @@ impl Shared {
                 .addr()
                 .ip_addrs()
                 .copied()
-                .filter(|a| self.away_mode() || crate::session::is_lan_ip(a.ip()))
+                .filter(|a| {
+                    let ip = a.ip().to_canonical();
+                    if crate::session::is_tailnet_ip(ip) {
+                        self.local_tailscale_ips().contains(&ip)
+                    } else {
+                        self.away_mode() || crate::session::is_private_lan_ip(ip) || self.is_on_link_ipv6(ip)
+                    }
+                })
                 .collect();
             if addrs.iter().any(|a| !a.ip().is_loopback()) || tokio::time::Instant::now() >= deadline {
                 if !addrs.is_empty() {
@@ -896,13 +1035,10 @@ impl Shared {
 
     pub(crate) fn is_usb_connection(&self, conn: &Connection) -> bool {
         let peer = crate::device_id(&conn.remote_id());
-        if self.usb_peer_addr(&peer).is_some() {
-            return true;
-        }
-        conn.paths().iter().any(|p| match p.remote_addr() {
-            iroh::TransportAddr::Ip(addr) => self.is_usb_addr_for(&peer, addr),
-            _ => false,
-        })
+        let paths = conn.paths();
+        paths.iter().find(|p| p.is_selected()).or_else(|| paths.iter().next()).is_some_and(
+            |p| matches!(p.remote_addr(), iroh::TransportAddr::Ip(addr) if self.is_usb_addr_for(&peer, addr)),
+        )
     }
 
     /// Verifies that if `conn` uses a local USB bridge port, its QUIC TLS `DeviceId`
@@ -973,7 +1109,8 @@ impl Shared {
             }
         }
         self.note_discovered(peer, (!pending.name.is_empty()).then_some(pending.name));
-        self.remember_addrs(&peer, &[bridge_addr]);
+        let _ = bridge_addr;
+        self.refresh_lookup(&peer);
         if self.store.is_paired(&peer).unwrap_or(false) {
             self.start_supervisor(peer);
             self.wake_supervisor(&peer);
@@ -1101,9 +1238,7 @@ impl Shared {
             }
             return;
         }
-        if let Ok(Some(record)) = self.store.get_peer(&peer) {
-            self.remember_addrs(&peer, &record.last_addrs);
-        }
+        self.refresh_lookup(&peer);
         self.endpoint.network_change().await;
         if let Some(session) = self.session(&peer) {
             if session.uses_usb_bridge_port(bridge_port) {
@@ -1129,52 +1264,265 @@ impl Shared {
         }
     }
 
-    /// Feeds known addresses of a peer into address lookup.
+    /// [`Shared::refresh_lookup`] for every paired device.
+    pub(crate) fn refresh_all_lookups(&self) {
+        if let Ok(peers) = self.store.list_peers() {
+            for peer in peers {
+                self.refresh_lookup(&peer.id);
+            }
+        }
+    }
+
+    pub(crate) fn addr_kind(&self, ip: std::net::IpAddr) -> AddrKind {
+        let ip = ip.to_canonical();
+        if self.is_tailscale_ip(ip) {
+            AddrKind::Tailscale
+        } else if crate::session::is_tailnet_ip(ip) {
+            AddrKind::Cgnat
+        } else if crate::session::is_private_lan_ip(ip) {
+            AddrKind::Lan
+        } else {
+            AddrKind::Public
+        }
+    }
+
+    /// Adds addresses to try for `peer` that aren't stored (a "connect by IP" hint, a
+    /// pairing link before pairing succeeded), and updates address lookup.
     pub fn remember_addrs(&self, peer: &DeviceId, addrs: &[SocketAddr]) {
-        let allow_wan = self.away_mode();
-        let mut all: Vec<SocketAddr> = addrs
-            .iter()
-            .copied()
-            .filter(|a| {
-                if self.is_usb_addr_for(peer, a) {
-                    true
-                } else if a.ip().is_loopback() {
-                    false
-                } else {
-                    allow_wan || self.is_lan_peer_ip(peer, a.ip())
+        {
+            let mut hints = lock(&self.addr_hints);
+            let list = hints.entry(*peer).or_default();
+            for addr in addrs {
+                if !list.contains(addr) {
+                    list.push(*addr);
                 }
-            })
-            .collect();
+            }
+            let excess = list.len().saturating_sub(crate::store::MAX_CANDIDATES_PER_SOURCE);
+            list.drain(..excess);
+        }
+        self.refresh_lookup(peer);
+    }
+
+    /// Recomputes the addresses address lookup has for `peer` from every source:
+    /// stored candidates, hints and a USB tunnel. Replaces what lookup had, so a
+    /// withdrawn address stops being dialled. Outside Away mode only this network's
+    /// and confirmed Tailscale addresses are kept; stored ones stay for later.
+    pub(crate) fn refresh_lookup(&self, peer: &DeviceId) {
+        let allow_wan = self.away_mode();
+        let stored = self.store.candidates(peer).unwrap_or_default();
+        let hints = lock(&self.addr_hints).get(peer).cloned().unwrap_or_default();
+        let mut all: Vec<SocketAddr> = Vec::new();
+        for addr in stored.iter().map(|c| c.addr).chain(hints) {
+            let keep = if self.is_usb_addr_for(peer, &addr) {
+                true
+            } else if addr.ip().to_canonical().is_loopback() {
+                false
+            } else {
+                allow_wan || self.is_lan_peer_ip(peer, addr.ip())
+            };
+            if keep && !all.contains(&addr) {
+                all.push(addr);
+            }
+        }
         if let Some(usb_addr) = self.usb_peer_addr(peer)
             && !all.contains(&usb_addr)
         {
             all.push(usb_addr);
         }
-        if all.is_empty() && allow_wan {
-            return;
-        }
-        if let Ok(key) = crate::public_key(peer) {
-            self.memory.add_endpoint_info(EndpointInfo::new(key).with_ip_addrs(all));
+        let Ok(key) = crate::public_key(peer) else { return };
+        if all.is_empty() {
+            self.memory.remove_endpoint_info(key);
+        } else {
+            self.memory.set_endpoint_info(EndpointInfo::new(key).with_ip_addrs(all.into_iter().collect()));
         }
     }
 
-    /// Removes any cached non-LAN (cellular / public IPv6 / WAN) or stale loopback
-    /// addresses for `peer` so `maintain` does not repeatedly dial a dead endpoint.
+    /// Stores what a paired device advertised in its `hello` or `hello.update`
+    /// (`[]` withdraws it), replacing only that source, and updates lookup.
+    /// A malformed list changes nothing.
+    pub(crate) fn peer_advertised(self: &Arc<Self>, peer: &DeviceId, addrs: &[String]) {
+        self.store_advertised(peer, addrs, true);
+    }
+
+    fn store_advertised(self: &Arc<Self>, peer: &DeviceId, addrs: &[String], try_upgrade: bool) {
+        let Ok(addrs) = nectarlink_protocol::messages::validate_direct_addrs(addrs) else {
+            tracing::debug!(peer = %peer.short(), "ignored malformed advertised addresses");
+            return;
+        };
+        let fresh_lan = addrs.iter().any(|a| crate::session::is_private_lan_ip(a.ip()));
+        if let Err(e) = self.store.replace_candidates(
+            peer,
+            crate::store::CandidateSource::Advertised,
+            &addrs,
+            crate::now_unix(),
+        ) {
+            tracing::warn!(error = %e, "failed to store advertised addresses");
+        }
+        self.refresh_lookup(peer);
+        if fresh_lan && try_upgrade {
+            self.upgrade_path_soon(*peer);
+        }
+    }
+
+    /// Removes cached non-LAN (cellular / public IPv6 / WAN) or stale loopback
+    /// addresses a session observed for `peer`, so `maintain` does not repeatedly
+    /// dial a dead endpoint. What the user typed, what the device advertised and
+    /// what Tailscale found stay.
     pub(crate) fn purge_non_lan_addrs(&self, peer: &DeviceId) {
-        if let Ok(Some(record)) = self.store.get_peer(peer) {
-            let lan_only: Vec<SocketAddr> = record
-                .last_addrs
+        use crate::store::CandidateSource::{Legacy, Observed};
+        let stored = self.store.candidates(peer).unwrap_or_default();
+        for source in [Observed, Legacy] {
+            let of_source: Vec<&crate::store::AddrCandidate> =
+                stored.iter().filter(|c| c.source == source).collect();
+            let lan_only: Vec<SocketAddr> = of_source
                 .iter()
-                .copied()
+                .map(|c| c.addr)
                 .filter(|a| !a.ip().to_canonical().is_loopback() && self.is_lan_peer_ip(peer, a.ip()))
                 .collect();
-            if lan_only.len() != record.last_addrs.len()
-                && let Some(seen) = record.last_seen
-            {
-                let _ = self.store.record_seen(peer, seen, &lan_only);
+            if lan_only.len() != of_source.len() {
+                let at = of_source.iter().map(|c| c.last_seen).max().unwrap_or_else(crate::now_unix);
+                let _ = self.store.replace_candidates(peer, source, &lan_only, at);
             }
-            self.remember_addrs(peer, &lan_only);
         }
+        if let Some(hints) = lock(&self.addr_hints).get_mut(peer) {
+            hints.retain(|a| !a.ip().to_canonical().is_loopback() && self.is_lan_peer_ip(peer, a.ip()));
+        }
+        self.refresh_lookup(peer);
+    }
+
+    /// Tells connected devices this device's direct addresses when they changed
+    /// since they were last told (a network change, a new Tailscale address).
+    pub(crate) async fn advertise_addrs_if_changed(&self) {
+        let addrs = self.advertised_direct_addrs();
+        {
+            let mut last = lock(&self.advertised);
+            if last.as_ref() == Some(&addrs) {
+                return;
+            }
+            *last = Some(addrs.clone());
+        }
+        let update = HelloUpdate { direct_addrs: Some(addrs), ..Default::default() };
+        if let Ok(env) = Envelope::new(types::HELLO_UPDATE, &update) {
+            self.broadcast(env).await;
+        }
+    }
+
+    /// Re-reads this device's Tailscale addresses: what the platform confirmed,
+    /// plus (on Linux) those of a Tailscale interface. Returns whether they changed.
+    pub(crate) fn refresh_tailscale_ips(&self) -> bool {
+        let mut ips: Vec<std::net::IpAddr> = lock(&self.platform_tailscale_ips).clone();
+        #[cfg(target_os = "linux")]
+        if self.tailscale_interfaces {
+            for nic in netdev::get_interfaces() {
+                if !nic.is_up() || !nic.name.starts_with("tailscale") {
+                    continue;
+                }
+                let found = nic
+                    .ipv4
+                    .iter()
+                    .map(|n| std::net::IpAddr::V4(n.addr()))
+                    .chain(nic.ipv6.iter().map(|n| std::net::IpAddr::V6(n.addr())));
+                for ip in found {
+                    if crate::session::is_tailnet_ip(ip) && !ips.contains(&ip) {
+                        ips.push(ip);
+                    }
+                }
+            }
+        }
+        let mut current = self.tailscale_ips.write().unwrap_or_else(|e| e.into_inner());
+        let changed = *current != ips;
+        *current = ips;
+        changed
+    }
+
+    /// While `peer` is connected over Tailscale and a LAN address for it turns up
+    /// (mDNS, its `hello.update`, a network change), checks whether the LAN path
+    /// works and moves to it, without dropping the live session: first waiting
+    /// briefly for QUIC to pick the new path itself, then opening a LAN-only
+    /// connection that replaces the session once it's up. Only the device with the
+    /// lower ID tries. At most one try per device every [`UPGRADE_RETRY`].
+    pub(crate) fn upgrade_path_soon(self: &Arc<Self>, peer: DeviceId) {
+        // Only the lower ID's dial replaces a live session on both sides
+        // (`register_session`), so only that side tries.
+        if self.id > peer {
+            return;
+        }
+        let Some(session) = self.session(&peer) else { return };
+        if session.path() != ConnectionPath::Tailscale {
+            return;
+        }
+        {
+            let mut upgrades = lock(&self.upgrades);
+            if upgrades.get(&peer).is_some_and(|at| at.elapsed() < UPGRADE_RETRY) {
+                return;
+            }
+            upgrades.insert(peer, std::time::Instant::now());
+        }
+        let shared = self.clone();
+        self.runtime.spawn(async move {
+            shared.refresh_lookup(&peer);
+            let deadline = tokio::time::Instant::now() + UPGRADE_WAIT;
+            while tokio::time::Instant::now() < deadline {
+                if !session.is_alive() || session.path() != ConnectionPath::Tailscale {
+                    break;
+                }
+                tokio::time::sleep(Duration::from_millis(250)).await;
+            }
+            if session.is_alive() && session.path() == ConnectionPath::Tailscale {
+                let lan = shared.lan_candidates(&peer);
+                if !lan.is_empty() {
+                    match tokio::time::timeout(UPGRADE_DIAL, shared.dial_addrs(peer, Some(lan))).await {
+                        Ok(Ok(new)) if new.path().rank() < ConnectionPath::Tailscale.rank() => {
+                            tracing::info!(peer = %peer.short(), "moved from Tailscale to the LAN");
+                        }
+                        _ => {
+                            tracing::debug!(peer = %peer.short(), "LAN path not usable; staying on Tailscale")
+                        }
+                    }
+                }
+            }
+            if let Some(current) = shared.session(&peer) {
+                shared.publish_online(&current);
+            }
+        });
+    }
+
+    /// `peer`'s addresses that look like this network's, for moving a session to the
+    /// LAN: what it announced over mDNS here, and stored or hinted private addresses
+    /// on one of this device's own subnets. Never Tailscale ones.
+    fn lan_candidates(&self, peer: &DeviceId) -> Vec<SocketAddr> {
+        let stored = self.store.candidates(peer).unwrap_or_default();
+        let hints = lock(&self.addr_hints).get(peer).cloned().unwrap_or_default();
+        let announced = lock(&self.lan_seen).get(peer).map(|(_, a)| a.clone()).unwrap_or_default();
+        let own: Vec<std::net::IpAddr> = self
+            .endpoint
+            .addr()
+            .ip_addrs()
+            .map(|a| a.ip().to_canonical())
+            .filter(|ip| !ip.is_loopback() && !crate::session::is_tailnet_ip(*ip))
+            .collect();
+        let mut out: Vec<SocketAddr> = Vec::new();
+        let push = |addr: SocketAddr, out: &mut Vec<SocketAddr>| {
+            if !out.contains(&addr) {
+                out.push(addr);
+            }
+        };
+        for addr in announced {
+            let ip = addr.ip().to_canonical();
+            if !ip.is_loopback() && !crate::session::is_tailnet_ip(ip) {
+                push(addr, &mut out);
+            }
+        }
+        for addr in stored.iter().map(|c| c.addr).chain(hints) {
+            let ip = addr.ip().to_canonical();
+            if crate::session::is_private_lan_ip(ip)
+                && !ip.is_loopback()
+                && own.iter().any(|o| crate::session::is_same_subnet(*o, ip))
+            {
+                push(addr, &mut out);
+            }
+        }
+        out
     }
 
     /// Computes the capability matrix for a paired device from its last known
@@ -1188,6 +1536,9 @@ impl Shared {
         };
         let remote = DeviceFacts::new(&record.info, record.caps, record.power);
         let mut paths = vec![ConnectionPath::Lan];
+        if self.session(peer).is_some_and(|s| s.path() == ConnectionPath::Tailscale) {
+            paths.push(ConnectionPath::Tailscale);
+        }
         if self.usb_peer_addr(peer).is_some()
             || self.session(peer).is_some_and(|s| s.path() == ConnectionPath::Usb)
         {
@@ -1330,9 +1681,11 @@ impl Shared {
         if let Some(sup) = lock(&self.supervisors).remove(peer) {
             sup.cancel.cancel();
         }
-        if let Some(session) = lock(&self.sessions).remove(peer) {
+        let session = lock(&self.sessions).remove(peer);
+        if let Some(session) = &session {
             session.close(CLOSE_NORMAL, b"unpaired");
         }
+        crate::remote::release(self, *peer, session.as_deref());
         self.linux_unlock_activity.clear_failures(peer);
         let (platform, pc) = (self.platform.clone(), *peer);
         let _ = tokio::task::spawn_blocking(move || {
@@ -1342,9 +1695,15 @@ impl Shared {
         .await;
         lock(&self.links).remove(peer);
         lock(&self.lan_seen).remove(peer);
+        lock(&self.addr_hints).remove(peer);
+        lock(&self.upgrades).remove(peer);
+        if let Ok(key) = crate::public_key(peer) {
+            self.memory.remove_endpoint_info(key);
+        }
         lock(&self.dial_failures).remove(peer);
         lock(&self.matrices).remove(peer);
         lock(&self.remote).remove_peer(peer);
+        crate::audio_route::forget(self, peer);
         lock(&self.storage).remove_peer(peer);
         self.toggles.remove_peer(peer);
         self.deck.remove_peer(peer);
@@ -1411,11 +1770,17 @@ impl Shared {
         let is_usb = self.is_usb_connection(&conn);
         let mut sessions = lock(&self.sessions);
         if let Some(existing) = sessions.get(&peer).filter(|s| s.is_alive()) {
-            let keep_existing = if is_usb && existing.path() != ConnectionPath::Usb {
+            let existing_path = existing.path();
+            let keep_existing = if is_usb && existing_path != ConnectionPath::Usb {
                 false
-            } else if !is_usb && existing.path() == ConnectionPath::Usb {
+            } else if !is_usb && existing_path == ConnectionPath::Usb {
                 true
             } else {
+                // The lower ID's dial wins, the same way on both sides. Comparing
+                // paths here would let the two sides disagree (each sees its own
+                // selected path) and close both connections; a move from
+                // Tailscale to the LAN is the lower ID's dial instead
+                // ([`Shared::upgrade_path_soon`]).
                 existing.dialer != dialer && existing.dialer < dialer
             };
             if keep_existing {
@@ -1423,7 +1788,12 @@ impl Shared {
                 conn.close(VarInt::from_u32(CLOSE_DUPLICATE), b"duplicate");
                 return None;
             }
+        }
+        // The old reader's exit may race a replacement. Retire it and release
+        // its held input before the new reader starts dispatching.
+        if let Some(existing) = sessions.remove(&peer) {
             existing.close(CLOSE_DUPLICATE, b"duplicate");
+            crate::remote::release(self, peer, Some(&existing));
         }
 
         let localsend = remote.localsend_fingerprint().map(str::to_ascii_lowercase);
@@ -1460,35 +1830,31 @@ impl Shared {
 
         tracing::info!(peer = %peer.short(), path = ?session.path(), "connected");
         let allow_wan = self.away_mode();
-        let addrs: Vec<SocketAddr> = session
+        let now = crate::now_unix();
+        // What this session uses replaces only what sessions observed before: what
+        // the device advertised, the user typed or Tailscale found stays. The USB
+        // tunnel's loopback bridge is never stored.
+        let observed: Vec<SocketAddr> = session
             .remote_ip_addrs()
             .into_iter()
             .filter(|a| {
                 !a.ip().to_canonical().is_loopback() && (allow_wan || self.is_lan_peer_ip(&peer, a.ip()))
             })
             .collect();
-        let persisted_addrs = if addrs.is_empty() {
-            self.store
-                .get_peer(&peer)
-                .ok()
-                .flatten()
-                .map(|r| {
-                    r.last_addrs
-                        .into_iter()
-                        .filter(|a| {
-                            !a.ip().to_canonical().is_loopback()
-                                && (allow_wan || self.is_lan_peer_ip(&peer, a.ip()))
-                        })
-                        .collect()
-                })
-                .unwrap_or_default()
-        } else {
-            addrs
-        };
-        if let Err(e) = self.store.record_seen(&peer, crate::now_unix(), &persisted_addrs) {
+        if let Err(e) = self.store.record_seen(&peer, now) {
+            tracing::warn!(error = %e, "failed to record the peer as seen");
+        }
+        if !observed.is_empty()
+            && let Err(e) =
+                self.store.replace_candidates(&peer, crate::store::CandidateSource::Observed, &observed, now)
+        {
             tracing::warn!(error = %e, "failed to record peer addresses");
         }
-        self.remember_addrs(&peer, &persisted_addrs);
+        // Omitted (an older version) keeps what it advertised before.
+        if let Some(advertised) = &remote.direct_addrs {
+            self.store_advertised(&peer, advertised, false);
+        }
+        self.refresh_lookup(&peer);
         if let Some(info) = effective_device {
             self.emit(NodeEvent::PeerInfoChanged { device: peer, info });
         }
@@ -1526,6 +1892,7 @@ impl Shared {
         let current = sessions.get(&ended.peer).is_some_and(|current| Arc::ptr_eq(current, ended));
         if current {
             sessions.remove(&ended.peer);
+            crate::remote::release(self, ended.peer, Some(ended));
             self.clear_remote_ring(ended.peer, None);
             lock(&self.pc_mirror_sessions).remove(&ended.peer);
             lock(&self.watch_offers).remove(&ended.peer);
@@ -1585,6 +1952,32 @@ impl Shared {
 
     /// Dials a paired device and runs the handshake.
     async fn dial(self: &Arc<Self>, peer: DeviceId) -> Result<Arc<Session>> {
+        self.dial_addrs(peer, None).await
+    }
+
+    /// The path a connection that isn't registered yet would show.
+    fn connection_path_of(&self, conn: &Connection) -> ConnectionPath {
+        let paths = conn.paths();
+        let Some(selected) = paths.iter().find(|p| p.is_selected()).or_else(|| paths.iter().next()) else {
+            return ConnectionPath::Lan;
+        };
+        if selected.is_relay() {
+            return ConnectionPath::Relay;
+        }
+        match selected.remote_addr() {
+            iroh::TransportAddr::Ip(addr) if self.is_usb_addr(addr) => ConnectionPath::Usb,
+            iroh::TransportAddr::Ip(addr) if self.is_tailscale_ip(addr.ip()) => ConnectionPath::Tailscale,
+            _ => ConnectionPath::Lan,
+        }
+    }
+
+    /// Dials a paired device, at only `only` when given (moving to a LAN path), and
+    /// runs the handshake.
+    async fn dial_addrs(
+        self: &Arc<Self>,
+        peer: DeviceId,
+        only: Option<Vec<SocketAddr>>,
+    ) -> Result<Arc<Session>> {
         struct CloseOnDrop(Option<Connection>);
         impl Drop for CloseOnDrop {
             fn drop(&mut self) {
@@ -1595,7 +1988,12 @@ impl Shared {
         }
 
         let mut addr = EndpointAddr::new(crate::public_key(&peer)?);
-        if let Some(usb_addr) = self.usb_peer_addr(&peer) {
+        let only_lan = only.is_some();
+        if let Some(only) = only {
+            for a in only {
+                addr = addr.with_ip_addr(a);
+            }
+        } else if let Some(usb_addr) = self.usb_peer_addr(&peer) {
             addr = addr.with_ip_addr(usb_addr);
         }
         let conn = tokio::time::timeout(DIAL_TIMEOUT, self.endpoint.connect(addr, ALPN_SESSION))
@@ -1608,6 +2006,12 @@ impl Shared {
             tracing::debug!(peer = %peer.short(), "refusing outgoing session on non-LAN path while away_mode is off");
             if let Some(c) = guard.0.take() {
                 c.close(VarInt::from_u32(CLOSE_NORMAL), b"away mode disabled");
+            }
+            return Err(Error::Offline);
+        }
+        if only_lan && self.connection_path_of(conn_ref).rank() > ConnectionPath::Lan.rank() {
+            if let Some(c) = guard.0.take() {
+                c.close(VarInt::from_u32(CLOSE_NORMAL), b"not the lan");
             }
             return Err(Error::Offline);
         }
@@ -1957,14 +2361,20 @@ impl Node {
         // remember even where local discovery is blocked (guest Wi-Fi, some
         // routers and VPNs). Reuse the last one; take any free port if it's
         // gone, and remember that instead.
+        // A saved port wins over the preferred one: devices remember that one.
         let saved = if config.port == 0 { Ports::load(&config.data_dir) } else { None };
-        let wanted =
-            if config.port != 0 { Some(Ports { v4: config.port, v6: Some(config.port) }) } else { saved };
+        let preferred = config.preferred_port.filter(|p| *p != 0).map(|p| Ports { v4: p, v6: Some(p) });
+        let wanted = if config.port != 0 {
+            Some(Ports { v4: config.port, v6: Some(config.port) })
+        } else {
+            saved.or(preferred)
+        };
         // Right after a restart the previous process may still be letting go
         // of the ports, so try them for a moment before taking others.
         let mut bound = bind_endpoint(&config, secret.clone(), wanted, relay_map.clone(), proxy).await;
         for _ in 0..PORT_RETRIES {
-            if bound.is_ok() || wanted.is_none() {
+            // Only a saved port may still be held by this app's previous run.
+            if bound.is_ok() || wanted.is_none() || (saved.is_none() && config.port == 0) {
                 break;
             }
             tokio::time::sleep(PORT_RETRY_DELAY).await;
@@ -2014,6 +2424,13 @@ impl Node {
             supervisors: Mutex::new(HashMap::new()),
             discovered: Mutex::new(HashMap::new()),
             lan_seen: Mutex::new(HashMap::new()),
+            addr_hints: Mutex::new(HashMap::new()),
+            tailscale_ips: Arc::new(RwLock::new(Vec::new())),
+            platform_tailscale_ips: Mutex::new(Vec::new()),
+            tailscale_interfaces: config.tailscale_interfaces,
+            advertised: Mutex::new(None),
+            upgrades: Mutex::new(HashMap::new()),
+            audio_route: Mutex::new(None),
             paired_localsend: Mutex::new(HashMap::new()),
             update_hints: Mutex::new(HashMap::new()),
             lan_discovery: Mutex::new(None),
@@ -2102,12 +2519,14 @@ impl Node {
         let incoming = shared.incoming_dir();
         tokio::task::spawn_blocking(move || transfer::clean_incoming(&incoming));
 
+        shared.refresh_tailscale_ips();
         for peer in shared.store.list_peers()? {
-            // remember_addrs keeps only LAN addresses while away mode is off.
-            // The stored list keeps the rest, for when it's turned on again.
-            shared.remember_addrs(&peer.id, &peer.last_addrs);
+            // Lookup gets only LAN and Tailscale addresses while away mode is off.
+            // The store keeps the rest, for when it's turned on again.
+            shared.refresh_lookup(&peer.id);
             shared.start_supervisor(peer.id);
         }
+        watch_local_addrs(&shared);
         run_queue_coordinator(Arc::downgrade(&shared), shared.cancel.child_token());
         tracing::info!(device = %id.short(), lan = config.lan_discovery, away = config.away_mode, "node started");
         Ok(Node { shared, router: Arc::new(router) })
@@ -2226,20 +2645,16 @@ impl Node {
                     session.close(CLOSE_NORMAL, b"away mode disabled");
                 }
             }
-            // Only what's dialled changes (remember_addrs keeps LAN addresses
-            // now); the stored list keeps the others for turning it back on.
-            if let Ok(peers) = self.shared.store.list_peers() {
-                for peer in peers {
-                    self.shared.remember_addrs(&peer.id, &peer.last_addrs);
-                }
-            }
+            // Only what's dialled changes (lookup keeps LAN addresses now);
+            // the store keeps the others for turning it back on.
+            self.shared.refresh_all_lookups();
         } else {
-            if let Ok(peers) = self.shared.store.list_peers() {
-                for peer in peers {
-                    self.shared.remember_addrs(&peer.id, &peer.last_addrs);
-                }
-            }
+            self.shared.refresh_all_lookups();
             self.shared.nudge_reconnect();
+        }
+        if was != enabled {
+            let shared = self.shared.clone();
+            self.shared.runtime.spawn(async move { shared.advertise_addrs_if_changed().await });
         }
         self.shared.refresh_all_capabilities();
     }
@@ -2348,6 +2763,9 @@ impl Node {
     /// away instead of after their backoff. Harmless when nothing changed.
     pub async fn network_changed(&self) {
         self.shared.endpoint.network_change().await;
+        if self.shared.refresh_tailscale_ips() {
+            self.shared.refresh_all_lookups();
+        }
         // A network that just came up may be what mDNS was waiting for (#466).
         if self.shared.lan_wanted.load(std::sync::atomic::Ordering::Relaxed)
             && lock(&self.shared.lan_discovery).is_none()
@@ -2362,9 +2780,11 @@ impl Node {
             let shared = self.shared.clone();
             tokio::spawn(async move {
                 crate::session::probe_after_network_change(&shared, &session).await;
+                shared.upgrade_path_soon(session.peer);
             });
         }
         self.shared.nudge_reconnect();
+        self.shared.advertise_addrs_if_changed().await;
     }
 
     /// What a "refresh" button does: reconnects to devices that aren't
@@ -2604,6 +3024,10 @@ impl Node {
         }
         if toggle == crate::toggles::TOGGLE {
             self.shared.toggles_toggled(peer, enabled);
+        }
+        if toggle == crate::remote::TOGGLE && !enabled {
+            let session = self.shared.session(&peer);
+            crate::remote::release(&self.shared, peer, session.as_deref());
         }
         if (toggle == crate::actions::POWER_TOGGLE || toggle == crate::deck::INPUT_TOGGLE)
             && let Some(session) = self.shared.session(&peer)
@@ -3326,6 +3750,77 @@ impl Node {
             &nectarlink_protocol::messages::AudioPcmFrame { sample_rate, channels, pcm },
         )?;
         session.try_send_realtime(env)
+    }
+
+    /// AudioLink controller: sets `peer`'s managed audio route
+    /// (`audio.route.set`) and returns the status it reports. Needs the
+    /// `media` toggle, `audio.route.controller.v1` here and the role's
+    /// capability on `peer`.
+    pub async fn set_audio_route(
+        &self,
+        peer: DeviceId,
+        set: crate::AudioRouteSet,
+    ) -> Result<crate::AudioRouteStatus> {
+        let session = self.connected(&peer)?;
+        crate::audio_route::set_route(&self.shared, &session, set).await
+    }
+
+    /// AudioLink controller: the route this device applied to itself (as a
+    /// sink or phone playback), so PCM from its enrolled sources is accepted
+    /// here. `None` (or an `idle` role) stops it.
+    pub fn set_local_audio_route(&self, set: Option<crate::AudioRouteSet>) -> Result<()> {
+        crate::audio_route::set_local(&self.shared, self.shared.id, set)
+    }
+
+    /// The managed audio route currently set on this device, if any.
+    pub fn audio_route(&self) -> Option<crate::AudioRouteSet> {
+        crate::audio_route::current(&self.shared)
+    }
+
+    /// AudioLink source: sends one managed PCM frame to `peer`, as an `NLRP`
+    /// datagram when it fits, else an `audio.route.pcm` envelope that is
+    /// dropped rather than blocking control messages. `source_id` must be this
+    /// device's ID.
+    pub fn send_route_pcm(&self, peer: DeviceId, pcm: crate::AudioRoutePcm) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::audio_route::send_pcm(&self.shared, &session, pcm)
+    }
+
+    /// AudioLink sink: sends lane levels to the route's controller (lossy).
+    pub fn send_audio_route_levels(&self, peer: DeviceId, levels: crate::AudioRouteLevels) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::audio_route::send_levels(&self.shared, &session, &levels)
+    }
+
+    /// AudioLink: tells a controller this device's route changed on its own
+    /// (`audio.route.status` without a request).
+    pub async fn send_audio_route_status(
+        &self,
+        peer: DeviceId,
+        status: crate::AudioRouteStatus,
+    ) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::audio_route::send_status(&self.shared, &session, &status).await
+    }
+
+    /// Asks a paired PC that offers `mic.status.v1` for its virtual
+    /// microphone readiness. Needs the `mic` toggle.
+    pub async fn request_mic_status(&self, peer: DeviceId) -> Result<crate::MicStatus> {
+        let session = self.connected(&peer)?;
+        crate::audio_route::request_mic_status(&self.shared, &session).await
+    }
+
+    /// Asks a paired PC to open its virtual microphone setup (`mic.setup`).
+    pub async fn request_mic_setup(&self, peer: DeviceId) -> Result<crate::MicSetupResponse> {
+        let session = self.connected(&peer)?;
+        crate::audio_route::request_mic_setup(&self.shared, &session).await
+    }
+
+    /// PC side: reports this PC's virtual microphone readiness to `peer`
+    /// (`mic.status` event). Needs `mic.status.v1` here and the `mic` toggle.
+    pub async fn send_mic_status(&self, peer: DeviceId, status: crate::MicStatus) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::audio_route::send_mic_status(&self.shared, &session, &status).await
     }
 
     /// Opens a web link on a paired device.
@@ -4098,6 +4593,79 @@ impl Node {
         crate::remote::move_pointer(&self.shared, &session, dx, dy).await
     }
 
+    /// [`Node::remote_check`], also telling a precision PC whether the remote is
+    /// open now (`Some(true)`) or just closed (`Some(false)`, which lets go of
+    /// anything still held). `None` is the legacy check; PCs without
+    /// `input.precision` always get that.
+    pub async fn remote_check_with_presence(&self, peer: DeviceId, presence: Option<bool>) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::remote::check_with_presence(&self.shared, &session, presence).await
+    }
+
+    /// Asks a paired PC that offers `input.precision` for its gesture profile,
+    /// the gestures it supports and its display map (`remote.info`).
+    pub async fn remote_info(&self, peer: DeviceId) -> Result<crate::RemoteInfo> {
+        let session = self.connected(&peer)?;
+        crate::remote::info(&self.shared, &session).await
+    }
+
+    /// Sends relative motion with the sender's gain already applied, in a QUIC
+    /// datagram. Needs `input.precision` on the PC.
+    pub async fn remote_move_precise(&self, peer: DeviceId, dx: f32, dy: f32) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::remote::precise(&self.shared, &session, crate::RemoteInput::MovePrecise { dx, dy }).await
+    }
+
+    /// Moves the PC's pointer to `(x, y)` in `0.0..=1.0` across all its monitors.
+    /// Without `click` it's a datagram (a late one is dropped by `seq`, which
+    /// wraps); with one, a reliable request that moves and clicks there.
+    /// Needs `input.precision` on the PC.
+    pub async fn remote_move_absolute(
+        &self,
+        peer: DeviceId,
+        x: f32,
+        y: f32,
+        seq: u32,
+        click: Option<crate::MouseButton>,
+    ) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::remote::precise(&self.shared, &session, crate::RemoteInput::MoveAbsolute { x, y, seq, click })
+            .await
+    }
+
+    /// Zooms by `delta` wheel notches (positive in), in a QUIC datagram.
+    /// Needs `input.precision` on the PC.
+    pub async fn remote_zoom(&self, peer: DeviceId, delta: f32) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::remote::precise(&self.shared, &session, crate::RemoteInput::Zoom { delta }).await
+    }
+
+    /// A mouse button action with up to four modifiers held, as a reliable
+    /// request. Needs `input.precision` on the PC.
+    pub async fn remote_modified_button(
+        &self,
+        peer: DeviceId,
+        button: crate::MouseButton,
+        action: crate::ButtonAction,
+        mods: Vec<crate::KeyMod>,
+    ) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::remote::precise(
+            &self.shared,
+            &session,
+            crate::RemoteInput::ModifiedButton { button, action, mods },
+        )
+        .await
+    }
+
+    /// A desktop gesture (window switcher, overview, workspaces...), as a
+    /// reliable request. Needs `input.precision` on the PC; offer only what its
+    /// [`Node::remote_info`] lists.
+    pub async fn remote_gesture(&self, peer: DeviceId, action: crate::GestureAction) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::remote::precise(&self.shared, &session, crate::RemoteInput::Gesture { action }).await
+    }
+
     /// Sends smooth scroll `(dx, dy)` in a QUIC datagram.
     pub async fn remote_scroll_fast(&self, peer: DeviceId, dx: f32, dy: f32) -> Result<()> {
         let session = self.connected(&peer)?;
@@ -4559,7 +5127,7 @@ impl Node {
             local.extra_capabilities = extra_capabilities;
             local.capabilities()
         };
-        let update = HelloUpdate { power: Some(power), caps: Some(caps), device: None };
+        let update = HelloUpdate { power: Some(power), caps: Some(caps), ..Default::default() };
         if let Ok(env) = Envelope::new(types::HELLO_UPDATE, &update) {
             self.shared.broadcast(env).await;
         }
@@ -4840,6 +5408,119 @@ impl Node {
         PeerDiagnostics { mdns_seen_ago_secs, mdns_addrs, dial_failures }
     }
 
+    /// Where the core would dial `peer` and why, for the Connection Doctor: each
+    /// stored address with its source and kind, and whether it's dialled now.
+    /// Addresses are the user's own data: shown, never logged.
+    pub fn peer_addr_diagnostics(&self, peer: &DeviceId) -> Result<PeerAddrDiagnostics> {
+        if !self.shared.store.is_paired(peer)? {
+            return Err(Error::NotPaired);
+        }
+        let away = self.shared.away_mode();
+        let session = self.shared.session(peer);
+        let selected = session.as_ref().and_then(|s| s.selected_direct_addr());
+        let candidates = self
+            .shared
+            .store
+            .candidates(peer)?
+            .into_iter()
+            .map(|c| {
+                let kind = self.shared.addr_kind(c.addr.ip());
+                let dialable = away || self.shared.is_lan_peer_ip(peer, c.addr.ip());
+                PeerAddrCandidate {
+                    addr: c.addr,
+                    source: c.source,
+                    kind,
+                    first_seen: c.first_seen,
+                    last_seen: c.last_seen,
+                    dialable,
+                    selected: selected == Some(c.addr),
+                }
+            })
+            .collect();
+        Ok(PeerAddrDiagnostics {
+            candidates,
+            path: session.as_ref().map(|s| s.path()),
+            local_tailscale: !self.shared.tailscale_ips.read().unwrap_or_else(|e| e.into_inner()).is_empty(),
+            away_mode: away,
+        })
+    }
+
+    /// Sets the addresses the user typed for a paired device ("connect by IP"),
+    /// kept across restarts beside every other source. An empty list clears them.
+    /// Returns an error for a device that isn't paired or a list that isn't valid
+    /// (more than 8, a loopback, unspecified, multicast or port 0 address).
+    pub fn set_manual_addrs(&self, peer: DeviceId, addrs: &[SocketAddr]) -> Result<()> {
+        if !self.shared.store.is_paired(&peer)? {
+            return Err(Error::NotPaired);
+        }
+        let texts: Vec<String> = addrs.iter().map(ToString::to_string).collect();
+        let addrs = nectarlink_protocol::messages::validate_direct_addrs(&texts)
+            .map_err(|e| Error::Internal(format!("invalid address: {e}")))?;
+        self.shared.store.replace_candidates(
+            &peer,
+            crate::store::CandidateSource::Manual,
+            &addrs,
+            crate::now_unix(),
+        )?;
+        self.shared.refresh_lookup(&peer);
+        self.shared.wake_supervisor(&peer);
+        Ok(())
+    }
+
+    /// Adds addresses Tailscale's peer list has for a paired device (only those in
+    /// Tailscale's ranges), kept across restarts. Returns how many were kept.
+    pub fn add_tailscale_candidates(&self, peer: DeviceId, addrs: &[SocketAddr]) -> Result<usize> {
+        use crate::store::CandidateSource::Discovery;
+        if !self.shared.store.is_paired(&peer)? {
+            return Err(Error::NotPaired);
+        }
+        let mut merged: Vec<SocketAddr> = addrs
+            .iter()
+            .copied()
+            .filter(|a| a.port() != 0 && crate::session::is_tailnet_ip(a.ip()))
+            .collect();
+        let added = merged.len();
+        for c in self.shared.store.candidates(&peer)?.into_iter().filter(|c| c.source == Discovery) {
+            if !merged.contains(&c.addr) {
+                merged.push(c.addr);
+            }
+        }
+        self.shared.store.replace_candidates(&peer, Discovery, &merged, crate::now_unix())?;
+        self.shared.refresh_lookup(&peer);
+        if added > 0 {
+            self.shared.wake_supervisor(&peer);
+        }
+        Ok(added)
+    }
+
+    /// Tells the core this device's own Tailscale addresses (from the Tailscale
+    /// app, `tailscale status`). Only with these does a `100.64.0.0/10` or
+    /// `fd7a:115c:a1e0::/48` address count as Tailscale rather than carrier CGNAT;
+    /// others given are ignored. An empty list: Tailscale is off here.
+    pub async fn set_local_tailscale_ips(&self, ips: Vec<std::net::IpAddr>) {
+        let mut ips: Vec<std::net::IpAddr> = ips
+            .into_iter()
+            .map(|ip| ip.to_canonical())
+            .filter(|ip| crate::session::is_tailnet_ip(*ip))
+            .collect();
+        ips.dedup();
+        *lock(&self.shared.platform_tailscale_ips) = ips;
+        if self.shared.refresh_tailscale_ips() {
+            self.shared.refresh_all_lookups();
+            self.shared.refresh_all_capabilities();
+            self.shared.nudge_reconnect();
+            for session in self.shared.live_sessions() {
+                self.shared.publish_online(&session);
+            }
+        }
+        self.shared.advertise_addrs_if_changed().await;
+    }
+
+    /// The UDP sockets the endpoint listens on (`0.0.0.0:port`, `[::]:port`).
+    pub fn local_bound_addrs(&self) -> Vec<SocketAddr> {
+        self.shared.endpoint.bound_sockets()
+    }
+
     /// Records a LAN discovery sighting for `peer` (e.g. from mDNS or LocalSend).
     pub fn record_lan_sighting(&self, peer: DeviceId, addrs: Vec<SocketAddr>) {
         lock(&self.shared.lan_seen).insert(peer, (std::time::Instant::now(), addrs));
@@ -4849,6 +5530,58 @@ impl Node {
     pub fn record_dial_failure(&self, peer: DeviceId) {
         *lock(&self.shared.dial_failures).entry(peer).or_insert(0) += 1;
     }
+}
+
+/// What kind of network an address is on, as far as this device can tell.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AddrKind {
+    /// A private, link-local or unique-local address: a local network.
+    Lan,
+    /// A tailnet address this device's own Tailscale confirms.
+    Tailscale,
+    /// In Tailscale's IPv4 range but not confirmed: carrier-grade NAT as far as
+    /// anyone knows. Dialled only in Away mode.
+    Cgnat,
+    /// A public internet address. Dialled only in Away mode.
+    Public,
+}
+
+impl AddrKind {
+    /// Its name in diagnostics: `lan`, `tailscale`, `cgnat` or `public`.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            AddrKind::Lan => "lan",
+            AddrKind::Tailscale => "tailscale",
+            AddrKind::Cgnat => "cgnat",
+            AddrKind::Public => "public",
+        }
+    }
+}
+
+/// One stored address of a paired device, for the Connection Doctor.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct PeerAddrCandidate {
+    pub addr: SocketAddr,
+    pub source: crate::store::CandidateSource,
+    pub kind: AddrKind,
+    pub first_seen: i64,
+    pub last_seen: i64,
+    /// Given to address lookup now (Away mode lets every kind through).
+    pub dialable: bool,
+    /// The address the live session uses.
+    pub selected: bool,
+}
+
+/// Where the core would dial a paired device ([`Node::peer_addr_diagnostics`]).
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct PeerAddrDiagnostics {
+    pub candidates: Vec<PeerAddrCandidate>,
+    /// The live session's path, if connected.
+    pub path: Option<ConnectionPath>,
+    /// This device has confirmed Tailscale addresses.
+    pub local_tailscale: bool,
+    pub away_mode: bool,
 }
 
 /// Per-peer discovery and connection diagnostics for the Connection Doctor.
@@ -4962,19 +5695,23 @@ async fn bind_endpoint(
     }
     #[cfg(target_os = "linux")]
     if let Some(name) = config.network_interface.as_deref().filter(|name| !name.is_empty()) {
-        builder = crate::direct_network::bind_lan_interface(builder, name, config.away_mode)?;
+        builder = crate::direct_network::bind_lan_interface(builder, name, true)?;
     }
+    // IPv4 always, and IPv6 where the machine has it (Away mode or not: a LAN or
+    // tailnet may be IPv6 only). A missing IPv6 stack isn't an error.
     if !config.away_mode {
+        builder = builder.portmapper_config(PortmapperConfig::Disabled);
+    }
+    if !config.away_mode || ports.is_some() {
         let v4_port = ports.map_or(0, |p| p.v4);
+        let v6_port = ports.and_then(|p| p.v6).unwrap_or(v4_port);
+        builder = builder.bind_addr(SocketAddr::from(([0, 0, 0, 0], v4_port))).map_err(crate::error::net)?;
         builder = builder
-            .portmapper_config(PortmapperConfig::Disabled)
-            .bind_addr(SocketAddr::from(([0, 0, 0, 0], v4_port)))
+            .bind_addr_with_opts(
+                SocketAddr::from(([0u16; 8], v6_port)),
+                iroh::endpoint::BindOpts::default().set_is_required(false),
+            )
             .map_err(crate::error::net)?;
-    } else if let Some(ports) = ports {
-        builder = builder.bind_addr(SocketAddr::from(([0, 0, 0, 0], ports.v4))).map_err(crate::error::net)?;
-        if let Some(v6) = ports.v6 {
-            builder = builder.bind_addr(SocketAddr::from(([0u16; 8], v6))).map_err(crate::error::net)?;
-        }
     }
     let endpoint = builder.bind().await.map_err(crate::error::net)?;
     if config.away_mode {
@@ -5199,6 +5936,7 @@ fn install_mdns(shared: &Arc<Shared>, fast: bool) -> Result<()> {
                     let id = record_mdns_sighting(&shared, &endpoint_info);
                     if shared.store.is_paired(&id).unwrap_or(false) {
                         shared.wake_supervisor(&id);
+                        shared.upgrade_path_soon(id);
                         continue;
                     }
                     let device =
@@ -5566,6 +6304,7 @@ mod away_tests {
         );
         config.lan_discovery = false;
         config.away_mode = away;
+        config.tailscale_interfaces = false;
         config.localsend_port = 0;
         Node::start(config, Arc::new(NoopPlatform)).await.unwrap()
     }
@@ -5740,4 +6479,248 @@ mod seen_on_lan_tests {
         assert!(!crate::session::is_lan_ip(ip));
         assert!(crate::session::is_lan_peer_ip(ip, &[addr]));
     }
+}
+
+#[cfg(test)]
+mod addr_tests {
+    use super::*;
+    use crate::config::NoopPlatform;
+    use crate::store::CandidateSource;
+    use nectarlink_protocol::messages::{DeviceInfo, DeviceKind};
+
+    fn desktop() -> DeviceInfo {
+        DeviceInfo {
+            name: "Test".into(),
+            kind: DeviceKind::Desktop,
+            os: "windows".into(),
+            os_ver: "11".into(),
+            model: None,
+            accent: None,
+            screen: None,
+            install_id: None,
+        }
+    }
+
+    async fn node_with(dir: &tempfile::TempDir, preferred_port: Option<u16>) -> Node {
+        let mut config = NodeConfig::new(dir.path().to_path_buf(), desktop(), "0.0.0-test");
+        config.lan_discovery = false;
+        config.away_mode = false;
+        config.tailscale_interfaces = false;
+        config.localsend_port = 0;
+        config.preferred_port = preferred_port;
+        Node::start(config, Arc::new(NoopPlatform)).await.unwrap()
+    }
+
+    /// A paired device that is never online.
+    fn paired_peer(node: &Node, seed: u8) -> DeviceId {
+        let peer = crate::device_id(&iroh::SecretKey::from_bytes(&[seed; 32]).public());
+        node.shared.store.upsert_peer(&peer, &desktop(), 1).unwrap();
+        peer
+    }
+
+    fn of(node: &Node, peer: &DeviceId, source: CandidateSource) -> Vec<SocketAddr> {
+        let mut addrs: Vec<SocketAddr> = node
+            .shared
+            .store
+            .candidates(peer)
+            .unwrap()
+            .into_iter()
+            .filter(|c| c.source == source)
+            .map(|c| c.addr)
+            .collect();
+        addrs.sort();
+        addrs
+    }
+
+    fn sockets(addrs: &[&str]) -> Vec<SocketAddr> {
+        addrs.iter().map(|a| a.parse().unwrap()).collect()
+    }
+
+    fn strings(addrs: &[&str]) -> Vec<String> {
+        addrs.iter().map(|a| (*a).to_owned()).collect()
+    }
+
+    /// `Some(addrs)` replaces what the peer advertised (and only that), `Some([])`
+    /// withdraws it, an omitted list (an older peer) changes nothing, and all of
+    /// it survives a restart.
+    #[tokio::test]
+    async fn advertised_addresses_follow_the_hello_and_survive_a_restart() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let node = node_with(&dir, None).await;
+        let peer = paired_peer(&node, 9);
+        let now = crate::now_unix();
+        node.shared
+            .store
+            .replace_candidates(&peer, CandidateSource::Observed, &sockets(&["192.168.1.9:7000"]), now)
+            .unwrap();
+        node.set_manual_addrs(peer, &sockets(&["100.101.102.103:7718"])).unwrap();
+
+        node.shared.peer_advertised(&peer, &strings(&["192.168.1.5:7000", "[fd00::5]:7000"]));
+        assert_eq!(
+            of(&node, &peer, CandidateSource::Advertised),
+            sockets(&["192.168.1.5:7000", "[fd00::5]:7000"])
+        );
+        // A malformed list is ignored rather than wiping what was there.
+        node.shared.peer_advertised(&peer, &strings(&["not an address"]));
+        assert_eq!(of(&node, &peer, CandidateSource::Advertised).len(), 2);
+        // A new list replaces the old one.
+        node.shared.peer_advertised(&peer, &strings(&["10.0.0.7:7000"]));
+        assert_eq!(of(&node, &peer, CandidateSource::Advertised), sockets(&["10.0.0.7:7000"]));
+        node.shutdown().await;
+        drop(node);
+
+        // After a restart the advertised, observed and manual addresses are all still there.
+        let node = node_with(&dir, None).await;
+        assert_eq!(of(&node, &peer, CandidateSource::Advertised), sockets(&["10.0.0.7:7000"]));
+        assert_eq!(of(&node, &peer, CandidateSource::Observed), sockets(&["192.168.1.9:7000"]));
+        assert_eq!(of(&node, &peer, CandidateSource::Manual), sockets(&["100.101.102.103:7718"]));
+
+        // `[]` withdraws only the advertised ones.
+        node.shared.peer_advertised(&peer, &[]);
+        assert!(of(&node, &peer, CandidateSource::Advertised).is_empty());
+        assert_eq!(of(&node, &peer, CandidateSource::Observed), sockets(&["192.168.1.9:7000"]));
+        assert_eq!(of(&node, &peer, CandidateSource::Manual), sockets(&["100.101.102.103:7718"]));
+        node.shutdown().await;
+    }
+
+    /// Connecting on the LAN records the address it came from, but never erases
+    /// the Tailscale addresses kept for when the LAN is gone.
+    #[tokio::test]
+    async fn a_lan_connection_keeps_the_tailscale_candidates() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let node = node_with(&dir, None).await;
+        let peer = paired_peer(&node, 10);
+        node.set_manual_addrs(peer, &sockets(&["100.90.1.2:7718"])).unwrap();
+        // Only Tailscale-range addresses are taken as Tailscale candidates.
+        let added = node.add_tailscale_candidates(
+            peer,
+            &sockets(&["100.90.1.3:7718", "8.8.8.8:53", "[fd7a:115c:a1e0::3]:7718"]),
+        );
+        assert_eq!(added.unwrap(), 2);
+
+        // What a LAN session does when it registers: record the observed address.
+        let now = crate::now_unix();
+        node.shared
+            .store
+            .replace_candidates(&peer, CandidateSource::Observed, &sockets(&["192.168.1.20:7718"]), now)
+            .unwrap();
+        node.shared
+            .store
+            .replace_candidates(&peer, CandidateSource::Observed, &sockets(&["192.168.1.21:7718"]), now)
+            .unwrap();
+        node.shared.purge_non_lan_addrs(&peer);
+
+        assert_eq!(of(&node, &peer, CandidateSource::Observed), sockets(&["192.168.1.21:7718"]));
+        assert_eq!(of(&node, &peer, CandidateSource::Manual), sockets(&["100.90.1.2:7718"]));
+        assert_eq!(
+            of(&node, &peer, CandidateSource::Discovery),
+            sockets(&["100.90.1.3:7718", "[fd7a:115c:a1e0::3]:7718"])
+        );
+        // USB's loopback address is never kept.
+        node.shared
+            .store
+            .replace_candidates(&peer, CandidateSource::Observed, &sockets(&["127.0.0.1:7718"]), now)
+            .unwrap();
+        assert!(of(&node, &peer, CandidateSource::Observed).is_empty());
+        node.shutdown().await;
+    }
+
+    /// A `100.64/10` address is a Tailscale one only when this device's own
+    /// Tailscale is up; otherwise it's a carrier's CGNAT and, with Away off,
+    /// never dialled.
+    #[tokio::test]
+    async fn a_cgnat_address_gets_no_tailnet_privileges() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let node = node_with(&dir, None).await;
+        let peer = paired_peer(&node, 11);
+        let addr: SocketAddr = "100.80.1.2:7718".parse().unwrap();
+        node.set_manual_addrs(peer, &[addr]).unwrap();
+        let candidate = |node: &Node| {
+            node.peer_addr_diagnostics(&peer)
+                .unwrap()
+                .candidates
+                .into_iter()
+                .find(|c| c.addr == addr)
+                .unwrap()
+        };
+
+        node.set_local_tailscale_ips(Vec::new()).await;
+        // A test machine running Tailscale itself still proves the range.
+        if !node.peer_addr_diagnostics(&peer).unwrap().local_tailscale {
+            let c = candidate(&node);
+            assert_eq!(c.kind, AddrKind::Cgnat);
+            assert!(!c.dialable, "a CGNAT address isn't dialled with Away off");
+            assert!(!node.shared.is_lan_peer_ip(&peer, addr.ip()));
+        }
+
+        node.set_local_tailscale_ips(vec!["100.100.1.1".parse().unwrap(), "8.8.8.8".parse().unwrap()]).await;
+        let diag = node.peer_addr_diagnostics(&peer).unwrap();
+        assert!(diag.local_tailscale);
+        let c = candidate(&node);
+        assert_eq!(c.kind, AddrKind::Tailscale);
+        assert!(c.dialable);
+        // Only Tailscale's own addresses are taken from the platform.
+        assert!(!node.shared.local_tailscale_ips().contains(&"8.8.8.8".parse().unwrap()));
+        node.shutdown().await;
+    }
+
+    /// With Away off the endpoint still listens on IPv4 and, where the host has
+    /// it, IPv6: a Tailscale IPv6 address works too.
+    #[tokio::test]
+    async fn away_off_binds_both_address_families() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let node = node_with(&dir, None).await;
+        let bound = node.local_bound_addrs();
+        assert!(bound.iter().any(|a| a.is_ipv4() && a.port() != 0), "{bound:?}");
+        if std::net::UdpSocket::bind("[::]:0").is_ok() {
+            assert!(bound.iter().any(|a| a.is_ipv6() && a.port() != 0), "{bound:?}");
+        }
+        node.shutdown().await;
+    }
+
+    /// A first run takes the preferred port; a later one keeps the port it saved
+    /// even when asked for another.
+    #[tokio::test]
+    async fn the_preferred_port_is_taken_and_a_saved_one_wins() {
+        let free = || std::net::UdpSocket::bind("0.0.0.0:0").unwrap().local_addr().unwrap().port();
+        let dir = tempfile::TempDir::new().unwrap();
+        let wanted = free();
+        let node = node_with(&dir, Some(wanted)).await;
+        let port = node.shared.bound_v4_port().unwrap();
+        // Another program may have taken it in between: then any port is fine.
+        if port != wanted {
+            eprintln!("preferred port {wanted} was busy");
+        }
+        node.shutdown().await;
+        drop(node);
+
+        let node = node_with(&dir, Some(free())).await;
+        assert_eq!(node.shared.bound_v4_port(), Some(port), "the saved port wins");
+        node.shutdown().await;
+    }
+}
+
+/// Tells connected devices when this device's addresses change (a new Wi-Fi, a
+/// Tailscale address coming up), a moment after they settle.
+fn watch_local_addrs(shared: &Arc<Shared>) {
+    let weak = Arc::downgrade(shared);
+    let cancel = shared.cancel.clone();
+    let mut watcher = shared.endpoint.watch_addr();
+    shared.runtime.spawn(async move {
+        loop {
+            tokio::select! {
+                _ = cancel.cancelled() => return,
+                changed = watcher.updated() => if changed.is_err() { return },
+            }
+            tokio::select! {
+                _ = cancel.cancelled() => return,
+                _ = tokio::time::sleep(Duration::from_millis(500)) => {}
+            }
+            let Some(shared) = weak.upgrade() else { return };
+            if shared.refresh_tailscale_ips() {
+                shared.refresh_all_lookups();
+            }
+            shared.advertise_addrs_if_changed().await;
+        }
+    });
 }
