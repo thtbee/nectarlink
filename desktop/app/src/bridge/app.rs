@@ -1908,8 +1908,14 @@ impl qobject::AppController {
             (false, true) if !others_on => unlock::UNREGISTER_ARG,
             _ => return,
         };
+        let _ = unlock::take_failure();
         crate::win::vcam::run_elevated(arg, move |ok| {
             core_host::refresh_capabilities();
+            if !ok {
+                let reason = unlock::take_failure();
+                let reason = reason.as_deref().unwrap_or("declined, or no reason given");
+                tracing::warn!(arg, reason, "unlock with phone: the administrator step failed");
+            }
             if on {
                 let result = if ok { "registered" } else { "register_failed" };
                 let _ = qt.queue(move |object| object.unlock_result(device, QString::from(result)));
