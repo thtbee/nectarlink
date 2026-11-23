@@ -480,6 +480,19 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **Sleep from the phone works on more laptops.** Laptops that sleep the Modern Standby way
+  ignored it; the screen now goes off as with the power button, and Windows takes them into
+  standby ([#542](https://github.com/thtbee/nectarlink/issues/542)).
+- **One NectarLink in the Start menu.** The helper that puts NectarLink in Windows' Share
+  menu no longer adds a second entry ([#544](https://github.com/thtbee/nectarlink/issues/544)).
+- **Showing the PC's screen no longer closes the app on Wayland.** Without GStreamer's
+  PipeWire plugin, a Wayland session fell back to X11 capture, which some compositors
+  answer with an error that ended the app. The phone now says sharing failed instead
+  ([#548](https://github.com/thtbee/nectarlink/issues/548)).
+- **The wireless debugging code shows during Do Not Disturb.** Elevated setup's code
+  notification can come through Do Not Disturb, and while it's on the app says to turn it
+  off until pairing is done ([#496](https://github.com/thtbee/nectarlink/issues/496)).
+- **The PC widget's Wake button fits a small widget** instead of being cut off at the bottom.
 - **Linux file pickers are the desktop's own.** Send files and the other file dialogs use the
   desktop portal when no Qt theme is set, so COSMIC, GNOME and others show their usual picker
   with sorting by date and size. Thanks to [@krakotay](https://github.com/krakotay)
