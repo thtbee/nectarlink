@@ -2631,6 +2631,38 @@ Item {
             width: parent.width
             spacing: 16
             Txt { width: parent.width; text: qsTr("%1 notifications").arg(appSheet.appName); role: "headline"; wrapMode: Text.WordWrap }
+            // The notification in full and selectable, to copy just part of it (#526).
+            Rectangle {
+                width: parent.width
+                height: Math.min(noteTextView.contentHeight + 20, 220)
+                visible: appSheet.noteText.length > 0
+                radius: Theme.radiusSm
+                color: Theme.surfaceContainerHigh
+                Flickable {
+                    anchors.fill: parent
+                    anchors.margins: 10
+                    contentHeight: noteTextView.contentHeight
+                    clip: true
+                    boundsBehavior: Flickable.StopAtBounds
+                    TextEdit {
+                        id: noteTextView
+                        width: parent.width
+                        text: appSheet.noteText
+                        readOnly: true
+                        selectByMouse: true
+                        wrapMode: TextEdit.Wrap
+                        textFormat: TextEdit.PlainText
+                        font.family: Theme.fontUi
+                        font.pixelSize: 13
+                        color: Theme.surfaceContent
+                        selectionColor: Theme.primary
+                        selectedTextColor: Theme.primaryContent
+                        Accessible.role: Accessible.StaticText
+                        Accessible.name: text
+                        HoverHandler { cursorShape: Qt.IBeamCursor }
+                    }
+                }
+            }
             Flow {
                 width: parent.width
                 spacing: 8
