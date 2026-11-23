@@ -47,8 +47,8 @@ internal class ReconnectPolicy(context: Context) {
         get() = prefs.getStringSet(KNOWN_NETWORKS, emptySet()).orEmpty()
 
     /**
-     * The network the phone is on, as an ID, or null when it can't be told
-     * apart or doesn't need to be: a VPN or USB link always counts as known.
+     * The physical LAN network the phone is on, as an ID, or null when on
+     * VPN/cellular/USB where "Known networks only" does not gate dialing.
      */
     fun currentNetwork(): String? = runCatching {
         val manager = connectivity ?: return null
@@ -61,6 +61,46 @@ internal class ReconnectPolicy(context: Context) {
             return null
         }
         fingerprint(manager.getLinkProperties(network) ?: return null)
+    }.getOrNull()
+
+    /**
+     * A change-detection key spanning both physical LAN and VPN underlay
+     * transitions (e.g. Wi-Fi <-> cellular while Tailscale VPN stays up), so
+     * "Stop looking after" resets on any real route/underlay change.
+     */
+    @Suppress("DEPRECATION")
+    fun currentRouteKey(): String? = runCatching {
+        val manager = connectivity ?: return null
+        val parts = mutableListOf<String>()
+        for (net in manager.allNetworks) {
+            val caps = manager.getNetworkCapabilities(net) ?: continue
+            val lp = manager.getLinkProperties(net)
+            when {
+                caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN) -> {
+                    val addrs = lp?.linkAddresses
+                        ?.mapNotNull { it.address?.hostAddress }
+                        ?.sorted()
+                        ?.joinToString(",")
+                        .orEmpty()
+                    parts += "vpn:$addrs"
+                }
+                caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> {
+                    parts += "wifi:${lp?.let(::fingerprint) ?: "up"}"
+                }
+                caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> {
+                    parts += "eth:${lp?.let(::fingerprint) ?: "up"}"
+                }
+                caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> {
+                    val metered = !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+                    parts += "cell:${lp?.interfaceName.orEmpty()}:$metered"
+                }
+                android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S &&
+                    caps.hasTransport(NetworkCapabilities.TRANSPORT_USB) -> {
+                    parts += "usb:${lp?.interfaceName.orEmpty()}"
+                }
+            }
+        }
+        parts.sorted().distinct().takeIf { it.isNotEmpty() }?.joinToString("|")
     }.getOrNull()
 
     /** Whether the phone may dial PCs on the network it's on now. */

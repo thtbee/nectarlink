@@ -325,19 +325,26 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     }
     private val reconnect = ReconnectPolicy(this.context)
     private var lastNetwork: String? = null
+    private var lastRouteKey: String? = null
     private var giveUpCheck: Job? = null
 
     private val network: NetworkMonitor = NetworkMonitor(this.context) {
         // Network callbacks come in bursts; tell the core once they settle.
         networkChange?.cancel()
-        networkChange = scope.launch {
+        networkChange = scope.launch(Dispatchers.IO) {
             delay(150)
+            val snap = network.snapshot()
             withContext(dialing) { applyDialing() }
-            if (lastSignal.wifiBars != null || _state.value.awayMode) {
-                node?.networkChanged()
+            val activeNode = node
+            if (activeNode != null) {
+                runCatching { activeNode.setLocalTailscaleIps(snap.tailscaleIps) }
+                // Always refresh core paths on meaningful network/VPN/underlay changes,
+                // including cellular + Tailscale VPN with Away mode off.
+                runCatching { activeNode.networkChanged() }
+                refreshManualAddresses(activeNode)
             }
             // A new Wi-Fi network turns wireless debugging off; Elevated turns it back on.
-            if (!Elevated.running && lastSignal.wifiBars != null) Elevated.onNetworkChanged()
+            if (!Elevated.running && snap.hasPhysicalLocal) Elevated.onNetworkChanged()
         }
     }
 
@@ -367,10 +374,14 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         MirrorService.session.map { it.active }.distinctUntilChanged(),
         WebcamService.session.map { it.active || it.connecting }.distinctUntilChanged(),
         MicService.streaming.map { it != null }.distinctUntilChanged(),
-        // Phone as speaker: frames arriving, or the PC still has it on
+        // Phone as speaker: frames arriving, managed mixer listening, or the PC still has it on
         // (frames stop while the PC is silent, for example a paused song).
-        combine(pcSpeakerPlayer.playing, _state.map { it.pcSpeakerRelayOn }) { playing, relayOn ->
-            playing || relayOn
+        combine(
+            pcSpeakerPlayer.playing,
+            _state.map { it.pcSpeakerRelayOn },
+            app.nectarlink.android.audio.AudioRouting.state.map { it.listening },
+        ) { playing, relayOn, mixerListening ->
+            playing || relayOn || mixerListening
         }.distinctUntilChanged(),
     ) { hasTransfers: Boolean, isMirroring: Boolean, isWebcam: Boolean, isMic: Boolean, isSpeaker: Boolean ->
         hasTransfers || isMirroring || isWebcam || isMic || isSpeaker
@@ -480,6 +491,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 node = started
                 isRunning = true
             }
+            runCatching { started.setLocalTailscaleIps(network.localTailscaleIps()) }
+            refreshManualAddresses(started)
             withContext(dialing) { applyDialing() }
             val devices = runCatching { started.pairedDevices() }.getOrDefault(emptyList())
             val pcToggles = perPcToggles(started, devices.map { it.id })
@@ -629,6 +642,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             currentRunScope.launch(Dispatchers.Main) {
                 // Allow first Compose frame to draw before registering BroadcastReceivers and ContentObservers on Main.
                 delay(48L)
+                initAudioRouting()
                 battery.start()
                 accent.start()
                 network.start()
@@ -650,6 +664,22 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                             photos.stop()
                         }
                     }
+            }
+            currentRunScope.launch(Dispatchers.Default) {
+                combine(_state, pcMedia.summaries) { s, summaries -> s.devices to summaries }
+                    .collect { (devs, summaries) ->
+                        syncAudioRoutingPeers(devs, summaries)
+                    }
+            }
+            currentRunScope.launch(Dispatchers.IO) {
+                // Renew active managed audio routes every 500 ms so desktop sinks/sources stay fresh.
+                while (true) {
+                    delay(500L)
+                    val route = app.nectarlink.android.audio.AudioRouting.state.value
+                    if (route.listening && route.peers.any { it.online && it.canSource }) {
+                        sendManagedRoutesToPeers(started, route, renewOnly = true)
+                    }
+                }
             }
             currentRunScope.launch {
                 for (op in notificationOps) {
@@ -934,6 +964,47 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 event.pcm,
                 event.device,
             )
+            is Event.AudioRoutePcm -> {
+                val route = app.nectarlink.android.audio.AudioRouting.state.value
+                val targetPc = (route.output as? app.nectarlink.android.audio.AudioRouting.Output.Pc)?.deviceId
+                if (route.listening && targetPc != null && targetPc != event.id) {
+                    // Phone-forwarded PC-to-PC audio leg when the two PCs aren't directly paired.
+                    runCatching { node?.sendRoutePcm(targetPc, event.pcm) }
+                } else {
+                    app.nectarlink.android.audio.AudioRouting.receivePcm(
+                        generation = event.pcm.generation.toLong(),
+                        sourceId = event.pcm.sourceId.ifBlank { event.id },
+                        seq = event.pcm.seq,
+                        sampleRate = event.pcm.sampleRate.toInt(),
+                        channels = event.pcm.channels.toInt(),
+                        pcm = event.pcm.pcm,
+                    )
+                }
+            }
+            is Event.AudioRouteLevels -> {
+                val gen = event.levels.generation.toLong()
+                for (lane in event.levels.levels) {
+                    app.nectarlink.android.audio.AudioRouting.updateRemoteLevel(gen, lane.sourceId, lane.peak)
+                }
+            }
+            is Event.MicStatus -> {
+                val s = event.status
+                app.nectarlink.android.audio.AudioRouting.updateMicStatus(
+                    event.id,
+                    app.nectarlink.android.audio.AudioRouting.VirtualMicStatus(
+                        ready = s.ready,
+                        active = s.active,
+                        isDefaultInput = s.isDefaultInput,
+                        deviceName = s.deviceName,
+                        setupReason = s.setupReason,
+                        canOpenSetup = s.canOpenSetup,
+                    ),
+                )
+            }
+            is Event.AudioRouteStatus,
+            is Event.AudioRouteSet,
+            is Event.RemotePresence,
+            -> Unit
             is Event.CallAudioUplink -> CallAudioService.uplink(event.device, event.pcm)
             is Event.PcMirrorConfig -> {
                 _pcMirrorConfig.value = PcMirrorConfigState(
@@ -1206,7 +1277,11 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
 
     /** Whether [now] is the same connection as [before], with only its round-trip time changed. */
     private fun sameConnection(before: Link?, now: Link): Boolean =
-        before is Link.Online && now is Link.Online && before.relayed == now.relayed && before.usb == now.usb
+        before is Link.Online &&
+            now is Link.Online &&
+            before.relayed == now.relayed &&
+            before.usb == now.usb &&
+            before.tailscale == now.tailscale
 
     private fun retryWaitingRecordings(pcId: String) {
         val activeIds = _state.value.transfers.filterNot { it.isFinished() }.map { it.id }.toSet()
@@ -1657,9 +1732,11 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     private fun applyDialing() {
         val local = network.hasLocalNetwork()
         val id = reconnect.currentNetwork()
-        if (id != lastNetwork) {
-            // Somewhere else now: worth trying again, with the wait from the start.
+        val routeKey = reconnect.currentRouteKey()
+        if (id != lastNetwork || routeKey != lastRouteKey) {
+            // Somewhere else now (or VPN underlay changed): worth trying again from the start.
             lastNetwork = id
+            lastRouteKey = routeKey
             reconnect.reset()
             cancelGiveUpCheck()
         }
@@ -1705,10 +1782,365 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         giveUpCheck = null
     }
 
-    /** A PC came online directly: the network the phone is on now is one where PCs are found. */
+    /** A PC came online directly on physical LAN: learn that Wi-Fi/Ethernet network. */
     private fun learnNetwork(link: Link) {
-        if (link is Link.Online && !link.relayed && !link.usb) {
+        if (link is Link.Online && !link.relayed && !link.usb && !link.tailscale) {
             reconnect.learn(reconnect.currentNetwork())
+        }
+    }
+
+    // ---- Connect by address (Tailscale / MagicDNS / IP) ----
+
+    fun manualAddress(id: String): String =
+        app.nectarlink.android.ui.Preferences.manualAddress(context, id)
+
+    /**
+     * Persists a manual IP, `[IPv6]`, or MagicDNS hostname (with optional `:port`,
+     * defaulting to 7718) for paired peer [id], resolves A/AAAA records, and passes
+     * them to the core. Blank clears the manual address.
+     */
+    suspend fun setManualAddress(id: String, raw: String): Boolean = withContext(Dispatchers.IO) {
+        val trimmed = raw.trim()
+        val activeNode = node
+        if (trimmed.isEmpty()) {
+            app.nectarlink.android.ui.Preferences.setManualAddress(context, id, "")
+            runCatching { activeNode?.setManualAddrs(id, emptyList()) }
+            return@withContext true
+        }
+        val resolved = resolveManualAddress(trimmed)
+        if (resolved.isEmpty()) return@withContext false
+        app.nectarlink.android.ui.Preferences.setManualAddress(context, id, trimmed)
+        runCatching { activeNode?.setManualAddrs(id, resolved) }
+        runCatching { activeNode?.networkChanged() }
+        true
+    }
+
+    private fun refreshManualAddresses(activeNode: NectarlinkNode) {
+        for ((deviceId, raw) in app.nectarlink.android.ui.Preferences.allManualAddresses(context)) {
+            val resolved = resolveManualAddress(raw)
+            if (resolved.isNotEmpty()) {
+                runCatching { activeNode.setManualAddrs(deviceId, resolved) }
+            }
+        }
+    }
+
+    private fun resolveManualAddress(raw: String): List<String> {
+        val (host, port) = parseHostPort(raw, DEFAULT_DESKTOP_PORT) ?: return emptyList()
+        return runCatching {
+            java.net.InetAddress.getAllByName(host).mapNotNull { addr ->
+                val ip = addr.hostAddress?.substringBefore('%') ?: return@mapNotNull null
+                if (addr is java.net.Inet6Address) "[$ip]:$port" else "$ip:$port"
+            }.distinct()
+        }.getOrDefault(emptyList())
+    }
+
+    private fun parseHostPort(raw: String, defaultPort: Int): Pair<String, Int>? {
+        val s = raw.trim()
+        if (s.isEmpty()) return null
+        if (s.startsWith("[")) {
+            val close = s.indexOf(']')
+            if (close <= 1) return null
+            val host = s.substring(1, close).trim()
+            val rest = s.substring(close + 1).trim()
+            val port = if (rest.isEmpty()) defaultPort else rest.removePrefix(":").toIntOrNull() ?: return null
+            return if (port in 1..65535 && host.isNotEmpty()) host to port else null
+        }
+        val firstColon = s.indexOf(':')
+        val lastColon = s.lastIndexOf(':')
+        if (firstColon != -1 && firstColon != lastColon) {
+            // Bare IPv6 address without port.
+            return s to defaultPort
+        }
+        if (lastColon > 0) {
+            val host = s.substring(0, lastColon).trim()
+            val port = s.substring(lastColon + 1).trim().toIntOrNull() ?: return null
+            return if (port in 1..65535 && host.isNotEmpty()) host to port else null
+        }
+        return s to defaultPort
+    }
+
+    // ---- AudioLink managed multi-PC mixer ----
+
+    @Volatile private var audioRoutingBound = false
+    private val legacySpeakerPcs = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+
+    private fun initAudioRouting() {
+        val routing = app.nectarlink.android.audio.AudioRouting
+        routing.bindPlayer(context, pcSpeakerPlayer)
+        if (audioRoutingBound) return
+        audioRoutingBound = true
+
+        val prefs = app.nectarlink.android.ui.Preferences.audioMixerPrefs(context)
+        routing.setMasterGain(prefs.getFloat("master_gain", 1f))
+        routing.setMasterMuted(prefs.getBoolean("master_muted", false))
+        routing.setIncludePhone(prefs.getBoolean("include_phone", false))
+        routing.setPhoneGain(prefs.getFloat("phone_gain", 1f))
+        routing.setPhoneMuted(prefs.getBoolean("phone_muted", false))
+        routing.setSelectiveResume(prefs.getBoolean("selective_resume", true))
+        prefs.getString("policy", null)?.let { name ->
+            runCatching { app.nectarlink.android.audio.PlaybackPolicy.valueOf(name) }
+                .onSuccess(routing::setPolicy)
+        }
+        prefs.getString("latency", null)?.let { name ->
+            runCatching { app.nectarlink.android.audio.LiveAudioMixer.LatencyPreset.valueOf(name) }
+                .onSuccess(routing::setLatencyPreset)
+        }
+        routing.setMicGain(prefs.getFloat("mic_gain", 1f))
+        routing.setMicMuted(prefs.getBoolean("mic_muted", false))
+        prefs.getString("mic_input_type", null)?.let { name ->
+            runCatching { app.nectarlink.android.audio.AudioRouting.MicInputType.valueOf(name) }
+                .onSuccess { type ->
+                    val devId = if (prefs.contains("mic_input_dev")) prefs.getInt("mic_input_dev", -1).takeIf { it >= 0 } else null
+                    routing.setMicInput(app.nectarlink.android.audio.AudioRouting.MicInput(type, devId))
+                }
+        }
+
+        routing.hooks = app.nectarlink.android.audio.AudioRouting.Hooks(
+            onRouteChanged = { route ->
+                persistAudioRoutingPrefs(route)
+                app.nectarlink.android.audio.AudioMixerTileService.requestUpdate(context)
+                val activeNode = node
+                if (activeNode != null) {
+                    scope.launch(Dispatchers.IO) {
+                        sendManagedRoutesToPeers(activeNode, route, renewOnly = false)
+                    }
+                }
+            },
+            sendRoutePcm = { gen, targetPcId, seq, rate, ch, pcm ->
+                val activeNode = node ?: return@Hooks false
+                val frameCount = if (ch > 0) (pcm.size / (2 * ch)).coerceIn(0, 65535) else 0
+                val selfId = (_state.value.status as? CoreStatus.Ready)?.deviceId ?: "phone"
+                runCatching {
+                    activeNode.sendRoutePcm(
+                        targetPcId,
+                        app.nectarlink.core.AudioRoutePcm(
+                            generation = gen.coerceAtLeast(0L).toULong(),
+                            seq = seq,
+                            sampleRate = rate.toUInt(),
+                            channels = ch.toUByte(),
+                            frameCount = frameCount.toUShort(),
+                            sourceId = selfId,
+                            pcm = pcm,
+                        ),
+                    )
+                    true
+                }.getOrDefault(false)
+            },
+            onMicTargetChanged = { targetPc ->
+                if (targetPc == null) {
+                    MicService.stopFromUser(context)
+                } else {
+                    if (!MicService.hasPermission(context) || !MicService.switchTarget(context, targetPc)) {
+                        app.nectarlink.android.mic.MicRequests.startFromMixer(context, targetPc)
+                    }
+                    requestPcMicStatus(targetPc)
+                }
+            },
+            requestMicStatus = { pcId -> requestPcMicStatus(pcId) },
+            micSetup = { pcId -> requestPcMicSetup(pcId) },
+            mediaControl = { pcId, action ->
+                val summary = pcMedia.summaries.value[pcId]
+                val playerId = summary?.playerId
+                if (playerId != null) {
+                    val wire = when (action) {
+                        app.nectarlink.android.audio.AudioRouting.MediaAction.PREVIOUS -> app.nectarlink.core.MediaAction.PREVIOUS
+                        app.nectarlink.android.audio.AudioRouting.MediaAction.NEXT -> app.nectarlink.core.MediaAction.NEXT
+                        app.nectarlink.android.audio.AudioRouting.MediaAction.PLAY_PAUSE ->
+                            if (summary.playing) app.nectarlink.core.MediaAction.PAUSE else app.nectarlink.core.MediaAction.PLAY
+                    }
+                    pcMedia.command(pcId, playerId, wire)
+                }
+            },
+        )
+    }
+
+    private fun persistAudioRoutingPrefs(route: app.nectarlink.android.audio.AudioRouting.State) {
+        app.nectarlink.android.ui.Preferences.audioMixerPrefs(context).edit()
+            .putBoolean("listening", route.listening)
+            .putFloat("master_gain", route.masterGain)
+            .putBoolean("master_muted", route.masterMuted)
+            .putBoolean("include_phone", route.includePhone)
+            .putFloat("phone_gain", route.phoneLane.slider)
+            .putBoolean("phone_muted", route.phoneLane.muted)
+            .putString("policy", route.policy.name)
+            .putBoolean("selective_resume", route.selectiveResume)
+            .putString("latency", route.latencyPreset.name)
+            .putFloat("mic_gain", route.mic.gain)
+            .putBoolean("mic_muted", route.mic.muted)
+            .putString("mic_input_type", route.mic.input.type.name)
+            .apply {
+                val devId = route.mic.input.deviceId
+                if (devId != null) putInt("mic_input_dev", devId) else remove("mic_input_dev")
+            }
+            .apply()
+    }
+
+    private fun syncAudioRoutingPeers(
+        devices: List<Device>,
+        summaries: Map<String, PcMedia.Summary>,
+    ) {
+        val peers = devices.filterNot { it.isAndroid }.map { dev ->
+            val onlineLink = dev.link as? Link.Online
+            val outputs = dev.deckState?.outputDevices
+                ?.filterNot { it.id == PHONE_SPEAKER_OUTPUT }
+                ?.map { app.nectarlink.android.audio.AudioRouting.OutputDevice(it.id, it.name) }
+                .orEmpty()
+            val activeOutput = dev.deckState?.outputDevices
+                ?.firstOrNull { it.isDefault && it.id != PHONE_SPEAKER_OUTPUT }?.id
+            val media = summaries[dev.id]?.let {
+                app.nectarlink.android.audio.AudioRouting.MediaStatus(
+                    title = it.title,
+                    artist = it.subtitle,
+                    playing = it.playing,
+                )
+            }
+            app.nectarlink.android.audio.AudioRouting.Peer(
+                deviceId = dev.id,
+                name = dev.name,
+                online = dev.online,
+                canSource = dev.has("media.audio_route_to_phone") || dev.has("media.pc_audio"),
+                canSink = dev.has("media.audio_route_to_pc"),
+                canUseMic = dev.has("media.phone_mic") || dev.has("media.mic_status") || dev.micEnabled,
+                canSilenceSpeaker = dev.has("media.audio_route_to_phone"),
+                outputs = outputs,
+                outputId = activeOutput,
+                rttMs = onlineLink?.rttMs?.toFloat(),
+                media = media,
+            )
+        }
+        app.nectarlink.android.audio.AudioRouting.updatePeers(peers)
+        app.nectarlink.android.audio.AudioMixerTileService.requestUpdate(context)
+        app.nectarlink.android.ui.remote.RemoteTileService.requestUpdate(context)
+    }
+
+    private suspend fun sendManagedRoutesToPeers(
+        activeNode: NectarlinkNode,
+        route: app.nectarlink.android.audio.AudioRouting.State,
+        renewOnly: Boolean,
+    ) {
+        val selfId = (_state.value.status as? CoreStatus.Ready)?.deviceId ?: return
+        val devices = _state.value.devices.filterNot { it.isAndroid }
+        val targetPcId = (route.output as? app.nectarlink.android.audio.AudioRouting.Output.Pc)?.deviceId
+        val wirePolicy = when (route.policy) {
+            app.nectarlink.android.audio.PlaybackPolicy.PAUSE -> app.nectarlink.core.AudioPlaybackPolicy.PAUSE
+            app.nectarlink.android.audio.PlaybackPolicy.MUTE -> app.nectarlink.core.AudioPlaybackPolicy.MUTE
+            app.nectarlink.android.audio.PlaybackPolicy.LOWER -> app.nectarlink.core.AudioPlaybackPolicy.LOWER
+            app.nectarlink.android.audio.PlaybackPolicy.OFF -> app.nectarlink.core.AudioPlaybackPolicy.OFF
+        }
+        val wirePreset = when (route.latencyPreset) {
+            app.nectarlink.android.audio.LiveAudioMixer.LatencyPreset.LOWEST -> app.nectarlink.core.AudioLatencyPreset.LOWEST
+            app.nectarlink.android.audio.LiveAudioMixer.LatencyPreset.BALANCED -> app.nectarlink.core.AudioLatencyPreset.BALANCED
+            app.nectarlink.android.audio.LiveAudioMixer.LatencyPreset.STABLE -> app.nectarlink.core.AudioLatencyPreset.STABLE
+        }
+        val enrolledLanes = route.peers.filter { it.online && it.canSource }.map { peer ->
+            val lane = route.lanes[peer.deviceId] ?: app.nectarlink.android.audio.AudioRouting.Lane()
+            app.nectarlink.core.AudioRouteLane(
+                sourceId = peer.deviceId,
+                gain = lane.gain.coerceIn(0f, 2f),
+                muted = lane.muted,
+            )
+        } + if (route.includePhone && targetPcId != null) {
+            listOf(
+                app.nectarlink.core.AudioRouteLane(
+                    sourceId = selfId,
+                    gain = route.phoneLane.gain.coerceIn(0f, 2f),
+                    muted = route.phoneLane.muted,
+                ),
+            )
+        } else {
+            emptyList()
+        }
+
+        if (!renewOnly) {
+            val localSet = if (route.listening) {
+                app.nectarlink.core.AudioRouteSet(
+                    generation = route.generation.coerceAtLeast(0L).toULong(),
+                    role = if (targetPcId == null) app.nectarlink.core.AudioRouteRole.SINK else app.nectarlink.core.AudioRouteRole.PHONE_PLAYBACK,
+                    targetDeviceId = targetPcId,
+                    outputId = route.outputDeviceId,
+                    masterGain = route.masterLinearGain.coerceIn(0f, 2f),
+                    masterMuted = route.masterMuted,
+                    silenceLocalSpeaker = false,
+                    includePhoneAudio = route.includePhone,
+                    latencyPreset = wirePreset,
+                    playbackPolicy = wirePolicy,
+                    selectiveResume = route.selectiveResume,
+                    phonePlaybackActive = route.phonePlaybackActive,
+                    lanes = enrolledLanes,
+                )
+            } else {
+                null
+            }
+            runCatching { activeNode.setLocalAudioRoute(localSet) }
+        }
+
+        // Install sink expectations first, then configure sources.
+        val ordered = devices.sortedByDescending { it.id == targetPcId }
+        for (dev in ordered) {
+            if (!dev.online) continue
+            val supportsManaged = dev.has("media.audio_route_to_phone") || dev.has("media.audio_route_to_pc")
+            if (!supportsManaged) {
+                if (!renewOnly && dev.has("media.pc_audio")) {
+                    val wantLegacy = route.listening && targetPcId == null
+                    if (wantLegacy && legacySpeakerPcs.add(dev.id)) {
+                        setPcAudio(dev.id, 201, null)
+                    } else if (!wantLegacy && legacySpeakerPcs.remove(dev.id)) {
+                        setPcAudio(dev.id, 200, null)
+                    }
+                }
+                continue
+            }
+            val lane = route.lanes[dev.id] ?: app.nectarlink.android.audio.AudioRouting.Lane()
+            val role = when {
+                !route.listening -> app.nectarlink.core.AudioRouteRole.IDLE
+                targetPcId == dev.id -> app.nectarlink.core.AudioRouteRole.SINK
+                else -> app.nectarlink.core.AudioRouteRole.SOURCE
+            }
+            val wireSet = app.nectarlink.core.AudioRouteSet(
+                generation = route.generation.coerceAtLeast(0L).toULong(),
+                role = role,
+                targetDeviceId = if (role == app.nectarlink.core.AudioRouteRole.SOURCE) (targetPcId ?: selfId) else null,
+                outputId = if (role == app.nectarlink.core.AudioRouteRole.SINK) route.outputDeviceId else null,
+                masterGain = route.masterLinearGain.coerceIn(0f, 2f),
+                masterMuted = route.masterMuted,
+                silenceLocalSpeaker = role == app.nectarlink.core.AudioRouteRole.SOURCE && lane.silenceLocalSpeaker,
+                includePhoneAudio = route.includePhone,
+                latencyPreset = wirePreset,
+                playbackPolicy = wirePolicy,
+                selectiveResume = route.selectiveResume,
+                phonePlaybackActive = route.phonePlaybackActive,
+                lanes = if (role == app.nectarlink.core.AudioRouteRole.SINK) enrolledLanes else emptyList(),
+            )
+            runCatching { activeNode.setAudioRoute(dev.id, wireSet) }
+        }
+    }
+
+    private fun requestPcMicStatus(pcId: String) {
+        scope.launch(Dispatchers.IO) {
+            val activeNode = node ?: return@launch
+            runCatching { activeNode.requestMicStatus(pcId) }.onSuccess { s ->
+                app.nectarlink.android.audio.AudioRouting.updateMicStatus(
+                    pcId,
+                    app.nectarlink.android.audio.AudioRouting.VirtualMicStatus(
+                        ready = s.ready,
+                        active = s.active,
+                        isDefaultInput = s.isDefaultInput,
+                        deviceName = s.deviceName,
+                        setupReason = s.setupReason,
+                        canOpenSetup = s.canOpenSetup,
+                    ),
+                )
+            }
+        }
+    }
+
+    private fun requestPcMicSetup(pcId: String) {
+        scope.launch(Dispatchers.IO) {
+            val activeNode = node ?: return@launch
+            runCatching { activeNode.requestMicSetup(pcId) }.onSuccess { res ->
+                res.message?.takeIf { it.isNotBlank() }?.let { _messages.tryEmit(it) }
+                requestPcMicStatus(pcId)
+            }
         }
     }
 
@@ -2654,11 +3086,18 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     // ---- Remote input (phone -> PC) ----
 
     /** Checks whether a PC accepts mouse, keyboard and presentation input from this phone. */
-    suspend fun remoteCheck(id: String): RemoteAccess {
+    suspend fun remoteCheck(id: String): RemoteAccess = remoteCheckWithPresence(id, presence = null)
+
+    /** Checks remote access and optionally announces active Remote presence to the PC's tray counter. */
+    suspend fun remoteCheckWithPresence(id: String, presence: Boolean?): RemoteAccess {
         startJob?.join()
         val node = node ?: return RemoteAccess.Offline
         return try {
-            node.remoteCheck(id)
+            if (presence != null) {
+                node.remoteCheckWithPresence(id, presence)
+            } else {
+                node.remoteCheck(id)
+            }
             RemoteAccess.Allowed
         } catch (e: NectarlinkException) {
             when (e) {
@@ -2669,20 +3108,41 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         }
     }
 
+    /** Queries the PC's precision remote profile, supported gestures, and monitor layout (`remote.info`). */
+    suspend fun remoteInfo(id: String): app.nectarlink.core.RemoteInfo? {
+        startJob?.join()
+        val node = node ?: return null
+        return runCatching { node.remoteInfo(id) }.getOrNull()
+    }
+
     private val pendingMoveLock = Any()
     private var pendingMovePcId: String? = null
     private var pendingMoveDx: Float = 0f
     private var pendingMoveDy: Float = 0f
+    private var pendingMovePrecise: Boolean = false
     private var pendingMoveQueued: Boolean = false
 
-    /** Moves a PC's cursor by `(dx, dy)` logical pixels over QUIC datagrams, coalescing rapid 120Hz touch samples. */
-    fun remoteMove(id: String, dx: Float, dy: Float) {
+    private fun drainPendingMoveLocked(): QuadMove? {
+        val t = pendingMovePcId ?: return null
+        val x = pendingMoveDx
+        val y = pendingMoveDy
+        val precise = pendingMovePrecise
+        pendingMoveDx = 0f
+        pendingMoveDy = 0f
+        pendingMoveQueued = false
+        return if (x != 0f || y != 0f) QuadMove(t, x, y, precise) else null
+    }
+
+    private data class QuadMove(val pcId: String, val dx: Float, val dy: Float, val precise: Boolean)
+
+    private fun enqueueMove(id: String, dx: Float, dy: Float, precise: Boolean) {
         val shouldQueue = synchronized(pendingMoveLock) {
-            if (pendingMovePcId != null && pendingMovePcId != id) {
+            if (pendingMovePcId != null && (pendingMovePcId != id || pendingMovePrecise != precise)) {
                 pendingMoveDx = 0f
                 pendingMoveDy = 0f
             }
             pendingMovePcId = id
+            pendingMovePrecise = precise
             pendingMoveDx += dx
             pendingMoveDy += dy
             if (!pendingMoveQueued) {
@@ -2694,19 +3154,93 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         }
         if (shouldQueue) {
             enqueueRemoteOp { node ->
-                val (targetId, totalDx, totalDy) = synchronized(pendingMoveLock) {
-                    val t = pendingMovePcId
-                    val x = pendingMoveDx
-                    val y = pendingMoveDy
-                    pendingMoveDx = 0f
-                    pendingMoveDy = 0f
-                    pendingMoveQueued = false
-                    Triple(t, x, y)
-                }
-                if (targetId != null && (totalDx != 0f || totalDy != 0f)) {
-                    runCatching { node.remoteMove(targetId, totalDx, totalDy) }
+                val drained = synchronized(pendingMoveLock) { drainPendingMoveLocked() }
+                if (drained != null) {
+                    runCatching {
+                        if (drained.precise) {
+                            node.sendRemoteMovePrecise(drained.pcId, drained.dx, drained.dy)
+                        } else {
+                            node.remoteMove(drained.pcId, drained.dx, drained.dy)
+                        }
+                    }
                 }
             }
+        }
+    }
+
+    /** Moves a PC's cursor by `(dx, dy)` logical pixels over QUIC datagrams, coalescing rapid 120Hz touch samples. */
+    fun remoteMove(id: String, dx: Float, dy: Float) = enqueueMove(id, dx, dy, precise = false)
+
+    /** Moves a PC's cursor using phone-side ballistics (`MovePrecise` when supported, else legacy `Move`). */
+    fun remoteMovePrecise(id: String, dx: Float, dy: Float) {
+        val precise = _state.value.device(id)?.has("input.precision") == true
+        enqueueMove(id, dx, dy, precise = precise)
+    }
+
+    /** Moves a PC's cursor to normalized `[0, 1]` virtual desktop coordinates, with optional atomic click. */
+    fun remoteMoveAbsolute(
+        id: String,
+        x: Float,
+        y: Float,
+        seq: UInt,
+        click: String? = null,
+        onStatus: ((RemoteAccess) -> Unit)? = null,
+    ) {
+        if (click != null) {
+            remoteCommand(onStatus) { node ->
+                val drained = synchronized(pendingMoveLock) { drainPendingMoveLocked() }
+                if (drained != null && drained.pcId == id) {
+                    runCatching {
+                        if (drained.precise) node.sendRemoteMovePrecise(id, drained.dx, drained.dy)
+                        else node.remoteMove(id, drained.dx, drained.dy)
+                    }
+                }
+                node.sendRemoteMoveAbsolute(id, x.coerceIn(0f, 1f), y.coerceIn(0f, 1f), seq, click)
+            }
+        } else {
+            enqueueRemoteOp { node ->
+                runCatching {
+                    node.sendRemoteMoveAbsolute(id, x.coerceIn(0f, 1f), y.coerceIn(0f, 1f), seq, null)
+                }
+            }
+        }
+    }
+
+    /** Sends a scoped Ctrl+wheel zoom tick (`delta > 0` zooms in). */
+    fun remoteZoom(id: String, delta: Float) {
+        enqueueRemoteOp { node ->
+            runCatching { node.sendRemoteZoom(id, delta) }
+        }
+    }
+
+    /** Presses, releases, or clicks a mouse button with optional sticky modifiers (`ctrl`, `alt`, `shift`, `super`). */
+    fun remoteModifiedButton(
+        id: String,
+        button: String,
+        action: String,
+        mods: List<String>,
+        onStatus: ((RemoteAccess) -> Unit)? = null,
+    ) {
+        if (mods.isEmpty() && button != "back" && button != "forward") {
+            remoteButton(id, button, action, onStatus)
+        } else {
+            remoteCommand(onStatus) { it.sendRemoteModifiedButton(id, button, action, mods) }
+        }
+    }
+
+    /** Sends a typed precision gesture action (snake_case name, e.g. `"switch_next"`, `"workspace_next"`). */
+    fun remoteGesture(
+        id: String,
+        action: String,
+        onStatus: ((RemoteAccess) -> Unit)? = null,
+    ) = remoteCommand(onStatus) { it.sendRemoteGesture(id, action) }
+
+    /** Discards any buffered relative motion samples when switching Remote modes or peers. */
+    fun clearPendingRemoteMotion() {
+        synchronized(pendingMoveLock) {
+            pendingMoveDx = 0f
+            pendingMoveDy = 0f
+            pendingMoveQueued = false
         }
     }
 
@@ -3171,6 +3705,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         /** See `ClipboardPeers`: the core refuses that device's clipboard when off. */
         const val CLIPBOARD_RECEIVE_TOGGLE = "clipboard_receive"
         const val TAG = "Nectarlink"
+        const val DEFAULT_DESKTOP_PORT = 7718
         /** How long a PC may be away before its running tasks come off this phone. */
         const val TASKS_AWAY_MS = 30 * 60_000L
         /** Offered while notification access is granted (docs/protocol/capabilities.md). */

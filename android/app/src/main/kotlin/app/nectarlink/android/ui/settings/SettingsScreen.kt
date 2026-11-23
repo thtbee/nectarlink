@@ -115,6 +115,11 @@ fun SettingsScreen(
     onAppearance: ((Appearance) -> Appearance) -> Unit,
     touchpadSensitivity: Float,
     onTouchpadSensitivity: (Float) -> Unit,
+    remotePrefs: app.nectarlink.android.ui.RemotePreferences = app.nectarlink.android.ui.RemotePreferences(),
+    onUpdateRemotePrefs: ((app.nectarlink.android.ui.RemotePreferences) -> app.nectarlink.android.ui.RemotePreferences) -> Unit = {},
+    onResetRemoteDefaults: () -> Unit = {},
+    manualAddressOf: (String) -> String = { "" },
+    onSetManualAddress: suspend (String, String) -> Boolean = { _, _ -> false },
     onUnpair: (String) -> Unit,
     onPairNew: () -> Unit,
     onAccessChanged: () -> Unit,
@@ -1039,25 +1044,213 @@ fun SettingsScreen(
 
             item(key = "remote", contentType = "section") {
                 Section(stringResource(R.string.settings_remote)) {
+                    val context = LocalContext.current
+                    val scope = rememberCoroutineScope()
                     val sensitivityTitle = stringResource(R.string.settings_touchpad_sensitivity)
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    RemoteSliderRow(
+                        title = sensitivityTitle,
+                        valueText = stringResource(R.string.settings_touchpad_sensitivity_value, remotePrefs.pointerSpeed),
+                        value = remotePrefs.pointerSpeed,
+                        valueRange = 0.4f..4.0f,
+                        onValueChange = { v ->
+                            val snapped = (kotlin.math.round(v * 20f) / 20f).coerceIn(0.4f, 4.0f)
+                            onTouchpadSensitivity(snapped)
+                            onUpdateRemotePrefs { it.copy(pointerSpeed = snapped) }
+                        },
+                    )
+                    RemoteSliderRow(
+                        title = stringResource(R.string.settings_remote_acceleration),
+                        valueText = "${(remotePrefs.acceleration * 100).toInt()}%",
+                        value = remotePrefs.acceleration,
+                        valueRange = 0f..1f,
+                        onValueChange = { v -> onUpdateRemotePrefs { it.copy(acceleration = kotlin.math.round(v * 20f) / 20f) } },
+                    )
+                    RemoteSliderRow(
+                        title = stringResource(R.string.settings_remote_scroll_speed),
+                        valueText = stringResource(R.string.settings_touchpad_sensitivity_value, remotePrefs.scrollSpeed),
+                        value = remotePrefs.scrollSpeed,
+                        valueRange = 0.3f..3.0f,
+                        onValueChange = { v -> onUpdateRemotePrefs { it.copy(scrollSpeed = kotlin.math.round(v * 20f) / 20f) } },
+                    )
+                    RemoteSliderRow(
+                        title = stringResource(R.string.settings_remote_air_speed),
+                        valueText = stringResource(R.string.settings_touchpad_sensitivity_value, remotePrefs.airSpeed),
+                        value = remotePrefs.airSpeed,
+                        valueRange = 0.3f..3.0f,
+                        onValueChange = { v -> onUpdateRemotePrefs { it.copy(airSpeed = kotlin.math.round(v * 20f) / 20f) } },
+                    )
+                    RemoteSliderRow(
+                        title = stringResource(R.string.settings_remote_stick_speed),
+                        valueText = stringResource(R.string.settings_touchpad_sensitivity_value, remotePrefs.stickSpeed),
+                        value = remotePrefs.stickSpeed,
+                        valueRange = 0.3f..3.0f,
+                        onValueChange = { v -> onUpdateRemotePrefs { it.copy(stickSpeed = kotlin.math.round(v * 20f) / 20f) } },
+                    )
+                    RemoteSliderRow(
+                        title = stringResource(R.string.settings_remote_desk_speed),
+                        valueText = stringResource(R.string.settings_touchpad_sensitivity_value, remotePrefs.deskSpeed),
+                        value = remotePrefs.deskSpeed,
+                        valueRange = 0.3f..3.0f,
+                        onValueChange = { v -> onUpdateRemotePrefs { it.copy(deskSpeed = kotlin.math.round(v * 20f) / 20f) } },
+                    )
+                    RemoteSliderRow(
+                        title = stringResource(R.string.settings_remote_desk_sensitivity),
+                        valueText = "${(remotePrefs.deskSensitivity * 100).toInt()}%",
+                        value = remotePrefs.deskSensitivity,
+                        valueRange = 0f..1f,
+                        onValueChange = { v -> onUpdateRemotePrefs { it.copy(deskSensitivity = kotlin.math.round(v * 20f) / 20f) } },
+                    )
+                    SettingRowDivider()
+                    RemoteToggleRow(stringResource(R.string.settings_remote_tap_to_click), remotePrefs.tapToClick) { v ->
+                        onUpdateRemotePrefs { it.copy(tapToClick = v) }
+                    }
+                    RemoteToggleRow(stringResource(R.string.settings_remote_natural_scrolling), remotePrefs.naturalScrolling) { v ->
+                        onUpdateRemotePrefs { it.copy(naturalScrolling = v) }
+                    }
+                    RemoteToggleRow(stringResource(R.string.settings_remote_momentum), remotePrefs.momentum) { v ->
+                        onUpdateRemotePrefs { it.copy(momentum = v) }
+                    }
+                    RemoteToggleRow(stringResource(R.string.settings_remote_haptics), remotePrefs.haptics) { v ->
+                        onUpdateRemotePrefs { it.copy(haptics = v) }
+                    }
+                    RemoteToggleRow(
+                        title = stringResource(R.string.settings_remote_volume_clicks),
+                        subtitle = stringResource(R.string.settings_remote_volume_clicks_hint),
+                        checked = remotePrefs.volumeClicks,
+                    ) { v ->
+                        onUpdateRemotePrefs { it.copy(volumeClicks = v) }
+                    }
+                    RemoteToggleRow(stringResource(R.string.settings_remote_three_finger_middle), remotePrefs.threeFingerMiddleClick) { v ->
+                        onUpdateRemotePrefs { it.copy(threeFingerMiddleClick = v) }
+                    }
+                    RemoteToggleRow(stringResource(R.string.settings_remote_desk_twist), remotePrefs.deskTwist) { v ->
+                        onUpdateRemotePrefs { it.copy(deskTwist = v) }
+                    }
+                    RemoteToggleRow(stringResource(R.string.settings_remote_finger_trails), remotePrefs.fingerTrails) { v ->
+                        onUpdateRemotePrefs { it.copy(fingerTrails = v) }
+                    }
+                    RemoteToggleRow(stringResource(R.string.settings_remote_keep_awake), remotePrefs.keepAwake) { v ->
+                        onUpdateRemotePrefs { it.copy(keepAwake = v) }
+                    }
+                    OutlinedButton(onClick = onResetRemoteDefaults, modifier = Modifier.fillMaxWidth()) {
+                        Text(stringResource(R.string.settings_remote_reset))
+                    }
+                    SettingRowDivider()
+                    Text(stringResource(R.string.settings_tiles_section), style = MaterialTheme.typography.titleSmall)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FilledTonalButton(
+                                onClick = {
+                                    requestQuickSettingsTile(
+                                        context,
+                                        app.nectarlink.android.audio.AudioMixerTileService::class.java,
+                                        R.string.audio_mixer_title,
+                                        R.drawable.ic_speaker,
+                                    )
+                                },
+                                modifier = Modifier.weight(1f),
+                            ) { Text(stringResource(R.string.settings_add_audio_tile)) }
+                            FilledTonalButton(
+                                onClick = {
+                                    requestQuickSettingsTile(
+                                        context,
+                                        app.nectarlink.android.ui.remote.RemoteTileService::class.java,
+                                        R.string.remote_tile_label,
+                                        R.drawable.ic_touchpad,
+                                    )
+                                },
+                                modifier = Modifier.weight(1f),
+                            ) { Text(stringResource(R.string.settings_add_remote_tile)) }
+                        }
+                    }
+                    OutlinedButton(
+                        onClick = { app.nectarlink.android.ui.remote.RemoteTileService.requestPinShortcut(context) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(stringResource(R.string.settings_pin_remote_shortcut))
+                    }
+                    val pairedPcs = state.devices.filterNot { it.isAndroid }
+                    if (pairedPcs.isNotEmpty()) {
+                        var addrTarget by remember { mutableStateOf<Device?>(null) }
+                        var addrDraft by remember { mutableStateOf("") }
+                        var addrError by remember { mutableStateOf<String?>(null) }
+                        SettingRowDivider()
+                        Text(stringResource(R.string.connect_address_title), style = MaterialTheme.typography.titleSmall)
                         Text(
-                            sensitivityTitle,
-                            style = MaterialTheme.typography.titleSmall,
-                            modifier = Modifier.weight(1f),
-                        )
-                        Text(
-                            stringResource(R.string.settings_touchpad_sensitivity_value, touchpadSensitivity),
-                            style = MaterialTheme.typography.bodyMedium,
+                            stringResource(R.string.connect_address_summary),
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                        for (pc in pairedPcs) {
+                            val currentAddr = manualAddressOf(pc.id)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            ) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(pc.name, style = MaterialTheme.typography.bodyMedium)
+                                    if (currentAddr.isNotBlank()) {
+                                        Text(
+                                            currentAddr,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
+                                OutlinedButton(onClick = {
+                                    addrTarget = pc
+                                    addrDraft = currentAddr
+                                    addrError = null
+                                }) {
+                                    Text(stringResource(R.string.connect_address_save))
+                                }
+                            }
+                        }
+                        addrTarget?.let { target ->
+                            AlertDialog(
+                                onDismissRequest = { addrTarget = null },
+                                title = { Text(target.name) },
+                                text = {
+                                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        OutlinedTextField(
+                                            value = addrDraft,
+                                            onValueChange = {
+                                                addrDraft = it
+                                                addrError = null
+                                            },
+                                            label = { Text(stringResource(R.string.connect_address_hint)) },
+                                            singleLine = true,
+                                            modifier = Modifier.fillMaxWidth(),
+                                        )
+                                        addrError?.let {
+                                            Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                                        }
+                                    }
+                                },
+                                confirmButton = {
+                                    val invalidAddressText = stringResource(R.string.connect_address_invalid)
+                                    TextButton(onClick = {
+                                        scope.launch {
+                                            val ok = onSetManualAddress(target.id, addrDraft)
+                                            if (ok) {
+                                                addrTarget = null
+                                            } else {
+                                                addrError = invalidAddressText
+                                            }
+                                        }
+                                    }) { Text(stringResource(R.string.connect_address_save)) }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = {
+                                        scope.launch {
+                                            onSetManualAddress(target.id, "")
+                                            addrTarget = null
+                                        }
+                                    }) { Text(stringResource(R.string.connect_address_clear)) }
+                                },
+                            )
+                        }
                     }
-                    Slider(
-                        value = touchpadSensitivity,
-                        onValueChange = onTouchpadSensitivity,
-                        valueRange = 0.5f..2.5f,
-                        modifier = Modifier.semantics { contentDescription = sensitivityTitle },
-                    )
                     SettingRowDivider()
                     val volumeKeysTitle = stringResource(R.string.settings_volume_keys_control_pc)
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -2300,6 +2493,78 @@ internal fun Choice(options: List<Pair<String, String>>, selected: String, onSel
                 shape = SegmentedButtonDefaults.itemShape(index, options.size),
             ) { Text(label) }
         }
+    }
+}
+
+@Composable
+private fun RemoteSliderRow(
+    title: String,
+    valueText: String,
+    value: Float,
+    valueRange: ClosedFloatingPointRange<Float>,
+    onValueChange: (Float) -> Unit,
+) {
+    Column(Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Text(title, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+            Text(
+                valueText,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Slider(
+            value = value.coerceIn(valueRange.start, valueRange.endInclusive),
+            onValueChange = onValueChange,
+            valueRange = valueRange,
+            modifier = Modifier.semantics { contentDescription = title },
+        )
+    }
+}
+
+@Composable
+private fun RemoteToggleRow(
+    title: String,
+    checked: Boolean,
+    subtitle: String? = null,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+            Text(title, style = MaterialTheme.typography.titleSmall)
+            if (subtitle != null) {
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = app.nectarlink.android.ui.theme.nectarSwitchColors(),
+            modifier = Modifier.semantics { contentDescription = title },
+        )
+    }
+}
+
+private fun requestQuickSettingsTile(
+    context: Context,
+    serviceClass: Class<*>,
+    labelRes: Int,
+    iconRes: Int,
+) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+    val manager = context.getSystemService(android.app.StatusBarManager::class.java) ?: return
+    runCatching {
+        manager.requestAddTileService(
+            android.content.ComponentName(context, serviceClass),
+            context.getString(labelRes),
+            android.graphics.drawable.Icon.createWithResource(context, iconRes),
+            context.mainExecutor,
+            {},
+        )
     }
 }
 

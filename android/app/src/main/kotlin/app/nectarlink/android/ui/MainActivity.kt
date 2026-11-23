@@ -106,6 +106,11 @@ import kotlinx.coroutines.withContext
 class MainActivity : ComponentActivity() {
     @Volatile
     private var activeRemotePcId: String? = null
+    @Volatile
+    private var activeRemoteMode: RemoteMode = RemoteMode.Touchpad
+    @Volatile
+    private var activeRemoteVolumeClicks: Boolean = true
+    private val heldVolumeButtons = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
     private var requestedRemotePc by mutableStateOf<String?>(null)
     private var requestedRemoteMode by mutableStateOf(RemoteMode.Touchpad)
     private var requestedDeckPc by mutableStateOf<String?>(null)
@@ -208,7 +213,15 @@ class MainActivity : ComponentActivity() {
                             requestedWebcamHeight = null
                             requestedWebcamCamera = null
                         },
-                        onActiveRemoteChanged = { activeRemotePcId = it },
+                        onActiveRemoteChanged = { pcId, mode, volumeClicks ->
+                            if (pcId != activeRemotePcId || mode != activeRemoteMode) {
+                                releaseHeldVolumeButtons()
+                            }
+                            activeRemotePcId = pcId
+                            activeRemoteMode = mode
+                            activeRemoteVolumeClicks = volumeClicks
+                            if (pcId != null) Preferences.setLastRemotePcId(this@MainActivity, pcId)
+                        },
                     )
                     pendingPairingLink?.let { link ->
                         val pcName = remember(link) {
@@ -276,19 +289,51 @@ class MainActivity : ComponentActivity() {
         handleWebcamIntent(intent)
     }
 
+    override fun onPause() {
+        releaseHeldVolumeButtons()
+        super.onPause()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (!hasFocus) releaseHeldVolumeButtons()
+    }
+
+    private fun releaseHeldVolumeButtons() {
+        val pcId = activeRemotePcId
+        if (heldVolumeButtons.isEmpty()) return
+        val core = (application as? NectarlinkApplication)?.core
+        for (btn in heldVolumeButtons.toList()) {
+            if (heldVolumeButtons.remove(btn) && pcId != null) {
+                core?.remoteButton(pcId, btn, "up")
+            }
+        }
+    }
+
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         val pcId = activeRemotePcId
         if (pcId != null) {
-            when (keyCode) {
-                KeyEvent.KEYCODE_VOLUME_DOWN -> {
-                    if (event?.repeatCount == 0) {
-                        (application as NectarlinkApplication).core.remoteSlide(pcId, "next")
+            val core = (application as NectarlinkApplication).core
+            if (activeRemoteMode == RemoteMode.Presentation) {
+                when (keyCode) {
+                    KeyEvent.KEYCODE_VOLUME_DOWN -> {
+                        if (event?.repeatCount == 0) core.remoteSlide(pcId, "next")
+                        return true
                     }
-                    return true
+                    KeyEvent.KEYCODE_VOLUME_UP -> {
+                        if (event?.repeatCount == 0) core.remoteSlide(pcId, "previous")
+                        return true
+                    }
                 }
-                KeyEvent.KEYCODE_VOLUME_UP -> {
-                    if (event?.repeatCount == 0) {
-                        (application as NectarlinkApplication).core.remoteSlide(pcId, "previous")
+            } else if (activeRemoteVolumeClicks && activeRemoteMode != RemoteMode.Screen) {
+                val btn = when (keyCode) {
+                    KeyEvent.KEYCODE_VOLUME_UP -> "left"
+                    KeyEvent.KEYCODE_VOLUME_DOWN -> "right"
+                    else -> null
+                }
+                if (btn != null) {
+                    if (event?.repeatCount == 0 && heldVolumeButtons.add(btn)) {
+                        core.remoteButton(pcId, btn, "down")
                     }
                     return true
                 }
@@ -298,10 +343,16 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
-        if (activeRemotePcId != null &&
-            (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_UP)
-        ) {
-            return true
+        val pcId = activeRemotePcId
+        if (pcId != null && (keyCode == KeyEvent.KEYCODE_VOLUME_DOWN || keyCode == KeyEvent.KEYCODE_VOLUME_UP)) {
+            if (activeRemoteMode == RemoteMode.Presentation) return true
+            if (activeRemoteVolumeClicks && activeRemoteMode != RemoteMode.Screen) {
+                val btn = if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) "left" else "right"
+                if (heldVolumeButtons.remove(btn)) {
+                    (application as NectarlinkApplication).core.remoteButton(pcId, btn, "up")
+                }
+                return true
+            }
         }
         return super.onKeyUp(keyCode, event)
     }
@@ -309,13 +360,7 @@ class MainActivity : ComponentActivity() {
     private fun handleRemoteIntent(intent: Intent?) {
         val pc = intent?.getStringExtra("remote_pc") ?: return
         val mode = intent.getStringExtra("remote_mode")
-        requestedRemoteMode = when {
-            mode.equals("presentation", ignoreCase = true) -> RemoteMode.Presentation
-            mode.equals("air", ignoreCase = true) ||
-                mode.equals("air_mouse", ignoreCase = true) ||
-                mode.equals("airmouse", ignoreCase = true) -> RemoteMode.AirMouse
-            else -> RemoteMode.Touchpad
-        }
+        requestedRemoteMode = RemoteMode.fromWireName(mode)
         requestedRemotePc = pc
     }
 
@@ -394,7 +439,7 @@ private fun App(
     requestedWebcamHeight: Int?,
     requestedWebcamCamera: String?,
     onWebcamConsumed: () -> Unit,
-    onActiveRemoteChanged: (String?) -> Unit,
+    onActiveRemoteChanged: (String?, RemoteMode, Boolean) -> Unit,
 ) {
     var tab by rememberSaveable { mutableStateOf(Tab.Home) }
     var pairing by rememberSaveable { mutableStateOf(false) }
@@ -484,7 +529,12 @@ private fun App(
 
     LaunchedEffect(requestedRemotePc, state.devices) {
         val req = requestedRemotePc ?: return@LaunchedEffect
-        val target = if (req == "first") state.devices.firstOrNull()?.id else state.device(req)?.id
+        val pcs = state.devices.filterNot { it.isAndroid }
+        val target = when (req) {
+            "first" -> pcs.firstOrNull()?.id ?: state.devices.firstOrNull()?.id
+            "auto" -> pcs.firstOrNull { it.online }?.id ?: pcs.firstOrNull()?.id
+            else -> state.device(req)?.id ?: pcs.firstOrNull { it.online }?.id ?: pcs.firstOrNull()?.id
+        }
         if (target != null) {
             recordPcId = null
             deckPcId = null
@@ -492,6 +542,8 @@ private fun App(
             webcamPcId = null
             remoteInitialMode = requestedRemoteMode
             remotePcId = target
+            onRemoteConsumed()
+        } else if (state.status is CoreStatus.Ready) {
             onRemoteConsumed()
         }
     }
@@ -543,8 +595,10 @@ private fun App(
     val deskDevice = deskPcId?.let { state.device(it) }
     val recordDevice = recordPcId?.let { state.device(it) }
     val webcamDevice = webcamPcId?.let { state.device(it) }
-    LaunchedEffect(remoteDevice?.id) {
-        onActiveRemoteChanged(remoteDevice?.id)
+    val remotePrefs by preferences.remote.collectAsStateWithLifecycle()
+    var activeRemoteModeState by rememberSaveable { mutableStateOf(RemoteMode.Touchpad) }
+    LaunchedEffect(remoteDevice?.id, activeRemoteModeState, remotePrefs.volumeClicks) {
+        onActiveRemoteChanged(remoteDevice?.id, activeRemoteModeState, remotePrefs.volumeClicks)
     }
 
     val actions = remember(core) {
@@ -825,7 +879,10 @@ private fun App(
                         device = dev,
                         core = core,
                         sensitivity = sensitivity,
+                        remotePrefs = remotePrefs,
+                        onUpdateRemotePrefs = preferences::updateRemote,
                         initialMode = remoteInitialMode,
+                        onModeChanged = { activeRemoteModeState = it },
                         onBack = { remotePcId = null },
                         modifier = Modifier.fillMaxSize().padding(padding),
                     )
@@ -1095,6 +1152,11 @@ private fun App(
                                     onAppearance = preferences::update,
                                     touchpadSensitivity = touchpadSensitivity,
                                     onTouchpadSensitivity = preferences::updateTouchpadSensitivity,
+                                    remotePrefs = remotePrefs,
+                                    onUpdateRemotePrefs = preferences::updateRemote,
+                                    onResetRemoteDefaults = preferences::resetRemoteDefaults,
+                                    manualAddressOf = core::manualAddress,
+                                    onSetManualAddress = core::setManualAddress,
                                     onUnpair = core::unpair,
                                     onPairNew = { pairing = true },
                                     onAccessChanged = core::refreshNotificationAccess,
