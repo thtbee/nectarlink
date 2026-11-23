@@ -230,7 +230,7 @@ fn mark_open_read() {
             .remove(&(device, thread, date));
         return;
     };
-    tracing::info!(%device, "asking the phone to mark a conversation read");
+    tracing::info!(device = %device.short(), "asking the phone to mark a conversation read");
     core_host::spawn(async move {
         match node.sms_mark_read(device, thread.clone()).await {
             Ok(()) => {
@@ -245,7 +245,7 @@ fn mark_open_read() {
                 changed();
             }
             Err(e) => {
-                tracing::info!(%device, error = %e, "the phone didn't mark a conversation read");
+                tracing::info!(device = %device.short(), error = %e, "the phone didn't mark a conversation read");
                 // A phone that doesn't offer it won't later; any other failure (the link
                 // was down, a timeout) is worth asking again at the next chance.
                 if !matches!(e, nectarlink_core::Error::Unsupported) {
