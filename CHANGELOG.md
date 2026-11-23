@@ -18,7 +18,7 @@ change things that need a step from you, and its notes say so.
   notification (so the app's own state and notification follow), and dismisses the notification
   when the app has no such button. With **Elevated** it also marks the texts read in the phone's
   messages directly: its helper allows itself the SMS write app-op for that one change and puts
-  it back.
+  it back to the mode it had.
 - **Report a problem.** **Settings › Connection & About › Report a problem** on the PC (and at
   the bottom of the Connection Doctor) puts what you say went wrong together with what helps
   find the cause: versions, the Doctor's checks, how features have been doing, recent crashes

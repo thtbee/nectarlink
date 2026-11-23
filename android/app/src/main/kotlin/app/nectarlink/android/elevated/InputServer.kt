@@ -138,15 +138,34 @@ object InputServer {
 
     private val smsReadLock = Any()
 
-    /** The commands that mark a conversation's received texts read: allow the write, make it, put the app-op back. */
-    internal fun smsReadCommands(thread: Long): List<Array<String>> = listOf(
+    private val smsWriteMode = arrayOf("appops", "get", "com.android.shell", "WRITE_SMS")
+
+    private val APP_OP_MODES = setOf("allow", "ignore", "deny", "default", "foreground")
+
+    /**
+     * The mode in `appops get` output (`WRITE_SMS: ignore`, or `No operations.`
+     * for an op never changed, which is `default`), or null when it isn't one
+     * of the modes `appops set` takes.
+     */
+    internal fun parseAppOpMode(output: String): String? {
+        if (output.trim().startsWith("No operations")) return "default"
+        val mode = Regex("""^\s*\w+:\s*(\w+)""").find(output)?.groupValues?.get(1)
+        return mode?.takeIf { it in APP_OP_MODES }
+    }
+
+    /**
+     * The commands that mark a conversation's received texts read: allow the
+     * write, make it, put the app-op back to the mode it had (`previousMode`,
+     * from [parseAppOpMode]).
+     */
+    internal fun smsReadCommands(thread: Long, previousMode: String): List<Array<String>> = listOf(
         arrayOf("appops", "set", "com.android.shell", "WRITE_SMS", "allow"),
         arrayOf(
             "content", "update", "--uri", "content://sms/inbox",
             "--bind", "read:i:1", "--bind", "seen:i:1",
             "--where", "thread_id=$thread AND read=0",
         ),
-        arrayOf("appops", "set", "com.android.shell", "WRITE_SMS", "default"),
+        arrayOf("appops", "set", "com.android.shell", "WRITE_SMS", previousMode),
     )
 
     @JvmStatic
@@ -1130,13 +1149,27 @@ object InputServer {
          * Marks a conversation's received texts read. The phone's messages only
          * take writes from the default SMS app, and drop the shell's silently
          * while its SMS write app-op is `ignore` (the default): allowed for the
-         * one change, then back. One at a time, off this thread, which carries input.
+         * one change, then back to the mode it had. One at a time, off this
+         * thread, which carries input.
          */
         private fun markSmsRead(thread: Long) {
             Thread {
                 synchronized(smsReadLock) {
-                    for (cmd in smsReadCommands(thread)) {
-                        runCatching { Runtime.getRuntime().exec(cmd).waitFor() }
+                    // A mode that can't be read is put back as `default`, as it
+                    // is unless something changed it.
+                    val previous = runCatching {
+                        val proc = Runtime.getRuntime().exec(smsWriteMode)
+                        val out = proc.inputStream.bufferedReader().readText()
+                        proc.waitFor()
+                        parseAppOpMode(out)
+                    }.getOrNull() ?: "default"
+                    val commands = smsReadCommands(thread, previous)
+                    try {
+                        for (cmd in commands.dropLast(1)) {
+                            runCatching { Runtime.getRuntime().exec(cmd).waitFor() }
+                        }
+                    } finally {
+                        runCatching { Runtime.getRuntime().exec(commands.last()).waitFor() }
                     }
                 }
             }.start()

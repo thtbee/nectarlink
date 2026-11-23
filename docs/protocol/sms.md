@@ -122,7 +122,7 @@ messaging app keeps its own state besides, so a phone presses the app's own
 title, a contact name or a number of the conversation; an app without one has
 the notification dismissed). With its Elevated helper running it also marks
 the texts read in the phone's messages (the shell may write once it allows
-itself the SMS write app-op for the one change). A phone offers
+itself the SMS write app-op for the one change, then restores the mode it read first). A phone offers
 `sms.mark_read` with notification access or a running helper; one that
 doesn't answers `UNSUPPORTED`. The PC sends it only if the user turned on
 **Mark texts read on the phone**, which is off by default.
