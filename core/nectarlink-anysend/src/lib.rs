@@ -6,6 +6,7 @@ mod protocol;
 mod transfer;
 
 use std::{
+    collections::HashSet,
     net::{Ipv4Addr, SocketAddrV4},
     path::PathBuf,
     sync::Arc,
@@ -164,7 +165,7 @@ pub async fn run(
     let local = async {
         let Some((address, listener)) = listener else { return };
         let page = Url::parse(&format!("http://{address}/")).expect("IPv4 HTTP URL");
-        report(Event::Ticket(Route::Lan, ticket_url(page, expires, host.public(), &ticket, None, None)));
+        report(Event::Ticket(Route::Lan, ticket_url(page, expires, host.public(), &ticket, None, &[])));
         if let Err(error) = lan::serve(listener, session.clone(), site_origin).await {
             report(Event::Unavailable(Route::Lan, error.to_string()));
         }
@@ -185,14 +186,47 @@ pub async fn run(
             let proxy = connector.as_ref().map(|connector| connector.url());
             #[cfg(not(target_os = "linux"))]
             let proxy = None;
-            let (url, client) = connect_relay(network.relays, &host, proxy).await?;
-            let mut relay = (*url).clone();
-            if relay.domain().is_some_and(|domain| domain.ends_with('.')) {
-                let domain = relay.domain().unwrap_or_default().trim_end_matches('.').to_owned();
-                relay.set_host(Some(&domain)).context("Invalid relay host")?;
+            let mut seen = HashSet::new();
+            let relays: Vec<_> = network
+                .relays
+                .into_iter()
+                .filter_map(|relay| {
+                    let browser_url = browser_relay_url(&relay).ok()?;
+                    seen.insert(browser_url.clone()).then_some((relay, browser_url))
+                })
+                .collect();
+            if relays.is_empty() {
+                bail!("No HTTPS relay is enabled in the mobile network settings.");
             }
-            relay.set_scheme("wss").map_err(|()| anyhow::anyhow!("Invalid relay URL"))?;
-            relay.set_path("/relay");
+            let tls = CaTlsConfig::default().client_config(default_provider())?;
+            let dns = DnsResolver::new();
+            let (connected, mut ready) = mpsc::channel(1);
+            let mut connections = tokio::task::JoinSet::new();
+            for (url, _) in &relays {
+                let mut builder =
+                    ClientBuilder::new(url.clone(), host.clone(), dns.clone()).tls_client_config(tls.clone());
+                if let Some(proxy) = proxy {
+                    builder = builder.proxy_url(proxy.clone());
+                }
+                let url = url.clone();
+                let session = session.clone();
+                let connected = connected.clone();
+                connections.spawn(async move { maintain_relay(&url, builder, &session, &connected).await });
+            }
+            drop(connected);
+            let first = match tokio::time::timeout(Duration::from_secs(16), ready.recv()).await {
+                Ok(first) => first,
+                Err(_) => {
+                    report(Event::Unavailable(
+                        Route::Relay,
+                        "Could not connect to an enabled mobile network relay. Retrying.".into(),
+                    ));
+                    ready.recv().await
+                }
+            };
+            first.context("Could not start an AnySend relay connection.")?;
+            drop(ready);
+            let urls: Vec<_> = relays.into_iter().map(|(_, url)| url).collect();
             report(Event::Ticket(
                 Route::Relay,
                 ticket_url(
@@ -201,10 +235,13 @@ pub async fn run(
                     host.public(),
                     &ticket,
                     local_address.filter(|addr| addr.ip().is_private()),
-                    Some(&relay),
+                    &urls,
                 ),
             ));
-            relay_loop(client, &session).await
+            while let Some(result) = connections.join_next().await {
+                result?;
+            }
+            Ok::<_, anyhow::Error>(())
         }
         .await;
         if let Err(error) = result {
@@ -224,59 +261,65 @@ async fn bind_lan(ip: Option<Ipv4Addr>) -> Result<(SocketAddrV4, TcpListener)> {
     Ok((address, listener))
 }
 
-async fn connect_relay(
-    relays: Vec<RelayUrl>,
-    host: &SecretKey,
-    proxy: Option<&Url>,
-) -> Result<(RelayUrl, Client)> {
-    if relays.is_empty() {
-        bail!("No HTTPS relay is enabled in the mobile network settings.");
+fn browser_relay_url(url: &RelayUrl) -> Result<Url> {
+    if url.scheme() != "https" {
+        bail!("AnySend Global requires an HTTPS relay.");
     }
-    let tls = CaTlsConfig::default().client_config(default_provider())?;
-    let dns = DnsResolver::new();
-    let dial = |url: RelayUrl| {
-        let mut builder =
-            ClientBuilder::new(url.clone(), host.clone(), dns.clone()).tls_client_config(tls.clone());
-        if let Some(proxy) = proxy {
-            builder = builder.proxy_url(proxy.clone());
-        }
-        async move {
-            let client = match tokio::time::timeout(Duration::from_secs(15), builder.connect()).await {
-                Ok(Ok(client)) => client,
-                Ok(Err(error)) => {
-                    tracing::debug!(relay = %url, %error, "AnySend relay connection failed");
-                    return None;
+    let mut relay = (**url).clone();
+    if let Some(domain) = relay.domain().filter(|domain| domain.ends_with('.')) {
+        let host = domain.trim_end_matches('.').to_owned();
+        relay.set_host(Some(&host)).context("Invalid relay host")?;
+    }
+    relay.set_scheme("wss").map_err(|()| anyhow::anyhow!("Invalid relay URL"))?;
+    relay.set_path("/relay");
+    Ok(relay)
+}
+
+async fn maintain_relay(
+    url: &RelayUrl,
+    builder: ClientBuilder,
+    session: &Shared,
+    connected: &mpsc::Sender<()>,
+) {
+    let mut delay = Duration::from_secs(1);
+    loop {
+        match tokio::time::timeout(Duration::from_secs(15), builder.connect()).await {
+            Ok(Ok(client)) => {
+                let _ = connected.try_send(());
+                delay = Duration::from_secs(1);
+                if let Err(error) = relay_loop(client, session).await {
+                    tracing::debug!(relay = %url, %error, "AnySend relay disconnected");
                 }
-                Err(_) => {
-                    tracing::debug!(relay = %url, "AnySend relay connection timed out");
-                    return None;
-                }
-            };
-            Some((url, client))
+            }
+            Ok(Err(error)) => tracing::debug!(relay = %url, %error, "AnySend relay connection failed"),
+            Err(_) => tracing::debug!(relay = %url, "AnySend relay connection timed out"),
         }
-    };
-    let mut relays = relays.into_iter();
-    if let Some(first) = relays.next()
-        && let Some(client) = dial(first).await
-    {
-        return Ok(client);
+        tokio::time::sleep(delay).await;
+        delay = (delay * 2).min(Duration::from_secs(15));
     }
-    let mut candidates = stream::iter(relays).map(dial).buffered_unordered(4);
-    while let Some(candidate) = candidates.next().await {
-        if let Some(client) = candidate {
-            return Ok(client);
-        }
-    }
-    bail!("Could not connect to an enabled mobile network relay.")
 }
 
 async fn relay_loop(client: Client, session: &Shared) -> Result<()> {
     let (stream, mut sink) = client.split();
     let (send, mut receive) = mpsc::channel::<Vec<ClientToRelayMsg>>(16);
-    let reader = async {
-        let mut pending = stream
+    let reader = async move {
+        // Stop receiving when the socket fails, but finish file operations already in flight.
+        let incoming = stream::unfold((stream, send.clone()), |(mut stream, stopped)| async {
+            tokio::select! {
+                biased;
+                _ = stopped.closed() => None,
+                message = tokio::time::timeout(Duration::from_secs(45), stream.next()) => {
+                    match message {
+                        Ok(Some(Ok(message))) => Some((message, (stream, stopped))),
+                        _ => None,
+                    }
+                }
+            }
+        });
+        let mut pending = incoming
+            .boxed()
             .map(|message| async move {
-                let replies = match message.map_err(|_| anyhow::anyhow!("The relay connection closed."))? {
+                match message {
                     RelayToClientMsg::Ping(nonce) => vec![ClientToRelayMsg::Pong(nonce)],
                     RelayToClientMsg::Status(Status::RateLimited) => {
                         tracing::debug!("AnySend relay is throttling this connection");
@@ -296,29 +339,29 @@ async fn relay_loop(client: Client, session: &Shared) -> Result<()> {
                             .collect()
                     }
                     _ => Vec::new(),
-                };
-                Ok::<_, anyhow::Error>(replies)
+                }
             })
             .buffered_unordered(16);
         while let Some(replies) = pending.next().await {
-            let replies = replies?;
             if !replies.is_empty() {
-                send.send(replies).await.context("The relay connection closed.")?;
+                let _ = send.send(replies).await;
             }
         }
-        bail!("The relay connection closed.")
     };
-    let writer = async {
-        let mut queued = Vec::with_capacity(16);
-        while receive.recv_many(&mut queued, 16).await > 0 {
-            for reply in queued.drain(..).flatten() {
-                sink.feed(reply).await?;
-            }
-            sink.flush().await?;
+    let writer = async move {
+        while let Some(replies) = receive.recv().await {
+            tokio::time::timeout(Duration::from_secs(45), async {
+                for reply in replies {
+                    sink.feed(reply).await?;
+                }
+                sink.flush().await
+            })
+            .await??;
         }
         Ok(())
     };
-    tokio::try_join!(reader, writer).map(|_: ((), ())| ())
+    let ((), result) = tokio::join!(reader, writer);
+    result
 }
 
 fn ticket_url(
@@ -327,18 +370,21 @@ fn ticket_url(
     peer: PublicKey,
     ticket_key: &SecretKey,
     lan: Option<SocketAddrV4>,
-    relay: Option<&Url>,
+    relays: &[Url],
 ) -> Url {
     let milliseconds = expiry.duration_since(UNIX_EPOCH).unwrap_or_default().as_millis() as u64;
     let mut ticket = Vec::with_capacity(128);
-    ticket.push(2);
+    ticket.push(if relays.len() > 1 { 3 } else { 2 });
     ticket.extend_from_slice(&milliseconds.to_be_bytes()[2..]);
     ticket.extend_from_slice(peer.as_bytes());
     ticket.extend_from_slice(&ticket_key.to_bytes());
     let (ip, port) = lan.map_or(([0; 4], 0), |address| (address.ip().octets(), address.port()));
     ticket.extend_from_slice(&ip);
     ticket.extend_from_slice(&port.to_be_bytes());
-    if let Some(relay) = relay {
+    for (index, relay) in relays.iter().enumerate() {
+        if index != 0 {
+            ticket.push(b'\n');
+        }
         ticket.extend_from_slice(relay.as_str().as_bytes());
     }
     page.set_fragment(Some(&base43(&ticket)));

@@ -5,7 +5,7 @@ use bytes::Bytes;
 use iroh::{PublicKey, SecretKey, Signature};
 use ring::{
     aead::{AES_256_GCM, Aad, LessSafeKey, Nonce, UnboundKey},
-    agreement,
+    agreement, hmac,
     rand::SystemRandom,
 };
 use sha2::{Digest, Sha512};
@@ -16,12 +16,27 @@ const CLAIM: &[u8] = b"AnySend browser v2";
 const ACK: &[u8] = b"AnySend sender v2";
 const KEY: &[u8] = b"AnySend file key v2";
 pub(super) const PROBE: &[u8] = b"AnySend LAN probe v2";
+pub(super) const RELAY_PROBE: &[u8] = b"AnySend relay probe v3";
+pub(super) const PROBE_PACKET: u8 = 5;
 pub(super) const PULL: &[u8] = b"AnySend file request v2";
 pub(super) const PUSH: &[u8] = b"AnySend file upload v2";
 pub(super) const COMPLETE: &[u8] = b"AnySend file complete v2";
 pub(super) const COMPLETE_INDEX: u32 = u32::MAX - 1;
 pub(super) const ERROR_INDEX: u32 = u32::MAX;
 pub(super) type Cipher = LessSafeKey;
+
+pub(super) fn relay_probe(
+    host: &SecretKey,
+    ticket: &SecretKey,
+    guest: PublicKey,
+    probe: &[u8],
+) -> Option<Bytes> {
+    let (challenge, tag) = probe.split_at_checked(32)?;
+    let message = [RELAY_PROBE, host.public().as_bytes(), guest.as_bytes(), challenge].concat();
+    hmac::verify(&hmac::Key::new(hmac::HMAC_SHA256, &ticket.to_bytes()), &message, tag).ok()?;
+    let signature = host.sign(&[RELAY_PROBE, challenge].concat());
+    Some(Bytes::from([&[PROBE_PACKET], challenge, signature.to_bytes().as_slice()].concat()))
+}
 
 pub(super) fn verify_claim(
     host: PublicKey,

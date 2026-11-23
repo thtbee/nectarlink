@@ -182,6 +182,11 @@ impl Session {
         if Instant::now() >= self.deadline {
             return Vec::new();
         }
+        if route == Route::Relay
+            && let Some((&protocol::PROBE_PACKET, challenge)) = bytes.split_first()
+        {
+            return protocol::relay_probe(&self.host, &self.ticket, id, challenge).into_iter().collect();
+        }
         if let Some((&1, claim)) = bytes.split_first() {
             return self.claim(route, id, claim).await;
         }
@@ -440,7 +445,7 @@ async fn save(mut incoming: Incoming, directory: &Path, deadline: Instant) -> Re
 mod tests {
     use std::time::Duration;
 
-    use ring::{agreement, rand::SystemRandom};
+    use ring::{agreement, hmac, rand::SystemRandom};
     use tokio::task::JoinSet;
 
     use super::*;
@@ -504,6 +509,40 @@ mod tests {
             accepted += usize::from(result.unwrap());
         }
         assert_eq!(accepted, 100);
+    }
+
+    #[tokio::test]
+    async fn relay_probe_requires_the_ticket_and_keeps_the_guest_slot_free() {
+        let directory = tempfile::tempdir().unwrap();
+        let host = SecretKey::generate();
+        let ticket = SecretKey::generate();
+        let guest = SecretKey::generate().public();
+        let another_guest = SecretKey::generate().public();
+        let session = Session::new(
+            Selection::Receive(directory.path().to_owned()),
+            host.clone(),
+            ticket.clone(),
+            Instant::now() + Duration::from_secs(10),
+            1,
+            Arc::new(|_| {}),
+        )
+        .await
+        .unwrap();
+        let challenge = [17; 32];
+        let message =
+            [protocol::RELAY_PROBE, host.public().as_bytes(), guest.as_bytes(), &challenge].concat();
+        let tag = hmac::sign(&hmac::Key::new(hmac::HMAC_SHA256, &ticket.to_bytes()), &message);
+        let probe = [&[protocol::PROBE_PACKET], challenge.as_slice(), tag.as_ref()].concat();
+
+        let reply = session.handle(Route::Relay, guest, &probe).await;
+        let signature = host.sign(&[protocol::RELAY_PROBE, &challenge].concat());
+        assert_eq!(reply, [Bytes::from([&probe[..33], signature.to_bytes().as_slice()].concat())]);
+        assert!(session.handle(Route::Relay, another_guest, &probe).await.is_empty());
+        assert!(session.handle(Route::Lan, guest, &probe).await.is_empty());
+        let request = claim(&host, &ticket, another_guest, Route::Relay);
+        let ack = session.handle(Route::Relay, another_guest, &request).await;
+        assert_eq!(ack[0].len(), 97);
+        assert_eq!(session.handle(Route::Relay, another_guest, &request).await, ack);
     }
 
     #[tokio::test]

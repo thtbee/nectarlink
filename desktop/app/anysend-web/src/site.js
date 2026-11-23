@@ -6,7 +6,7 @@ import {equal, join, utf8} from './bytes.js';
 import {indexBytes, lanChunkBytes, readIndex, relayChunkBytes} from './file-protocol.js';
 import {transferFile} from './transfer.js';
 import {createReceiverView} from './receiver-view.js';
-import {connectRelay} from './relay.js';
+import {createRelayPool} from './relay-pool.js';
 import {fileKey, lanProbe, siteAck, siteClaim} from './site-protocol.js';
 
 const context = utf8.encode('iroh-relay handshake v1 challenge signature');
@@ -54,7 +54,9 @@ function connectLan(base, guest, onPacket, signal) {
 
 function parseTicket(fragment, direct) {
   const ticket = decode43(fragment);
-  if (ticket[0] !== 2 || (direct ? ticket.length !== 77 : ticket.length <= 77)) {
+  const multiRelay = ticket[0] === 3;
+  if (direct ? ticket[0] !== 2 || ticket.length !== 77
+    : (ticket[0] !== 2 && !multiRelay) || ticket.length <= 77) {
     throw Error('Invalid ticket');
   }
   const expires = ticket.subarray(1, 7).reduce((value, byte) => value * 256 + byte, 0);
@@ -65,12 +67,16 @@ function parseTicket(fragment, direct) {
   const port = ticket[75] * 256 + ticket[76];
   const privateIp = a === 10 || (a === 172 && b >= 16 && b < 32) || (a === 192 && b === 168);
   const local = privateIp && port ? new URL(`http://${a}.${b}.${c}.${d}:${port}/`) : null;
-  const relay = new URL(new TextDecoder().decode(ticket.subarray(77)));
-  if (relay.protocol !== 'wss:') throw Error('Invalid ticket');
-  return {expires, peer, seed, local, relay};
+  const address = new TextDecoder().decode(ticket.subarray(77));
+  const urls = (multiRelay ? address.split('\n') : [address]).map((value) => new URL(value));
+  if (urls.some((url) => url.protocol !== 'wss:' || url.username || url.password || url.hash)) {
+    throw Error('Invalid ticket');
+  }
+  const relays = [...new Set(urls.map((url) => url.href))];
+  return {expires, peer, seed, local, relays, multiRelay};
 }
 
-function claim(send, listen, packet, signal) {
+function claim(send, listen, packet, signal, maxAttempts) {
   signal.throwIfAborted();
   return new Promise((resolve, reject) => {
     let timer;
@@ -84,7 +90,7 @@ function claim(send, listen, packet, signal) {
     }
     const abort = () => finish(signal.reason);
     function attempt() {
-      if (attempts++ === 4) {
+      if (attempts++ === maxAttempts) {
         finish(Error('No reply'));
         return;
       }
@@ -102,39 +108,42 @@ function claim(send, listen, packet, signal) {
 async function transfer() {
   const abort = new AbortController();
   const {signal} = abort;
-  let relay, timeout, onPacket;
+  let timeout, onPacket;
   try {
     const direct = location.protocol === 'http:';
-    const {expires, peer, seed, local, relay: relayUrl} = parseTicket(location.hash.slice(1), direct);
+    const {expires, peer, seed, local, relays, multiRelay} = parseTicket(location.hash.slice(1), direct);
     history.replaceState(null, '', location.pathname);
     const remaining = expires - Date.now();
     if (remaining <= 0) throw Error('Ticket expired');
     timeout = setTimeout(() => abort.abort(Error('Ticket expired')), Math.min(remaining, 0x7fffffff));
-    const receive = (packet) => onPacket?.(packet);
+    const receive = (packet, path) => onPacket?.(packet, path);
     const listen = (handler) => { onPacket = handler; };
 
     const {publicKey, secretKey} = nacl.sign.keyPair();
     const identity = {publicKey, sign: (bytes) => nacl.sign.detached(bytes, secretKey)};
     const useLan = direct || (local && await view.chooseLocal(signal) && await probe(local, peer, signal));
     signal.throwIfAborted();
-    let send;
+    let send, pool;
     if (useLan) {
       send = connectLan(local, publicKey, receive, signal);
     } else {
-      relay = await connectRelay(relayUrl, identity, (sender, bytes) => {
-        if (equal(sender, peer)) receive(bytes);
-      }, (challenge) => blake3(challenge, {context}), signal, (error) => abort.abort(error));
-      send = async (packets) => {
+      pool = createRelayPool(relays, multiRelay, identity, peer, seed, receive,
+        (challenge) => blake3(challenge, {context}), signal);
+      try {
+        await pool.waitForPath(AbortSignal.any([signal, AbortSignal.timeout(25000)]));
+      } catch (error) {
         signal.throwIfAborted();
-        for (const packet of packets) relay.send(peer, packet);
-      };
+        throw Error('Could not reach the sender through an Iroh relay.', {cause: error});
+      }
     }
     const route = [useLan ? 0 : 1];
     const exchange = nacl.box.keyPair();
     const ticket = nacl.sign.keyPair.fromSeed(seed);
     const signature = nacl.sign.detached(join(siteClaim, peer, publicKey, route, exchange.publicKey),
       ticket.secretKey);
-    const reply = await claim(send, listen, join([1], exchange.publicKey, signature), signal);
+    const claimSend = pool ? async (packets) => pool.claim(packets) : send;
+    const reply = await claim(claimSend, listen, join([1], exchange.publicKey, signature),
+      signal, pool ? 12 : 4);
     if (reply[0] === 0) throw Error('Ticket used or expired');
     const hostKey = reply.subarray(1, 33);
     if (!nacl.sign.detached.verify(join(siteAck, publicKey, route, exchange.publicKey, hostKey),
@@ -144,7 +153,7 @@ async function transfer() {
     const shared = nacl.scalarMult(exchange.secretKey, hostKey);
     if (shared.every((byte) => byte === 0)) throw Error('File authentication failed');
     const key = nacl.hash(join(fileKey, peer, seed, publicKey, route, shared)).subarray(0, 32);
-    await transferFile(send, listen, key, useLan ? lanChunkBytes : relayChunkBytes, view, signal);
+    await transferFile(send, listen, key, useLan ? lanChunkBytes : relayChunkBytes, view, signal, pool);
   } catch (error) {
     console.debug('AnySend transfer failed', error);
     view.error(error.message);

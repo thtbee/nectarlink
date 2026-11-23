@@ -182,6 +182,7 @@ impl qobject::AnySend {
                         self.as_mut().set_lan_path(QString::from(&code.path));
                     }
                     Route::Relay => {
+                        self.as_mut().set_relay_error(QString::default());
                         self.as_mut().set_relay_size(code.size as i32);
                         self.as_mut().set_relay_path(QString::from(&code.path));
                     }

@@ -17,7 +17,7 @@ const page = `<!doctype html>
 <meta ${siteMarker}>
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self' http: wss:; base-uri 'none'; form-action 'none'">
 <title></title>
-<script src="./receive.js?v=3" integrity="sha256-${integrity}" crossorigin="anonymous" defer></script>
+<script src="./receive.js?v=4" integrity="sha256-${integrity}" crossorigin="anonymous" defer></script>
 </html>
 `;
 await mkdir('site', {recursive: true});

@@ -1,16 +1,21 @@
 import {join} from './bytes.js';
 
-export function connectRelay(url, identity, receive, challengeHash, signal, disconnect) {
+export function connectRelay(url, identity, receive, challengeHash, signal, disconnect, peerGone) {
   signal.throwIfAborted();
   return new Promise((resolve, reject) => {
     const socket = new WebSocket(url, 'iroh-relay-v2');
     socket.binaryType = 'arraybuffer';
-    const send = (frame) => socket.send(frame);
+    function send(frame) {
+      if (socket.readyState !== WebSocket.OPEN) throw Error('Relay offline');
+      socket.send(frame);
+    }
     let connected = false;
+    let idle;
     function fail(error) {
       clearTimeout(timeout);
+      clearTimeout(idle);
       signal.removeEventListener('abort', abort);
-      socket.onerror = socket.onclose = null;
+      socket.onerror = socket.onclose = socket.onmessage = null;
       socket.close();
       if (connected) disconnect(error);
       else reject(error);
@@ -20,6 +25,8 @@ export function connectRelay(url, identity, receive, challengeHash, signal, disc
     signal.addEventListener('abort', abort, {once: true});
     socket.onerror = socket.onclose = () => fail(Error('Relay offline'));
     socket.onmessage = ({data}) => {
+      clearTimeout(idle);
+      idle = setTimeout(() => fail(Error('Relay stopped responding')), 45000);
       const frame = new Uint8Array(data);
       switch (frame[0]) {
         case 0: {
@@ -44,6 +51,9 @@ export function connectRelay(url, identity, receive, challengeHash, signal, disc
           break;
         case 6:
           if (frame.length > 34) receive(frame.subarray(1, 33), frame.subarray(34));
+          break;
+        case 8:
+          if (frame.length === 33) peerGone(frame.subarray(1));
           break;
         case 9:
           frame[0] = 10;

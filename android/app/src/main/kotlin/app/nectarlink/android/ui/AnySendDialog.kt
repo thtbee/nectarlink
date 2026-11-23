@@ -122,7 +122,10 @@ internal fun AnySendDialog(core: Core, onDismiss: () -> Unit) {
             val current = checkNotNull(session)
             while (true) {
                 when (val event = current.nextEvent() ?: break) {
-                    is AnySendEvent.Ticket -> tickets[event.route] = event.url
+                    is AnySendEvent.Ticket -> {
+                        unavailable.remove(event.route)
+                        tickets[event.route] = event.url
+                    }
                     is AnySendEvent.Unavailable -> {
                         tickets.remove(event.route)
                         unavailable[event.route] = event.reason
