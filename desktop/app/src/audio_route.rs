@@ -349,6 +349,7 @@ impl MediaPauseCoordinator {
 
     /// Revoke a ticket on an observed manual playback or session replacement
     /// event, even if playback has changed again by the next snapshot.
+    #[cfg_attr(target_os = "macos", allow(dead_code))]
     pub fn invalidate_session(&mut self, session: &MediaSessionKey) {
         if self.tickets.remove(session).is_some() {
             self.suppressed.insert(session.clone());
@@ -413,6 +414,7 @@ const MIXER_SAMPLE_RATE: u32 = 48_000;
 const MIXER_TICK_MS: u64 = 10;
 const MIXER_TICK_FRAMES: usize = (MIXER_SAMPLE_RATE as usize) / 100; // 480 frames = 10 ms
 const LEVELS_EVERY_TICKS: u32 = 10; // ~100 ms
+#[cfg_attr(target_os = "macos", allow(dead_code))]
 const MANUAL_PLAY_SETTLE: Duration = Duration::from_millis(600);
 
 #[derive(Debug, Default)]
@@ -542,6 +544,7 @@ pub fn set_call_media_paused(paused: bool) {
 
 /// Records that the user manually resumed a desktop media session so neither
 /// calls nor AudioLink will auto-resume it later.
+#[cfg_attr(target_os = "macos", allow(dead_code))]
 pub fn note_media_session_playing(id: &str) {
     let Ok(mut state) = media_pause().try_lock() else { return };
     if state.last_pause_at.is_some_and(|at| at.elapsed() < MANUAL_PLAY_SETTLE) {
