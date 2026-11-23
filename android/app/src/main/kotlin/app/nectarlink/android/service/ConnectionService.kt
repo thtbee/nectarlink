@@ -373,7 +373,7 @@ class ConnectionService : LifecycleService() {
         private const val ACTION_STOP_RINGING = "app.nectarlink.action.STOP_RINGING"
         /** Sent by a PC's adb (the shell holds the DUMP permission both components ask for), see usb.rs. */
         internal const val ACTION_USB_WAKE = "app.nectarlink.action.USB_WAKE"
-        private const val USB_IDLE_GRACE_MS = 20_000L
+        private const val USB_IDLE_GRACE_MS = 5_000L
         internal const val ACTION_STOP_SERVICE = "app.nectarlink.action.STOP_SERVICE"
 
         /** Starts the service when allowed by Android's foreground-service rules. */
