@@ -780,6 +780,11 @@ std::unique_ptr<QGuiApplication> create_qt_app()
         return list;
     }();
     static int s_argc = static_cast<int>(s_args.size());
+#ifdef __linux__
+    // Let Linux desktops such as COSMIC provide the file picker through the portal.
+    if (!qEnvironmentVariableIsSet("QT_QPA_PLATFORMTHEME"))
+        qputenv("QT_QPA_PLATFORMTHEME", "xdgdesktopportal");
+#endif
     auto app = std::unique_ptr<QGuiApplication>(new QApplication(s_argc, s_argv_list.data()));
 #ifdef __linux__
     // On Wayland this is the app id, which is how the dock finds our icon and name.
