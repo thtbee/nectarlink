@@ -3,6 +3,7 @@
 
 use windows::{
     Win32::{
+        Foundation::{LPARAM, WPARAM},
         System::{
             Power::{GetPwrCapabilities, SYSTEM_POWER_CAPABILITIES, SetSuspendState},
             Registry::{
@@ -11,10 +12,11 @@ use windows::{
             },
             Shutdown::LockWorkStation,
         },
-        Foundation::{LPARAM, WPARAM},
         UI::{
             Shell::ShellExecuteW,
-            WindowsAndMessaging::{HWND_BROADCAST, PostMessageW, SC_MONITORPOWER, SW_SHOWNORMAL, WM_SYSCOMMAND},
+            WindowsAndMessaging::{
+                HWND_BROADCAST, PostMessageW, SC_MONITORPOWER, SW_SHOWNORMAL, WM_SYSCOMMAND,
+            },
         },
     },
     core::{HSTRING, w},
