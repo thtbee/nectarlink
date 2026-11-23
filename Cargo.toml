@@ -64,7 +64,7 @@ material-colors = { version = "0.5", default-features = false, features = ["std"
 n0-future = "0.3"
 qrcode = { version = "0.14", default-features = false }
 rand = "0.10"
-rusqlite = { version = "0.42", features = ["bundled"] }
+rusqlite = { version = "0.43", features = ["bundled"] }
 # JSON Schemas for agent actions, from the same structs the actions take.
 schemars = "1.2"
 serde = { version = "1", features = ["derive"] }
