@@ -27,6 +27,8 @@ pub mod qobject {
         #[qml_singleton]
         #[qproperty(bool, addon_registered, cxx_name = "addonRegistered")]
         #[qproperty(bool, addon_busy, cxx_name = "addonBusy")]
+        #[qproperty(QString, addon_status, cxx_name = "addonStatus")]
+        #[qproperty(bool, addon_needs_approval, cxx_name = "addonNeedsApproval")]
         #[qproperty(QString, selected_phone, cxx_name = "selectedPhone")]
         #[qproperty(QString, selected_phone_name, cxx_name = "selectedPhoneName")]
         #[qproperty(i32, height)]
@@ -47,6 +49,9 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "setupAddon"]
         fn setup_addon(self: &Webcam);
+        #[qinvokable]
+        #[cxx_name = "openApprovalSettings"]
+        fn open_approval_settings(self: &Webcam);
         #[qinvokable]
         #[cxx_name = "removeAddon"]
         fn remove_addon(self: &Webcam);
@@ -76,6 +81,8 @@ pub mod qobject {
 pub struct WebcamRust {
     addon_registered: bool,
     addon_busy: bool,
+    addon_status: QString,
+    addon_needs_approval: bool,
     selected_phone: QString,
     selected_phone_name: QString,
     height: i32,
@@ -111,6 +118,8 @@ impl qobject::Webcam {
         let hub = &crate::core_host::host().hub;
         self.as_mut().set_addon_registered(webcam::addon_registered());
         self.as_mut().set_addon_busy(webcam::addon_busy());
+        self.as_mut().set_addon_status(QString::from(&webcam::addon_status()));
+        self.as_mut().set_addon_needs_approval(webcam::addon_needs_approval());
         self.as_mut().set_height(webcam::height() as i32);
         self.as_mut().set_uhd(webcam::uhd());
         self.as_mut().set_camera(QString::from(webcam::camera()));
@@ -146,6 +155,10 @@ impl qobject::Webcam {
 
     pub fn setup_addon(&self) {
         webcam::setup_addon();
+    }
+
+    pub fn open_approval_settings(&self) {
+        webcam::open_approval_settings();
     }
 
     pub fn remove_addon(&self) {

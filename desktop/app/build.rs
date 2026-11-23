@@ -438,7 +438,10 @@ fn main() {
     } else if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("macos") {
         build_macos_audio_loopback();
         build_macos_notifications();
+        build_macos_sysext();
         println!("cargo:rustc-link-lib=framework=AppKit");
+        println!("cargo:rustc-link-lib=framework=Security");
+        println!("cargo:rustc-link-lib=framework=SystemExtensions");
         println!("cargo:rustc-link-lib=framework=CoreGraphics");
         println!("cargo:rustc-link-lib=framework=CoreAudio");
         println!("cargo:rustc-link-lib=framework=AudioToolbox");
@@ -486,6 +489,15 @@ fn build_macos_notifications() {
         .flag("-fobjc-arc")
         .flag("-std=c++17")
         .compile("nectarlink_mac_notifications");
+}
+
+fn build_macos_sysext() {
+    println!("cargo::rerun-if-changed=cpp/mac_sysext.mm");
+    cc::Build::new()
+        .file("cpp/mac_sysext.mm")
+        .flag("-fobjc-arc")
+        .flag("-std=c++17")
+        .compile("nectarlink_mac_sysext");
 }
 
 fn build_macos_audio_loopback() {
