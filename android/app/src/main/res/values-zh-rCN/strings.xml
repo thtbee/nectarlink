@@ -339,6 +339,7 @@
         <item quantity="other">已连接到 %1$d 台电脑</item>
     </plurals>
     <string name="notification_waiting">正在等待电脑</string>
+    <string name="notification_usb_only">仅 USB：正在等待数据线</string>
     <string name="notification_waiting_network">正在等待 Wi-Fi 以连接你的电脑</string>
     <string name="reconnect_known_only_title">仅在找到过电脑的网络中</string>
     <string name="reconnect_known_only_body">仅在曾连接到电脑的 Wi-Fi 中自动寻找你的电脑。在其他网络中，电脑仍可连接到手机。</string>
@@ -1316,6 +1317,9 @@
     <string name="home_section_system">系统与电源</string>
     <string name="settings_category_devices">设备</string>
     <string name="settings_category_features">功能与数据</string>
+    <string name="settings_usb_only_title">仅 USB</string>
+    <string name="settings_usb_only_body">仅通过 USB 线缆连接电脑：不使用 Wi-Fi、移动数据或本地发现</string>
+    <string name="usb_only_tile_label">仅 USB</string>
     <string name="settings_theme_artwork_color">跟随封面取色</string>
     <string name="settings_mobile_data_body">离开 Wi-Fi 时通过 LTE/5G 或中继保持连接</string>
     <string name="settings_background_clipboard_title">后台剪贴板权限</string>

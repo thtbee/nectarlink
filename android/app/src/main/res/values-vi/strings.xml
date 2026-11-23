@@ -348,6 +348,7 @@
         <item quantity="other">Đã kết nối với %1$d PC</item>
     </plurals>
 <string name="notification_waiting">Đang chờ PC của bạn</string>
+<string name="notification_usb_only">Chỉ USB: đang chờ cáp</string>
 <string name="notification_waiting_network">Đang chờ Wi-Fi để kết nối với PC</string>
 <string name="reconnect_known_only_title">Chỉ trên mạng đã từng thấy PC</string>
 <string name="reconnect_known_only_body">Chỉ tự tìm PC trên các mạng Wi-Fi đã từng kết nối được với một PC. Ở mạng khác, PC vẫn có thể kết nối tới điện thoại.</string>
@@ -1385,6 +1386,9 @@
 <string name="home_section_system">Hệ thống &amp; Nguồn</string>
 <string name="settings_category_devices">Thiết bị</string>
 <string name="settings_category_features">Tính năng &amp; Dữ liệu</string>
+<string name="settings_usb_only_title">Chỉ USB</string>
+<string name="settings_usb_only_body">Chỉ kết nối với PC qua cáp USB: không Wi-Fi, dữ liệu di động hay phát hiện cục bộ</string>
+<string name="usb_only_tile_label">Chỉ USB</string>
 <string name="settings_theme_artwork_color">Màu từ ảnh bìa media</string>
 <string name="settings_mobile_data_body">Giữ kết nối qua LTE/5G hoặc chuyển tiếp khi không có Wi-Fi</string>
 <string name="settings_background_clipboard_title">Truy cập bảng nhớ tạm ở chế độ nền</string>
