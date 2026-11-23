@@ -1753,6 +1753,13 @@
     <string name="chat_file_missing">Nie ma go na tym urządzeniu</string>
     <string name="chat_file_options">Opcje pliku</string>
     <string name="timeline_filter_notes">Notatki</string>
+    <string name="anysend_site">Witryna dla linku globalnego</string>
+    <string name="anysend_browsers">Maksymalna liczba przeglądarek</string>
+    <string name="anysend_receive">Odbierz plik</string>
+    <string name="anysend_lan">Sieć lokalna</string>
+    <string name="anysend_global">Link globalny</string>
+    <string name="anysend_completed">Ukończono %1$d z %2$d</string>
+    <string name="anysend_expired">Ten link wygasł.</string>
 </resources>
 
 

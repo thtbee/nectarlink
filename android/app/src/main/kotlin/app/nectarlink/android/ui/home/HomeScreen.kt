@@ -184,6 +184,7 @@ fun HomeScreen(
     onRing: (id: String, on: Boolean) -> Unit,
     onStopRinging: () -> Unit,
     onPairNew: () -> Unit,
+    onOpenAnySend: () -> Unit,
     onRefresh: () -> Unit,
     onPower: (pcId: String, sleep: Boolean) -> Unit,
     onUnlock: (pcId: String) -> Unit,
@@ -709,6 +710,11 @@ fun HomeScreen(
             item(key = "crash_card", contentType = "request") { crashCard() }
         }
         item(key = "update_card", contentType = "update") { UpdateCard(updater) }
+        item(key = "anysend", contentType = "action") {
+            FilledTonalButton(onClick = onOpenAnySend, modifier = Modifier.fillMaxWidth()) {
+                Text("AnySend")
+            }
+        }
         if (!backgroundServiceEnabled) {
             item(key = "background_connection_off", contentType = "setup") {
                 SetupCard(

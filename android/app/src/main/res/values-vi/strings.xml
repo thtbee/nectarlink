@@ -1664,4 +1664,11 @@
     <string name="chat_file_missing">Không có trên thiết bị này</string>
     <string name="chat_file_options">Tùy chọn tệp</string>
     <string name="timeline_filter_notes">Ghi chú</string>
+    <string name="anysend_site">Trang web cho liên kết toàn cầu</string>
+    <string name="anysend_browsers">Số trình duyệt tối đa</string>
+    <string name="anysend_receive">Nhận tệp</string>
+    <string name="anysend_lan">Mạng cục bộ</string>
+    <string name="anysend_global">Liên kết toàn cầu</string>
+    <string name="anysend_completed">Đã hoàn tất %1$d trên %2$d</string>
+    <string name="anysend_expired">Liên kết này đã hết hạn.</string>
 </resources>

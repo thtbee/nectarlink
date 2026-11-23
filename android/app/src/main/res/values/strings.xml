@@ -1737,6 +1737,13 @@
     <string name="chat_file_missing">Not on this device</string>
     <string name="chat_file_options">File options</string>
     <string name="timeline_filter_notes">Notes</string>
+    <string name="anysend_site">Website for the global link</string>
+    <string name="anysend_browsers">Maximum browsers</string>
+    <string name="anysend_receive">Receive a file</string>
+    <string name="anysend_lan">Local network</string>
+    <string name="anysend_global">Global link</string>
+    <string name="anysend_completed">%1$d of %2$d completed</string>
+    <string name="anysend_expired">This link has expired.</string>
 </resources>
 
 

@@ -1608,4 +1608,11 @@
     <string name="chat_file_missing">Нет на этом устройстве</string>
     <string name="chat_file_options">Действия с файлом</string>
     <string name="timeline_filter_notes">Заметки</string>
+    <string name="anysend_site">Сайт для глобальной ссылки</string>
+    <string name="anysend_browsers">Максимум браузеров</string>
+    <string name="anysend_receive">Получить файл</string>
+    <string name="anysend_lan">Локальная сеть</string>
+    <string name="anysend_global">Глобальная ссылка</string>
+    <string name="anysend_completed">Завершено %1$d из %2$d</string>
+    <string name="anysend_expired">Срок действия ссылки истёк.</string>
 </resources>

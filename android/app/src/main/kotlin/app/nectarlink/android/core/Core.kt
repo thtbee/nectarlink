@@ -43,6 +43,7 @@ import app.nectarlink.android.toggles.PhoneToggles
 import app.nectarlink.android.webcam.WebcamRequests
 import app.nectarlink.android.webcam.WebcamService
 import app.nectarlink.services.client.NectarlinkServiceContract
+import app.nectarlink.core.AnySendSession
 import app.nectarlink.core.FfiQueueStatus
 import app.nectarlink.core.Event
 import app.nectarlink.core.EventListener
@@ -1894,6 +1895,21 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
 
     suspend fun relaySnapshot(): RelaySnapshot? = withContext(Dispatchers.IO) {
         runCatching { node?.relaySnapshot() }.getOrNull()
+    }
+
+    internal fun startAnySend(
+        directory: String,
+        file: FileToSend?,
+        site: String,
+        lanIp: String?,
+        limit: Int,
+    ): AnySendSession {
+        val current = node
+        if (current == null) {
+            OutgoingFiles.closeAll(listOfNotNull(file))
+            error("The connection service is unavailable.")
+        }
+        return current.startAnySend(directory, file, site, lanIp, limit)
     }
 
     suspend fun editRelay(url: String, action: RelayEdit): RelayEditResult = withContext(Dispatchers.IO) {

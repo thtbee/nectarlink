@@ -428,6 +428,7 @@ private fun App(
 ) {
     var tab by rememberSaveable { mutableStateOf(Tab.Home) }
     var pairing by rememberSaveable { mutableStateOf(false) }
+    var anySendOpen by remember { mutableStateOf(false) }
     var manualWalkthroughOpen by rememberSaveable { mutableStateOf(false) }
     var activeFirstRunWalkthrough by rememberSaveable { mutableStateOf(false) }
     var featuresGuideOpen by rememberSaveable { mutableStateOf(false) }
@@ -604,6 +605,10 @@ private fun App(
             override fun reset() = core.resetPairing()
             override suspend fun showCode(): String? = core.pairingLink()
         }
+    }
+
+    if (anySendOpen) {
+        AnySendDialog(core, onDismiss = { anySendOpen = false })
     }
 
     val showWalkthrough = manualWalkthroughOpen ||
@@ -1040,6 +1045,7 @@ private fun App(
                                     onRing = core::ring,
                                     onStopRinging = core::stopRinging,
                                     onPairNew = { pairing = true },
+                                    onOpenAnySend = { anySendOpen = true },
                                     onRefresh = core::refresh,
                                     onPower = core::pcPower,
                                     onUnlock = core::unlockPc,

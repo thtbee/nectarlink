@@ -615,7 +615,7 @@ private fun QrCodeBox(link: String?, side: Dp) {
 
 /** [text] as a QR code, black on the white it sits on. */
 @Composable
-private fun QrCode(text: String) {
+internal fun QrCode(text: String) {
     val matrix = androidx.compose.runtime.remember(text) {
         runCatching {
             com.google.zxing.qrcode.QRCodeWriter().encode(

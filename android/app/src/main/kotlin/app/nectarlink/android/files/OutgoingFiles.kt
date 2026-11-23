@@ -169,7 +169,7 @@ internal object OutgoingFiles {
     private fun safeName(name: String): String =
         name.replace('/', '_').replace('\\', '_').trim().ifEmpty { "file" }.take(200)
 
-    private fun displayName(context: Context, uri: Uri): String =
+    internal fun displayName(context: Context, uri: Uri): String =
         runCatching {
             context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
                 if (cursor.moveToFirst()) cursor.getString(0) else null
