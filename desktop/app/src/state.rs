@@ -647,6 +647,12 @@ impl AppState {
                 self.forget_transfer(&transfer.id)
             }
             NodeEvent::Transfer(transfer) => self.update_transfer(transfer.clone(), Instant::now()),
+            // Handled by `remote`, `audio_route`, and `phone_mic`.
+            NodeEvent::RemotePresence { .. }
+            | NodeEvent::AudioRouteStatus { .. }
+            | NodeEvent::AudioRouteLevels { .. }
+            | NodeEvent::AudioRoutePcm { .. }
+            | NodeEvent::MicStatus { .. } => Changes::NONE,
             // With artwork saved first (see crate::media).
             NodeEvent::MediaChanged { .. } => Changes::NONE,
         }

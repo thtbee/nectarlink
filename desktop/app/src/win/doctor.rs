@@ -222,17 +222,31 @@ pub fn adapters() -> Adapters {
     found
 }
 
+/// The UDP port the node is bound to, or the preferred 7718 before it is.
+fn active_node_port() -> u16 {
+    crate::core_host::node()
+        .and_then(|node| node.local_bound_addrs().into_iter().map(|a| a.port()).find(|&p| p > 0))
+        .unwrap_or(crate::peer_addrs::DEFAULT_PORT)
+}
+
 /// Lets `exe` through the firewall on all network profiles, removing any
-/// rules that block it. Asks for administrator rights (the UAC prompt) and
-/// waits until it's done; `Ok(false)` if the user said no.
+/// rules that block it, and lets Tailscale devices (only from the tailnet
+/// prefixes, on the node's active UDP port) reach it on any profile, since
+/// Windows files the Tailscale adapter under Public. Asks for administrator
+/// rights (the UAC prompt) and waits until it's done; `Ok(false)` if the user
+/// said no.
 pub fn fix_firewall(exe: &Path) -> windows::core::Result<bool> {
+    let port = active_node_port();
     let raw_exe = exe.to_string_lossy();
     let clean_exe = raw_exe.strip_prefix(r"\\?\").unwrap_or(&raw_exe);
     let script = format!(
         "/c netsh advfirewall firewall delete rule name=all dir=in program=\"{clean_exe}\" & \
          netsh advfirewall firewall delete rule name=\"Nectarlink\" dir=in & \
+         netsh advfirewall firewall delete rule name=\"Nectarlink (Tailscale)\" dir=in & \
          netsh advfirewall firewall add rule name=\"Nectarlink\" dir=in action=allow program=\"{clean_exe}\" \
-         enable=yes profile=any"
+         enable=yes profile=any && \
+         netsh advfirewall firewall add rule name=\"Nectarlink (Tailscale)\" dir=in action=allow program=\"{clean_exe}\" \
+         protocol=UDP localport={port} remoteip=100.64.0.0/10,fd7a:115c:a1e0::/48 enable=yes profile=any"
     );
     let parameters = HSTRING::from(script);
     let mut info = SHELLEXECUTEINFOW {

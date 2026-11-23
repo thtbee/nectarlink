@@ -102,6 +102,7 @@ pub mod ffi {
             find_phone_label: &str,
             open_link_label: &str,
             pause_notifications_label: &str,
+            pause_remote_label: &str,
             quit_label: &str,
         );
 
@@ -110,6 +111,9 @@ pub mod ffi {
 
         #[allow(dead_code)]
         fn linux_tray_set_pause_label(label: &str);
+
+        #[allow(dead_code)]
+        fn linux_tray_set_remote_pause_label(label: &str);
 
         #[allow(dead_code)]
         fn linux_tray_set_find_phone_enabled(enabled: bool);

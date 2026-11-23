@@ -4,7 +4,7 @@
 //! is enabled in the network adapter class registry. Never modifies any
 //! adapter or power settings.
 
-use std::net::Ipv4Addr;
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 use nectarlink_core::{PcWakeInfo, format_mac, ipv4_broadcast, parse_mac};
 use windows::{
@@ -13,7 +13,7 @@ use windows::{
         NetworkManagement::IpHelper::{
             GAA_FLAG_SKIP_ANYCAST, GAA_FLAG_SKIP_MULTICAST, GetAdaptersAddresses, IP_ADAPTER_ADDRESSES_LH,
         },
-        Networking::WinSock::AF_UNSPEC,
+        Networking::WinSock::{AF_INET, AF_INET6, AF_UNSPEC, SOCKADDR_IN, SOCKADDR_IN6},
         System::Registry::{HKEY_LOCAL_MACHINE, RRF_RT_REG_DWORD, RRF_RT_REG_SZ, RegGetValueW},
     },
     core::HSTRING,
@@ -358,6 +358,68 @@ pub fn query_wake_status() -> WakeStatus {
     let info = PcWakeInfo { macs, broadcasts }.sanitized();
 
     WakeStatus { info, adapters }
+}
+
+/// All non-loopback IPv4 and IPv6 unicast addresses currently assigned to UP
+/// adapters on this PC (including Tailscale / WinTun tunnels).
+pub fn interface_ips() -> Vec<IpAddr> {
+    let mut out = Vec::new();
+    let mut size: u32 = 32 * 1024;
+    let mut buffer = vec![0u8; size as usize];
+    // SAFETY: `buffer` is sized as `GetAdaptersAddresses` requests and walked while alive.
+    unsafe {
+        let flags = GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_MULTICAST;
+        let mut status = GetAdaptersAddresses(
+            u32::from(AF_UNSPEC.0),
+            flags,
+            None,
+            Some(buffer.as_mut_ptr().cast()),
+            &mut size,
+        );
+        if status == 111 {
+            buffer = vec![0u8; size as usize];
+            status = GetAdaptersAddresses(
+                u32::from(AF_UNSPEC.0),
+                flags,
+                None,
+                Some(buffer.as_mut_ptr().cast()),
+                &mut size,
+            );
+        }
+        if status != 0 {
+            return out;
+        }
+        let mut ptr = buffer.as_ptr().cast::<IP_ADAPTER_ADDRESSES_LH>();
+        while let Some(a) = ptr.as_ref() {
+            ptr = a.Next;
+            if a.OperStatus.0 != 1 {
+                continue;
+            }
+            let mut unicast = a.FirstUnicastAddress;
+            while let Some(u) = unicast.as_ref() {
+                unicast = u.Next;
+                let addr = u.Address.lpSockaddr;
+                if addr.is_null() {
+                    continue;
+                }
+                let ip = match (*addr).sa_family {
+                    f if f == AF_INET => {
+                        let sin = &*addr.cast::<SOCKADDR_IN>();
+                        IpAddr::V4(Ipv4Addr::from(u32::from_be(sin.sin_addr.S_un.S_addr)))
+                    }
+                    f if f == AF_INET6 => {
+                        let sin6 = &*addr.cast::<SOCKADDR_IN6>();
+                        IpAddr::V6(Ipv6Addr::from(sin6.sin6_addr.u.Byte))
+                    }
+                    _ => continue,
+                };
+                if !ip.is_loopback() && !ip.is_unspecified() && !out.contains(&ip) {
+                    out.push(ip);
+                }
+            }
+        }
+    }
+    out
 }
 
 #[cfg(test)]

@@ -12,6 +12,7 @@ mod agents;
 #[cfg(test)]
 mod app_links;
 mod app_shortcuts;
+mod audio_route;
 mod automations;
 mod battery;
 mod bridge;
@@ -48,6 +49,7 @@ mod pc_audio_stream;
 mod pc_mirror;
 mod pc_notifications;
 mod pc_storage;
+mod peer_addrs;
 mod phone_install;
 mod phone_mic;
 mod phone_sound;
@@ -67,6 +69,7 @@ mod setup;
 mod startup;
 mod state;
 mod storage;
+mod tailscale;
 mod transfers;
 mod update_relay;
 mod updater;
@@ -228,6 +231,41 @@ impl Platform for DesktopPlatform {
     ) -> Result<(), String> {
         remote::handle_input(peer, input);
         Ok(())
+    }
+    fn remote_release(&self, peer: nectarlink_core::DeviceId) {
+        remote::release_for(peer);
+    }
+    fn remote_info(&self) -> nectarlink_core::RemoteInfo {
+        remote::info()
+    }
+    fn on_audio_route_set(
+        &self,
+        peer: nectarlink_core::DeviceId,
+        set: nectarlink_core::AudioRouteSet,
+    ) -> Result<nectarlink_core::AudioRouteStatus, String> {
+        audio_route::handle_set(peer, set)
+    }
+    fn on_audio_route_pcm(&self, peer: nectarlink_core::DeviceId, pcm: nectarlink_core::AudioRoutePcm) {
+        audio_route::handle_pcm(peer, pcm);
+    }
+    fn on_audio_route_levels(
+        &self,
+        peer: nectarlink_core::DeviceId,
+        levels: nectarlink_core::AudioRouteLevels,
+    ) {
+        audio_route::handle_levels(peer, levels);
+    }
+    fn on_mic_status_request(
+        &self,
+        _peer: nectarlink_core::DeviceId,
+    ) -> Result<nectarlink_core::MicStatus, String> {
+        Ok(phone_mic::mic_status())
+    }
+    fn on_mic_setup_request(
+        &self,
+        _peer: nectarlink_core::DeviceId,
+    ) -> Result<nectarlink_core::MicSetupResponse, String> {
+        Ok(phone_mic::open_setup())
     }
     fn remote_pad(
         &self,
@@ -522,6 +560,7 @@ fn watch_network() {
             tokio::time::sleep(Duration::from_secs(1)).await;
             PENDING.store(false, Ordering::Release);
             core_host::refresh_wake().await;
+            peer_addrs::refresh();
             if let Some(node) = core_host::node() {
                 tracing::debug!("network changed");
                 node.network_changed().await;
@@ -838,6 +877,7 @@ fn main() -> ExitCode {
     folder_sync::start_poller();
     photo_backup::start();
     webcam::init(&settings);
+    audio_route::init_and_recover(&data_dir);
     phone_mic::init(&settings);
     call_audio::init(&settings);
     local_api::init(&settings);
@@ -984,6 +1024,8 @@ fn main() -> ExitCode {
     // QML first (it holds references into Qt), then the core.
     drop(engine);
     mirror::stop_decoders();
+    audio_route::shutdown();
+    remote::stop_all();
     pc_audio_stream::set_enabled(false);
     pc_mirror::stop_all();
     photos::clear_shared_files();

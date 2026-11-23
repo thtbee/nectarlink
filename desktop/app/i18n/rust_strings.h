@@ -25,8 +25,10 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("App", "Open NectarLink"), // desktop/app/src/bridge/app.rs
     QT_TRANSLATE_NOOP("App", "Open copied link on phone"), // desktop/app/src/bridge/app.rs
     QT_TRANSLATE_NOOP("App", "Pause phone notifications"), // desktop/app/src/bridge/app.rs
+    QT_TRANSLATE_NOOP("App", "Pause remote control"), // desktop/app/src/bridge/app.rs
     QT_TRANSLATE_NOOP("App", "Quit NectarLink"), // desktop/app/src/bridge/app.rs
     QT_TRANSLATE_NOOP("App", "Resume phone notifications"), // desktop/app/src/bridge/app.rs
+    QT_TRANSLATE_NOOP("App", "Resume remote control"), // desktop/app/src/bridge/app.rs
     QT_TRANSLATE_NOOP("App", "Scan document with phone"), // desktop/app/src/bridge/app.rs
     QT_TRANSLATE_NOOP("App", "Send cancelled"), // desktop/app/src/bridge/app.rs
     QT_TRANSLATE_NOOP("App", "Sending to %1…"), // desktop/app/src/bridge/app.rs
@@ -212,6 +214,7 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Doctor", "%1 is set as a public network"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "%1 isn't connected"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "%1 minutes ago"), // desktop/app/src/doctor.rs
+    QT_TRANSLATE_NOOP("Doctor", "%1 paired device(s) found on your tailnet%2"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "%1 · %2 ms"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "A USB cable needs adb"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "A VPN is on"), // desktop/app/src/doctor.rs
@@ -244,15 +247,18 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Doctor", "On public networks Windows keeps other devices from finding this PC. If it's your home or work network, set it to Private."), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "On public networks the firewall keeps other devices from finding this PC. If it's your home or work network, open network settings and set its firewall zone to Home or Trusted."), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "On this network"), // desktop/app/src/doctor.rs
+    QT_TRANSLATE_NOOP("Doctor", "Over Tailscale"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "Phone as webcam is ready"), // desktop/app/src/linux/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "Phone as webcam needs one more step"), // desktop/app/src/linux/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "Phone storage can open in your file manager"), // desktop/app/src/linux/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "Phone storage needs one more step"), // desktop/app/src/linux/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "Phones on a USB cable connect through adb. NectarLink starts it every minute or so; start it now if a phone on a cable isn't showing up."), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "Ready for a USB cable"), // desktop/app/src/doctor.rs
+    QT_TRANSLATE_NOOP("Doctor", "Ready to accept Tailscale connections%1"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "Showing this PC's screen needs one more step"), // desktop/app/src/linux/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "Someone chose not to allow it when Windows asked. Allow it, and your phone can connect."), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "Sound is ready"), // desktop/app/src/linux/doctor.rs
+    QT_TRANSLATE_NOOP("Doctor", "Tailscale is active"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "The firewall blocks NectarLink"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "The firewall is off for this network"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "The firewall lets your phone connect"), // desktop/app/src/doctor.rs

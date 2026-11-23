@@ -406,6 +406,31 @@ pub fn set_battery_low_threshold(threshold: u8) {
 
 static NICKNAMES: std::sync::Mutex<Option<std::collections::HashMap<String, String>>> =
     std::sync::Mutex::new(None);
+static MANUAL_ADDRS: std::sync::Mutex<Option<std::collections::BTreeMap<String, String>>> =
+    std::sync::Mutex::new(None);
+
+pub fn manual_addrs() -> std::collections::BTreeMap<String, String> {
+    MANUAL_ADDRS.lock().unwrap_or_else(|e| e.into_inner()).clone().unwrap_or_default()
+}
+
+pub fn set_manual_addrs(addrs: std::collections::BTreeMap<String, String>) {
+    *MANUAL_ADDRS.lock().unwrap_or_else(|e| e.into_inner()) = Some(addrs);
+}
+
+pub fn manual_addr_for(device_id: &str) -> Option<String> {
+    let lock = MANUAL_ADDRS.lock().unwrap_or_else(|e| e.into_inner());
+    lock.as_ref()?.get(device_id).cloned().filter(|s| !s.trim().is_empty())
+}
+
+pub fn set_manual_addr(device_id: &str, addr: Option<String>) {
+    let mut lock = MANUAL_ADDRS.lock().unwrap_or_else(|e| e.into_inner());
+    let map = lock.get_or_insert_default();
+    if let Some(addr) = addr.filter(|s| !s.trim().is_empty()) {
+        map.insert(device_id.to_owned(), addr.trim().to_owned());
+    } else {
+        map.remove(device_id);
+    }
+}
 
 /// Most apps pinned on one phone.
 pub const MAX_PINNED_APPS: usize = 24;
@@ -679,6 +704,9 @@ pub struct Settings {
         alias = "device_nicknames"
     )]
     pub device_nicknames: std::collections::HashMap<String, String>,
+    /// User-entered peer addresses ("Connect by address") keyed by device ID.
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty", alias = "manual_addrs")]
+    pub manual_addrs: std::collections::BTreeMap<String, String>,
     /// Apps pinned to the top of Apps (#477), by device ID: package names.
     #[serde(default, skip_serializing_if = "std::collections::HashMap::is_empty", alias = "pinned_apps")]
     pub pinned_apps: std::collections::HashMap<String, Vec<String>>,
@@ -965,6 +993,7 @@ impl Default for Settings {
             ui_scale: default_ui_scale(),
             keep_screen_off: Vec::new(),
             device_nicknames: std::collections::HashMap::new(),
+            manual_addrs: std::collections::BTreeMap::new(),
             pinned_apps: std::collections::HashMap::new(),
             start_with_windows: None,
             recordings_folder: None,
@@ -1101,6 +1130,7 @@ impl Settings {
         set_phone_sound_buffer_ms(self.phone_sound_buffer_ms);
         set_keep_screen_off_phones(self.keep_screen_off.clone());
         set_device_nicknames(self.device_nicknames.clone());
+        set_manual_addrs(self.manual_addrs.clone());
         set_pinned_apps_all(self.pinned_apps.clone());
         set_window_geometry(
             self.window_screen.clone(),
@@ -1375,6 +1405,10 @@ mod tests {
             forward_pc_notifications_to_phone: true,
             away_mode: true,
             network_interface: "wlan0".into(),
+            manual_addrs: std::collections::BTreeMap::from([(
+                "abc".to_owned(),
+                "100.64.0.10:7718".to_owned(),
+            )]),
             walkthrough_completed: true,
             walkthrough_step: 4,
             whats_new_dismissed: true,

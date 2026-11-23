@@ -23,6 +23,7 @@ pub enum TrayEvent {
     FindPhone,
     OpenLinkOnPhone,
     ToggleNotificationsPause,
+    ToggleRemotePause,
     Quit,
     Resumed,
     AppearanceChanged,
@@ -39,6 +40,8 @@ pub struct MenuLabels {
     pub open_link: String,
     pub pause_notifications: String,
     pub resume_notifications: String,
+    pub pause_remote: String,
+    pub resume_remote: String,
     pub quit: String,
 }
 
@@ -78,6 +81,7 @@ fn parse_tray_action(action: &str) -> Option<TrayEvent> {
         "FIND_PHONE" => Some(TrayEvent::FindPhone),
         "OPEN_LINK" => Some(TrayEvent::OpenLinkOnPhone),
         "PAUSE_NOTIFICATIONS" => Some(TrayEvent::ToggleNotificationsPause),
+        "PAUSE_REMOTE" => Some(TrayEvent::ToggleRemotePause),
         "QUIT" => Some(TrayEvent::Quit),
         _ => None,
     }
@@ -102,6 +106,7 @@ impl Tray {
             &labels.find_phone,
             &labels.open_link,
             &labels.pause_notifications,
+            &labels.pause_remote,
             &labels.quit,
         );
         let stop = Arc::new(AtomicBool::new(false));
@@ -127,6 +132,11 @@ impl Tray {
     pub fn set_notifications_paused(&self, paused: bool) {
         let label = if paused { &self.labels.resume_notifications } else { &self.labels.pause_notifications };
         ffi::linux_tray_set_pause_label(label);
+    }
+
+    pub fn set_remote_paused(&self, paused: bool) {
+        let label = if paused { &self.labels.resume_remote } else { &self.labels.pause_remote };
+        ffi::linux_tray_set_remote_pause_label(label);
     }
 
     pub fn set_find_phone_enabled(&self, enabled: bool) {

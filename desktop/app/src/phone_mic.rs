@@ -15,7 +15,10 @@ use std::{
     time::Duration,
 };
 
-use nectarlink_core::{AudioOutputDevice, DeviceId, Error, LinkState, MicSink, MirrorAudioConfig, NodeEvent};
+use nectarlink_core::{
+    AudioOutputDevice, DeviceId, Error, LinkState, MicSetupResponse, MicSink, MicStatus, MirrorAudioConfig,
+    NodeEvent,
+};
 
 use crate::{
     bridge::app::{describe, show_message},
@@ -64,6 +67,90 @@ fn set_phase(phase: Phase) {
 
 pub fn phase() -> Phase {
     *PHASE.lock().unwrap_or_else(|e| e.into_inner())
+}
+
+/// Reports whether this PC has a virtual microphone backend ready for phone mic streaming.
+pub fn mic_status() -> MicStatus {
+    let active = matches!(phase(), Phase::Live(_));
+    #[cfg(target_os = "linux")]
+    {
+        let ready = crate::win::vmic::is_available();
+        MicStatus {
+            ready,
+            active,
+            is_default_input: false,
+            device_name: ready.then(|| "NectarLink Phone Mic".to_owned()),
+            setup_reason: (!ready)
+                .then(|| "Install PipeWire or PulseAudio (pactl) to create a virtual microphone.".to_owned()),
+            can_open_setup: false,
+        }
+    }
+    #[cfg(windows)]
+    {
+        let (devices, _) = outputs();
+        let cable = devices.into_iter().find(|d| is_cable(&d.name));
+        let ready = cable.is_some();
+        let is_default_input =
+            crate::win::audio::input_devices().into_iter().any(|d| d.is_default && is_cable(&d.name));
+        MicStatus {
+            ready,
+            active,
+            is_default_input,
+            device_name: cable.map(|d| d.name),
+            setup_reason: (!ready).then(|| {
+                "Install VB-Audio Virtual Cable to expose your phone as a Windows microphone.".to_owned()
+            }),
+            can_open_setup: true,
+        }
+    }
+    #[cfg(not(any(windows, target_os = "linux")))]
+    {
+        let (devices, _) = outputs();
+        let cable = devices.into_iter().find(|d| is_cable(&d.name));
+        let ready = cable.is_some();
+        MicStatus {
+            ready,
+            active,
+            is_default_input: false,
+            device_name: cable.map(|d| d.name),
+            setup_reason: (!ready)
+                .then(|| "Install a virtual audio cable to expose your phone as a microphone.".to_owned()),
+            can_open_setup: false,
+        }
+    }
+}
+
+/// Opens the local virtual microphone setup helper (VB-Audio Virtual Cable on Windows).
+pub fn open_setup() -> MicSetupResponse {
+    #[cfg(windows)]
+    {
+        match crate::win::shell::open_url("https://vb-audio.com/Cable/") {
+            Ok(()) => MicSetupResponse {
+                ok: true,
+                message: Some("Opened the VB-Audio Virtual Cable download page.".to_owned()),
+            },
+            Err(err) => MicSetupResponse { ok: false, message: Some(err) },
+        }
+    }
+    #[cfg(target_os = "linux")]
+    {
+        let ready = crate::win::vmic::is_available();
+        MicSetupResponse {
+            ok: ready,
+            message: Some(if ready {
+                "PipeWire / PulseAudio virtual microphone is ready.".to_owned()
+            } else {
+                "Install PipeWire or PulseAudio (pactl) to enable the virtual microphone.".to_owned()
+            }),
+        }
+    }
+    #[cfg(not(any(windows, target_os = "linux")))]
+    {
+        MicSetupResponse {
+            ok: false,
+            message: Some("Virtual microphone setup is not automated on this platform.".to_owned()),
+        }
+    }
 }
 
 /// Reads the chosen output from the settings.

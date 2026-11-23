@@ -29,6 +29,7 @@ pub enum TrayEvent {
     /// Open the link on the clipboard on the phone.
     OpenLinkOnPhone,
     ToggleNotificationsPause,
+    ToggleRemotePause,
     Quit,
     /// The PC woke from sleep.
     Resumed,
@@ -49,6 +50,8 @@ pub struct MenuLabels {
     pub open_link: String,
     pub pause_notifications: String,
     pub resume_notifications: String,
+    pub pause_remote: String,
+    pub resume_remote: String,
     pub quit: String,
 }
 
@@ -1482,6 +1485,7 @@ pub(crate) fn parse_tray_helper_action(line: &str) -> Option<TrayEvent> {
         "FIND_PHONE" => Some(TrayEvent::FindPhone),
         "OPEN_LINK" => Some(TrayEvent::OpenLinkOnPhone),
         "PAUSE_NOTIFICATIONS" => Some(TrayEvent::ToggleNotificationsPause),
+        "PAUSE_REMOTE" => Some(TrayEvent::ToggleRemotePause),
         "QUIT" => Some(TrayEvent::Quit),
         _ => None,
     }
@@ -1538,6 +1542,7 @@ impl Tray {
                 &labels.find_phone,
                 &labels.open_link,
                 &labels.pause_notifications,
+                &labels.pause_remote,
                 &labels.quit,
             );
             let stop_clone = Arc::clone(&stop);
@@ -1602,6 +1607,13 @@ impl Tray {
         let labels = self.labels.lock().unwrap_or_else(|e| e.into_inner());
         let label = if paused { &labels.resume_notifications } else { &labels.pause_notifications };
         crate::bridge::native::ffi::linux_tray_set_pause_label(label);
+    }
+
+    /// Says Pause remote control or Resume remote control in the menu.
+    pub fn set_remote_paused(&self, paused: bool) {
+        let labels = self.labels.lock().unwrap_or_else(|e| e.into_inner());
+        let label = if paused { &labels.resume_remote } else { &labels.pause_remote };
+        crate::bridge::native::ffi::linux_tray_set_remote_pause_label(label);
     }
 
     /// Whether "Find my phone" is offered (a phone is paired).
@@ -1745,6 +1757,8 @@ mod tests {
             open_link: "Open link".into(),
             pause_notifications: "Pause".into(),
             resume_notifications: "Resume".into(),
+            pause_remote: "Pause remote".into(),
+            resume_remote: "Resume remote".into(),
             quit: "Quit".into(),
         };
         let tray = Tray::create("NectarLink", labels, |_| {}).expect("create tray");

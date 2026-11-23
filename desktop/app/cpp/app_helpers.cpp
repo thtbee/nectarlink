@@ -669,6 +669,7 @@ struct LinuxTrayState {
     QPointer<QAction> findPhoneAction;
     QPointer<QAction> openLinkAction;
     QPointer<QAction> pauseAction;
+    QPointer<QAction> pauseRemoteAction;
     bool phoneActionsEnabled = false;
     std::mutex mutex;
     std::condition_variable cv;
@@ -821,6 +822,7 @@ void linux_tray_setup(
     rust::Str find_phone_label,
     rust::Str open_link_label,
     rust::Str pause_notifications_label,
+    rust::Str pause_remote_label,
     rust::Str quit_label)
 {
 #if defined(__linux__) || defined(__APPLE__)
@@ -834,6 +836,7 @@ void linux_tray_setup(
     const QString findPhoneStr = QString::fromUtf8(find_phone_label.data(), static_cast<qsizetype>(find_phone_label.size()));
     const QString openLinkStr = QString::fromUtf8(open_link_label.data(), static_cast<qsizetype>(open_link_label.size()));
     const QString pauseStr = QString::fromUtf8(pause_notifications_label.data(), static_cast<qsizetype>(pause_notifications_label.size()));
+    const QString pauseRemoteStr = QString::fromUtf8(pause_remote_label.data(), static_cast<qsizetype>(pause_remote_label.size()));
     const QString quitStr = QString::fromUtf8(quit_label.data(), static_cast<qsizetype>(quit_label.size()));
 
     runOnQtMainThread([=]() {
@@ -879,6 +882,9 @@ void linux_tray_setup(
 
         QAction *pause = menu->addAction(pauseStr);
         QObject::connect(pause, &QAction::triggered, menu, []() { pushTrayAction("PAUSE_NOTIFICATIONS"); });
+
+        QAction *pauseRemote = menu->addAction(pauseRemoteStr);
+        QObject::connect(pauseRemote, &QAction::triggered, menu, []() { pushTrayAction("PAUSE_REMOTE"); });
 
         menu->addSeparator();
         QObject::connect(menu->addAction(quitStr), &QAction::triggered, menu, []() { pushTrayAction("QUIT"); });
@@ -929,6 +935,7 @@ void linux_tray_setup(
         st.findPhoneAction = findPhone;
         st.openLinkAction = openLink;
         st.pauseAction = pause;
+        st.pauseRemoteAction = pauseRemote;
     });
 #else
     (void)icon_path;
@@ -941,6 +948,7 @@ void linux_tray_setup(
     (void)find_phone_label;
     (void)open_link_label;
     (void)pause_notifications_label;
+    (void)pause_remote_label;
     (void)quit_label;
 #endif
 }
@@ -951,6 +959,19 @@ void linux_tray_set_pause_label(rust::Str label)
     const QString text = QString::fromUtf8(label.data(), static_cast<qsizetype>(label.size()));
     runOnQtMainThread([text]() {
         if (auto *action = linuxTray().pauseAction.data())
+            action->setText(text);
+    });
+#else
+    (void)label;
+#endif
+}
+
+void linux_tray_set_remote_pause_label(rust::Str label)
+{
+#if defined(__linux__) || defined(__APPLE__)
+    const QString text = QString::fromUtf8(label.data(), static_cast<qsizetype>(label.size()));
+    runOnQtMainThread([text]() {
+        if (auto *action = linuxTray().pauseRemoteAction.data())
             action->setText(text);
     });
 #else

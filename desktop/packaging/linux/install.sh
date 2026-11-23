@@ -37,6 +37,8 @@ VCAM_MODPROBE_CONF="/etc/modprobe.d/nectarlink-vcam.conf"
 UINPUT_RULE="/etc/udev/rules.d/70-nectarlink-uinput.rules"
 UINPUT_MODULES_CONF="/etc/modules-load.d/nectarlink-uinput.conf"
 PRIVATE_NETS="192.168.0.0/16 10.0.0.0/8 172.16.0.0/12"
+TAILSCALE_V4="100.64.0.0/10"
+TAILSCALE_V6="fd7a:115c:a1e0::/48"
 
 STEP=0
 STEPS=7
@@ -415,6 +417,9 @@ ufw_rules() {
         done
         echo "ufw $1 allow from $net to any port $MDNS_PORT proto udp"
     done
+    for net in $TAILSCALE_V4 $TAILSCALE_V6; do
+        echo "ufw $1 allow from $net to any port $DATA_PORT proto udp"
+    done
 }
 
 firewalld_rules() {
@@ -426,12 +431,14 @@ firewalld_rules() {
         done
         echo "firewall-cmd --permanent --$1-rich-rule='rule family=\"ipv4\" source address=\"$net\" port port=\"$MDNS_PORT\" protocol=\"udp\" accept'"
     done
+    echo "firewall-cmd --permanent --$1-rich-rule='rule family=\"ipv4\" source address=\"$TAILSCALE_V4\" port port=\"$DATA_PORT\" protocol=\"udp\" accept'"
     for port in $DATA_PORT $LOCALSEND_PORT; do
         for proto in tcp udp; do
             echo "firewall-cmd --permanent --$1-rich-rule='rule family=\"ipv6\" source address=\"fe80::/10\" port port=\"$port\" protocol=\"$proto\" accept'"
         done
     done
     echo "firewall-cmd --permanent --$1-rich-rule='rule family=\"ipv6\" source address=\"fe80::/10\" port port=\"$MDNS_PORT\" protocol=\"udp\" accept'"
+    echo "firewall-cmd --permanent --$1-rich-rule='rule family=\"ipv6\" source address=\"$TAILSCALE_V6\" port port=\"$DATA_PORT\" protocol=\"udp\" accept'"
 }
 
 firewall_kind() {
@@ -465,7 +472,7 @@ setup_firewall() {
             ufw_rules "" | while IFS= read -r rule; do
                 # IPv6 rules fail where ufw has IPv6 turned off; that's fine.
                 # shellcheck disable=SC2086
-                admin $rule || case "$rule" in *fe80::*) ;; *) exit 1 ;; esac
+                admin $rule || case "$rule" in *fe80::*|*fd7a:115c:a1e0::*) ;; *) exit 1 ;; esac
             done || { note "Some rules didn't apply; NectarLink's Settings can fix this later."; return 0; }
             remember_firewall
             good "Ready: phones on your network can reach this PC"

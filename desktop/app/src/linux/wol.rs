@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 use std::collections::{BTreeSet, HashMap};
 use std::fs;
-use std::net::Ipv4Addr;
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::path::Path;
 use std::process::Command;
 
@@ -441,6 +441,44 @@ fn query_ipv4_broadcasts() -> HashMap<String, Vec<String>> {
         }
     }
     map
+}
+
+/// All non-loopback IPv4 and IPv6 unicast addresses currently assigned to UP
+/// interfaces on this machine (including Tailscale / VPN tunnels).
+pub fn interface_ips() -> Vec<IpAddr> {
+    let mut out = Vec::new();
+    let mut ifap: *mut libc::ifaddrs = std::ptr::null_mut();
+    // SAFETY: `getifaddrs` allocates a linked list freed by `freeifaddrs`.
+    if unsafe { libc::getifaddrs(&mut ifap) } == 0 && !ifap.is_null() {
+        let mut cur = ifap;
+        // SAFETY: iterating valid `ifaddrs` nodes before `freeifaddrs`.
+        unsafe {
+            while let Some(ifa) = cur.as_ref() {
+                cur = ifa.ifa_next;
+                let flags = ifa.ifa_flags as i32;
+                if (flags & libc::IFF_UP) == 0 || (flags & libc::IFF_LOOPBACK) != 0 || ifa.ifa_addr.is_null()
+                {
+                    continue;
+                }
+                let ip = match i32::from((*ifa.ifa_addr).sa_family) {
+                    libc::AF_INET => {
+                        let sin = *ifa.ifa_addr.cast::<libc::sockaddr_in>();
+                        IpAddr::V4(Ipv4Addr::from(u32::from_be(sin.sin_addr.s_addr)))
+                    }
+                    libc::AF_INET6 => {
+                        let sin6 = *ifa.ifa_addr.cast::<libc::sockaddr_in6>();
+                        IpAddr::V6(Ipv6Addr::from(sin6.sin6_addr.s6_addr))
+                    }
+                    _ => continue,
+                };
+                if !ip.is_loopback() && !ip.is_unspecified() && !out.contains(&ip) {
+                    out.push(ip);
+                }
+            }
+            libc::freeifaddrs(ifap);
+        }
+    }
+    out
 }
 
 pub fn normalize_mac(raw: &str) -> Option<String> {

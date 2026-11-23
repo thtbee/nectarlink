@@ -8,9 +8,12 @@ use std::{
     time::{Duration, Instant},
 };
 
-use nectarlink_core::{ButtonAction, KeyMod, MouseButton, PowerAction, SlideAction, TouchAction};
+use nectarlink_core::{
+    ButtonAction, GestureAction, KeyMod, MouseButton, PowerAction, RemoteInfo, RemoteMonitorRect,
+    SlideAction, TouchAction,
+};
 use windows::Win32::{
-    Foundation::{LPARAM, RECT, WPARAM},
+    Foundation::{LPARAM, POINT, RECT, WPARAM},
     UI::{
         Input::{
             Ime::ImmGetDefaultIMEWnd,
@@ -20,24 +23,28 @@ use windows::Win32::{
                 MAPVK_VK_TO_VSC, MOUSE_EVENT_FLAGS, MOUSEEVENTF_ABSOLUTE, MOUSEEVENTF_HWHEEL,
                 MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP,
                 MOUSEEVENTF_MOVE, MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP, MOUSEEVENTF_VIRTUALDESK,
-                MOUSEEVENTF_WHEEL, MOUSEINPUT, MapVirtualKeyExW, SendInput, ToUnicodeEx, VIRTUAL_KEY, VK_A,
-                VK_B, VK_BACK, VK_C, VK_CAPITAL, VK_CONTROL, VK_DELETE, VK_DOWN, VK_END, VK_ESCAPE, VK_F1,
-                VK_F5, VK_HOME, VK_INSERT, VK_LEFT, VK_LWIN, VK_MEDIA_NEXT_TRACK, VK_MEDIA_PLAY_PAUSE,
-                VK_MEDIA_PREV_TRACK, VK_MENU, VK_NEXT, VK_PRIOR, VK_RETURN, VK_RIGHT, VK_SHIFT, VK_SPACE,
-                VK_TAB, VK_UP, VK_V, VK_VOLUME_DOWN, VK_VOLUME_MUTE, VK_VOLUME_UP, VK_X, VK_Y, VK_Z,
-                VkKeyScanExW,
+                MOUSEEVENTF_WHEEL, MOUSEEVENTF_XDOWN, MOUSEEVENTF_XUP, MOUSEINPUT, MapVirtualKeyExW,
+                SendInput, ToUnicodeEx, VIRTUAL_KEY, VK_A, VK_APPS, VK_B, VK_BACK, VK_BROWSER_BACK,
+                VK_BROWSER_FORWARD, VK_C, VK_CAPITAL, VK_CONTROL, VK_DELETE, VK_DOWN, VK_END, VK_ESCAPE,
+                VK_F1, VK_F5, VK_HOME, VK_INSERT, VK_LEFT, VK_LWIN, VK_MEDIA_NEXT_TRACK, VK_MEDIA_PLAY_PAUSE,
+                VK_MEDIA_PREV_TRACK, VK_MEDIA_STOP, VK_MENU, VK_NEXT, VK_OEM_PERIOD, VK_PAUSE, VK_PRIOR,
+                VK_RETURN, VK_RIGHT, VK_SHIFT, VK_SNAPSHOT, VK_SPACE, VK_TAB, VK_UP, VK_V, VK_VOLUME_DOWN,
+                VK_VOLUME_MUTE, VK_VOLUME_UP, VK_X, VK_Y, VK_Z, VkKeyScanExW,
             },
         },
         WindowsAndMessaging::{
-            GetForegroundWindow, GetSystemMetrics, GetWindowThreadProcessId, SM_CXVIRTUALSCREEN,
-            SM_CYVIRTUALSCREEN, SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN, SMTO_ABORTIFHUNG, SendMessageTimeoutW,
-            WHEEL_DELTA, WM_IME_CONTROL,
+            GetCursorPos, GetForegroundWindow, GetSystemMetrics, GetWindowThreadProcessId,
+            SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN, SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN, SMTO_ABORTIFHUNG,
+            SendMessageTimeoutW, WHEEL_DELTA, WM_IME_CONTROL,
         },
     },
 };
 
+const XBUTTON1_DATA: i32 = 0x0001;
+const XBUTTON2_DATA: i32 = 0x0002;
+
 /// Fractional remainders for sub-pixel pointer motion and sub-notch scrolling,
-/// plus which mouse buttons are currently held down by remote input.
+/// plus which mouse buttons and modifiers are currently held down by remote input.
 #[derive(Default)]
 struct InputState {
     move_rem_x: f32,
@@ -47,6 +54,10 @@ struct InputState {
     held_left: bool,
     held_right: bool,
     held_middle: bool,
+    held_back: bool,
+    held_forward: bool,
+    held_mods: Vec<KeyMod>,
+    alt_tab_held: bool,
 }
 
 static STATE: Mutex<InputState> = Mutex::new(InputState {
@@ -57,6 +68,10 @@ static STATE: Mutex<InputState> = Mutex::new(InputState {
     held_left: false,
     held_right: false,
     held_middle: false,
+    held_back: false,
+    held_forward: false,
+    held_mods: Vec::new(),
+    alt_tab_held: false,
 });
 
 /// The screen a phone viewing this PC shows (#442), when it isn't the main
@@ -220,10 +235,12 @@ pub fn mirror_touch(action: TouchAction, x: f32, y: f32) {
 
 /// Presses, releases or clicks a mouse button.
 pub fn mouse_button(button: MouseButton, action: ButtonAction) {
-    let (down_flag, up_flag) = match button {
-        MouseButton::Left => (MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP),
-        MouseButton::Right => (MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP),
-        MouseButton::Middle => (MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP),
+    let (down_flag, up_flag, data) = match button {
+        MouseButton::Left => (MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, 0),
+        MouseButton::Right => (MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP, 0),
+        MouseButton::Middle => (MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP, 0),
+        MouseButton::Back => (MOUSEEVENTF_XDOWN, MOUSEEVENTF_XUP, XBUTTON1_DATA),
+        MouseButton::Forward => (MOUSEEVENTF_XDOWN, MOUSEEVENTF_XUP, XBUTTON2_DATA),
     };
     {
         let mut s = STATE.lock().unwrap_or_else(|e| e.into_inner());
@@ -231,26 +248,39 @@ pub fn mouse_button(button: MouseButton, action: ButtonAction) {
             MouseButton::Left => &mut s.held_left,
             MouseButton::Right => &mut s.held_right,
             MouseButton::Middle => &mut s.held_middle,
+            MouseButton::Back => &mut s.held_back,
+            MouseButton::Forward => &mut s.held_forward,
         };
         *slot = matches!(action, ButtonAction::Down);
     }
     match action {
-        ButtonAction::Down => send_inputs(&[mouse_input(0, 0, 0, down_flag)]),
-        ButtonAction::Up => send_inputs(&[mouse_input(0, 0, 0, up_flag)]),
+        ButtonAction::Down => send_inputs(&[mouse_input(0, 0, data, down_flag)]),
+        ButtonAction::Up => send_inputs(&[mouse_input(0, 0, data, up_flag)]),
         ButtonAction::Click => {
-            send_inputs(&[mouse_input(0, 0, 0, down_flag), mouse_input(0, 0, 0, up_flag)]);
+            send_inputs(&[mouse_input(0, 0, data, down_flag), mouse_input(0, 0, data, up_flag)]);
         }
     }
 }
 
-/// Releases any mouse buttons still held down by remote input.
+/// Releases any mouse buttons and modifiers still held down by remote input.
 pub fn release_held_buttons() {
-    let (left, right, middle) = {
+    let (left, right, middle, back, forward, held_mods, alt_tab_held) = {
         let mut s = STATE.lock().unwrap_or_else(|e| e.into_inner());
-        let held = (s.held_left, s.held_right, s.held_middle);
+        let held = (
+            s.held_left,
+            s.held_right,
+            s.held_middle,
+            s.held_back,
+            s.held_forward,
+            std::mem::take(&mut s.held_mods),
+            s.alt_tab_held,
+        );
         s.held_left = false;
         s.held_right = false;
         s.held_middle = false;
+        s.held_back = false;
+        s.held_forward = false;
+        s.alt_tab_held = false;
         s.move_rem_x = 0.0;
         s.move_rem_y = 0.0;
         s.scroll_rem_x = 0.0;
@@ -266,6 +296,19 @@ pub fn release_held_buttons() {
     }
     if middle {
         inputs.push(mouse_input(0, 0, 0, MOUSEEVENTF_MIDDLEUP));
+    }
+    if back {
+        inputs.push(mouse_input(0, 0, XBUTTON1_DATA, MOUSEEVENTF_XUP));
+    }
+    if forward {
+        inputs.push(mouse_input(0, 0, XBUTTON2_DATA, MOUSEEVENTF_XUP));
+    }
+    for m in held_mods.into_iter().rev() {
+        let (mvk, mext) = mod_vk(m);
+        inputs.push(vk_input(mvk, mext, true));
+    }
+    if alt_tab_held {
+        inputs.push(vk_input(VK_MENU, false, true));
     }
     send_inputs(&inputs);
 }
@@ -466,7 +509,7 @@ fn resolve_key(key: &str) -> Option<(VIRTUAL_KEY, bool, &'static [KeyMod])> {
         "enter" => (VK_RETURN, false, NONE),
         "backspace" => (VK_BACK, false, NONE),
         "tab" => (VK_TAB, false, NONE),
-        "escape" => (VK_ESCAPE, false, NONE),
+        "escape" | "esc" => (VK_ESCAPE, false, NONE),
         "space" => (VK_SPACE, false, NONE),
         "delete" => (VK_DELETE, true, NONE),
         "insert" => (VK_INSERT, true, NONE),
@@ -476,8 +519,13 @@ fn resolve_key(key: &str) -> Option<(VIRTUAL_KEY, bool, &'static [KeyMod])> {
         "right" => (VK_RIGHT, true, NONE),
         "home" => (VK_HOME, true, NONE),
         "end" => (VK_END, true, NONE),
-        "page_up" => (VK_PRIOR, true, NONE),
-        "page_down" => (VK_NEXT, true, NONE),
+        "page_up" | "pageup" => (VK_PRIOR, true, NONE),
+        "page_down" | "pagedown" => (VK_NEXT, true, NONE),
+        "win" | "super" => (VK_LWIN, true, NONE),
+        "print" | "printscreen" | "print_screen" => (VK_SNAPSHOT, true, NONE),
+        "pause" => (VK_PAUSE, false, NONE),
+        "capslock" => (VK_CAPITAL, false, NONE),
+        "menu" => (VK_APPS, true, NONE),
         "f1" => (VK_F1, false, NONE),
         "f2" => (VIRTUAL_KEY(VK_F1.0 + 1), false, NONE),
         "f3" => (VIRTUAL_KEY(VK_F1.0 + 2), false, NONE),
@@ -490,12 +538,15 @@ fn resolve_key(key: &str) -> Option<(VIRTUAL_KEY, bool, &'static [KeyMod])> {
         "f10" => (VIRTUAL_KEY(VK_F1.0 + 9), false, NONE),
         "f11" => (VIRTUAL_KEY(VK_F1.0 + 10), false, NONE),
         "f12" => (VIRTUAL_KEY(VK_F1.0 + 11), false, NONE),
-        "volume_up" => (VK_VOLUME_UP, true, NONE),
-        "volume_down" => (VK_VOLUME_DOWN, true, NONE),
-        "volume_mute" => (VK_VOLUME_MUTE, true, NONE),
-        "play_pause" => (VK_MEDIA_PLAY_PAUSE, true, NONE),
-        "next_track" => (VK_MEDIA_NEXT_TRACK, true, NONE),
-        "prev_track" => (VK_MEDIA_PREV_TRACK, true, NONE),
+        "volume_up" | "volup" => (VK_VOLUME_UP, true, NONE),
+        "volume_down" | "voldown" => (VK_VOLUME_DOWN, true, NONE),
+        "volume_mute" | "mute" => (VK_VOLUME_MUTE, true, NONE),
+        "play_pause" | "media_play_pause" | "playpause" => (VK_MEDIA_PLAY_PAUSE, true, NONE),
+        "next_track" | "media_next" | "next" => (VK_MEDIA_NEXT_TRACK, true, NONE),
+        "prev_track" | "media_previous" | "prev" => (VK_MEDIA_PREV_TRACK, true, NONE),
+        "media_stop" | "stop" => (VK_MEDIA_STOP, true, NONE),
+        "browserback" => (VK_BROWSER_BACK, true, NONE),
+        "browserforward" => (VK_BROWSER_FORWARD, true, NONE),
         s if s.len() == 1 => {
             let b = s.as_bytes()[0];
             if b.is_ascii_lowercase() {
@@ -559,6 +610,267 @@ pub fn slide(action: SlideAction) {
         SlideAction::Black => (VK_B, false),
     };
     send_inputs(&[vk_input(vk, extended, false), vk_input(vk, extended, true)]);
+}
+
+/// Precision relative pointer motion that steps the virtual desktop cursor
+/// directly in pixels, bypassing Windows' pointer acceleration curve.
+pub fn move_precise(dx: f32, dy: f32) {
+    if !dx.is_finite() || !dy.is_finite() {
+        return;
+    }
+    let (ix, iy) = {
+        let mut s = STATE.lock().unwrap_or_else(|e| e.into_inner());
+        let total_x = s.move_rem_x + dx;
+        let total_y = s.move_rem_y + dy;
+        let ix = total_x.round() as i32;
+        let iy = total_y.round() as i32;
+        s.move_rem_x = total_x - (ix as f32);
+        s.move_rem_y = total_y - (iy as f32);
+        (ix, iy)
+    };
+    if ix == 0 && iy == 0 {
+        return;
+    }
+    let mut pt = POINT::default();
+    // SAFETY: plain Win32 cursor & virtual-desktop metric queries.
+    let (ok, left, top, width, height) = unsafe {
+        let ok = GetCursorPos(&mut pt).is_ok();
+        (
+            ok,
+            GetSystemMetrics(SM_XVIRTUALSCREEN),
+            GetSystemMetrics(SM_YVIRTUALSCREEN),
+            GetSystemMetrics(SM_CXVIRTUALSCREEN),
+            GetSystemMetrics(SM_CYVIRTUALSCREEN),
+        )
+    };
+    if !ok || width <= 1 || height <= 1 {
+        send_inputs(&[mouse_input(ix, iy, 0, MOUSEEVENTF_MOVE)]);
+        return;
+    }
+    let span_x = (width - 1) as f32;
+    let span_y = (height - 1) as f32;
+    let nx = ((pt.x.saturating_add(ix) - left) as f32 / span_x).clamp(0.0, 1.0);
+    let ny = ((pt.y.saturating_add(iy) - top) as f32 / span_y).clamp(0.0, 1.0);
+    let ax = (nx * 65535.0).round() as i32;
+    let ay = (ny * 65535.0).round() as i32;
+    send_inputs(&[mouse_input(ax, ay, 0, MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_VIRTUALDESK)]);
+}
+
+/// Moves the mouse cursor to normalized coordinates `(0.0..=1.0)` across the
+/// full Windows virtual desktop, optionally clicking `button`.
+pub fn move_virtual_desktop(x: f32, y: f32, click: Option<MouseButton>) {
+    if !x.is_finite() || !y.is_finite() {
+        return;
+    }
+    let ax = (x.clamp(0.0, 1.0) * 65535.0).round() as i32;
+    let ay = (y.clamp(0.0, 1.0) * 65535.0).round() as i32;
+    send_inputs(&[mouse_input(ax, ay, 0, MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_VIRTUALDESK)]);
+    if let Some(button) = click {
+        mouse_button(button, ButtonAction::Click);
+    }
+}
+
+/// Pinch-zoom via a scoped `Ctrl` + vertical wheel gesture (`delta > 0` zooms in).
+pub fn zoom(delta: f32) {
+    if !delta.is_finite() || delta == 0.0 {
+        return;
+    }
+    let wheel = (delta * WHEEL_DELTA as f32).round() as i32;
+    if wheel == 0 {
+        return;
+    }
+    send_inputs(&[
+        vk_input(VK_CONTROL, false, false),
+        mouse_input(0, 0, wheel, MOUSEEVENTF_WHEEL),
+        vk_input(VK_CONTROL, false, true),
+    ]);
+}
+
+/// Presses (or releases) `mods` on their own and keeps them for
+/// [`release_held_buttons`]; `remote` uses it for holds shared by phones.
+pub fn hold_mods(mods: &[KeyMod], down: bool) {
+    if mods.is_empty() {
+        return;
+    }
+    {
+        let mut s = STATE.lock().unwrap_or_else(|e| e.into_inner());
+        if down {
+            for &m in mods {
+                if !s.held_mods.contains(&m) {
+                    s.held_mods.push(m);
+                }
+            }
+        } else {
+            s.held_mods.retain(|m| !mods.contains(m));
+        }
+    }
+    let inputs: Vec<INPUT> = if down {
+        mods.iter()
+            .map(|&m| {
+                let (mvk, mext) = mod_vk(m);
+                vk_input(mvk, mext, false)
+            })
+            .collect()
+    } else {
+        mods.iter()
+            .rev()
+            .map(|&m| {
+                let (mvk, mext) = mod_vk(m);
+                vk_input(mvk, mext, true)
+            })
+            .collect()
+    };
+    send_inputs(&inputs);
+}
+
+/// Executes a mouse button action while holding `mods`.
+pub fn modified_button(button: MouseButton, action: ButtonAction, mods: &[KeyMod]) {
+    if mods.is_empty() {
+        mouse_button(button, action);
+        return;
+    }
+    match action {
+        ButtonAction::Click => {
+            let mut down = Vec::with_capacity(mods.len());
+            for &m in mods {
+                let (mvk, mext) = mod_vk(m);
+                down.push(vk_input(mvk, mext, false));
+            }
+            send_inputs(&down);
+            mouse_button(button, ButtonAction::Click);
+            let mut up = Vec::with_capacity(mods.len());
+            for &m in mods.iter().rev() {
+                let (mvk, mext) = mod_vk(m);
+                up.push(vk_input(mvk, mext, true));
+            }
+            send_inputs(&up);
+        }
+        ButtonAction::Down => {
+            {
+                let mut s = STATE.lock().unwrap_or_else(|e| e.into_inner());
+                for &m in mods {
+                    if !s.held_mods.contains(&m) {
+                        s.held_mods.push(m);
+                    }
+                }
+            }
+            let down: Vec<INPUT> = mods
+                .iter()
+                .map(|&m| {
+                    let (mvk, mext) = mod_vk(m);
+                    vk_input(mvk, mext, false)
+                })
+                .collect();
+            send_inputs(&down);
+            mouse_button(button, ButtonAction::Down);
+        }
+        ButtonAction::Up => {
+            mouse_button(button, ButtonAction::Up);
+            let up: Vec<INPUT> = mods
+                .iter()
+                .rev()
+                .map(|&m| {
+                    let (mvk, mext) = mod_vk(m);
+                    vk_input(mvk, mext, true)
+                })
+                .collect();
+            send_inputs(&up);
+            let mut s = STATE.lock().unwrap_or_else(|e| e.into_inner());
+            s.held_mods.retain(|m| !mods.contains(m));
+        }
+    }
+}
+
+/// Executes a Windows desktop gesture (Alt-Tab switcher, Task View, virtual desktops, etc.).
+pub fn gesture(action: GestureAction) {
+    match action {
+        GestureAction::SwitchStart | GestureAction::SwitchNext => {
+            let already = {
+                let mut s = STATE.lock().unwrap_or_else(|e| e.into_inner());
+                let prev = s.alt_tab_held;
+                s.alt_tab_held = true;
+                prev
+            };
+            let mut inputs = Vec::with_capacity(3);
+            if !already {
+                inputs.push(vk_input(VK_MENU, false, false));
+            }
+            inputs.push(vk_input(VK_TAB, false, false));
+            inputs.push(vk_input(VK_TAB, false, true));
+            send_inputs(&inputs);
+        }
+        GestureAction::SwitchPrev => {
+            let already = {
+                let mut s = STATE.lock().unwrap_or_else(|e| e.into_inner());
+                let prev = s.alt_tab_held;
+                s.alt_tab_held = true;
+                prev
+            };
+            let mut inputs = Vec::with_capacity(5);
+            if !already {
+                inputs.push(vk_input(VK_MENU, false, false));
+            }
+            inputs.push(vk_input(VK_SHIFT, false, false));
+            inputs.push(vk_input(VK_TAB, false, false));
+            inputs.push(vk_input(VK_TAB, false, true));
+            inputs.push(vk_input(VK_SHIFT, false, true));
+            send_inputs(&inputs);
+        }
+        GestureAction::SwitchEnd => {
+            let was = {
+                let mut s = STATE.lock().unwrap_or_else(|e| e.into_inner());
+                std::mem::replace(&mut s.alt_tab_held, false)
+            };
+            if was {
+                send_inputs(&[vk_input(VK_MENU, false, true)]);
+            }
+        }
+        GestureAction::SwitchCancel => {
+            let was = {
+                let mut s = STATE.lock().unwrap_or_else(|e| e.into_inner());
+                std::mem::replace(&mut s.alt_tab_held, false)
+            };
+            let mut inputs = vec![vk_input(VK_ESCAPE, false, false), vk_input(VK_ESCAPE, false, true)];
+            if was {
+                inputs.push(vk_input(VK_MENU, false, true));
+            }
+            send_inputs(&inputs);
+        }
+        GestureAction::OverviewOpen => press_key("tab", &[KeyMod::Win]),
+        GestureAction::OverviewClose => press_key("escape", &[]),
+        GestureAction::DesktopToggle => press_key("d", &[KeyMod::Win]),
+        GestureAction::WorkspaceNext => press_key("right", &[KeyMod::Ctrl, KeyMod::Win]),
+        GestureAction::WorkspacePrev => press_key("left", &[KeyMod::Ctrl, KeyMod::Win]),
+        GestureAction::Search => press_key("s", &[KeyMod::Win]),
+        GestureAction::Notifications => press_key("n", &[KeyMod::Win]),
+        GestureAction::Launcher => {
+            send_inputs(&[vk_input(VK_LWIN, true, false), vk_input(VK_LWIN, true, true)])
+        }
+        GestureAction::CloseWindow => press_key("f4", &[KeyMod::Alt]),
+        GestureAction::Screenshot => press_key("s", &[KeyMod::Win, KeyMod::Shift]),
+        GestureAction::Emoji => send_inputs(&[
+            vk_input(VK_LWIN, true, false),
+            vk_input(VK_OEM_PERIOD, false, false),
+            vk_input(VK_OEM_PERIOD, false, true),
+            vk_input(VK_LWIN, true, true),
+        ]),
+    }
+}
+
+/// Reports this Windows PC's remote profile, supported gestures, and monitor layout.
+pub fn remote_info() -> RemoteInfo {
+    let monitors = super::displays::list()
+        .into_iter()
+        .map(|d| RemoteMonitorRect {
+            name: format!("Display {}", d.id + 1),
+            x: d.rect.left,
+            y: d.rect.top,
+            width: d.width(),
+            height: d.height(),
+            primary: d.primary,
+        })
+        .collect();
+    RemoteInfo { profile: "windows".to_owned(), supported_actions: GestureAction::ALL.to_vec(), monitors }
 }
 
 #[repr(C)]

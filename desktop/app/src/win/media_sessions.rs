@@ -294,6 +294,7 @@ fn snapshot(
     let now = Instant::now();
     for p in &players {
         if p.playing {
+            crate::audio_route::note_media_session_playing(&p.id);
             paused_for_call(|s| s.observe_playing(&p.id, now));
         }
     }
@@ -766,6 +767,7 @@ fn paused_for_call<T>(f: impl FnOnce(&mut PausedForCall) -> T) -> T {
 /// Pauses any PC media sessions that are currently playing (excluding
 /// NectarLink's own SMTC session) and remembers them so [`resume_after_call`]
 /// can resume only what NectarLink paused.
+#[allow(dead_code)]
 pub fn pause_for_call() {
     let Some(manager) = MANAGER.get().cloned() else { return };
     std::thread::spawn(move || {
@@ -799,6 +801,7 @@ pub fn pause_for_call() {
 
 /// Resumes only the PC media sessions that [`pause_for_call`] paused and that
 /// are still paused.
+#[allow(dead_code)]
 pub fn resume_after_call() {
     let Some(manager) = MANAGER.get().cloned() else { return };
     std::thread::spawn(move || {
@@ -828,6 +831,86 @@ pub fn resume_after_call() {
             }
         }
     });
+}
+
+/// Lists active SMTC media sessions (excluding NectarLink's own) as
+/// `(aumid, is_playing, is_paused)`.
+pub fn list_sessions() -> Vec<(String, bool, bool)> {
+    // SAFETY: ensures the caller thread is in the multithreaded COM apartment before WinRT calls.
+    unsafe {
+        let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
+    }
+    let Some(manager) = MANAGER.get() else {
+        return Vec::new();
+    };
+    let Ok(sessions) = manager.GetSessions() else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    for session in sessions {
+        let Ok(id_h) = session.SourceAppUserModelId() else { continue };
+        let id = id_h.to_string();
+        if id == AUMID {
+            continue;
+        }
+        let status = session.GetPlaybackInfo().and_then(|info| info.PlaybackStatus()).ok();
+        let playing = status == Some(GlobalSystemMediaTransportControlsSessionPlaybackStatus::Playing);
+        let paused = status == Some(GlobalSystemMediaTransportControlsSessionPlaybackStatus::Paused);
+        out.push((id, playing, paused));
+    }
+    out
+}
+
+/// Pauses the SMTC session matching `id` if it is currently playing.
+pub fn pause_session_if_playing(id: &str) -> bool {
+    // SAFETY: ensures the caller thread is in the multithreaded COM apartment before WinRT calls.
+    unsafe {
+        let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
+    }
+    let Some(manager) = MANAGER.get() else {
+        return false;
+    };
+    let Ok(sessions) = manager.GetSessions() else {
+        return false;
+    };
+    for session in sessions {
+        if session.SourceAppUserModelId().is_ok_and(|h| h == id) {
+            let is_playing = session
+                .GetPlaybackInfo()
+                .and_then(|info| info.PlaybackStatus())
+                .is_ok_and(|s| s == GlobalSystemMediaTransportControlsSessionPlaybackStatus::Playing);
+            if is_playing && session.TryPauseAsync().and_then(|op| op.join()).unwrap_or(false) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+/// Resumes the SMTC session matching `id` if it is currently paused.
+pub fn play_session_if_paused(id: &str) -> bool {
+    // SAFETY: ensures the caller thread is in the multithreaded COM apartment before WinRT calls.
+    unsafe {
+        let _ = CoInitializeEx(None, COINIT_MULTITHREADED);
+    }
+    let Some(manager) = MANAGER.get() else {
+        return false;
+    };
+    let Ok(sessions) = manager.GetSessions() else {
+        return false;
+    };
+    for session in sessions {
+        if session.SourceAppUserModelId().is_ok_and(|h| h == id) {
+            let is_paused = session
+                .GetPlaybackInfo()
+                .and_then(|info| info.PlaybackStatus())
+                .is_ok_and(|s| s == GlobalSystemMediaTransportControlsSessionPlaybackStatus::Paused);
+            if is_paused && session.TryPlayAsync().and_then(|op| op.join()).unwrap_or(false) {
+                return true;
+            }
+        }
+    }
+    false
 }
 
 #[cfg(test)]

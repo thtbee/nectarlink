@@ -31,13 +31,18 @@ pub struct Adapters {
     pub vpn: bool,
 }
 
+pub fn parse_port_file(contents: &str) -> Option<u16> {
+    contents.split_whitespace().find_map(|tok| tok.parse::<u16>().ok().filter(|&p| p > 0))
+}
+
 pub fn active_node_port() -> u16 {
+    if let Some(node) = crate::core_host::node()
+        && let Some(port) = node.local_bound_addrs().into_iter().map(|a| a.port()).find(|&p| p > 0)
+    {
+        return port;
+    }
     let port_file = crate::core_host::host().data_dir.join("port");
-    fs::read_to_string(port_file)
-        .ok()
-        .and_then(|s| s.trim().parse::<u16>().ok())
-        .filter(|&p| p > 0)
-        .unwrap_or(DEFAULT_PORT)
+    fs::read_to_string(port_file).ok().and_then(|s| parse_port_file(&s)).unwrap_or(DEFAULT_PORT)
 }
 
 fn record_firewall_verified(port: u16) {
@@ -99,11 +104,7 @@ pub fn parse_ufw_status_for_port(output: &str, port: u16) -> Option<Firewall> {
         let touches_port = port_spec == port_str
             || port_spec == port_tcp
             || port_spec == port_udp
-            || port_spec.starts_with(&port_colon)
-            || port_spec == "7718"
-            || port_spec == "7718/tcp"
-            || port_spec == "7718/udp"
-            || port_spec.starts_with("7718:");
+            || port_spec.starts_with(&port_colon);
         if !touches_port {
             continue;
         }
@@ -111,12 +112,12 @@ pub fn parse_ufw_status_for_port(output: &str, port: u16) -> Option<Firewall> {
         if upper_line.contains("DENY") || upper_line.contains("REJECT") {
             blocked = true;
         } else if upper_line.contains("ALLOW") {
-            if port_spec == port_str || port_spec == "7718" {
+            if port_spec == port_str {
                 tcp_allowed = true;
                 udp_allowed = true;
-            } else if port_spec == port_tcp || port_spec == "7718/tcp" || port_spec.ends_with("/tcp") {
+            } else if port_spec == port_tcp || port_spec.ends_with("/tcp") {
                 tcp_allowed = true;
-            } else if port_spec == port_udp || port_spec == "7718/udp" || port_spec.ends_with("/udp") {
+            } else if port_spec == port_udp || port_spec.ends_with("/udp") {
                 udp_allowed = true;
             }
         }
@@ -626,10 +627,16 @@ pub fn build_ufw_fix_script(node_port: u16) -> String {
         })
         .collect();
     let joined = port_cmds.join(" && ");
+    let ts_udp: Vec<String> =
+        ports.iter().map(|p| format!("ufw allow from \"$cidr\" to any port {p} proto udp")).collect();
+    let ts_joined = ts_udp.join(" && ");
     format!(
         "for cidr in 192.168.0.0/16 10.0.0.0/8 172.16.0.0/12 fe80::/10; do \
            {joined} && \
            ufw allow from \"$cidr\" to any port {MDNS_PORT} proto udp || exit 1; \
+         done && \
+         for cidr in 100.64.0.0/10 fd7a:115c:a1e0::/48; do \
+           ({ts_joined}) || case \"$cidr\" in fd7a:*) ;; *) exit 1 ;; esac; \
          done"
     )
 }
@@ -655,10 +662,16 @@ pub fn build_firewalld_fix_script(node_port: u16) -> String {
     }
     for &p in &ports {
         cmds.push(format!(
+            "firewall-cmd --permanent --add-rich-rule='rule family=\"ipv4\" source address=\"100.64.0.0/10\" port port=\"{p}\" protocol=\"udp\" accept'"
+        ));
+        cmds.push(format!(
             "firewall-cmd --permanent --add-rich-rule='rule family=\"ipv6\" source address=\"fe80::/10\" port port=\"{p}\" protocol=\"tcp\" accept'"
         ));
         cmds.push(format!(
             "firewall-cmd --permanent --add-rich-rule='rule family=\"ipv6\" source address=\"fe80::/10\" port port=\"{p}\" protocol=\"udp\" accept'"
+        ));
+        cmds.push(format!(
+            "firewall-cmd --permanent --add-rich-rule='rule family=\"ipv6\" source address=\"fd7a:115c:a1e0::/48\" port port=\"{p}\" protocol=\"udp\" accept'"
         ));
     }
     cmds.push(format!(

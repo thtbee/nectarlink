@@ -4,6 +4,14 @@
 //! 32-bit float stereo samples to 16-bit signed little-endian PCM, and streams
 //! them to connected phones over NectarLink's low-latency audio stream.
 
+/// Managed AudioLink route destination for PC loopback capture.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ManagedRouteTarget {
+    pub peer: nectarlink_core::DeviceId,
+    pub generation: u64,
+    pub source_id: String,
+}
+
 /// Where the PC's sound goes: only to the phone that asked for it, waiting
 /// while it's away (never to another phone, which may be someone else's), or
 /// to the first online phone when the PC itself turned the speaker on.
@@ -63,6 +71,60 @@ mod imp {
     /// The phone that last turned "Phone speaker" on. Audio goes only there; when
     /// the PC turned it on, to the first phone that is online.
     static TARGET: std::sync::Mutex<Option<nectarlink_core::DeviceId>> = std::sync::Mutex::new(None);
+    /// Active managed AudioLink route target, if any.
+    static MANAGED_TARGET: std::sync::Mutex<Option<super::ManagedRouteTarget>> = std::sync::Mutex::new(None);
+
+    /// The active managed AudioLink route target, if any.
+    pub fn managed_target() -> Option<super::ManagedRouteTarget> {
+        MANAGED_TARGET.lock().unwrap_or_else(|e| e.into_inner()).clone()
+    }
+
+    /// Sets or clears the managed AudioLink loopback target.
+    pub fn set_managed_target(target: Option<super::ManagedRouteTarget>) {
+        let starting = target.is_some();
+        *MANAGED_TARGET.lock().unwrap_or_else(|e| e.into_inner()) = target;
+        if starting && core_host::node().is_some() {
+            ensure_worker();
+        }
+    }
+
+    /// Returns whether a managed AudioLink route is currently capturing.
+    pub fn is_managed_active() -> bool {
+        MANAGED_TARGET.lock().unwrap_or_else(|e| e.into_inner()).is_some()
+    }
+
+    fn should_run() -> bool {
+        is_enabled() || is_managed_active()
+    }
+
+    /// Converts interleaved float frames into clean 16-bit stereo PCM without EQ.
+    fn encode_clean_stereo_f32(floats: &[f32], channels: usize) -> Vec<u8> {
+        let ch = channels.max(1);
+        let frames = floats.len() / ch;
+        let mut out = Vec::with_capacity(frames * 4);
+        for frame in floats.chunks_exact(ch) {
+            let l = if frame[0].is_finite() { frame[0].clamp(-1.0, 1.0) } else { 0.0 };
+            let r = if ch > 1 && frame[1].is_finite() { frame[1].clamp(-1.0, 1.0) } else { l };
+            out.extend_from_slice(&((l * 32767.0).round() as i16).to_le_bytes());
+            out.extend_from_slice(&((r * 32767.0).round() as i16).to_le_bytes());
+        }
+        out
+    }
+
+    /// Converts interleaved i16 frames into clean 16-bit stereo PCM without EQ.
+    #[cfg_attr(any(target_os = "linux", target_os = "macos"), allow(dead_code))]
+    fn encode_clean_stereo_i16(samples: &[i16], channels: usize) -> Vec<u8> {
+        let ch = channels.max(1);
+        let frames = samples.len() / ch;
+        let mut out = Vec::with_capacity(frames * 4);
+        for frame in samples.chunks_exact(ch) {
+            let l = frame[0];
+            let r = if ch > 1 { frame[1] } else { l };
+            out.extend_from_slice(&l.to_le_bytes());
+            out.extend_from_slice(&r.to_le_bytes());
+        }
+        out
+    }
 
     /// The phone the sound goes to first, if one asked.
     pub fn target() -> Option<nectarlink_core::DeviceId> {
@@ -299,11 +361,11 @@ mod imp {
 
     #[cfg(target_os = "linux")]
     fn run_loopback_worker() {
-        while is_enabled() {
+        while should_run() {
             if let Err(e) = capture_and_stream_once() {
                 tracing::debug!(error = %e, "PC audio loopback stream cycle ended");
                 for _ in 0..30 {
-                    if !is_enabled() {
+                    if !should_run() {
                         break;
                     }
                     std::thread::sleep(Duration::from_millis(100));
@@ -325,10 +387,21 @@ mod imp {
             .filter(|d| matches!(d.link, nectarlink_core::LinkState::Online { .. }))
             .map(|d| d.id)
             .collect();
+        let managed = managed_target();
         let wanted = *TARGET.lock().unwrap_or_else(|e| e.into_inner());
-        let Some(peer) = super::pick_target(wanted, &peers) else {
-            std::thread::sleep(Duration::from_millis(500));
-            return Ok(());
+        let peer = if let Some(ref m) = managed {
+            if peers.contains(&m.peer) {
+                m.peer
+            } else {
+                std::thread::sleep(Duration::from_millis(200));
+                return Ok(());
+            }
+        } else {
+            let Some(p) = super::pick_target(wanted, &peers) else {
+                std::thread::sleep(Duration::from_millis(500));
+                return Ok(());
+            };
+            p
         };
 
         let monitor = resolve_default_monitor_source();
@@ -362,10 +435,32 @@ mod imp {
         let mut enhancer = SpeakerEnhancer::new(rate);
         let (tx, mut rx) = tokio::sync::mpsc::channel::<(u32, u8, Vec<u8>)>(64);
         let send_node = node.clone();
+        let send_managed = managed.clone();
         core_host::spawn(async move {
+            let mut seq: u32 = 0;
             while let Some((r, ch, pcm)) = rx.recv().await {
-                for chunk in pcm.chunks(960) {
-                    if send_node.send_pc_audio_pcm(&peer, r, ch, chunk.to_vec()).await.is_err() {
+                let stride = usize::from(ch).max(1) * 2;
+                let chunk_bytes = (960 / stride).max(1) * stride;
+                for chunk in pcm.chunks(chunk_bytes) {
+                    if let Some(ref m) = send_managed {
+                        let frame_count = (chunk.len() / stride) as u16;
+                        if frame_count == 0 {
+                            continue;
+                        }
+                        let frame = nectarlink_core::AudioRoutePcm {
+                            generation: m.generation,
+                            seq,
+                            sample_rate: r,
+                            channels: ch,
+                            frame_count,
+                            source_id: m.source_id.clone(),
+                            pcm: chunk.to_vec(),
+                        };
+                        seq = seq.wrapping_add(1);
+                        if send_node.send_route_pcm(m.peer, frame).is_err() {
+                            return;
+                        }
+                    } else if send_node.send_pc_audio_pcm(&peer, r, ch, chunk.to_vec()).await.is_err() {
                         return;
                     }
                 }
@@ -378,8 +473,11 @@ mod imp {
         let mut floats = vec![0.0_f32; frames_per_read * channels];
         let mut silence_tail_packets: u32 = 0;
 
-        while is_enabled() {
-            if target() != wanted && target().is_some_and(|t| peers.contains(&t)) {
+        while should_run() {
+            if managed_target() != managed {
+                break;
+            }
+            if managed.is_none() && target() != wanted && target().is_some_and(|t| peers.contains(&t)) {
                 break;
             }
             if stdout.read_exact(&mut raw_buf).is_err() {
@@ -391,7 +489,11 @@ mod imp {
             let has_signal = floats.iter().any(|&s| s.is_finite() && s.abs() > 1e-5);
             let pcm_bytes = if has_signal {
                 silence_tail_packets = 50;
-                enhancer.encode_stereo_f32(&floats, channels)
+                if managed.is_some() {
+                    encode_clean_stereo_f32(&floats, channels)
+                } else {
+                    enhancer.encode_stereo_f32(&floats, channels)
+                }
             } else if silence_tail_packets > 0 {
                 silence_tail_packets -= 1;
                 vec![0u8; frames_per_read * 4]
@@ -457,6 +559,7 @@ mod imp {
         tx: tokio::sync::mpsc::Sender<(u32, u8, Vec<u8>)>,
         enhancer: SpeakerEnhancer,
         enhancer_rate: u32,
+        clean_pcm: bool,
         silence_tail_packets: u32,
         stopped: std::sync::Arc<AtomicBool>,
     }
@@ -520,7 +623,11 @@ mod imp {
         let has_signal = samples.iter().any(|&s| s.is_finite() && s.abs() > 1e-5);
         let pcm_bytes = if has_signal {
             ctx.silence_tail_packets = 50;
-            ctx.enhancer.encode_stereo_f32(samples, channels as usize)
+            if ctx.clean_pcm {
+                encode_clean_stereo_f32(samples, channels as usize)
+            } else {
+                ctx.enhancer.encode_stereo_f32(samples, channels as usize)
+            }
         } else if ctx.silence_tail_packets > 0 {
             ctx.silence_tail_packets -= 1;
             vec![0u8; frame_count * 4]
@@ -558,7 +665,7 @@ mod imp {
     #[cfg(target_os = "macos")]
     fn run_loopback_worker() {
         let mut permission_warned = false;
-        while is_enabled() {
+        while should_run() {
             match capture_and_stream_once(permission_warned) {
                 Ok(()) => {
                     permission_warned = false;
@@ -572,7 +679,7 @@ mod imp {
                         permission_warned = true;
                     }
                     for _ in 0..50 {
-                        if !is_enabled() {
+                        if !should_run() {
                             break;
                         }
                         std::thread::sleep(Duration::from_millis(100));
@@ -581,7 +688,7 @@ mod imp {
                 Err(MacLoopbackError::Other(msg)) => {
                     tracing::debug!(error = %msg, "PC audio loopback stream cycle ended");
                     for _ in 0..30 {
-                        if !is_enabled() {
+                        if !should_run() {
                             break;
                         }
                         std::thread::sleep(Duration::from_millis(100));
@@ -602,10 +709,21 @@ mod imp {
             .filter(|d| matches!(d.link, nectarlink_core::LinkState::Online { .. }))
             .map(|d| d.id)
             .collect();
+        let managed = managed_target();
         let wanted = *TARGET.lock().unwrap_or_else(|e| e.into_inner());
-        let Some(peer) = super::pick_target(wanted, &peers) else {
-            std::thread::sleep(Duration::from_millis(500));
-            return Ok(());
+        let peer = if let Some(ref m) = managed {
+            if peers.contains(&m.peer) {
+                m.peer
+            } else {
+                std::thread::sleep(Duration::from_millis(200));
+                return Ok(());
+            }
+        } else {
+            let Some(p) = super::pick_target(wanted, &peers) else {
+                std::thread::sleep(Duration::from_millis(500));
+                return Ok(());
+            };
+            p
         };
 
         // Avoid repeatedly invoking ScreenCaptureKit while Screen Recording permission is still missing.
@@ -617,12 +735,34 @@ mod imp {
         let rate: u32 = 48_000;
         let (tx, mut rx) = tokio::sync::mpsc::channel::<(u32, u8, Vec<u8>)>(64);
         let send_node = node.clone();
+        let send_managed = managed.clone();
         core_host::spawn(async move {
+            let mut seq: u32 = 0;
             while let Some((r, ch, pcm)) = rx.recv().await {
+                let stride = usize::from(ch).max(1) * 2;
+                let chunk_bytes = (960 / stride).max(1) * stride;
                 // Slice into 960-byte (5 ms at 48 kHz stereo) sub-MTU chunks so each
                 // chunk travels in a single QUIC datagram without HOL blocking.
-                for chunk in pcm.chunks(960) {
-                    if send_node.send_pc_audio_pcm(&peer, r, ch, chunk.to_vec()).await.is_err() {
+                for chunk in pcm.chunks(chunk_bytes) {
+                    if let Some(ref m) = send_managed {
+                        let frame_count = (chunk.len() / stride) as u16;
+                        if frame_count == 0 {
+                            continue;
+                        }
+                        let frame = nectarlink_core::AudioRoutePcm {
+                            generation: m.generation,
+                            seq,
+                            sample_rate: r,
+                            channels: ch,
+                            frame_count,
+                            source_id: m.source_id.clone(),
+                            pcm: chunk.to_vec(),
+                        };
+                        seq = seq.wrapping_add(1);
+                        if send_node.send_route_pcm(m.peer, frame).is_err() {
+                            return;
+                        }
+                    } else if send_node.send_pc_audio_pcm(&peer, r, ch, chunk.to_vec()).await.is_err() {
                         return;
                     }
                 }
@@ -634,6 +774,7 @@ mod imp {
             tx,
             enhancer: SpeakerEnhancer::new(rate),
             enhancer_rate: rate,
+            clean_pcm: managed.is_some(),
             silence_tail_packets: 0,
             stopped: std::sync::Arc::clone(&stopped),
         });
@@ -671,8 +812,11 @@ mod imp {
         }
         let _guard = MacStreamGuard(handle);
 
-        while is_enabled() && !stopped.load(Ordering::Acquire) {
-            if target() != wanted && target().is_some_and(|t| peers.contains(&t)) {
+        while should_run() && !stopped.load(Ordering::Acquire) {
+            if managed_target() != managed {
+                break;
+            }
+            if managed.is_none() && target() != wanted && target().is_some_and(|t| peers.contains(&t)) {
                 break;
             }
             std::thread::sleep(Duration::from_millis(50));
@@ -690,7 +834,7 @@ mod imp {
             let _ = SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL);
         }
 
-        while is_enabled() {
+        while should_run() {
             if let Err(e) = capture_and_stream_once() {
                 tracing::debug!(error = %e, "PC audio loopback stream cycle ended");
                 std::thread::sleep(Duration::from_millis(500));
@@ -870,10 +1014,21 @@ mod imp {
             .filter(|d| matches!(d.link, nectarlink_core::LinkState::Online { .. }))
             .map(|d| d.id)
             .collect();
+        let managed = managed_target();
         let wanted = *TARGET.lock().unwrap_or_else(|e| e.into_inner());
-        let Some(peer) = super::pick_target(wanted, &peers) else {
-            std::thread::sleep(Duration::from_millis(500));
-            return Ok(());
+        let peer = if let Some(ref m) = managed {
+            if peers.contains(&m.peer) {
+                m.peer
+            } else {
+                std::thread::sleep(Duration::from_millis(200));
+                return Ok(());
+            }
+        } else {
+            let Some(p) = super::pick_target(wanted, &peers) else {
+                std::thread::sleep(Duration::from_millis(500));
+                return Ok(());
+            };
+            p
         };
 
         let without_own = crate::win::audio_out::playing();
@@ -882,12 +1037,34 @@ mod imp {
         let mut enhancer = SpeakerEnhancer::new(rate);
         let (tx, mut rx) = tokio::sync::mpsc::channel::<(u32, u8, Vec<u8>)>(64);
         let send_node = node.clone();
+        let send_managed = managed.clone();
         core_host::spawn(async move {
+            let mut seq: u32 = 0;
             while let Some((r, ch, pcm)) = rx.recv().await {
+                let stride = usize::from(ch).max(1) * 2;
+                let chunk_bytes = (960 / stride).max(1) * stride;
                 // Slice into 960-byte (5 ms at 48 kHz stereo) sub-MTU chunks so each
                 // chunk travels in a single QUIC datagram without HOL blocking.
-                for chunk in pcm.chunks(960) {
-                    if send_node.send_pc_audio_pcm(&peer, r, ch, chunk.to_vec()).await.is_err() {
+                for chunk in pcm.chunks(chunk_bytes) {
+                    if let Some(ref m) = send_managed {
+                        let frame_count = (chunk.len() / stride) as u16;
+                        if frame_count == 0 {
+                            continue;
+                        }
+                        let frame = nectarlink_core::AudioRoutePcm {
+                            generation: m.generation,
+                            seq,
+                            sample_rate: r,
+                            channels: ch,
+                            frame_count,
+                            source_id: m.source_id.clone(),
+                            pcm: chunk.to_vec(),
+                        };
+                        seq = seq.wrapping_add(1);
+                        if send_node.send_route_pcm(m.peer, frame).is_err() {
+                            return;
+                        }
+                    } else if send_node.send_pc_audio_pcm(&peer, r, ch, chunk.to_vec()).await.is_err() {
                         return;
                     }
                 }
@@ -898,11 +1075,14 @@ mod imp {
         // pauses between words or beats never starve the phone's AudioTrack ringbuffer.
         let mut silence_tail_packets: u32 = 0;
 
-        'capture: while is_enabled() {
+        'capture: while should_run() {
             std::thread::sleep(Duration::from_millis(2));
+            if managed_target() != managed {
+                break 'capture;
+            }
             // Another phone asked for the sound (it watches the PC's playback):
             // start over for that one.
-            if target() != wanted && target().is_some_and(|t| peers.contains(&t)) {
+            if managed.is_none() && target() != wanted && target().is_some_and(|t| peers.contains(&t)) {
                 break 'capture;
             }
             // NectarLink started or stopped playing a phone's sound here: capture
@@ -938,7 +1118,11 @@ mod imp {
                         let has_signal = floats.iter().any(|&s| s.is_finite() && s.abs() > 1e-5);
                         if has_signal {
                             silence_tail_packets = 50;
-                            enhancer.encode_stereo_f32(floats, channels)
+                            if managed.is_some() {
+                                encode_clean_stereo_f32(floats, channels)
+                            } else {
+                                enhancer.encode_stereo_f32(floats, channels)
+                            }
                         } else if silence_tail_packets > 0 {
                             silence_tail_packets -= 1;
                             vec![0u8; frames * 4]
@@ -950,7 +1134,11 @@ mod imp {
                         let has_signal = i16s.iter().any(|&s| s.unsigned_abs() > 2);
                         if has_signal {
                             silence_tail_packets = 50;
-                            enhancer.encode_stereo_i16(i16s, channels)
+                            if managed.is_some() {
+                                encode_clean_stereo_i16(i16s, channels)
+                            } else {
+                                enhancer.encode_stereo_i16(i16s, channels)
+                            }
                         } else if silence_tail_packets > 0 {
                             silence_tail_packets -= 1;
                             vec![0u8; frames * 4]
@@ -1147,6 +1335,16 @@ mod imp {
     }
 
     pub fn set_enabled(_enabled: bool) {}
+
+    pub fn managed_target() -> Option<super::ManagedRouteTarget> {
+        None
+    }
+
+    pub fn set_managed_target(_target: Option<super::ManagedRouteTarget>) {}
+
+    pub fn is_managed_active() -> bool {
+        false
+    }
 
     pub fn f32_stereo_to_i16le(_samples: &[f32]) -> Vec<u8> {
         Vec::new()

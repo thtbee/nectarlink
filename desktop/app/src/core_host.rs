@@ -147,6 +147,9 @@ pub fn compute_capabilities(
         caps.push(nectarlink_core::STORAGE_WRITE.into());
         caps.push(nectarlink_core::DECK_ACTIONS.into());
         caps.push(nectarlink_core::PC_AUDIO.into());
+        caps.push(nectarlink_core::AUDIO_ROUTE_SOURCE.into());
+        caps.push(nectarlink_core::AUDIO_ROUTE_SINK.into());
+        caps.push(nectarlink_core::MIC_STATUS.into());
         caps.push(nectarlink_core::PC_SHUTDOWN.into());
         // Only while hibernation is on: Windows can turn it off (#355).
         if crate::win::shell::can_hibernate() {
@@ -216,6 +219,7 @@ pub fn compute_capabilities(
     if remote_input_enabled && input_available {
         caps.push(nectarlink_core::MIRROR_INPUT.into());
         caps.push(nectarlink_core::INPUT_INJECT.into());
+        caps.push(nectarlink_core::INPUT_PRECISION.into());
         if crate::gamepad::is_supported() {
             caps.push(nectarlink_core::INPUT_GAMEPAD.into());
         }
@@ -256,6 +260,7 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
     let wake = crate::win::wol::query_wake_status();
     let config = || {
         let mut config = NodeConfig::new(&data_dir, this_device(), env!("CARGO_PKG_VERSION"));
+        config.preferred_port = Some(crate::peer_addrs::DEFAULT_PORT);
         config.downloads_dir = Some(downloads_dir());
         config.adb_server = adb_enabled().then_some(nectarlink_core::DEFAULT_ADB_ADDR);
         let settings = crate::settings::Settings::load(&data_dir);
@@ -326,6 +331,7 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
         max_entries: nectarlink_core::DEFAULT_TIMELINE_MAX_ENTRIES,
     });
     let _ = host.node.set(node);
+    crate::peer_addrs::start();
     host.hub.update(|s| {
         let mut changes = s.set_devices(devices);
         for m in matrices {
@@ -467,6 +473,7 @@ fn dispatch(host: &CoreHost, event: &nectarlink_core::NodeEvent) {
     crate::update_relay::on_event(event);
     crate::storage::on_event(event);
     crate::webcam::on_event(event);
+    crate::audio_route::on_event(event);
     crate::phone_mic::on_event(event);
     crate::report_requests::on_event(event);
     crate::automations::on_event(event);

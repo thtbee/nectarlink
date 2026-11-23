@@ -255,7 +255,7 @@ mod imp {
 
     /// Injects touch, scroll, key, or text input from a phone viewing the PC screen.
     pub fn handle_input(peer: &DeviceId, session: u32, input: MirrorInput) {
-        if session != nectarlink_core::MIRROR_SCREEN {
+        if session != nectarlink_core::MIRROR_SCREEN || crate::remote::is_paused() {
             return;
         }
         #[cfg(target_os = "linux")]

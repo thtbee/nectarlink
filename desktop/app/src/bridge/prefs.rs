@@ -1491,6 +1491,7 @@ impl qobject::Preferences {
             phone_beside_side: p.phone_beside_side.to_string(),
             away_mode: p.away_mode,
             network_interface: p.network_interface.to_string(),
+            manual_addrs: crate::settings::manual_addrs(),
             walkthrough_completed: p.walkthrough_completed,
             walkthrough_step: p.walkthrough_step.clamp(0, 6) as u8,
             whats_new_dismissed: p.whats_new_dismissed,
