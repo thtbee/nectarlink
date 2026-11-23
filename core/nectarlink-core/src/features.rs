@@ -739,6 +739,12 @@ pub const FEATURES: &[FeatureDef] = &[
         partial: None,
     },
     FeatureDef {
+        id: "device.pc_restart",
+        group: FeatureGroup::Device,
+        requires: &[desktop(crate::PC_RESTART, UPDATE), DeviceToggle("pc_actions")],
+        partial: None,
+    },
+    FeatureDef {
         id: "device.links_to_pc",
         group: FeatureGroup::Device,
         requires: &[desktop("link.open", UPDATE)],

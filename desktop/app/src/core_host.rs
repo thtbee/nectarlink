@@ -159,6 +159,7 @@ pub fn compute_capabilities(
         }
         #[cfg(windows)]
         {
+            caps.push(nectarlink_core::PC_RESTART.into());
             caps.push(nectarlink_core::WEBCAM_VIRTUAL.into());
             if crate::webcam::supports_hevc() {
                 caps.push(nectarlink_core::WEBCAM_HEVC.into());

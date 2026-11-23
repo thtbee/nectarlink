@@ -310,6 +310,10 @@
     <string name="action_phone_sound_back">Play the sound on the phone again</string>
     <string name="phone_sound_on_pc_off">%1$s doesn\'t play this phone\'s sound. On the PC, turn on Screen mirroring for this phone in Settings › Devices.</string>
     <string name="action_shutdown_pc">Shut down</string>
+    <string name="action_restart_pc">Restart</string>
+    <string name="restart_pc_title">Restart %1$s?</string>
+    <string name="restart_pc_text">Windows will close open apps and restart. An app with unsaved work can still stop it.</string>
+    <string name="pc_restart_requested">Restart requested for %1$s.</string>
     <string name="shutdown_pc_title">Shut down %1$s?</string>
     <string name="shutdown_pc_text">Open apps close. One with unsaved work can still stop it.</string>
     <string name="action_wake_pc">Wake</string>

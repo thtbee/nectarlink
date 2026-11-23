@@ -4507,6 +4507,13 @@ impl NectarlinkNode {
         self.run(async move { Ok(node.pc_power(id, core::PowerAction::Shutdown).await?) }).await
     }
 
+    /// Restarts a paired PC (only one that offers `pc.power.restart`).
+    pub async fn pc_restart(&self, id: String) -> Result<()> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.pc_power(id, core::PowerAction::Restart).await?) }).await
+    }
+
     /// Hibernates a paired PC (only one that offers `pc.power.hibernate`).
     pub async fn pc_hibernate(&self, id: String) -> Result<()> {
         let id = parse_id(&id)?;

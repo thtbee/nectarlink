@@ -1182,7 +1182,7 @@ impl MediaWatch {
 
 /// Body of `pc.power`: `lock`, `sleep`, `hibernate` (only to a PC that
 /// offers [`pc_power::HIBERNATE`]) or `shutdown` (only to one offering
-/// [`pc_power::SHUTDOWN`]).
+/// [`pc_power::SHUTDOWN`]) or `restart` (only to one offering [`pc_power::RESTART`]).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PcPower {
     pub action: String,
@@ -1194,6 +1194,8 @@ pub mod pc_power {
     pub const HIBERNATE: &str = "pc.power.hibernate";
     /// Offered by PCs a phone may shut down (D372).
     pub const SHUTDOWN: &str = "pc.power.shutdown";
+    /// Offered by PCs a phone may restart.
+    pub const RESTART: &str = "pc.power.restart";
 }
 
 /// The longest link sent, in bytes.
