@@ -10,7 +10,7 @@
   <Identity
     Name="Nectarlink.Desktop"
     Publisher="CN=The Nectarlink contributors"
-    Version="0.0.1.0"
+    Version="0.0.2.0"
     ProcessorArchitecture="x64" />
 
   <Properties>
@@ -34,7 +34,11 @@
       Executable="nectarlink-desktop.exe"
       uap10:TrustLevel="mediumIL"
       uap10:RuntimeBehavior="win32App">
+      <!-- The installer's own shortcut is the app in Start; listing the
+           package too gave two entries (#544). It only exists for the Share
+           sheet. -->
       <uap:VisualElements
+        AppListEntry="none"
         DisplayName="Nectarlink"
         Description="Your phone, on your PC"
         Square150x150Logo="Assets\Square150x150Logo.png"
