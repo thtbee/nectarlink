@@ -11,6 +11,14 @@ change things that need a step from you, and its notes say so.
 - **Copy part of a notification.** A notification's **...** menu on the PC's Home shows its
   whole text, and any part of it can be selected and copied with Ctrl+C. Thanks to
   [@korry73](https://github.com/korry73) ([#526](https://github.com/thtbee/nectarlink/issues/526)).
+- **Mark texts read on the phone.** **Settings › General › Mark texts read on the phone** (off
+  by default) marks an SMS conversation read on the phone too when you read it on the PC, so
+  the phone's unread count and notification match instead of keeping texts you've already read
+  as unread. It presses the messaging app's own **Mark as read** button on the conversation's
+  notification (so the app's own state and notification follow), and dismisses the notification
+  when the app has no such button. With **Elevated** it also marks the texts read in the phone's
+  messages directly: its helper allows itself the SMS write app-op for that one change and puts
+  it back.
 - **Report a problem.** **Settings › Connection & About › Report a problem** on the PC (and at
   the bottom of the Connection Doctor) puts what you say went wrong together with what helps
   find the cause: versions, the Doctor's checks, how features have been doing, recent crashes

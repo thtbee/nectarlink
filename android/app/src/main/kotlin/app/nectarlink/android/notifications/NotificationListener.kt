@@ -136,6 +136,10 @@ class NotificationListener : NotificationListenerService() {
     /** What a PC asks for, on the listener that's connected now. */
     internal fun dismiss(key: String) = cancelNotification(key)
 
+    /** What's in the shade now, for what a PC asks about a conversation. */
+    internal fun active(): List<StatusBarNotification> =
+        runCatching { activeNotifications?.toList().orEmpty() }.getOrDefault(emptyList())
+
     internal fun find(key: String): StatusBarNotification? =
         runCatching { getActiveNotifications(arrayOf(key)) }.getOrNull()?.firstOrNull()
 

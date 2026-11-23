@@ -606,6 +606,10 @@ pub struct Settings {
     /// Copy one-time codes from phone notifications and SMS automatically.
     #[serde(alias = "auto_copy_otp", alias = "smart_otp_auto_copy")]
     pub auto_copy_otp: bool,
+    /// Mark a text conversation read on the phone too when it's read here
+    /// (needs Elevated on the phone).
+    #[serde(alias = "mark_read_on_phone")]
+    pub mark_read_on_phone: bool,
     /// Pause PC media playback while a phone call is ringing or active.
     #[serde(alias = "pause_media_on_call", alias = "auto_pause_media")]
     pub pause_media_on_call: bool,
@@ -943,6 +947,7 @@ impl Default for Settings {
             clipboard_history: true,
             suggest_clipboard_actions: true,
             auto_copy_otp: false,
+            mark_read_on_phone: false,
             pause_media_on_call: true,
             mute_while_watched: true,
             language: String::new(),
@@ -1300,6 +1305,7 @@ mod tests {
             clipboard_history: false,
             suggest_clipboard_actions: false,
             auto_copy_otp: true,
+            mark_read_on_phone: true,
             pause_media_on_call: false,
             mute_while_watched: false,
             language: "zh_CN".into(),

@@ -1653,6 +1653,21 @@ Item {
 
                         Divider { width: parent.width }
 
+                        // Mark read on the phone
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.messages
+                            title: qsTr("Mark texts read on the phone")
+                            description: qsTr("Reading a conversation here marks it read on the phone too, in its messaging app.")
+                            Toggle {
+                                label: qsTr("Mark texts read on the phone")
+                                checked: Preferences.markReadOnPhone
+                                onToggled: (on) => Preferences.markReadOnPhone = on
+                            }
+                        }
+
+                        Divider { width: parent.width }
+
                         // Row 5: Suggest clipboard actions
                         ListRow {
                             width: parent.width

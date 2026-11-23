@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package app.nectarlink.android.elevated
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -31,6 +32,23 @@ class InputServerCommandsTest {
         assertFalse(InputServer.isAllowedCommand("pm uninstall --user 0 com.example.app"))
         assertFalse(InputServer.isAllowedCommand("pm uninstall com"))
         assertFalse(InputServer.isAllowedCommand("pm uninstall "))
+    }
+
+    @Test
+    fun markingTextsReadAllowsTheWriteOnlyForTheChange() {
+        val commands = InputServer.smsReadCommands(42).map { it.toList() }
+        assertEquals(
+            listOf(
+                listOf("appops", "set", "com.android.shell", "WRITE_SMS", "allow"),
+                listOf(
+                    "content", "update", "--uri", "content://sms/inbox",
+                    "--bind", "read:i:1", "--bind", "seen:i:1",
+                    "--where", "thread_id=42 AND read=0",
+                ),
+                listOf("appops", "set", "com.android.shell", "WRITE_SMS", "default"),
+            ),
+            commands,
+        )
     }
 
     @Test

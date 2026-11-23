@@ -470,6 +470,12 @@ pub trait Platform: Send + Sync + 'static {
         self.send_sms_with_attachments(to, body, attachments)
     }
 
+    /// Marks the received texts of the conversation `thread` read in the
+    /// phone's own messages (a PC asked; offered as `sms.mark_read`).
+    fn sms_mark_read(&self, _thread: &str) -> Result<(), String> {
+        Err("this device can't mark texts read".into())
+    }
+
     /// A picture in a message: its type and bytes.
     fn sms_part(&self, _id: &str) -> Result<(String, Vec<u8>), String> {
         Err("this device has no messages".into())

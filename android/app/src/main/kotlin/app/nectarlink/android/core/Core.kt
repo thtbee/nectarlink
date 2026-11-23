@@ -2304,6 +2304,9 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             (if (PhoneSms.canRead(context)) listOf("sms.read") else emptyList()) +
             (if (PhoneSms.canSend(context)) listOf("sms.send") else emptyList()) +
             (if (PhoneSms.canSend(context) && PhoneSms.canListSims(context)) listOf("sms.sims") else emptyList()) +
+            // Marking texts read goes through the messaging app's own notification button (notification access), and the Elevated helper
+            // also writes the phone's messages: Android lets only the default SMS app (or the shell) change them, and the app keeps its own state.
+            (if (PhoneSms.canRead(context) && (Elevated.helperRunning || NotificationListener.hasAccess(context))) listOf("sms.mark_read") else emptyList()) +
             PhoneStorage.capabilities(context) +
             // Unlock a Windows or Linux PC with a strong biometric.
             (if (app.nectarlink.android.unlock.UnlockKeys.supported(context)) {

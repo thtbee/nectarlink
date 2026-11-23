@@ -136,6 +136,19 @@ object InputServer {
         return false
     }
 
+    private val smsReadLock = Any()
+
+    /** The commands that mark a conversation's received texts read: allow the write, make it, put the app-op back. */
+    internal fun smsReadCommands(thread: Long): List<Array<String>> = listOf(
+        arrayOf("appops", "set", "com.android.shell", "WRITE_SMS", "allow"),
+        arrayOf(
+            "content", "update", "--uri", "content://sms/inbox",
+            "--bind", "read:i:1", "--bind", "seen:i:1",
+            "--where", "thread_id=$thread AND read=0",
+        ),
+        arrayOf("appops", "set", "com.android.shell", "WRITE_SMS", "default"),
+    )
+
     @JvmStatic
     fun main(args: Array<String>) {
         // The app that starts the helper (over adb, USB or Shizuku) passes the
@@ -893,6 +906,7 @@ object InputServer {
                         else -> Runtime.getRuntime().exec(rest.split(' ').toTypedArray()).waitFor()
                     }
                 }
+                "R" -> if (display < 0) rest.trim().toLongOrNull()?.takeIf { it > 0 }?.let { markSmsRead(it) }
                 "P" -> if (display < 0) setDisplayPower(rest.trim() != "0")
                 "B" -> if (display < 0) setClipboard(rest)
                 "X" -> if (display < 0) clearClipboard(rest)
@@ -1111,6 +1125,22 @@ object InputServer {
         }
 
         private fun allowedCommand(cmd: String): Boolean = isAllowedCommand(cmd)
+
+        /**
+         * Marks a conversation's received texts read. The phone's messages only
+         * take writes from the default SMS app, and drop the shell's silently
+         * while its SMS write app-op is `ignore` (the default): allowed for the
+         * one change, then back. One at a time, off this thread, which carries input.
+         */
+        private fun markSmsRead(thread: Long) {
+            Thread {
+                synchronized(smsReadLock) {
+                    for (cmd in smsReadCommands(thread)) {
+                        runCatching { Runtime.getRuntime().exec(cmd).waitFor() }
+                    }
+                }
+            }.start()
+        }
 
     }
 

@@ -88,6 +88,7 @@ pub mod types {
     pub const SMS_PART: &str = "sms.part";
     pub const SMS_CHANGED: &str = "sms.changed";
     pub const SMS_SIMS: &str = "sms.sims";
+    pub const SMS_MARK_READ: &str = "sms.mark_read";
     pub const MIRROR_START: &str = "mirror.start";
     pub const MIRROR_STOP: &str = "mirror.stop";
     pub const MIRROR_POWER: &str = "mirror.power";
@@ -2285,6 +2286,9 @@ pub mod sms {
     /// Offered by phones that list the SIMs they text from (`sms.sims`) and
     /// send on the one a PC picks (`sms.send`'s `sim`).
     pub const SIMS: &str = "sms.sims";
+    /// Offered by phones that mark a conversation's texts read in the phone's
+    /// own messages when a PC asks (`sms.mark_read`).
+    pub const MARK_READ: &str = "sms.mark_read";
     /// Most conversations or messages in one answer.
     pub const MAX_PAGE: u32 = 100;
     /// A text sent from a PC: at most this many bytes.
@@ -2502,6 +2506,19 @@ pub struct SmsPartData {
 impl std::fmt::Debug for SmsPartData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SmsPartData").field("mime", &self.mime).field("bytes", &self.data.len()).finish()
+    }
+}
+
+/// Body of `sms.mark_read`: mark this conversation's received texts read.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SmsMarkRead {
+    pub thread: String,
+}
+
+impl SmsMarkRead {
+    /// A conversation is the phone's number for it: digits only.
+    pub fn is_valid(&self) -> bool {
+        (1..=18).contains(&self.thread.len()) && self.thread.bytes().all(|b| b.is_ascii_digit())
     }
 }
 
@@ -5239,6 +5256,16 @@ pub enum LinuxUnlockForget {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn marking_read_names_a_conversation_by_its_number_alone() {
+        let mark = |thread: &str| SmsMarkRead { thread: thread.into() };
+        assert!(mark("128").is_valid());
+        assert!(mark("123456789012345678").is_valid());
+        for bad in ["", "12a", "-1", "1 OR 1=1", "1;reboot", "1234567890123456789", "١٢٣"] {
+            assert!(!mark(bad).is_valid(), "{bad:?}");
+        }
+    }
+
     #[test]
     fn linux_unlock_enrollment_requires_a_non_root_account() {
         let request = LinuxUnlockEnroll {
