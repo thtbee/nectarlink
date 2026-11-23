@@ -483,6 +483,9 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **HEIC photos show in the Photos viewer.** The PC can't read HEIC itself, so the viewer
+  stayed empty; it now shows the photo's preview and says that Open in Photos shows it in full
+  ([#559](https://github.com/thtbee/nectarlink/issues/559)).
 - **Unlock with phone asks the next phone.** With several phones set up, one that's
   connected but away from the PC's network said "Not confirmed on the phone" and stopped
   there; the PC now goes on to the next phone that's on the network

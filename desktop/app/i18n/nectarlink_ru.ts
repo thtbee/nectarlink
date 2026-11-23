@@ -5034,13 +5034,13 @@ What it needs
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="520"/>
-        <location filename="../qml/pages/HomePage.qml" line="3302"/>
+        <location filename="../qml/pages/HomePage.qml" line="3334"/>
         <source>Transfers</source>
         <translation>Передачи</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="529"/>
-        <location filename="../qml/pages/HomePage.qml" line="3319"/>
+        <location filename="../qml/pages/HomePage.qml" line="3351"/>
         <source>Clear finished</source>
         <translation>Убрать завершённые</translation>
     </message>
@@ -5072,13 +5072,13 @@ What it needs
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1157"/>
-        <location filename="../qml/pages/HomePage.qml" line="3206"/>
+        <location filename="../qml/pages/HomePage.qml" line="3238"/>
         <source>Away · %1 ms</source>
         <translation>Вне дома · %1 мс</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1157"/>
-        <location filename="../qml/pages/HomePage.qml" line="3206"/>
+        <location filename="../qml/pages/HomePage.qml" line="3238"/>
         <source>Away</source>
         <translation>Вне дома</translation>
     </message>
@@ -5118,19 +5118,19 @@ What it needs
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1166"/>
-        <location filename="../qml/pages/HomePage.qml" line="3208"/>
+        <location filename="../qml/pages/HomePage.qml" line="3240"/>
         <source>Not reconnecting</source>
         <translation>Не переподключается</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1167"/>
-        <location filename="../qml/pages/HomePage.qml" line="3209"/>
+        <location filename="../qml/pages/HomePage.qml" line="3241"/>
         <source>Offline · %1</source>
         <translation>Не в сети · %1</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1168"/>
-        <location filename="../qml/pages/HomePage.qml" line="3210"/>
+        <location filename="../qml/pages/HomePage.qml" line="3242"/>
         <source>Offline</source>
         <translation>Не в сети</translation>
     </message>
@@ -5176,32 +5176,32 @@ What it needs
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1324"/>
-        <location filename="../qml/pages/HomePage.qml" line="3232"/>
-        <location filename="../qml/pages/HomePage.qml" line="3838"/>
+        <location filename="../qml/pages/HomePage.qml" line="3264"/>
+        <location filename="../qml/pages/HomePage.qml" line="3870"/>
         <source>Send files</source>
         <translation>Отправить файлы</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1330"/>
-        <location filename="../qml/pages/HomePage.qml" line="3238"/>
+        <location filename="../qml/pages/HomePage.qml" line="3270"/>
         <source>Send a folder</source>
         <translation>Отправить папку</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1337"/>
-        <location filename="../qml/pages/HomePage.qml" line="3244"/>
+        <location filename="../qml/pages/HomePage.qml" line="3276"/>
         <source>Send clipboard</source>
         <translation>Отправить буфер обмена</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1343"/>
-        <location filename="../qml/pages/HomePage.qml" line="2901"/>
+        <location filename="../qml/pages/HomePage.qml" line="2933"/>
         <source>Clipboard history</source>
         <translation>История буфера обмена</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1353"/>
-        <location filename="../qml/pages/HomePage.qml" line="3253"/>
+        <location filename="../qml/pages/HomePage.qml" line="3285"/>
         <source>Stop ringing</source>
         <translation>Остановить звонок</translation>
     </message>
@@ -5212,7 +5212,7 @@ What it needs
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1363"/>
-        <location filename="../qml/pages/HomePage.qml" line="3277"/>
+        <location filename="../qml/pages/HomePage.qml" line="3309"/>
         <source>Send to %1</source>
         <translation>Отправить на %1</translation>
     </message>
@@ -5223,7 +5223,7 @@ What it needs
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1385"/>
-        <location filename="../qml/pages/HomePage.qml" line="3283"/>
+        <location filename="../qml/pages/HomePage.qml" line="3315"/>
         <source>Send a folder to %1</source>
         <translation>Отправить папку на %1</translation>
     </message>
@@ -5291,13 +5291,13 @@ What it needs
         <location filename="../qml/pages/HomePage.qml" line="1569"/>
         <location filename="../qml/pages/HomePage.qml" line="2129"/>
         <location filename="../qml/pages/HomePage.qml" line="2221"/>
-        <location filename="../qml/pages/HomePage.qml" line="2744"/>
+        <location filename="../qml/pages/HomePage.qml" line="2776"/>
         <source>Cancel</source>
         <translation>Отмена</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="2520"/>
-        <location filename="../qml/pages/HomePage.qml" line="3311"/>
+        <location filename="../qml/pages/HomePage.qml" line="3343"/>
         <source>Timeline</source>
         <translation>Хронология</translation>
     </message>
@@ -5570,7 +5570,7 @@ What it needs
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="2344"/>
-        <location filename="../qml/pages/HomePage.qml" line="3434"/>
+        <location filename="../qml/pages/HomePage.qml" line="3466"/>
         <source>When connected</source>
         <translation>При подключении</translation>
     </message>
@@ -5621,251 +5621,251 @@ What it needs
         <translation>Уведомления %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2643"/>
+        <location filename="../qml/pages/HomePage.qml" line="2675"/>
         <source>Copy text</source>
         <translation>Копировать текст</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2651"/>
+        <location filename="../qml/pages/HomePage.qml" line="2683"/>
         <source>Copy title and text</source>
         <translation>Копировать заголовок и текст</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2657"/>
+        <location filename="../qml/pages/HomePage.qml" line="2689"/>
         <source>Show</source>
         <translation>Показывать</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2658"/>
+        <location filename="../qml/pages/HomePage.qml" line="2690"/>
         <source>No pop-ups</source>
         <translation>Без всплывающих</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2659"/>
+        <location filename="../qml/pages/HomePage.qml" line="2691"/>
         <source>Hide</source>
         <translation>Скрывать</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2673"/>
+        <location filename="../qml/pages/HomePage.qml" line="2705"/>
         <source>Hidden on this PC.</source>
         <translation>Скрыты на этом ПК.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2675"/>
+        <location filename="../qml/pages/HomePage.qml" line="2707"/>
         <source>Shown in feed without pop-ups.</source>
         <translation>Показываются в ленте без всплывающих окон.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2678"/>
+        <location filename="../qml/pages/HomePage.qml" line="2710"/>
         <source>Shown in feed and as desktop pop-ups.</source>
         <translation>Показываются в ленте и во всплывающих окнах.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3270"/>
+        <location filename="../qml/pages/HomePage.qml" line="3302"/>
         <source>Sync clipboard is off in Settings, so copies only go over with Send clipboard.</source>
         <translation>Синхронизация буфера обмена выключена в настройках, поэтому скопированное передаётся только кнопкой «Отправить буфер обмена».</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2677"/>
+        <location filename="../qml/pages/HomePage.qml" line="2709"/>
         <source>Shown in feed and as Windows pop-ups.</source>
         <translation>Показываются в ленте и во всплывающих окнах Windows.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2682"/>
-        <location filename="../qml/pages/HomePage.qml" line="2878"/>
-        <location filename="../qml/pages/HomePage.qml" line="3121"/>
-        <location filename="../qml/pages/HomePage.qml" line="3915"/>
+        <location filename="../qml/pages/HomePage.qml" line="2714"/>
+        <location filename="../qml/pages/HomePage.qml" line="2910"/>
+        <location filename="../qml/pages/HomePage.qml" line="3153"/>
+        <location filename="../qml/pages/HomePage.qml" line="3947"/>
         <source>Done</source>
         <translation>Готово</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2749"/>
+        <location filename="../qml/pages/HomePage.qml" line="2781"/>
         <source>Save</source>
         <translation>Сохранить</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2770"/>
+        <location filename="../qml/pages/HomePage.qml" line="2802"/>
         <source>Notification history</source>
         <translation>История уведомлений</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2778"/>
-        <location filename="../qml/pages/HomePage.qml" line="2909"/>
+        <location filename="../qml/pages/HomePage.qml" line="2810"/>
+        <location filename="../qml/pages/HomePage.qml" line="2941"/>
         <source>Clear history</source>
         <translation>Очистить историю</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2788"/>
+        <location filename="../qml/pages/HomePage.qml" line="2820"/>
         <source>Dismissed notifications from the last 24 hours.</source>
         <translation>Скрытые уведомления за последние 24 часа.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2789"/>
+        <location filename="../qml/pages/HomePage.qml" line="2821"/>
         <source>No recent notifications.</source>
         <translation>Нет недавних уведомлений.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2831"/>
-        <location filename="../qml/pages/HomePage.qml" line="2837"/>
+        <location filename="../qml/pages/HomePage.qml" line="2863"/>
+        <location filename="../qml/pages/HomePage.qml" line="2869"/>
         <source>Search notification history</source>
         <translation>Поиск в истории уведомлений</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2874"/>
-        <location filename="../qml/pages/HomePage.qml" line="3117"/>
+        <location filename="../qml/pages/HomePage.qml" line="2906"/>
+        <location filename="../qml/pages/HomePage.qml" line="3149"/>
         <source>Nothing matches “%1”.</source>
         <translation>Ничего не найдено по запросу «%1».</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2919"/>
+        <location filename="../qml/pages/HomePage.qml" line="2951"/>
         <source>Last 50 shared clips.</source>
         <translation>Последние 50 общих фрагментов.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2920"/>
+        <location filename="../qml/pages/HomePage.qml" line="2952"/>
         <source>No shared clips yet.</source>
         <translation>Пока нет общих фрагментов.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2960"/>
-        <location filename="../qml/pages/HomePage.qml" line="2966"/>
+        <location filename="../qml/pages/HomePage.qml" line="2992"/>
+        <location filename="../qml/pages/HomePage.qml" line="2998"/>
         <source>Search clipboard history</source>
         <translation>Поиск в истории буфера обмена</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2986"/>
+        <location filename="../qml/pages/HomePage.qml" line="3018"/>
         <source>From %1</source>
         <translation>С %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2986"/>
+        <location filename="../qml/pages/HomePage.qml" line="3018"/>
         <source>From phone</source>
         <translation>С телефона</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2987"/>
+        <location filename="../qml/pages/HomePage.qml" line="3019"/>
         <source>Sent to %1</source>
         <translation>Отправлено на %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2987"/>
+        <location filename="../qml/pages/HomePage.qml" line="3019"/>
         <source>From this PC</source>
         <translation>С этого ПК</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2993"/>
+        <location filename="../qml/pages/HomePage.qml" line="3025"/>
         <source>Image</source>
         <translation>Изображение</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3031"/>
+        <location filename="../qml/pages/HomePage.qml" line="3063"/>
         <source>Pinned</source>
         <translation>Закреплено</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3075"/>
+        <location filename="../qml/pages/HomePage.qml" line="3107"/>
         <source>Open on phone</source>
         <translation>Открыть на телефоне</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3084"/>
+        <location filename="../qml/pages/HomePage.qml" line="3116"/>
         <source>Send to phone</source>
         <translation>Отправить на телефон</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3092"/>
+        <location filename="../qml/pages/HomePage.qml" line="3124"/>
         <source>Copy</source>
         <translation>Копировать</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3098"/>
+        <location filename="../qml/pages/HomePage.qml" line="3130"/>
         <source>Unpin</source>
         <translation>Открепить</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3098"/>
+        <location filename="../qml/pages/HomePage.qml" line="3130"/>
         <source>Pin</source>
         <translation>Закрепить</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3103"/>
+        <location filename="../qml/pages/HomePage.qml" line="3135"/>
         <source>Delete</source>
         <translation>Удалить</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3207"/>
+        <location filename="../qml/pages/HomePage.qml" line="3239"/>
         <source>Connected · %1 ms</source>
         <translation>Подключено · %1 мс</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3207"/>
+        <location filename="../qml/pages/HomePage.qml" line="3239"/>
         <source>Connected</source>
         <translation>Подключено</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3212"/>
+        <location filename="../qml/pages/HomePage.qml" line="3244"/>
         <source>%1% · charging</source>
         <translation>%1% · заряжается</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3213"/>
-        <location filename="../qml/pages/HomePage.qml" line="3607"/>
-        <location filename="../qml/pages/HomePage.qml" line="3618"/>
+        <location filename="../qml/pages/HomePage.qml" line="3245"/>
+        <location filename="../qml/pages/HomePage.qml" line="3639"/>
+        <location filename="../qml/pages/HomePage.qml" line="3650"/>
         <source>%1%</source>
         <translation>%1%</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3253"/>
+        <location filename="../qml/pages/HomePage.qml" line="3285"/>
         <source>Ring PC</source>
         <translation>Позвонить на ПК</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3269"/>
+        <location filename="../qml/pages/HomePage.qml" line="3301"/>
         <source>What you copy here also goes to %1, and what you copy there comes here.</source>
         <translation>Скопированное здесь попадает и на %1, а скопированное там приходит сюда.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3759"/>
+        <location filename="../qml/pages/HomePage.qml" line="3791"/>
         <source>LocalSend nearby · %1</source>
         <translation>LocalSend рядом · %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3760"/>
+        <location filename="../qml/pages/HomePage.qml" line="3792"/>
         <source>LocalSend nearby</source>
         <translation>LocalSend рядом</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3769"/>
+        <location filename="../qml/pages/HomePage.qml" line="3801"/>
         <source>Refresh</source>
         <translation>Обновить</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3780"/>
+        <location filename="../qml/pages/HomePage.qml" line="3812"/>
         <source>Listening for LocalSend devices on your Wi‑Fi network.</source>
         <translation>Поиск устройств LocalSend в вашей сети Wi‑Fi.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3781"/>
+        <location filename="../qml/pages/HomePage.qml" line="3813"/>
         <source>LocalSend port 53317 is busy on this PC (another LocalSend app may be running).</source>
         <translation>Порт LocalSend 53317 занят на этом ПК (возможно, запущено другое приложение LocalSend).</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3820"/>
+        <location filename="../qml/pages/HomePage.qml" line="3852"/>
         <source>Nearby device</source>
         <translation>Устройство рядом</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3876"/>
+        <location filename="../qml/pages/HomePage.qml" line="3908"/>
         <source>Image preview</source>
         <translation>Просмотр изображения</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3883"/>
+        <location filename="../qml/pages/HomePage.qml" line="3915"/>
         <source>Close</source>
         <translation>Закрыть</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3911"/>
+        <location filename="../qml/pages/HomePage.qml" line="3943"/>
         <source>Open externally</source>
         <translation>Открыть в другом приложении</translation>
     </message>
@@ -5885,12 +5885,12 @@ What it needs
         <translation>Нажмите на поле ввода на телефоне и печатайте</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2711"/>
+        <location filename="../qml/pages/HomePage.qml" line="2743"/>
         <source>Phone nickname</source>
         <translation>Имя телефона</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2719"/>
+        <location filename="../qml/pages/HomePage.qml" line="2751"/>
         <source>Set a custom name for this phone on your PC. Leave blank to use &quot;%1&quot;.</source>
         <translation>Задайте своё имя для этого телефона на ПК. Оставьте пустым, чтобы использовать «%1».</translation>
     </message>
@@ -6485,219 +6485,219 @@ What it needs
     </message>
     <message>
         <location filename="../qml/pages/MessagesPage.qml" line="92"/>
-        <location filename="../qml/pages/MessagesPage.qml" line="219"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="236"/>
         <source>Yesterday</source>
         <translation>Вчера</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="242"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="259"/>
         <source>Text from your PC</source>
         <translation>Сообщения с ПК</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="243"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="260"/>
         <source>%1 isn&apos;t connected</source>
         <translation>%1 не подключён</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="244"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="261"/>
         <source>Messages are off for %1</source>
         <translation>Сообщения отключены для %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="245"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="262"/>
         <source>Allow texting on %1</source>
         <translation>Разрешите сообщения на %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="246"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="263"/>
         <source>Couldn&apos;t load messages</source>
         <translation>Не удалось загрузить сообщения</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="254"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="271"/>
         <source>Pair your phone to read and send texts.</source>
         <translation>Свяжите телефон, чтобы читать и отправлять сообщения.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="255"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="272"/>
         <source>Connect %1 to view messages.</source>
         <translation>Подключите %1, чтобы видеть сообщения.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="256"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="273"/>
         <source>Enable Messages in Settings.</source>
         <translation>Включите «Сообщения» в настройках.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="257"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="274"/>
         <source>Grant SMS permission on %1.</source>
         <translation>Дайте разрешение на SMS на %1.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="258"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="275"/>
         <source>Unable to load messages.</source>
         <translation>Не удалось загрузить сообщения.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="264"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="281"/>
         <source>Try again</source>
         <translation>Повторить</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="289"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="306"/>
         <source>Conversations</source>
         <translation>Переписки</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="298"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="315"/>
         <source>New message (Ctrl+N)</source>
         <translation>Новое сообщение (Ctrl+N)</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="307"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="324"/>
         <source>Refresh</source>
         <translation>Обновить</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="347"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="364"/>
         <source>Search conversations</source>
         <translation>Поиск переписок</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="357"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="374"/>
         <source>Search</source>
         <translation>Поиск</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="368"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="385"/>
         <source>Clear search</source>
         <translation>Очистить поиск</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="423"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="441"/>
         <source>No conversations match.</source>
         <translation>Нет подходящих переписок.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="423"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="441"/>
         <source>No conversations yet.</source>
         <translation>Переписок пока нет.</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="474"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="492"/>
         <source>Drop image to attach (MMS)</source>
         <translation>Бросьте изображение, чтобы прикрепить (MMS)</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="480"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="498"/>
         <source>PNG, JPEG, WebP, GIF, or BMP up to 900 KB</source>
         <translation>PNG, JPEG, WebP, GIF или BMP до 900 КБ</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="490"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="508"/>
         <source>Select a conversation</source>
         <translation>Выберите переписку</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="504"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="522"/>
         <source>Back to conversations (Esc)</source>
         <translation>К перепискам (Esc)</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="562"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="580"/>
         <source>Call %1</source>
         <translation>Позвонить %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="562"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="580"/>
         <source>Call</source>
         <translation>Позвонить</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="572"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="590"/>
         <source>Remove conversation from PC</source>
         <translation>Удалить переписку с ПК</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="584"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="602"/>
         <source>To</source>
         <translation>Кому</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="595"/>
-        <location filename="../qml/pages/MessagesPage.qml" line="607"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="613"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="625"/>
         <source>Name or phone number</source>
         <translation>Имя или номер телефона</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="809"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="856"/>
         <source>No mirrored messages yet</source>
         <translation>Пока нет сообщений из уведомлений</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="810"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="857"/>
         <source>No messages</source>
         <translation>Нет сообщений</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="860"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="907"/>
         <source>%1 · Sent as MMS</source>
         <translation>%1 · Отправлено как MMS</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="870"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="917"/>
         <source>Remove attachment</source>
         <translation>Удалить вложение</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="927"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="976"/>
         <source>Attach image (MMS)</source>
         <translation>Прикрепить изображение (MMS)</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="953"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1002"/>
         <source>Sending from %1. Switch SIM</source>
         <translation>Отправка с %1. Сменить SIM</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="982"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1031"/>
         <source>Reply in %1</source>
         <translation>Ответить в %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="983"/>
-        <location filename="../qml/pages/MessagesPage.qml" line="1019"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1032"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1068"/>
         <source>Text message</source>
         <translation>Сообщение</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="1012"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1061"/>
         <source>Replies are available while the notification is active on your phone</source>
         <translation>Ответить можно, пока уведомление есть на телефоне</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="1014"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1063"/>
         <source>Reply in %1…</source>
         <translation>Ответить в %1…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="1016"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1065"/>
         <source>Group texts can&apos;t be sent from the PC yet</source>
         <translation>Групповые сообщения пока нельзя отправлять с ПК</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="1018"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1067"/>
         <source>Add a caption (optional)…</source>
         <translation>Добавьте подпись (необязательно)…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="1030"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1079"/>
         <source>Send</source>
         <translation>Отправить</translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/pages/MessagesPage.qml" line="1048"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1097"/>
         <source>%1 characters · %n text(s)</source>
         <translation>
             <numerusform>%1 символов · %n сообщение</numerusform>
@@ -6706,72 +6706,72 @@ What it needs
         </translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="1296"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1345"/>
         <source>Open image attachment</source>
         <translation>Открыть вложенное изображение</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="1362"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1411"/>
         <source>Voice note</source>
         <translation>Голосовая заметка</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="1368"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1417"/>
         <source> · Click to play</source>
         <translation> · Нажмите, чтобы воспроизвести</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="1368"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1417"/>
         <source> · Loading…</source>
         <translation> · Загрузка…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="1391"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1440"/>
         <source>Attachment (open it on the phone)</source>
         <translation>Вложение (откройте его на телефоне)</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="1417"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1477"/>
         <source>Not sent</source>
         <translation>Не отправлено</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="1418"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1478"/>
         <source>Sending…</source>
         <translation>Отправка…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="1433"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1493"/>
         <source>Copy text</source>
         <translation>Копировать текст</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="1451"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1511"/>
         <source>Copied</source>
         <translation>Скопировано</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="1451"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1511"/>
         <source>Copy code %1</source>
         <translation>Копировать код %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="1483"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1543"/>
         <source>Image attachment</source>
         <translation>Вложенное изображение</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="1490"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1550"/>
         <source>Close</source>
         <translation>Закрыть</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="1518"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1578"/>
         <source>Open externally</source>
         <translation>Открыть в другом приложении</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="1522"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1582"/>
         <source>Done</source>
         <translation>Готово</translation>
     </message>
@@ -8430,7 +8430,7 @@ What it needs
     </message>
     <message>
         <location filename="../qml/pages/PhotosPage.qml" line="995"/>
-        <location filename="../qml/pages/PhotosPage.qml" line="1093"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="1119"/>
         <source>Play video</source>
         <translation>Воспроизвести видео</translation>
     </message>
@@ -8440,27 +8440,32 @@ What it needs
         <translation>Открыть в «Фото»</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="1074"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="1073"/>
+        <source>This photo&apos;s format can&apos;t be shown here at full size. Open in Photos shows it.</source>
+        <translation>Фото в этом формате нельзя показать здесь в полном размере. Нажмите «Открыть в «Фото»», чтобы посмотреть его.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/PhotosPage.qml" line="1100"/>
         <source>Loading full resolution…</source>
         <translation>Загрузка полного разрешения…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="1133"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="1159"/>
         <source>Previous photo</source>
         <translation>Предыдущее фото</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="1146"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="1172"/>
         <source>Next photo</source>
         <translation>Следующее фото</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="1233"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="1259"/>
         <source>%1</source>
         <translation>%1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="1420"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="1446"/>
         <source>Select photo</source>
         <translation>Выбрать фото</translation>
     </message>
