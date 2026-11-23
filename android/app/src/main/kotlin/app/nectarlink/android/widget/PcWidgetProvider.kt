@@ -36,6 +36,8 @@ class PcWidgetProvider : BloomWidget() {
             views.setViewVisibility(R.id.widget_pc_status_off, View.GONE)
             views.setViewVisibility(R.id.widget_actions_row, View.GONE)
             views.setViewVisibility(R.id.widget_btn_wake, View.GONE)
+            views.setViewVisibility(R.id.widget_pc_subtitle, View.VISIBLE)
+            views.setViewVisibility(R.id.widget_fill, View.VISIBLE)
             views.setTextViewCompoundDrawablesRelative(R.id.widget_pc_name, 0, 0, 0, 0)
             views.setImageViewResource(R.id.widget_pc_icon, R.drawable.ic_widget_pc)
             return views
@@ -64,8 +66,11 @@ class PcWidgetProvider : BloomWidget() {
         views.setTextViewText(R.id.widget_pc_subtitle, subtitle(context, pc))
 
         val wake = !pc.online && pc.canWake && !waking
+        // A short widget has no room for the "Seen" line and a whole Wake button.
+        val short = wake && Widgets.heightDp(options) in 1 until SHORT_DP
+        views.setViewVisibility(R.id.widget_pc_subtitle, if (short) View.GONE else View.VISIBLE)
         views.setViewVisibility(R.id.widget_actions_row, if (pc.online) View.VISIBLE else View.GONE)
-        views.setViewVisibility(R.id.widget_fill, if (pc.online) View.GONE else View.VISIBLE)
+        views.setViewVisibility(R.id.widget_fill, if (pc.online || short) View.GONE else View.VISIBLE)
         views.setViewVisibility(R.id.widget_btn_wake, if (wake) View.VISIBLE else View.GONE)
         if (pc.online) {
             views.setOnClickPendingIntent(R.id.widget_btn_ring, Widgets.action(context, ACTION_RING_PC, pc.id))
@@ -148,6 +153,8 @@ class PcWidgetProvider : BloomWidget() {
     }
 
     companion object {
+        /** Below this height (dp) the offline widget drops its "Seen" line for Wake. */
+        private const val SHORT_DP = 160
         const val ACTION_RING_PC = "app.nectarlink.widget.ACTION_RING_PC"
         const val ACTION_WAKE_PC = "app.nectarlink.widget.ACTION_WAKE_PC"
         const val ACTION_MEDIA_PLAY_PAUSE = "app.nectarlink.widget.ACTION_MEDIA_PLAY_PAUSE"

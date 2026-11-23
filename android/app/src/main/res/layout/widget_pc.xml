@@ -164,18 +164,21 @@
         </LinearLayout>
     </LinearLayout>
 
-    <!-- Without buttons (offline, or no PC), this keeps Wake at the bottom. -->
+    <!-- Without buttons (offline, or no PC), this keeps Wake at the bottom.
+         On a short widget it's gone and Wake takes what's left, so it shrinks
+         instead of being cut off at the bottom. -->
     <FrameLayout
         android:id="@+id/widget_fill"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1" />
+        android:layout_weight="2" />
 
     <LinearLayout
         android:id="@+id/widget_btn_wake"
         android:layout_width="match_parent"
-        android:layout_height="44dp"
-        android:layout_marginTop="10dp"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="8dp"
         android:background="@drawable/widget_bloom_btn_primary"
         android:gravity="center"
         android:orientation="horizontal"
