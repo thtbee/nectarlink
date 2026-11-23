@@ -934,18 +934,13 @@ impl cxx_qt::Initialize for qobject::AppController {
         super::subscribe(qt.clone(), Changes::CONTINUITY, Self::refresh_continuity);
         super::subscribe(qt.clone(), Changes::PALETTE, Self::refresh_palette);
         super::subscribe(qt.clone(), Changes::LOCALSEND | Changes::STATUS, Self::refresh_localsend_state);
-        super::subscribe(
-            qt.clone(),
-            Changes::DATA_RETENTION
-                | Changes::CLIPBOARD
-                | Changes::TIMELINE
-                | Changes::HISTORY
-                | Changes::MESSAGES
-                | Changes::PHOTOS,
-            |object| {
+        // Refresh on explicit DATA_RETENTION changes only while Settings is open;
+        // SettingsPage refreshes on demand when opened and after clear/toggle actions.
+        super::subscribe(qt.clone(), Changes::DATA_RETENTION, |object| {
+            if String::from(&object.current_page) == "settings" {
                 spawn_data_retention_refresh(object.qt_thread());
-            },
-        );
+            }
+        });
 
         let labels = tray::MenuLabels {
             open: tr!("App", "Open NectarLink"),
