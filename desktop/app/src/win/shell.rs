@@ -11,7 +11,11 @@ use windows::{
             },
             Shutdown::LockWorkStation,
         },
-        UI::{Shell::ShellExecuteW, WindowsAndMessaging::SW_SHOWNORMAL},
+        Foundation::{LPARAM, WPARAM},
+        UI::{
+            Shell::ShellExecuteW,
+            WindowsAndMessaging::{HWND_BROADCAST, PostMessageW, SC_MONITORPOWER, SW_SHOWNORMAL, WM_SYSCOMMAND},
+        },
     },
     core::{HSTRING, w},
 };
@@ -160,13 +164,37 @@ pub fn lock() -> Result<(), String> {
 }
 
 /// Puts the PC to sleep (not hibernate; wake events stay allowed).
+///
+/// Most laptops now sleep the Modern Standby way, without S3, where
+/// `SetSuspendState` does nothing (#542). There, as with the power button,
+/// the screen goes off and Windows takes the PC into standby.
 pub fn sleep() -> Result<(), String> {
+    if modern_standby() {
+        return screen_off();
+    }
     // SAFETY: plain arguments.
     if unsafe { SetSuspendState(false, false, false) } {
         Ok(())
     } else {
-        Err("SetSuspendState failed".into())
+        tracing::warn!("SetSuspendState failed; turning the screen off instead");
+        screen_off()
     }
+}
+
+/// Whether the PC sleeps as Modern Standby (S0 low power idle) and has no S3.
+fn modern_standby() -> bool {
+    let mut caps = SYSTEM_POWER_CAPABILITIES::default();
+    // SAFETY: GetPwrCapabilities fills the struct it's given.
+    let read = unsafe { GetPwrCapabilities(&mut caps) };
+    read && caps.AoAc && !caps.SystemS3
+}
+
+/// Turns the screen off, which on a Modern Standby PC starts standby.
+fn screen_off() -> Result<(), String> {
+    // 2 is "off". Posted, not sent: a broadcast send waits on every window.
+    // SAFETY: a plain message post.
+    unsafe { PostMessageW(Some(HWND_BROADCAST), WM_SYSCOMMAND, WPARAM(SC_MONITORPOWER as usize), LPARAM(2)) }
+        .map_err(|e| e.to_string())
 }
 
 /// Hibernates the PC (#355).
