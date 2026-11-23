@@ -706,6 +706,20 @@ pub fn request_activation() {
     }
 }
 
+/// Brings up the Messages page for `device` (from any thread). The
+/// conversation is opened by the caller.
+pub(crate) fn show_messages(device: DeviceId) {
+    if let Some(qt) = controller() {
+        let _ = qt.queue(move |mut object| {
+            if let Some(idx) = core_host::host().hub.read(|s| s.devices.iter().position(|d| d.id == device)) {
+                object.as_mut().set_current_device(idx as i32);
+            }
+            object.as_mut().set_current_page(QString::from("messages"));
+            object.activate_requested();
+        });
+    }
+}
+
 /// Pauses or resumes pop-ups for phone notifications (from any thread).
 pub(crate) fn toggle_notifications_pause() {
     if let Some(qt) = controller() {

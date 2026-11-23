@@ -124,6 +124,9 @@ struct State {
     /// Chat replies that didn't go out, kept (marked "Not sent") when the
     /// conversation is read again from the database, which never had them.
     failed_replies: Vec<ChatMessageRecord>,
+    /// The text a notification opened this conversation for, to show and
+    /// highlight (SMS threads only).
+    focus_message: Option<String>,
 }
 
 /// What was typed and not sent, by `"<device>|<conversation>"` (`""` for a new
@@ -345,6 +348,8 @@ pub struct View {
     pub sims: Value,
     /// The one the open conversation sends on, or "".
     pub sim: String,
+    /// A message to bring into view and highlight, or "".
+    pub focus_message: String,
 }
 
 pub fn view() -> View {
@@ -463,6 +468,7 @@ pub fn view() -> View {
                 )
             },
             sim: s.sim().unwrap_or_default(),
+            focus_message: s.focus_message.clone().unwrap_or_default(),
         }
     })
 }
@@ -846,6 +852,7 @@ pub fn open_thread(thread: String) {
             s.chat_messages.clear();
             s.more = false;
             s.staged_attachment = None;
+            s.focus_message = None;
         }
         let date = s.threads.iter().find(|t| t.id == thread).map(|t| t.date);
         (s.device, date.and_then(|date| note_seen(s, &thread, date)))
@@ -1022,6 +1029,15 @@ fn load_messages(before: Option<i64>) {
                             s.messages.sort_by_key(|m| std::cmp::Reverse(m.date));
                         }
                         s.more = full || had_older && s.more;
+                        let mut asked = NOTIFICATION.lock().unwrap_or_else(|e| e.into_inner());
+                        if let Some(n) =
+                            asked.as_ref().filter(|n| n.thread.as_deref() == Some(thread.as_str()))
+                        {
+                            s.focus_message = message_for_notification(&s.messages, &n.text, n.when);
+                            if s.focus_message.is_some() {
+                                asked.take();
+                            }
+                        }
                     } else {
                         s.messages.extend(page);
                         s.more = full;
@@ -1497,6 +1513,114 @@ fn reload_after_send(to: &[String]) {
     }
 }
 
+/// Package names of the phone's SMS apps: their notifications open the
+/// conversation here when clicked.
+const SMS_APPS: &[&str] = &[
+    "com.google.android.apps.messaging",
+    "com.samsung.android.messaging",
+    "com.android.messaging",
+    "com.android.mms",
+    "com.oneplus.mms",
+    "com.huawei.message",
+    "com.sonyericsson.conversations",
+];
+
+/// What a text's notification says, to find its conversation and message.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TextNotification {
+    pub app: String,
+    pub title: String,
+    pub text: String,
+    /// Unix milliseconds.
+    pub when: i64,
+    /// The conversation's title, when it came as a chat (RCS).
+    pub conversation: Option<String>,
+}
+
+/// A text notification being opened, until its message is in view.
+struct OpenFor {
+    title: String,
+    text: String,
+    when: i64,
+    /// Its conversation, once listed.
+    thread: Option<String>,
+}
+
+static NOTIFICATION: Mutex<Option<OpenFor>> = Mutex::new(None);
+
+/// Opens the conversation a text's notification is from, with its message in
+/// view. False when the notification isn't from an SMS app.
+pub fn open_from_notification(device: DeviceId, n: TextNotification) -> bool {
+    if !SMS_APPS.contains(&n.app.as_str()) {
+        return false;
+    }
+    open_device(device);
+    match n.conversation.as_deref().map(str::trim).filter(|t| !t.is_empty()) {
+        // Texts that came as a chat (RCS) have one from their first notification.
+        Some(title) => open_thread(nectarlink_core::chat_thread_id(&n.app, title)),
+        None => {
+            *NOTIFICATION.lock().unwrap_or_else(|e| e.into_inner()) =
+                Some(OpenFor { title: n.title, text: n.text, when: n.when, thread: None });
+            open_notification_thread();
+        }
+    }
+    crate::bridge::app::show_messages(device);
+    true
+}
+
+/// Opens the waiting notification's conversation, if the phone's list has it
+/// yet; the list is read again when a text arrives, so a new one is there soon.
+fn open_notification_thread() {
+    let Some((title, text, when)) = NOTIFICATION
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .as_ref()
+        .filter(|n| n.thread.is_none())
+        .map(|n| (n.title.clone(), n.text.clone(), n.when))
+    else {
+        return;
+    };
+    let Some(thread) = state(|s| thread_for_notification(&s.threads, &title, &text, when)) else { return };
+    if let Some(n) = NOTIFICATION.lock().unwrap_or_else(|e| e.into_inner()).as_mut() {
+        n.thread = Some(thread.clone());
+    }
+    open_thread(thread);
+}
+
+/// The conversation a notification is from: the one with this title (a
+/// contact's name, or the number the text came from), the one whose latest
+/// text is the notification's when several are, then the most recent.
+fn thread_for_notification(threads: &[SmsThread], title: &str, text: &str, when: i64) -> Option<String> {
+    let title = title.trim().to_lowercase();
+    let number = digits(&title);
+    let text = text.trim();
+    threads
+        .iter()
+        .filter(|t| {
+            title_of(t).trim().to_lowercase() == title
+                || (!number.is_empty()
+                    && title.chars().all(|c| c.is_ascii_digit() || " +-().".contains(c))
+                    && t.addresses.iter().any(|a| digits(a) == number))
+        })
+        .min_by_key(|t| (t.snippet.trim() != text, (t.date - when).abs()))
+        .map(|t| t.id.clone())
+}
+
+/// The message a notification is about, in `messages` (newest first): the
+/// received one with its text, closest to when it was posted. A text long
+/// enough for the notification to cut it short still matches by its start.
+fn message_for_notification(messages: &[SmsMessage], text: &str, when: i64) -> Option<String> {
+    let text = text.trim().trim_end_matches('…').trim_end();
+    if text.is_empty() {
+        return None;
+    }
+    messages
+        .iter()
+        .filter(|m| !m.outgoing && m.body.trim().starts_with(text))
+        .min_by_key(|m| (m.date - when).abs())
+        .map(|m| m.id.clone())
+}
+
 /// A new conversation to open once it shows up, by its numbers' digits.
 static PENDING_OPEN: Mutex<Option<Vec<String>>> = Mutex::new(None);
 
@@ -1517,8 +1641,10 @@ pub fn reload() {
 /// Closes the open conversation (for writing a new one).
 pub fn close_thread() {
     PENDING_OPEN.lock().unwrap_or_else(|e| e.into_inner()).take();
+    NOTIFICATION.lock().unwrap_or_else(|e| e.into_inner()).take();
     state(|s| {
         s.thread = None;
+        s.focus_message = None;
         s.compose_to = None;
         s.compose_name = None;
         s.messages.clear();
@@ -1594,6 +1720,7 @@ pub fn on_event(event: &NodeEvent) {
 
 /// Opens a conversation just started from the PC, once it's listed.
 fn open_pending() {
+    open_notification_thread();
     let Some(wanted) = PENDING_OPEN.lock().unwrap_or_else(|e| e.into_inner()).clone() else { return };
     let found = state(|s| {
         s.threads
@@ -1612,6 +1739,79 @@ fn open_pending() {
 
 #[cfg(test)]
 mod tests {
+    fn sms_thread(id: &str, name: &str, number: &str, snippet: &str, date: i64) -> super::SmsThread {
+        super::SmsThread {
+            id: id.into(),
+            addresses: vec![number.into()],
+            names: vec![name.into()],
+            snippet: snippet.into(),
+            date,
+            unread: 0,
+            photo: None,
+        }
+    }
+
+    fn sms_text(id: &str, body: &str, date: i64, outgoing: bool) -> super::SmsMessage {
+        super::SmsMessage {
+            id: id.into(),
+            thread: "t".into(),
+            address: "a".into(),
+            body: body.into(),
+            date,
+            outgoing,
+            status: None,
+            parts: Vec::new(),
+            sim: None,
+        }
+    }
+
+    #[test]
+    fn a_text_notification_finds_its_conversation_by_name_or_number() {
+        let threads = vec![
+            sms_thread("1", "Alice", "+1 555-0100", "see you", 100),
+            sms_thread("2", "", "+44 20 7946 0958", "hello", 200),
+            sms_thread("3", "Alice", "+1 555-0199", "on my way", 300),
+        ];
+        // By the contact's name, preferring the one whose latest text it is.
+        assert_eq!(super::thread_for_notification(&threads, "alice", "see you", 400).as_deref(), Some("1"));
+        // Otherwise the most recent.
+        assert_eq!(super::thread_for_notification(&threads, "Alice", "other", 400).as_deref(), Some("3"));
+        // A number, written differently than the phone's.
+        assert_eq!(
+            super::thread_for_notification(&threads, "020 7946 0958", "hello", 200).as_deref(),
+            Some("2")
+        );
+        assert_eq!(super::thread_for_notification(&threads, "Bob", "hi", 400), None);
+        // A title that isn't a number never matches by digits.
+        assert_eq!(super::thread_for_notification(&threads, "Order 7946 0958", "hi", 400), None);
+    }
+
+    #[test]
+    fn a_text_notification_finds_its_message() {
+        // Newest first.
+        let messages = vec![
+            sms_text("3", "ok", 300, true),
+            sms_text("2", "On my way, back in ten minutes", 250, false),
+            sms_text("1", "On my way, back in ten minutes", 100, false),
+        ];
+        assert_eq!(
+            super::message_for_notification(&messages, "On my way, back in ten minutes", 260).as_deref(),
+            Some("2")
+        );
+        assert_eq!(
+            super::message_for_notification(&messages, "On my way, back in ten minutes", 90).as_deref(),
+            Some("1")
+        );
+        // The notification cut a long text short.
+        assert_eq!(
+            super::message_for_notification(&messages, "On my way, back in…", 255).as_deref(),
+            Some("2")
+        );
+        // What was sent from the phone isn't a notification's.
+        assert_eq!(super::message_for_notification(&messages, "ok", 300), None);
+        assert_eq!(super::message_for_notification(&messages, "", 300), None);
+    }
+
     #[test]
     fn a_text_goes_out_on_the_sim_picked_then_the_conversations_then_the_default() {
         let sim = |id: &str| nectarlink_core::CallSim { id: id.into(), label: format!("SIM {id}") };
