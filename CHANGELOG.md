@@ -480,6 +480,9 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **Folder sync is quicker with many files.** Comparing a big folder no longer slows down
+  with the square of its file count. Thanks to [@aihehye](https://github.com/aihehye)
+  ([#537](https://github.com/thtbee/nectarlink/pull/537)).
 - **Sleep from the phone works on more laptops.** Laptops that sleep the Modern Standby way
   ignored it; the screen now goes off as with the power button, and Windows takes them into
   standby ([#542](https://github.com/thtbee/nectarlink/issues/542)).
