@@ -2285,6 +2285,10 @@ mod imp {
             return;
         };
         let runtime = &core_host::host().runtime;
+        // Dropping the Wayland portal's zbus signal stream schedules a Tokio task.
+        // Keep the runtime entered through capture and teardown on this thread.
+        #[cfg(target_os = "linux")]
+        let _runtime_guard = runtime.enter();
         #[cfg(target_os = "linux")]
         let (mut wayland, wayland_dims) = if options.watch.is_none() && is_wayland_screencast_available() {
             let portal = runtime.block_on(win::screen_portal::ScreenPortal::open(
