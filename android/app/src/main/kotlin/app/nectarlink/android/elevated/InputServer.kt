@@ -1355,12 +1355,15 @@ object InputServer {
             UhidBridge.mouse(100, 100, 0, 0)
             Thread.sleep(150)
             val at = position()
-            if (size == null || at == null || at.first <= 0f) {
+            if (size == null || (at != null && at.first <= 0f)) {
                 stop()
                 return "FI 0 0 0"
             }
             val (width, height) = size
-            val scale = (at.first + at.second) / 200f
+            // Android 13 and older list no mouse position in `dumpsys input`
+            // (#107): there the scale is what the pointer speed setting gives,
+            // and `FW` answers unknown, so the PC trusts its own count.
+            val scale = if (at != null) (at.first + at.second) / 200f else speedScale()
             // Then to where the PC's mouse came in.
             UhidBridge.mouse(if (edge == "left") -127 * 30 else 127 * 30, -127 * 60, 0, 0)
             UhidBridge.mouse(0, (y.coerceIn(0f, 1f) * (height - 1) / scale).toInt(), 0, 0)
@@ -1373,6 +1376,18 @@ object InputServer {
         }
 
         fun where(): String = position()?.let { (x, y) -> "FP $x $y" } ?: "FP -1 -1"
+
+        /**
+         * Pixels per count from `pointer_speed` (-7 to 7), as Android's input
+         * reader scales a mouse: 2^(speed / 4).
+         */
+        private fun speedScale(): Float {
+            val speed = runCatching {
+                val proc = Runtime.getRuntime().exec(arrayOf("settings", "get", "system", "pointer_speed"))
+                proc.inputStream.bufferedReader().use { it.readText().trim() }.also { proc.waitFor() }.toInt()
+            }.getOrDefault(0).coerceIn(-7, 7)
+            return Math.pow(2.0, speed / 4.0).toFloat()
+        }
 
         @Synchronized
         fun stop() {
