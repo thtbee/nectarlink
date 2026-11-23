@@ -1550,6 +1550,51 @@ async fn stop_reconnecting_keeps_a_device_disconnected_until_turned_back_on() {
     with_timeout("ring after reconnecting", pc.node.ring(phone_id, true)).await.expect("ring works again");
 }
 
+/// USB only is a switch on the phone: its open LAN session closes, the PC's
+/// dials are refused and never show it online, and turning it off lets the
+/// PC reconnect.
+#[tokio::test(flavor = "multi_thread")]
+async fn usb_only_closes_a_lan_session_refuses_new_ones_and_lets_the_pc_back_when_turned_off() {
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+    let offline = |dev: &TestDevice| {
+        dev.node.paired_devices().unwrap().iter().all(|d| !matches!(d.link, LinkState::Online { .. }))
+    };
+    let never_online = |dev: &mut TestDevice, peer: nectarlink_core::DeviceId| {
+        while let Ok(event) = dev.events.try_recv() {
+            if let NodeEvent::LinkChanged { device, link: LinkState::Online { .. } } = event {
+                assert_ne!(device, peer, "{} showed the USB only phone online over the LAN", dev.name);
+            }
+        }
+    };
+
+    // The open session closes.
+    phone.node.set_usb_only(true);
+    assert!(phone.node.usb_only());
+    for (dev, peer) in [(&mut phone, pc_id), (&mut pc, phone_id)] {
+        wait_for(dev, "the LAN session closing", |e| match e {
+            NodeEvent::LinkChanged { device, link: LinkState::Offline { .. } } if *device == peer => Some(()),
+            _ => None,
+        })
+        .await;
+    }
+
+    // The PC dials again with its backoff (1 s, then 2 s); the phone refuses.
+    tokio::time::sleep(Duration::from_secs(5)).await;
+    assert!(offline(&pc) && offline(&phone), "still disconnected while USB only is on");
+    never_online(&mut pc, phone_id);
+    never_online(&mut phone, pc_id);
+
+    // Off again: the PC gets back in.
+    phone.node.set_usb_only(false);
+    assert!(!phone.node.usb_only());
+    wait_online(&mut phone, pc_id).await;
+    wait_online(&mut pc, phone_id).await;
+    with_timeout("ring after USB only is off", pc.node.ring(phone_id, true)).await.expect("ring works again");
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a_phone_stopped_and_started_again_in_the_same_process_reconnects() {
     // With its background connection off, the phone app stops the node when it goes to the

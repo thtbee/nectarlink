@@ -5733,6 +5733,43 @@ mod away_tests {
         node.shutdown().await;
     }
 
+    #[tokio::test]
+    async fn usb_only_stops_mdns_that_is_already_running_and_turning_it_off_starts_it_again() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let mut config = NodeConfig::new(
+            dir.path().to_path_buf(),
+            DeviceInfo {
+                name: "Test".into(),
+                kind: DeviceKind::Phone,
+                os: "android".into(),
+                os_ver: "14".into(),
+                model: None,
+                accent: None,
+                screen: None,
+                install_id: None,
+            },
+            "0.0.0-test",
+        );
+        config.localsend_port = 0;
+        let node = Node::start(config, Arc::new(NoopPlatform)).await.unwrap();
+        let running = |node: &Node| lock(&node.shared.lan_discovery).is_some();
+        // mDNS can fail to start where there's no multicast (a sandbox); that
+        // can't say anything about the switch.
+        if !running(&node) {
+            node.shutdown().await;
+            return;
+        }
+
+        node.set_usb_only(true);
+        settled(&node).await;
+        assert!(!running(&node), "mDNS keeps announcing the device while USB only is on");
+
+        node.set_usb_only(false);
+        settled(&node).await;
+        assert!(running(&node), "mDNS is back once USB only is off");
+        node.shutdown().await;
+    }
+
     /// Needs the internet: `cargo test -p nectarlink-core --lib -- --ignored away_switch`.
     #[tokio::test]
     #[ignore = "reaches the real relays"]
