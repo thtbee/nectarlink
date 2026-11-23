@@ -1638,90 +1638,6 @@ pub fn is_user_active_within_ms(max_idle_ms: u32) -> bool {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn resolves_named_keys_and_shortcuts() {
-        assert_eq!(resolve_key("enter"), Some(("Return".to_owned(), &[][..])));
-        assert_eq!(resolve_key("up"), Some(("Up".to_owned(), &[][..])));
-        assert_eq!(resolve_key("copy"), Some(("c".to_owned(), &[KeyMod::Ctrl][..])));
-        assert_eq!(resolve_key("paste"), Some(("v".to_owned(), &[KeyMod::Ctrl][..])));
-        assert_eq!(resolve_key("task_view"), Some(("Tab".to_owned(), &[KeyMod::Win][..])));
-        assert_eq!(resolve_key("a"), Some(("a".to_owned(), &[][..])));
-        assert_eq!(resolve_key("A"), Some(("a".to_owned(), &[][..])));
-        assert_eq!(resolve_key("5"), Some(("5".to_owned(), &[][..])));
-        assert_eq!(resolve_key("f5"), Some(("F5".to_owned(), &[][..])));
-        assert_eq!(resolve_key("play_pause"), Some(("XF86AudioPlay".to_owned(), &[][..])));
-        assert_eq!(resolve_key("volume_up"), Some(("XF86AudioRaiseVolume".to_owned(), &[][..])));
-        assert_eq!(resolve_key("print"), Some(("Print".to_owned(), &[][..])));
-        assert!(resolve_key("unknown_key").is_none());
-    }
-
-    #[test]
-    fn maps_evdev_keys_and_unicode_keysyms() {
-        assert_eq!(evdev_key_for_sym("Return"), Some(28));
-        assert_eq!(evdev_key_for_sym("Escape"), Some(1));
-        assert_eq!(evdev_key_for_sym("F5"), Some(63));
-        assert_eq!(evdev_key_for_sym("XF86AudioPlay"), Some(164));
-        assert_eq!(evdev_key_for_mod(KeyMod::Win), 125);
-
-        assert_eq!(char_to_x11_keysym('a'), 0x61);
-        assert_eq!(char_to_x11_keysym('\n'), 0xff0d);
-        assert_eq!(char_to_x11_keysym('é'), 0x00e9);
-        assert_eq!(char_to_x11_keysym('€'), 0x0100_20ac);
-    }
-
-    #[test]
-    fn formats_xdotool_combos_with_preset_and_explicit_modifiers() {
-        assert_eq!(format_xdotool_combo("copy", &[]), Some("ctrl+c".to_owned()));
-        assert_eq!(
-            format_xdotool_combo("k", &[KeyMod::Ctrl, KeyMod::Shift]),
-            Some("ctrl+shift+k".to_owned())
-        );
-        assert_eq!(format_xdotool_combo("tab", &[KeyMod::Alt]), Some("alt+Tab".to_owned()));
-        assert_eq!(format_xdotool_combo("d", &[KeyMod::Win]), Some("super+d".to_owned()));
-        assert_eq!(format_xdotool_combo("f5", &[]), Some("F5".to_owned()));
-    }
-
-    #[test]
-    fn accumulates_subpixel_move_and_scroll_remainders() {
-        let mut s = InputState::default();
-        assert_eq!(s.accumulate_move(0.4, -0.4), (0, 0));
-        assert_eq!(s.accumulate_move(0.4, -0.4), (1, -1));
-        assert_eq!(s.accumulate_move(0.4, -0.4), (0, 0));
-
-        assert_eq!(s.accumulate_scroll(0.3, 0.3), (0, 0));
-        assert_eq!(s.accumulate_scroll(0.3, 0.3), (1, 1));
-    }
-
-    #[test]
-    fn tracks_held_mouse_buttons_and_resets_on_release() {
-        let mut s = InputState::default();
-        s.record_button(MouseButton::Left, ButtonAction::Down);
-        s.record_button(MouseButton::Right, ButtonAction::Click);
-        assert!(s.held_left);
-        assert!(!s.held_right);
-
-        let held = s.take_held_and_reset();
-        assert_eq!(held, (true, false, false));
-        assert!(!s.held_left);
-    }
-
-    #[test]
-    fn maps_normalized_coordinates_and_parses_idle_output() {
-        assert_eq!(normalized_to_pixels(0.0, 0.0, 1920, 1080), (0, 0));
-        assert_eq!(normalized_to_pixels(1.0, 1.0, 1920, 1080), (1919, 1079));
-        assert_eq!(normalized_to_pixels(0.5, 0.5, 1921, 1081), (960, 540));
-
-        assert_eq!(parse_idle_output_ms("8801\n", false), Some(8801));
-        assert_eq!(parse_idle_output_ms("(uint64 4250,)", false), Some(4250));
-        assert_eq!(parse_idle_output_ms("(uint32 19,)", true), Some(19_000));
-        assert_eq!(parse_idle_output_ms("12", true), Some(12_000));
-    }
-}
-
 /// Whether the app switcher is open (Alt held) from a three-finger swipe, and
 /// when the phone last moved it.
 static SWITCHER: Mutex<Option<std::time::Instant>> = Mutex::new(None);
@@ -1835,5 +1751,89 @@ pub fn gesture(gesture: nectarlink_core::TouchGesture) {
 pub fn close_switcher() {
     if SWITCHER.lock().unwrap_or_else(|e| e.into_inner()).take().is_some() {
         keys(&[(KEY_LEFTALT, false)]);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn resolves_named_keys_and_shortcuts() {
+        assert_eq!(resolve_key("enter"), Some(("Return".to_owned(), &[][..])));
+        assert_eq!(resolve_key("up"), Some(("Up".to_owned(), &[][..])));
+        assert_eq!(resolve_key("copy"), Some(("c".to_owned(), &[KeyMod::Ctrl][..])));
+        assert_eq!(resolve_key("paste"), Some(("v".to_owned(), &[KeyMod::Ctrl][..])));
+        assert_eq!(resolve_key("task_view"), Some(("Tab".to_owned(), &[KeyMod::Win][..])));
+        assert_eq!(resolve_key("a"), Some(("a".to_owned(), &[][..])));
+        assert_eq!(resolve_key("A"), Some(("a".to_owned(), &[][..])));
+        assert_eq!(resolve_key("5"), Some(("5".to_owned(), &[][..])));
+        assert_eq!(resolve_key("f5"), Some(("F5".to_owned(), &[][..])));
+        assert_eq!(resolve_key("play_pause"), Some(("XF86AudioPlay".to_owned(), &[][..])));
+        assert_eq!(resolve_key("volume_up"), Some(("XF86AudioRaiseVolume".to_owned(), &[][..])));
+        assert_eq!(resolve_key("print"), Some(("Print".to_owned(), &[][..])));
+        assert!(resolve_key("unknown_key").is_none());
+    }
+
+    #[test]
+    fn maps_evdev_keys_and_unicode_keysyms() {
+        assert_eq!(evdev_key_for_sym("Return"), Some(28));
+        assert_eq!(evdev_key_for_sym("Escape"), Some(1));
+        assert_eq!(evdev_key_for_sym("F5"), Some(63));
+        assert_eq!(evdev_key_for_sym("XF86AudioPlay"), Some(164));
+        assert_eq!(evdev_key_for_mod(KeyMod::Win), 125);
+
+        assert_eq!(char_to_x11_keysym('a'), 0x61);
+        assert_eq!(char_to_x11_keysym('\n'), 0xff0d);
+        assert_eq!(char_to_x11_keysym('é'), 0x00e9);
+        assert_eq!(char_to_x11_keysym('€'), 0x0100_20ac);
+    }
+
+    #[test]
+    fn formats_xdotool_combos_with_preset_and_explicit_modifiers() {
+        assert_eq!(format_xdotool_combo("copy", &[]), Some("ctrl+c".to_owned()));
+        assert_eq!(
+            format_xdotool_combo("k", &[KeyMod::Ctrl, KeyMod::Shift]),
+            Some("ctrl+shift+k".to_owned())
+        );
+        assert_eq!(format_xdotool_combo("tab", &[KeyMod::Alt]), Some("alt+Tab".to_owned()));
+        assert_eq!(format_xdotool_combo("d", &[KeyMod::Win]), Some("super+d".to_owned()));
+        assert_eq!(format_xdotool_combo("f5", &[]), Some("F5".to_owned()));
+    }
+
+    #[test]
+    fn accumulates_subpixel_move_and_scroll_remainders() {
+        let mut s = InputState::default();
+        assert_eq!(s.accumulate_move(0.4, -0.4), (0, 0));
+        assert_eq!(s.accumulate_move(0.4, -0.4), (1, -1));
+        assert_eq!(s.accumulate_move(0.4, -0.4), (0, 0));
+
+        assert_eq!(s.accumulate_scroll(0.3, 0.3), (0, 0));
+        assert_eq!(s.accumulate_scroll(0.3, 0.3), (1, 1));
+    }
+
+    #[test]
+    fn tracks_held_mouse_buttons_and_resets_on_release() {
+        let mut s = InputState::default();
+        s.record_button(MouseButton::Left, ButtonAction::Down);
+        s.record_button(MouseButton::Right, ButtonAction::Click);
+        assert!(s.held_left);
+        assert!(!s.held_right);
+
+        let held = s.take_held_and_reset();
+        assert_eq!(held, (true, false, false));
+        assert!(!s.held_left);
+    }
+
+    #[test]
+    fn maps_normalized_coordinates_and_parses_idle_output() {
+        assert_eq!(normalized_to_pixels(0.0, 0.0, 1920, 1080), (0, 0));
+        assert_eq!(normalized_to_pixels(1.0, 1.0, 1920, 1080), (1919, 1079));
+        assert_eq!(normalized_to_pixels(0.5, 0.5, 1921, 1081), (960, 540));
+
+        assert_eq!(parse_idle_output_ms("8801\n", false), Some(8801));
+        assert_eq!(parse_idle_output_ms("(uint64 4250,)", false), Some(4250));
+        assert_eq!(parse_idle_output_ms("(uint32 19,)", true), Some(19_000));
+        assert_eq!(parse_idle_output_ms("12", true), Some(12_000));
     }
 }

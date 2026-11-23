@@ -584,6 +584,131 @@ pub fn is_user_active_within_ms(max_idle_ms: u32) -> bool {
     now.wrapping_sub(info.dw_time) <= max_idle_ms
 }
 
+/// Whether the app switcher is open (Alt held) from a three-finger swipe, and
+/// when the phone last moved it.
+static SWITCHER: Mutex<Option<std::time::Instant>> = Mutex::new(None);
+/// How long Alt stays held without word from the phone, in case it left mid-swipe.
+const SWITCHER_IDLE: Duration = Duration::from_secs(8);
+
+/// A touchpad gesture from the phone, done as Windows' own touchpad does it.
+pub fn gesture(gesture: nectarlink_core::TouchGesture) {
+    use nectarlink_core::TouchGesture as G;
+    let key = |c: u8| VIRTUAL_KEY(u16::from(c));
+    match gesture {
+        G::Search => combo(&[VK_LWIN], key(b'S')),
+        G::TaskView => combo(&[VK_LWIN], VK_TAB),
+        G::ShowDesktop => combo(&[VK_LWIN], key(b'D')),
+        // Windows 11 opens notifications with Win+N; 10's Action Center is Win+A.
+        G::Notifications => combo(&[VK_LWIN], key(if windows_11() { b'N' } else { b'A' })),
+        G::DesktopNext => combo(&[VK_CONTROL, VK_LWIN], VK_RIGHT),
+        G::DesktopPrevious => combo(&[VK_CONTROL, VK_LWIN], VK_LEFT),
+        G::ZoomIn | G::ZoomOut => {
+            let notch = if gesture == G::ZoomIn { WHEEL_DELTA as i32 } else { -(WHEEL_DELTA as i32) };
+            send_inputs(&[
+                vk_input(VK_CONTROL, false, false),
+                mouse_input(0, 0, notch, MOUSEEVENTF_WHEEL),
+                vk_input(VK_CONTROL, false, true),
+            ]);
+        }
+        G::SwitcherNext | G::SwitcherPrevious => {
+            let opening = {
+                let mut open = SWITCHER.lock().unwrap_or_else(|e| e.into_inner());
+                let opening = open.is_none();
+                *open = Some(std::time::Instant::now());
+                opening
+            };
+            let mut inputs = Vec::with_capacity(5);
+            if opening {
+                inputs.push(vk_input(VK_MENU, false, false));
+            }
+            let back = gesture == G::SwitcherPrevious;
+            if back {
+                inputs.push(vk_input(VK_SHIFT, false, false));
+            }
+            inputs.push(vk_input(VK_TAB, false, false));
+            inputs.push(vk_input(VK_TAB, false, true));
+            if back {
+                inputs.push(vk_input(VK_SHIFT, false, true));
+            }
+            send_inputs(&inputs);
+            if opening {
+                std::thread::spawn(|| {
+                    loop {
+                        std::thread::sleep(Duration::from_millis(500));
+                        let idle = SWITCHER
+                            .lock()
+                            .unwrap_or_else(|e| e.into_inner())
+                            .is_some_and(|at| at.elapsed() >= SWITCHER_IDLE);
+                        let open = SWITCHER.lock().unwrap_or_else(|e| e.into_inner()).is_some();
+                        if !open {
+                            return;
+                        }
+                        if idle {
+                            close_switcher();
+                            return;
+                        }
+                    }
+                });
+            }
+        }
+        G::SwitcherDone => close_switcher(),
+    }
+}
+
+/// Lets go of Alt if a three-finger swipe holds it: the app picked comes up.
+pub fn close_switcher() {
+    if SWITCHER.lock().unwrap_or_else(|e| e.into_inner()).take().is_some() {
+        send_inputs(&[vk_input(VK_MENU, false, true)]);
+    }
+}
+
+/// Presses `key` with `mods` held, then lets go of all in reverse.
+fn combo(mods: &[VIRTUAL_KEY], key: VIRTUAL_KEY) {
+    let extended = |vk: VIRTUAL_KEY| vk == VK_LWIN || vk == VK_LEFT || vk == VK_RIGHT;
+    let mut inputs = Vec::with_capacity(mods.len() * 2 + 2);
+    for &m in mods {
+        inputs.push(vk_input(m, extended(m), false));
+    }
+    inputs.push(vk_input(key, extended(key), false));
+    inputs.push(vk_input(key, extended(key), true));
+    for &m in mods.iter().rev() {
+        inputs.push(vk_input(m, extended(m), true));
+    }
+    wait_for_last_keystroke(AFTER_KEY);
+    send_inputs(&inputs);
+}
+
+/// Windows 11 (build 22000) or later.
+fn windows_11() -> bool {
+    use windows::{
+        Win32::System::Registry::{HKEY_LOCAL_MACHINE, RRF_RT_REG_SZ, RegGetValueW},
+        core::w,
+    };
+    static IS: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    *IS.get_or_init(|| {
+        let mut buf = [0u16; 32];
+        let mut len = std::mem::size_of_val(&buf) as u32;
+        // SAFETY: the buffer and its size in bytes are passed together.
+        let read = unsafe {
+            RegGetValueW(
+                HKEY_LOCAL_MACHINE,
+                w!(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion"),
+                w!("CurrentBuildNumber"),
+                RRF_RT_REG_SZ,
+                None,
+                Some(buf.as_mut_ptr().cast()),
+                Some(&mut len),
+            )
+        };
+        read.is_ok()
+            && String::from_utf16_lossy(&buf)
+                .trim_end_matches('\0')
+                .trim()
+                .parse::<u32>()
+                .is_ok_and(|b| b >= 22000)
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -750,129 +875,4 @@ mod tests {
         assert_eq!(resolve_key("f5"), Some((VK_F5, false, &[][..])));
         assert!(resolve_key("unknown_key").is_none());
     }
-}
-
-/// Whether the app switcher is open (Alt held) from a three-finger swipe, and
-/// when the phone last moved it.
-static SWITCHER: Mutex<Option<std::time::Instant>> = Mutex::new(None);
-/// How long Alt stays held without word from the phone, in case it left mid-swipe.
-const SWITCHER_IDLE: Duration = Duration::from_secs(8);
-
-/// A touchpad gesture from the phone, done as Windows' own touchpad does it.
-pub fn gesture(gesture: nectarlink_core::TouchGesture) {
-    use nectarlink_core::TouchGesture as G;
-    let key = |c: u8| VIRTUAL_KEY(u16::from(c));
-    match gesture {
-        G::Search => combo(&[VK_LWIN], key(b'S')),
-        G::TaskView => combo(&[VK_LWIN], VK_TAB),
-        G::ShowDesktop => combo(&[VK_LWIN], key(b'D')),
-        // Windows 11 opens notifications with Win+N; 10's Action Center is Win+A.
-        G::Notifications => combo(&[VK_LWIN], key(if windows_11() { b'N' } else { b'A' })),
-        G::DesktopNext => combo(&[VK_CONTROL, VK_LWIN], VK_RIGHT),
-        G::DesktopPrevious => combo(&[VK_CONTROL, VK_LWIN], VK_LEFT),
-        G::ZoomIn | G::ZoomOut => {
-            let notch = if gesture == G::ZoomIn { WHEEL_DELTA as i32 } else { -(WHEEL_DELTA as i32) };
-            send_inputs(&[
-                vk_input(VK_CONTROL, false, false),
-                mouse_input(0, 0, notch, MOUSEEVENTF_WHEEL),
-                vk_input(VK_CONTROL, false, true),
-            ]);
-        }
-        G::SwitcherNext | G::SwitcherPrevious => {
-            let opening = {
-                let mut open = SWITCHER.lock().unwrap_or_else(|e| e.into_inner());
-                let opening = open.is_none();
-                *open = Some(std::time::Instant::now());
-                opening
-            };
-            let mut inputs = Vec::with_capacity(5);
-            if opening {
-                inputs.push(vk_input(VK_MENU, false, false));
-            }
-            let back = gesture == G::SwitcherPrevious;
-            if back {
-                inputs.push(vk_input(VK_SHIFT, false, false));
-            }
-            inputs.push(vk_input(VK_TAB, false, false));
-            inputs.push(vk_input(VK_TAB, false, true));
-            if back {
-                inputs.push(vk_input(VK_SHIFT, false, true));
-            }
-            send_inputs(&inputs);
-            if opening {
-                std::thread::spawn(|| {
-                    loop {
-                        std::thread::sleep(Duration::from_millis(500));
-                        let idle = SWITCHER
-                            .lock()
-                            .unwrap_or_else(|e| e.into_inner())
-                            .is_some_and(|at| at.elapsed() >= SWITCHER_IDLE);
-                        let open = SWITCHER.lock().unwrap_or_else(|e| e.into_inner()).is_some();
-                        if !open {
-                            return;
-                        }
-                        if idle {
-                            close_switcher();
-                            return;
-                        }
-                    }
-                });
-            }
-        }
-        G::SwitcherDone => close_switcher(),
-    }
-}
-
-/// Lets go of Alt if a three-finger swipe holds it: the app picked comes up.
-pub fn close_switcher() {
-    if SWITCHER.lock().unwrap_or_else(|e| e.into_inner()).take().is_some() {
-        send_inputs(&[vk_input(VK_MENU, false, true)]);
-    }
-}
-
-/// Presses `key` with `mods` held, then lets go of all in reverse.
-fn combo(mods: &[VIRTUAL_KEY], key: VIRTUAL_KEY) {
-    let extended = |vk: VIRTUAL_KEY| vk == VK_LWIN || vk == VK_LEFT || vk == VK_RIGHT;
-    let mut inputs = Vec::with_capacity(mods.len() * 2 + 2);
-    for &m in mods {
-        inputs.push(vk_input(m, extended(m), false));
-    }
-    inputs.push(vk_input(key, extended(key), false));
-    inputs.push(vk_input(key, extended(key), true));
-    for &m in mods.iter().rev() {
-        inputs.push(vk_input(m, extended(m), true));
-    }
-    wait_for_last_keystroke(AFTER_KEY);
-    send_inputs(&inputs);
-}
-
-/// Windows 11 (build 22000) or later.
-fn windows_11() -> bool {
-    use windows::{
-        Win32::System::Registry::{HKEY_LOCAL_MACHINE, RRF_RT_REG_SZ, RegGetValueW},
-        core::w,
-    };
-    static IS: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-    *IS.get_or_init(|| {
-        let mut buf = [0u16; 32];
-        let mut len = std::mem::size_of_val(&buf) as u32;
-        // SAFETY: the buffer and its size in bytes are passed together.
-        let read = unsafe {
-            RegGetValueW(
-                HKEY_LOCAL_MACHINE,
-                w!(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion"),
-                w!("CurrentBuildNumber"),
-                RRF_RT_REG_SZ,
-                None,
-                Some(buf.as_mut_ptr().cast()),
-                Some(&mut len),
-            )
-        };
-        read.is_ok()
-            && String::from_utf16_lossy(&buf)
-                .trim_end_matches('\0')
-                .trim()
-                .parse::<u32>()
-                .is_ok_and(|b| b >= 22000)
-    })
 }
