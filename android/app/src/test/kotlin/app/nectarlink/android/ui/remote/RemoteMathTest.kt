@@ -3,9 +3,11 @@ package app.nectarlink.android.ui.remote
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.abs
+import kotlin.math.pow
 
 class RemoteMathTest {
     @Test
@@ -13,7 +15,7 @@ class RemoteMathTest {
         val slow = TouchpadBallistics().gain(distance = 1f, dtMs = 8)
         val medium = TouchpadBallistics().gain(distance = 12f, dtMs = 8)
         val fast = TouchpadBallistics().gain(distance = 80f, dtMs = 8)
-        assertTrue("slow $slow is finer than 1:1", slow < 1f)
+        assertEquals(1.6f * 0.72f, slow, 1e-6f)
         assertTrue("medium $medium is between", medium > slow && medium < fast)
         assertTrue("fast $fast goes further", fast > 2f)
     }
@@ -348,4 +350,533 @@ class RemoteMathTest {
         val zoom = PcZoom(scale = 2f, x = -0.5f, y = -0.25f)
         assertEquals(zoom, PcMirrorMath.pinch(zoom, zoomViewport, 1000f, 450f, factor = Float.NaN, panX = 0f, panY = 0f))
     }
+    @Test
+    fun driftBallisticsUsesSmoothedDpSpeedAndClampsPreferences() {
+        val ballistics = TouchpadBallistics(pointerSpeed = 2f, acceleration = 0.5f)
+        val t = (0.45f - 0.1f) / 1.4f
+        val first = 2f * (0.72f + (0.28f + 0.5f * 3.2f) * t * t * (3f - 2f * t))
+        assertEquals(first, ballistics.gainDp(4f, 1), 1e-6f)
+        assertEquals(first, ballistics.gainDp(0f, 16), 1e-6f)
+        assertTrue(ballistics.gainDp(4f, 4) > first)
+        ballistics.reset()
+        assertEquals(first, ballistics.gainDp(4f, 4), 1e-6f)
+        assertEquals(0.4f, TouchpadBallistics(0f, -1f).gainDp(100f, 4), 1e-6f)
+        assertEquals(16.8f, TouchpadBallistics(99f, 9f).gainDp(100f, 4), 1e-5f)
+    }
+
+    @Test
+    fun driftWheelNotchesFollowNectarLinkSigns() {
+        val natural = TouchpadBallistics.scrollNotches(100f, -100f)
+        assertEquals(-1.45f, natural.first, 1e-6f)
+        assertEquals(1.45f, natural.second, 1e-6f)
+        val traditional = TouchpadBallistics.scrollNotches(100f, -100f, scrollSpeed = 2f, naturalScroll = false)
+        assertEquals(2.9f, traditional.first, 1e-6f)
+        assertEquals(-2.9f, traditional.second, 1e-6f)
+        assertEquals(-0.96f, TouchpadBallistics.pinchNotches(40f), 1e-6f)
+        assertEquals(0.96f, TouchpadBallistics.pinchNotches(-40f), 1e-6f)
+    }
+
+    @Test
+    fun airYawUsesGravityAndPitchTracksAllDisplayRotations() {
+        val expectedPitch = listOf(1f, -2f, -1f, 2f)
+        for ((i, rotation) in DisplayRotation.entries.withIndex()) {
+            val (yaw, pitch) = AirMouseProjection.rates(1f, 2f, 3f, 0f, 0f, 9.81f, rotation)
+            assertEquals(rotation, DisplayRotation.fromSurfaceRotation(i))
+            assertEquals(3f, yaw, 1e-6f)
+            assertEquals(expectedPitch[i], pitch, 1e-6f)
+        }
+        // Both the screen-right and phone-normal axes have vertical components in this grip.
+        val (yaw, pitch) = AirMouseProjection.rates(1f, 0f, 1f, 7f, 0f, 7f)
+        assertEquals(1.4142135f, yaw, 1e-6f)
+        assertEquals(0f, pitch, 1e-6f)
+        assertEquals(0f to 0f, AirMouseProjection.rates(1f, 2f, 3f, 0f, 0f, 0f))
+        assertEquals(1f to 1f, AirMouseProjection.rates(1f, 0f, 0f, 9.81f, 0f, 0f))
+    }
+
+    @Test
+    fun airPointerDeadZoneAndSpeedGainMatchDrift() {
+        assertEquals(0f to 0f, AirMouseProjection.pointerDelta(0.02f, 0f, 1f))
+        assertEquals(0f to 0f, AirMouseProjection.pointerDelta(1f, 0f, 0f))
+        val (dx, dy) = AirMouseProjection.pointerDelta(-0.1f, 0f, 0.1f)
+        assertEquals(120.75f, dx, 1e-4f)
+        assertEquals(0f, dy, 1e-6f)
+        val fast = AirMouseProjection.pointerDelta(0f, -0.3f, 0.1f, airSpeed = 2f)
+        assertEquals(0.3f * 1150f * 2f * 1.65f, fast.second, 1e-3f)
+        assertTrue(AirMouseProjection.pointerDelta(0.0201f, 0f, 1f).first < 0f)
+    }
+
+    @Test
+    fun deskWaitsForSixteenQuietSamplesAfterAJolt() {
+        val desk = DeskTrace()
+        desk.samples(16)
+        assertEquals(DeskStatus.Ready, desk.engine.status)
+        desk.engine.onGravity(6f, 0f, 7f)
+        desk.samples(6, ax = 2f, wz = 0.08f)
+        val tilted = desk.engine.readMotion()
+        assertEquals(DeskStatus.Tilted, tilted.status)
+        assertEquals(0.0, tilted.xMetres, 0.0)
+        assertEquals(0.0, tilted.twistRadians, 0.0)
+        desk.engine.onGravity(0f, 0f, -9.81f)
+        desk.samples(1)
+        assertEquals(DeskStatus.Tilted, desk.engine.status)
+
+        desk.engine.onGravity(0f, 0f, 9.81f)
+        desk.samples(1, az = -2.21f)
+        assertEquals(DeskStatus.Lifted, desk.engine.status)
+        desk.samples(8, ax = 0.5f, wz = 0.08f)
+        // Gyro movement interrupts the quiet count even after the accel has settled.
+        desk.samples(6, wz = 0.08f)
+        desk.samples(15, ax = 0.04f)
+        val lifted = desk.engine.readMotion()
+        assertEquals(DeskStatus.Lifted, lifted.status)
+        assertEquals(0.0, lifted.xMetres, 0.0)
+        assertEquals(0.0, lifted.twistRadians, 0.0)
+        desk.samples(1, ax = 0.04f)
+        assertEquals(DeskStatus.Ready, desk.engine.status)
+        desk.samples(10, ax = 1.2f)
+        assertTrue(desk.engine.readMotion().xMetres > 0.0)
+    }
+
+    @Test
+    fun deskCommitsAStrokeAndBlocksWeakReversal() {
+        val desk = DeskTrace()
+        desk.samples(16)
+        desk.samples(3, ax = 1.2f)
+        assertEquals(0.0, desk.engine.readMotion().xMetres, 0.0)
+        desk.samples(5, ax = 1.2f)
+        val stroke = desk.engine.readMotion()
+        assertEquals(DeskStatus.Tracking, stroke.status)
+        assertTrue(stroke.xMetres > 0.0)
+        desk.samples(8, ax = -1.2f)
+        assertTrue(desk.engine.readMotion().xMetres > 0.0)
+        desk.samples(13, ax = -1.2f)
+        assertEquals(0.0, desk.engine.readMotion().xMetres, 0.0)
+        desk.samples(1, ax = -1.2f)
+        assertTrue(desk.engine.readMotion().xMetres < 0.0)
+        assertEquals(0.0, desk.engine.readMotion().xMetres, 0.0)
+    }
+
+    @Test
+    fun deskLearnsBiasAndRotatesSlideAndTwistIndependently() {
+        val desk = DeskTrace()
+        desk.samples(150, ax = 0.1f)
+        assertEquals(DeskStatus.Ready, desk.engine.status)
+        assertEquals(0.0, desk.engine.readMotion().xMetres, 0.0)
+        desk.engine.reset()
+        desk.samples(30, ax = 0.16f)
+        assertEquals(DeskStatus.Ready, desk.engine.status)
+        assertEquals(0.0, desk.engine.readMotion().xMetres, 0.0)
+        desk.engine.rotation = DisplayRotation.Rotation90
+        desk.samples(10, ax = 1.2f, wz = 0.1f)
+        val slide = desk.engine.readMotion()
+        assertEquals(0.0, slide.xMetres, 0.0)
+        assertTrue(slide.yMetres > 0.0)
+        assertEquals(0.005, slide.twistRadians, 1e-8)
+        val withTwist = slide.pointerDelta(0.05)
+        assertEquals(-3.25f, withTwist.first, 1e-5f)
+        assertTrue(withTwist.second < 0f)
+        assertEquals(0f, slide.pointerDelta(0.05, deskTwist = false).first, 1e-6f)
+    }
+
+    @Test
+    fun deskPointerUsesDriftSpeedCurve() {
+        val slow = DeskMotion(0.001, 0.002, 0.01, DeskStatus.Tracking)
+        val (dx, dy) = slow.pointerDelta(0.1)
+        assertEquals(6.1f, dx, 1e-5f)
+        assertEquals(-25.2f, dy, 1e-5f)
+        val midpoint = DeskMotion(0.029, 0.0, 0.0, DeskStatus.Tracking).pointerDelta(0.1, deskSpeed = 2f)
+        assertEquals(0.029f * 21000f * 2f * 1.05f, midpoint.first, 1e-3f)
+        val fast = DeskMotion(0.1, 0.0, 0.0, DeskStatus.Tracking).pointerDelta(0.1)
+        assertEquals(3150f, fast.first, 1e-3f)
+    }
+
+    @Test
+    fun stickRescalesRadialDeadZoneAndClampsAtRadius() {
+        assertEquals(0f to 0f, StickCurve.velocity(6.4f, 0f))
+        assertEquals(0f to 0f, StickCurve.velocity(4f, 4f))
+        val halfway = StickCurve.velocity(32f, 0f)
+        assertEquals(2300f * (0.4f / 0.9f).pow(1.8f), halfway.first, 1e-4f)
+        assertEquals(0f, halfway.second, 1e-6f)
+        val saturated = StickCurve.velocity(64f, -64f, stickSpeed = 2f)
+        assertEquals(3252.6912f, saturated.first, 1e-3f)
+        assertEquals(-saturated.first, saturated.second, 1e-6f)
+    }
+
+    @Test
+    fun screenMapFitsNegativeMonitorOriginsAndFindsGaps() {
+        val left = MonitorRect("Portrait", -1280, -200, 1280, 1024)
+        val primary = MonitorRect("Primary", 0, 0, 1920, 1080, primary = true)
+        val transform = ScreenMapTransform(listOf(left, primary), 352f, 160f)
+        assertEquals(ScreenMapRect(-1280f, -200f, 3200f, 1280f), transform.virtualDesktop)
+        assertEquals(ScreenMapRect(16f, 16f, 320f, 128f), transform.mapBounds)
+        assertEquals(144f, transform.monitorBounds(primary).x, 1e-6f)
+        assertEquals(36f, transform.monitorBounds(primary).y, 1e-6f)
+        assertEquals(left, transform.hitTest(50f, 30f))
+        assertEquals(primary, transform.hitTest(200f, 70f))
+        assertNull(transform.hitTest(200f, 30f))
+        assertNull(transform.hitTest(14f, 80f))
+        assertEquals(0f to 0f, transform.normalizedAt(-2f, -2f))
+        assertEquals(1f to 1f, transform.normalizedAt(400f, 200f))
+        val (x, y) = transform.padPosition(0.4f, 0.15625f)
+        assertEquals(0.4f to 0.15625f, transform.normalizedAt(x, y))
+        assertEquals("Display", ScreenMapTransform(emptyList(), 352f, 160f).monitors.single().name)
+    }
+
+    @Test
+    fun oneFingerTapUsesDurationTravelAndPreference() {
+        val pad = GestureTrace()
+        pad.at(0, p(1))
+        pad.at(160, p(1, 13f))
+        pad.at(299)
+        assertEquals(listOf(left(TouchpadButtonState.Click)), pad.buttons)
+        assertEquals(listOf(TouchpadHaptic.Click), pad.haptics)
+        assertEquals(1, pad.events.count { it == TouchpadGestureEvent.LeftTap })
+        assertTrue(pad.events.filterIsInstance<TouchpadGestureEvent.Move>().single().dx > 0f)
+
+        pad.events.clear()
+        pad.at(800, p(1))
+        pad.at(950, p(1, 14f))
+        pad.at(960)
+        pad.at(1000, p(1))
+        pad.at(1300)
+        assertTrue(pad.buttons.isEmpty())
+
+        val disabled = GestureTrace(TouchpadGestureOptions(tapToClick = false))
+        disabled.at(0, p(1))
+        disabled.at(100)
+        disabled.at(180, p(1))
+        disabled.at(200)
+        assertTrue(disabled.buttons.isEmpty())
+    }
+
+    @Test
+    fun tapTapDragPressesImmediatelyAndLiftingWithoutTravelCompletesDoubleClick() {
+        val pad = GestureTrace()
+        pad.at(0, p(1))
+        pad.at(80)
+        pad.at(399, p(1, 69f))
+        assertEquals(listOf(left(TouchpadButtonState.Click), left(TouchpadButtonState.Down)), pad.buttons)
+        pad.at(480)
+        assertEquals(left(TouchpadButtonState.Up), pad.buttons.last())
+        assertEquals(2, pad.events.count { it == TouchpadGestureEvent.LeftTap })
+
+        pad.events.clear()
+        pad.at(1000, p(1))
+        pad.at(1080)
+        pad.at(1100, p(1))
+        pad.at(1150, p(1, 8f))
+        pad.at(1200)
+        assertEquals(
+            listOf(left(TouchpadButtonState.Click), left(TouchpadButtonState.Down), left(TouchpadButtonState.Up)),
+            pad.buttons,
+        )
+        assertEquals(listOf(TouchpadHaptic.Click, TouchpadHaptic.Tick), pad.haptics)
+        assertEquals(1, pad.events.count { it == TouchpadGestureEvent.LeftTap })
+    }
+
+    @Test
+    fun holdArmsWithoutMovesAndDragSurvivesRepositionUntilTimeoutOrCancel() {
+        val pad = GestureTrace()
+        pad.at(0, p(1))
+        assertEquals(450L, pad.engine.nextDeadlineMs)
+        pad.engine.advanceTo(449)
+        assertTrue(pad.haptics.isEmpty())
+        pad.engine.advanceTo(450)
+        assertEquals(listOf(TouchpadHaptic.Tick), pad.haptics)
+        assertTrue(pad.buttons.isEmpty())
+        pad.at(460, p(1, 1f))
+        assertEquals(listOf(left(TouchpadButtonState.Down)), pad.buttons)
+        assertEquals(TouchpadHaptic.Heavy, pad.haptics.last())
+        pad.at(500)
+        assertEquals(880L, pad.engine.nextDeadlineMs)
+        pad.at(879, p(2, 150f))
+        assertNull(pad.engine.nextDeadlineMs)
+        pad.at(901, p(2, 151f))
+        assertEquals(1, pad.buttons.size)
+        pad.at(920)
+        pad.engine.advanceTo(1299)
+        assertEquals(1, pad.buttons.size)
+        pad.engine.advanceTo(1300)
+        assertEquals(left(TouchpadButtonState.Up), pad.buttons.last())
+        assertEquals(2, pad.buttons.size)
+
+        pad.at(1500, p(1))
+        pad.engine.advanceTo(1950)
+        pad.at(1960, p(1, 1f))
+        pad.engine.cancel()
+        assertEquals(left(TouchpadButtonState.Up), pad.buttons.last())
+        assertEquals(4, pad.buttons.size)
+        assertNull(pad.engine.nextDeadlineMs)
+    }
+
+    @Test
+    fun customAimingGetsSingleFingerLifecycleAndMultiFingerGestures() {
+        val pad = GestureTrace(TouchpadGestureOptions(relativePointer = false))
+        pad.at(0, p(1))
+        assertNull(pad.engine.nextDeadlineMs)
+        pad.at(15, p(1, 3f))
+        pad.at(30, p(1, 3f), p(2, 10f))
+        pad.at(65)
+        assertEquals(
+            listOf(
+                TouchpadSingleFinger.Start(p(1)),
+                TouchpadSingleFinger.Move(p(1, 3f), 3f, 0f),
+                TouchpadSingleFinger.Cancel,
+            ),
+            pad.events.filterIsInstance<TouchpadGestureEvent.SingleFinger>().map { it.event },
+        )
+        assertTrue(pad.events.none { it is TouchpadGestureEvent.Move })
+        assertEquals(listOf(TouchpadGestureEvent.Button(TouchpadButton.Right, TouchpadButtonState.Click)), pad.buttons)
+        assertEquals(listOf(TouchpadHaptic.Double), pad.haptics)
+    }
+
+    @Test
+    fun multiTapUsesPeakCountAndTimeSinceLastJoin() {
+        val pad = GestureTrace()
+        pad.at(0, p(1))
+        pad.at(300, p(1), p(2, 15f))
+        pad.at(470, p(1))
+        pad.at(719)
+        assertEquals(listOf(TouchpadGestureEvent.Button(TouchpadButton.Right, TouchpadButtonState.Click)), pad.buttons)
+
+        pad.events.clear()
+        pad.at(1000, p(1), p(2, 15f))
+        pad.at(1050, p(1, 22f), p(2, 37f))
+        pad.at(1060, p(1))
+        pad.at(1090)
+        pad.at(1200, p(1), p(2, 15f))
+        pad.at(1620)
+        assertTrue(pad.buttons.isEmpty())
+    }
+
+    @Test
+    fun scrollWaitsForStableCountLocksAxisAndGlides() {
+        val pad = GestureTrace()
+        pad.shift(0, 2)
+        pad.shift(69, 2, dy = -15f)
+        assertTrue(pad.events.isEmpty())
+        pad.shift(70, 2, dy = -16f)
+        pad.shift(86, 2, dx = 2f, dy = -32f)
+        pad.shift(102, 2, dx = 11f, dy = -48f)
+        pad.shift(118, 2, dy = -64f)
+        assertEquals(3, pad.scrolls.size)
+        for (scroll in pad.scrolls) {
+            assertEquals(0f, scroll.dxNotches, 1e-6f)
+            assertEquals(0.232f, scroll.dyNotches, 1e-6f)
+        }
+        pad.at(130)
+        assertEquals(146L, pad.engine.nextDeadlineMs)
+        pad.engine.advanceTo(146)
+        pad.engine.advanceTo(162)
+        val decay = 0.9965f.pow(16f)
+        assertEquals(0.232f * decay, pad.scrolls[3].dyNotches, 1e-6f)
+        assertEquals(0.232f * decay * decay, pad.scrolls[4].dyNotches, 1e-6f)
+        repeat(70) { pad.engine.nextDeadlineMs?.let(pad.engine::advanceTo) }
+        assertNull(pad.engine.nextDeadlineMs)
+    }
+
+    @Test
+    fun momentumIgnoresStaleSlowOrDisabledFlicksAndStopsOnNewTouch() {
+        fun flick(pad: GestureTrace, step: Float, liftAt: Long) {
+            pad.shift(0, 2)
+            pad.shift(70, 2, dy = 14f)
+            pad.shift(90, 2, dy = 14f + step)
+            pad.shift(110, 2, dy = 14f + 2f * step)
+            pad.at(liftAt)
+        }
+        val slow = GestureTrace()
+        flick(slow, 5f, 120)
+        assertNull(slow.engine.nextDeadlineMs)
+        val stale = GestureTrace()
+        flick(stale, 15f, 220)
+        assertNull(stale.engine.nextDeadlineMs)
+        val disabled = GestureTrace(TouchpadGestureOptions(momentum = false))
+        flick(disabled, 15f, 120)
+        assertNull(disabled.engine.nextDeadlineMs)
+        val interrupted = GestureTrace()
+        flick(interrupted, 15f, 120)
+        assertEquals(136L, interrupted.engine.nextDeadlineMs)
+        interrupted.at(125, p(1))
+        interrupted.engine.advanceTo(200)
+        assertEquals(2, interrupted.scrolls.size)
+        assertEquals(575L, interrupted.engine.nextDeadlineMs)
+    }
+
+    @Test
+    fun pinchFollowsSpreadAndReleasesCtrlOnLiftOrReclassification() {
+        val pad = GestureTrace()
+        pad.at(0, p(1, -10f), p(2, 10f))
+        pad.at(70, p(1, -18f), p(2, 18f))
+        pad.at(85, p(1, -39f), p(2, 39f))
+        pad.at(90, p(1, -38f), p(2, 38f))
+        pad.at(110, p(1, -38f))
+        pad.at(120)
+        assertEquals(listOf(true, false), pad.pinches)
+        val zoom = pad.events.filterIsInstance<TouchpadGestureEvent.Zoom>()
+        assertEquals(-42f * 0.024f, zoom[0].dyNotches, 1e-6f)
+        assertEquals(2f * 0.024f, zoom[1].dyNotches, 1e-6f)
+        assertEquals(listOf(TouchpadHaptic.Tick, TouchpadHaptic.Soft), pad.haptics)
+        assertTrue(pad.scrolls.isEmpty())
+
+        pad.events.clear()
+        pad.at(500, p(1, -10f), p(2, 10f))
+        pad.at(570, p(1, -20f), p(2, 20f))
+        pad.at(580, p(1, -20f))
+        pad.at(615, p(1, -20f), p(3, 20f))
+        assertEquals(listOf(true, false), pad.pinches)
+        pad.at(685, p(1, -13f), p(3, 27f))
+        assertTrue(pad.scrolls.isEmpty())
+        pad.at(690, p(1, -4f), p(3, 36f))
+        pad.at(700, p(1, 9f), p(3, 49f))
+        assertEquals(-0.1885f, pad.scrolls.single().dxNotches, 1e-6f)
+    }
+
+    @Test
+    fun lateThirdAndFourthFingersReclassifyWithoutCentroidJumps() {
+        val pad = GestureTrace()
+        pad.shift(0, 2)
+        pad.shift(70, 2, 14f)
+        pad.shift(80, 2, 20f)
+        assertEquals(1, pad.scrolls.size)
+        pad.shift(95, 3, 20f)
+        assertTrue(pad.actions.isEmpty())
+        pad.shift(165, 3, 50f)
+        assertEquals(listOf(TouchpadAction.SwitchStart, TouchpadAction.SwitchNext), pad.actions)
+        pad.shift(180, 4, 50f)
+        assertEquals(TouchpadAction.SwitchCancel, pad.actions.last())
+        pad.shift(250, 4, 20f)
+        pad.shift(260, 3, 20f)
+        pad.shift(270, 2, 20f)
+        pad.at(280)
+        assertEquals(
+            listOf(TouchpadAction.SwitchStart, TouchpadAction.SwitchNext, TouchpadAction.SwitchCancel, TouchpadAction.WorkspaceNext),
+            pad.actions,
+        )
+        assertEquals(1, pad.scrolls.size)
+    }
+
+    @Test
+    fun threeAndFourFingerTapsDispatchTheirConfiguredActions() {
+        val pad = GestureTrace()
+        pad.shift(0, 2)
+        pad.shift(60, 3)
+        pad.shift(100, 2)
+        pad.at(120)
+        pad.shift(200, 3)
+        pad.shift(220, 4)
+        pad.shift(255, 3)
+        pad.at(280)
+        assertEquals(listOf(TouchpadAction.Search, TouchpadAction.Notifications), pad.actions)
+        assertEquals(listOf(TouchpadHaptic.Click, TouchpadHaptic.Click), pad.haptics)
+
+        val alternate = GestureTrace(TouchpadGestureOptions(threeFingerMiddleClick = true))
+        alternate.shift(0, 3)
+        alternate.at(40)
+        assertEquals(listOf(TouchpadGestureEvent.Button(TouchpadButton.Middle, TouchpadButtonState.Click)), alternate.buttons)
+        assertTrue(alternate.actions.isEmpty())
+    }
+
+    @Test
+    fun horizontalThreeFingerSwipeStepsBothWaysThenEnds() {
+        val pad = GestureTrace()
+        pad.shift(0, 3)
+        pad.shift(70, 3, 29f)
+        pad.shift(80, 3, 74f)
+        assertEquals(listOf(TouchpadAction.SwitchStart, TouchpadAction.SwitchNext), pad.actions)
+        pad.shift(90, 3, 76f)
+        pad.shift(105, 3, -19f)
+        pad.shift(120, 2, -19f)
+        pad.at(125)
+        assertEquals(
+            listOf(
+                TouchpadAction.SwitchStart, TouchpadAction.SwitchNext, TouchpadAction.SwitchNext,
+                TouchpadAction.SwitchPrevious, TouchpadAction.SwitchPrevious, TouchpadAction.SwitchEnd,
+            ),
+            pad.actions,
+        )
+        assertEquals(listOf(TouchpadHaptic.Click, TouchpadHaptic.Tick, TouchpadHaptic.Tick, TouchpadHaptic.Tick), pad.haptics)
+    }
+
+    @Test
+    fun verticalSwipesTrackInverseAndFourFingerHorizontalSwipesChangeWorkspace() {
+        val pad = GestureTrace()
+        fun swipe(timeMs: Long, count: Int, dx: Float, dy: Float) {
+            pad.shift(timeMs, count)
+            pad.shift(timeMs + 70, count, dx, dy)
+            pad.at(timeMs + 90)
+        }
+        swipe(0, 3, 0f, -29f)
+        swipe(100, 4, 0f, 29f)
+        swipe(200, 3, 0f, 29f)
+        swipe(300, 4, 0f, -29f)
+        swipe(400, 4, -29f, 0f)
+        swipe(500, 4, 29f, 0f)
+        assertEquals(
+            listOf(
+                TouchpadAction.Overview, TouchpadAction.OverviewClose, TouchpadAction.ShowDesktop,
+                TouchpadAction.ShowDesktop, TouchpadAction.WorkspaceNext, TouchpadAction.WorkspacePrevious,
+            ),
+            pad.actions,
+        )
+        assertEquals(List(6) { TouchpadHaptic.Heavy }, pad.haptics)
+    }
+
+    @Test
+    fun systemCancellationEndsSwitcherAndReportsPeakFingerCountOnce() {
+        val pad = GestureTrace()
+        pad.shift(0, 3)
+        pad.shift(70, 3, -29f)
+        pad.shift(85, 2, -29f)
+        pad.engine.cancel(stolenBySystem = true)
+        pad.engine.cancel(stolenBySystem = true)
+        assertEquals(
+            listOf(TouchpadAction.SwitchStart, TouchpadAction.SwitchPrevious, TouchpadAction.SwitchCancel),
+            pad.actions,
+        )
+        assertEquals(1, pad.events.count { it == TouchpadGestureEvent.Stolen })
+        assertNull(pad.engine.nextDeadlineMs)
+
+        pad.events.clear()
+        pad.shift(100, 4)
+        pad.engine.cancel()
+        assertTrue(pad.events.isEmpty())
+    }
+
+    private class DeskTrace {
+        val engine = DeskSensorEngine()
+        private var timestampNs = 0L
+
+        init {
+            engine.onGravity(0f, 0f, 9.81f)
+            engine.onGyro(0f, 0f, 0f, timestampNs)
+            engine.onAcceleration(0f, 0f, 0f, timestampNs)
+        }
+
+        fun samples(count: Int, ax: Float = 0f, az: Float = 0f, wz: Float = 0f) {
+            repeat(count) {
+                timestampNs += 5_000_000L
+                engine.onGyro(0f, 0f, wz, timestampNs)
+                engine.onAcceleration(ax, 0f, az, timestampNs)
+            }
+        }
+    }
+
+    private class GestureTrace(options: TouchpadGestureOptions = TouchpadGestureOptions()) {
+        val events = mutableListOf<TouchpadGestureEvent>()
+        val engine = TouchpadGestureEngine(options, events::add)
+        val buttons get() = events.filterIsInstance<TouchpadGestureEvent.Button>()
+        val scrolls get() = events.filterIsInstance<TouchpadGestureEvent.Scroll>()
+        val actions get() = events.filterIsInstance<TouchpadGestureEvent.Action>().map { it.action }
+        val haptics get() = events.filterIsInstance<TouchpadGestureEvent.Haptic>().map { it.haptic }
+        val pinches get() = events.filterIsInstance<TouchpadGestureEvent.Pinch>().map { it.active }
+
+        fun at(timeMs: Long, vararg contacts: TouchpadContact) = engine.onPointers(timeMs, contacts.toList())
+
+        fun shift(timeMs: Long, count: Int, dx: Float = 0f, dy: Float = 0f) =
+            engine.onPointers(timeMs, List(count) { TouchpadContact(it.toLong(), 15f * it + dx, dy) })
+    }
+
+    private fun p(id: Long, x: Float = 0f, y: Float = 0f) = TouchpadContact(id, x, y)
+
+    private fun left(state: TouchpadButtonState) = TouchpadGestureEvent.Button(TouchpadButton.Left, state)
 }

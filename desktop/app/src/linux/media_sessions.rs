@@ -324,11 +324,13 @@ fn snapshot(art_cache: &mut ArtCache) -> Vec<MediaPlayer> {
     let now = Instant::now();
     let mut players = Vec::with_capacity(raw_players.len());
     for raw in raw_players {
-        if raw.playing
-            && let Ok(mut guard) = PAUSED_FOR_CALL.lock()
-            && let Some(state) = guard.as_mut()
-        {
-            state.observe_playing(&raw.id, now);
+        if raw.playing {
+            crate::audio_route::note_media_session_playing(&raw.id);
+            if let Ok(mut guard) = PAUSED_FOR_CALL.lock()
+                && let Some(state) = guard.as_mut()
+            {
+                state.observe_playing(&raw.id, now);
+            }
         }
         let (art_key, art) = art_cache.resolve(raw.art_url.as_deref()).unzip();
         players.push(MediaPlayer {
@@ -1184,6 +1186,141 @@ fn resume_after_call_blocking() {
             }
         }
     }
+}
+
+/// Lists active MPRIS2 media sessions as `(id, is_playing, is_paused)`.
+pub fn list_sessions() -> Vec<(String, bool, bool)> {
+    super::non_tokio(|| {
+        if let Ok(conn) = zbus::blocking::Connection::session()
+            && let Some(buses) = list_zbus_mpris_buses(&conn)
+        {
+            let mut out = Vec::with_capacity(buses.len());
+            for bus in buses {
+                let status = conn
+                    .call_method(
+                        Some(bus.as_str()),
+                        "/org/mpris/MediaPlayer2",
+                        Some("org.freedesktop.DBus.Properties"),
+                        "Get",
+                        &("org.mpris.MediaPlayer2.Player", "PlaybackStatus"),
+                    )
+                    .ok()
+                    .and_then(|msg| deserialize_property_value(&msg))
+                    .and_then(|v| val_as_str(&v))
+                    .unwrap_or_default();
+                let short_id = bus.strip_prefix("org.mpris.MediaPlayer2.").unwrap_or(&bus).to_owned();
+                let playing = status.eq_ignore_ascii_case("Playing");
+                let paused = status.eq_ignore_ascii_case("Paused");
+                out.push((short_id, playing, paused));
+            }
+            return out;
+        }
+        if let Ok(out) = Command::new("playerctl")
+            .args(["--all-players", "status", "--format", "{{playerName}}\t{{status}}"])
+            .output()
+            && out.status.success()
+        {
+            let stdout = String::from_utf8_lossy(&out.stdout);
+            let mut sessions = Vec::new();
+            for line in stdout.lines() {
+                if let Some((name, status)) = line.split_once('\t') {
+                    let name = name.trim();
+                    if !is_excluded_player(name) {
+                        let st = status.trim();
+                        sessions.push((
+                            name.to_owned(),
+                            st.eq_ignore_ascii_case("Playing"),
+                            st.eq_ignore_ascii_case("Paused"),
+                        ));
+                    }
+                }
+            }
+            return sessions;
+        }
+        Vec::new()
+    })
+}
+
+/// Pauses `id` if it is currently playing, returning `true` only when a pause
+/// command was issued for a playing session.
+pub fn pause_session_if_playing(id: &str) -> bool {
+    let trimmed = id.trim();
+    if trimmed.is_empty() || is_excluded_player(trimmed) {
+        return false;
+    }
+    super::non_tokio(|| {
+        if let Ok(conn) = zbus::blocking::Connection::session()
+            && let Some(bus) = resolve_zbus_target_bus(&conn, trimmed)
+        {
+            let is_playing = conn
+                .call_method(
+                    Some(bus.as_str()),
+                    "/org/mpris/MediaPlayer2",
+                    Some("org.freedesktop.DBus.Properties"),
+                    "Get",
+                    &("org.mpris.MediaPlayer2.Player", "PlaybackStatus"),
+                )
+                .ok()
+                .and_then(|msg| deserialize_property_value(&msg))
+                .and_then(|v| val_as_str(&v))
+                .is_some_and(|s| s.eq_ignore_ascii_case("Playing"));
+            if !is_playing {
+                return false;
+            }
+            return zbus_player_command(&conn, &bus, MediaAction::Pause, None);
+        }
+        if let Ok(out) = Command::new("playerctl").args(["--player", trimmed, "status"]).output()
+            && out.status.success()
+            && String::from_utf8_lossy(&out.stdout).trim().eq_ignore_ascii_case("Playing")
+        {
+            return Command::new("playerctl")
+                .args(["--player", trimmed, "pause"])
+                .status()
+                .is_ok_and(|s| s.success());
+        }
+        false
+    })
+}
+
+/// Resumes `id` if it is currently paused, returning `true` only when a play
+/// command was issued for a paused session.
+pub fn play_session_if_paused(id: &str) -> bool {
+    let trimmed = id.trim();
+    if trimmed.is_empty() || is_excluded_player(trimmed) {
+        return false;
+    }
+    super::non_tokio(|| {
+        if let Ok(conn) = zbus::blocking::Connection::session()
+            && let Some(bus) = resolve_zbus_target_bus(&conn, trimmed)
+        {
+            let is_paused = conn
+                .call_method(
+                    Some(bus.as_str()),
+                    "/org/mpris/MediaPlayer2",
+                    Some("org.freedesktop.DBus.Properties"),
+                    "Get",
+                    &("org.mpris.MediaPlayer2.Player", "PlaybackStatus"),
+                )
+                .ok()
+                .and_then(|msg| deserialize_property_value(&msg))
+                .and_then(|v| val_as_str(&v))
+                .is_some_and(|s| s.eq_ignore_ascii_case("Paused"));
+            if !is_paused {
+                return false;
+            }
+            return zbus_player_command(&conn, &bus, MediaAction::Play, None);
+        }
+        if let Ok(out) = Command::new("playerctl").args(["--player", trimmed, "status"]).output()
+            && out.status.success()
+            && String::from_utf8_lossy(&out.stdout).trim().eq_ignore_ascii_case("Paused")
+        {
+            return Command::new("playerctl")
+                .args(["--player", trimmed, "play"])
+                .status()
+                .is_ok_and(|s| s.success());
+        }
+        false
+    })
 }
 
 #[cfg(test)]

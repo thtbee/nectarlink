@@ -51,6 +51,7 @@ SetCompressor /SOLID zlib
 !define SETUP_EXE "Nectarlink Setup.exe"
 !define UNINSTALL_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APP}"
 !define FIREWALL_RULE "Nectarlink"
+!define FIREWALL_TAILSCALE_RULE "Nectarlink (Tailscale)"
 !define CAPABILITIES_KEY "Software\${APP}\Capabilities"
 !define TEL_PROGID "NectarLink.Tel"
 
@@ -392,7 +393,9 @@ Section "Install"
   ; Phones reach this PC over UDP (QUIC) and find it with mDNS.
   !insertmacro Progress "step firewall"
   nsExec::Exec 'netsh advfirewall firewall delete rule name="${FIREWALL_RULE}"'
+  nsExec::Exec 'netsh advfirewall firewall delete rule name="${FIREWALL_TAILSCALE_RULE}"'
   nsExec::Exec 'netsh advfirewall firewall add rule name="${FIREWALL_RULE}" dir=in action=allow program="$INSTDIR\${EXE}" enable=yes profile=private,domain description="Lets paired phones connect to NectarLink."'
+  nsExec::Exec 'netsh advfirewall firewall add rule name="${FIREWALL_TAILSCALE_RULE}" dir=in action=allow program="$INSTDIR\${EXE}" protocol=UDP localport=7718 remoteip=100.64.0.0/10,fd7a:115c:a1e0::/48 enable=yes profile=any description="Lets paired Tailscale devices reach NectarLink on UDP 7718."'
 
   ; Updates without an administrator prompt: a task that runs this app as
   ; SYSTEM to install a newer release (desktop/app/src/updater.rs). Only
@@ -524,6 +527,7 @@ Section "Uninstall"
   !insertmacro Progress "step cleanup"
   nsExec::Exec 'powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "try { Get-AppxPackage -Name \"Nectarlink.Desktop\" -ErrorAction SilentlyContinue | Remove-AppxPackage -ErrorAction SilentlyContinue } catch {}"'
   nsExec::Exec 'netsh advfirewall firewall delete rule name="${FIREWALL_RULE}"'
+  nsExec::Exec 'netsh advfirewall firewall delete rule name="${FIREWALL_TAILSCALE_RULE}"'
   nsExec::Exec 'schtasks /Delete /TN "Nectarlink Update" /F'
   ; Users can write here, so only our own files go, and the folders only
   ; when empty: a recursive delete as administrator could follow a junction.

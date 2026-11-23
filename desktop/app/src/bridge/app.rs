@@ -53,6 +53,8 @@ pub mod qobject {
         #[qproperty(i32, caps_revision)]
         /// Pop-ups for phone notifications are paused.
         #[qproperty(bool, notifications_paused)]
+        /// Remote control input from phones is transiently paused.
+        #[qproperty(bool, remote_paused)]
         /// Updated since What's new was last closed: it opens by itself (#461).
         #[qproperty(bool, whats_new_pending, cxx_name = "whatsNewPending")]
         /// Bumped when a device toggle is changed from this PC.
@@ -238,6 +240,9 @@ pub mod qobject {
         /// Pauses or resumes pop-ups for phone notifications.
         #[qinvokable]
         fn toggle_notifications_paused(self: Pin<&mut AppController>);
+        /// Transiently pauses or resumes remote control input from phones.
+        #[qinvokable]
+        fn toggle_remote_paused(self: Pin<&mut AppController>);
         /// This build's release notes and the ones before, as JSON (#461).
         #[qinvokable]
         #[cxx_name = "whatsNew"]
@@ -257,6 +262,11 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "setReconnect"]
         fn set_reconnect(self: Pin<&mut AppController>, device: &QString, on: bool);
+        /// Sets or clears a manual direct address (IP/IPv6/MagicDNS, optional port)
+        /// for a paired device. Returns `""` on success or an error message.
+        #[qinvokable]
+        #[cxx_name = "setManualAddress"]
+        fn set_manual_address(self: Pin<&mut AppController>, device: &QString, addr: &QString) -> QString;
 
         /// `{ state, limit, action, target, minutes, reason }` for a feature
         /// of a device (see docs/architecture/capabilities.md).
@@ -487,6 +497,7 @@ pub struct AppControllerRust {
     has_devices: bool,
     caps_revision: i32,
     notifications_paused: bool,
+    remote_paused: bool,
     whats_new_pending: bool,
     toggles_revision: i32,
     phone_toggles_revision: i32,
@@ -724,6 +735,13 @@ pub(crate) fn show_messages(device: DeviceId) {
 pub(crate) fn toggle_notifications_pause() {
     if let Some(qt) = controller() {
         let _ = qt.queue(|object| object.toggle_notifications_paused());
+    }
+}
+
+/// Pauses or resumes remote control input from phones (from any thread).
+pub(crate) fn toggle_remote_pause() {
+    if let Some(qt) = controller() {
+        let _ = qt.queue(|object| object.toggle_remote_paused());
     }
 }
 
@@ -971,11 +989,14 @@ impl cxx_qt::Initialize for qobject::AppController {
             open_link: tr!("App", "Open copied link on phone"),
             pause_notifications: tr!("App", "Pause phone notifications"),
             resume_notifications: tr!("App", "Resume phone notifications"),
+            pause_remote: tr!("App", "Pause remote control"),
+            resume_remote: tr!("App", "Resume remote control"),
             quit: tr!("App", "Quit NectarLink"),
         };
         match tray::Tray::create("NectarLink", labels, move |event| on_tray_event(&qt, event)) {
             Ok(tray) => {
                 tray.set_notifications_paused(crate::notifications::paused());
+                tray.set_remote_paused(crate::remote::is_paused());
                 self.rust_mut().tray = Some(tray);
             }
             Err(e) => tracing::warn!(error = %e, "no tray icon"),
@@ -1166,6 +1187,7 @@ fn on_tray_event(qt: &CxxQtThread<qobject::AppController>, event: tray::TrayEven
         tray::TrayEvent::ScanDocument => crate::continuity_camera::start("scan"),
         tray::TrayEvent::OpenLinkOnPhone => crate::links::open_copied_link_on_phone(),
         tray::TrayEvent::ToggleNotificationsPause => toggle_notifications_pause(),
+        tray::TrayEvent::ToggleRemotePause => toggle_remote_pause(),
         tray::TrayEvent::Quit => {
             let _ = qt.queue(|object| object.quit_requested());
         }
@@ -1183,6 +1205,7 @@ fn on_tray_event(qt: &CxxQtThread<qobject::AppController>, event: tray::TrayEven
         }
         tray::TrayEvent::Resumed => {
             tracing::info!("resumed from sleep; reconnecting");
+            crate::peer_addrs::refresh();
             if let Some(node) = core_host::node() {
                 core_host::spawn(async move { node.network_changed().await });
             }
@@ -1460,9 +1483,17 @@ impl qobject::AppController {
         if waiting_count > 0 {
             tooltip.push_str(&format!(" · {waiting_count} waiting"));
         }
+        let remote_paused = crate::remote::is_paused();
+        self.as_mut().set_remote_paused(remote_paused);
+        if remote_paused {
+            tooltip.push_str(" · Remote paused");
+        } else if crate::remote::active_peer_count() > 0 {
+            tooltip.push_str(" · Remote active");
+        }
         let tooltip_changed = self.rust().last_tray_tooltip != tooltip;
         if let Some(tray) = self.rust().tray.as_ref() {
             tray.set_find_phone_enabled(devices > 0);
+            tray.set_remote_paused(remote_paused);
             if tooltip_changed {
                 tray.set_tooltip(&tooltip);
             }
@@ -1736,6 +1767,15 @@ impl qobject::AppController {
         }
     }
 
+    pub fn toggle_remote_paused(mut self: Pin<&mut Self>) {
+        let paused = !crate::remote::is_paused();
+        crate::remote::set_paused(paused);
+        self.as_mut().set_remote_paused(paused);
+        if let Some(tray) = self.rust().tray.as_ref() {
+            tray.set_remote_paused(paused);
+        }
+    }
+
     pub fn sync_now(self: Pin<&mut Self>) {
         if let Some(node) = core_host::node() {
             core_host::spawn(async move { node.refresh().await });
@@ -1825,6 +1865,20 @@ impl qobject::AppController {
         let (Some(id), Some(node)) = (super::parse_device(device), core_host::node()) else { return };
         if let Err(e) = node.set_reconnect(id, on) {
             show_message(describe(&e));
+        }
+    }
+
+    pub fn set_manual_address(self: Pin<&mut Self>, device: &QString, addr: &QString) -> QString {
+        let Some(id) = super::parse_device(device) else {
+            return QString::from("Unknown device");
+        };
+        let raw = String::from(addr);
+        match crate::peer_addrs::set_manual(id, &raw) {
+            Ok(()) => {
+                core_host::host().hub.changed(Changes::DEVICES);
+                QString::default()
+            }
+            Err(err) => QString::from(&err.to_string()),
         }
     }
 

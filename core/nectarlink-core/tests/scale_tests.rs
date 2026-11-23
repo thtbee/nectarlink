@@ -37,6 +37,7 @@ fn make_config(dir: &TempDir, name: &str, kind: DeviceKind) -> NodeConfig {
     );
     cfg.lan_discovery = false;
     cfg.away_mode = false;
+    cfg.tailscale_interfaces = false;
     cfg.localsend_port = 0;
     cfg.key_protector = Some(Arc::new(PlainKeyProtector));
     cfg

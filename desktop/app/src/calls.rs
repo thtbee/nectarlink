@@ -51,14 +51,14 @@ fn note_call_ongoing(device: DeviceId) {
     // pause music the user started again during the call.
     let started = ongoing_calls(|c| c.insert(device));
     if started && PAUSE_MEDIA_ON_CALL.load(Ordering::Relaxed) {
-        crate::win::media_sessions::pause_for_call();
+        crate::audio_route::set_call_media_paused(true);
     }
 }
 
 fn note_call_ended(device: DeviceId) {
     let all_done = ongoing_calls(|c| c.remove(&device) && c.is_empty());
     if all_done {
-        crate::win::media_sessions::resume_after_call();
+        crate::audio_route::set_call_media_paused(false);
         let _ = std::thread::Builder::new().name("hfp-disconnect".into()).spawn(|| {
             bt_hfp::disconnect_audio();
             refresh_hfp_cache(None);

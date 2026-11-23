@@ -25,6 +25,7 @@ const RTMGRP_LINK: u32 = 1;
 const RTMGRP_IPV4_IFADDR: u32 = 0x10;
 const RTMGRP_IPV4_ROUTE: u32 = 0x40;
 const RTMGRP_IPV6_IFADDR: u32 = 0x100;
+const RTMGRP_IPV6_ROUTE: u32 = 0x400;
 
 #[repr(C)]
 struct SockAddrNl {
@@ -146,7 +147,11 @@ pub fn watch(callback: impl Fn() + Send + Sync + 'static) {
                     nl_family: AF_NETLINK as u16,
                     nl_pad: 0,
                     nl_pid: 0,
-                    nl_groups: RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV6_IFADDR | RTMGRP_IPV4_ROUTE,
+                    nl_groups: RTMGRP_LINK
+                        | RTMGRP_IPV4_IFADDR
+                        | RTMGRP_IPV6_IFADDR
+                        | RTMGRP_IPV4_ROUTE
+                        | RTMGRP_IPV6_ROUTE,
                 };
                 libc::bind(fd, (&raw const addr).cast(), std::mem::size_of::<SockAddrNl>() as u32) == 0
             };

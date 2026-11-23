@@ -19,8 +19,11 @@ class Preferences(context: Context) {
     private val _appearance = MutableStateFlow(load())
     val appearance: StateFlow<Appearance> = _appearance.asStateFlow()
 
-    private val _touchpadSensitivity = MutableStateFlow(prefs.getFloat(TOUCHPAD_SENSITIVITY, 1.0f).coerceIn(0.4f, 3.0f))
+    private val _touchpadSensitivity = MutableStateFlow(prefs.getFloat(TOUCHPAD_SENSITIVITY, 1.0f).coerceIn(0.4f, 4.0f))
     val touchpadSensitivity: StateFlow<Float> = _touchpadSensitivity.asStateFlow()
+
+    private val _remote = MutableStateFlow(loadRemotePreferences(prefs))
+    val remote: StateFlow<RemotePreferences> = _remote.asStateFlow()
 
     private val _suggestClipboardActions = MutableStateFlow(prefs.getBoolean(SUGGEST_CLIPBOARD_ACTIONS, true))
     val suggestClipboardActions: StateFlow<Boolean> = _suggestClipboardActions.asStateFlow()
@@ -150,9 +153,27 @@ class Preferences(context: Context) {
     }
 
     fun updateTouchpadSensitivity(sensitivity: Float) {
-        val clamped = sensitivity.coerceIn(0.4f, 3.0f)
-        prefs.edit { putFloat(TOUCHPAD_SENSITIVITY, clamped) }
+        val clamped = sensitivity.coerceIn(0.4f, 4.0f)
+        prefs.edit {
+            putFloat(TOUCHPAD_SENSITIVITY, clamped)
+            putFloat(REMOTE_POINTER_SPEED, clamped)
+        }
         _touchpadSensitivity.value = clamped
+        _remote.value = _remote.value.copy(pointerSpeed = clamped)
+    }
+
+    fun updateRemote(change: (RemotePreferences) -> RemotePreferences) {
+        val next = change(_remote.value).sanitized()
+        saveRemotePreferences(prefs, next)
+        _remote.value = next
+        _touchpadSensitivity.value = next.pointerSpeed
+    }
+
+    fun resetRemoteDefaults() {
+        val defaults = RemotePreferences()
+        saveRemotePreferences(prefs, defaults)
+        _remote.value = defaults
+        _touchpadSensitivity.value = defaults.pointerSpeed
     }
 
     fun updateSuggestClipboardActions(enabled: Boolean) {
@@ -236,6 +257,121 @@ class Preferences(context: Context) {
         private const val WALKTHROUGH_COMPLETED = "walkthrough_completed"
         private const val WALKTHROUGH_STEP = "walkthrough_step"
         private const val WHATS_NEW_GUIDE_DISMISSED = "whats_new_guide_dismissed"
+        private const val LAST_REMOTE_PC = "last_remote_pc"
+        private const val MANUAL_ADDR_PREFIX = "manual_addr_"
+        private const val REMOTE_POINTER_SPEED = "remote_pointer_speed"
+        private const val REMOTE_ACCELERATION = "remote_acceleration"
+        private const val REMOTE_SCROLL_SPEED = "remote_scroll_speed"
+        private const val REMOTE_AIR_SPEED = "remote_air_speed"
+        private const val REMOTE_STICK_SPEED = "remote_stick_speed"
+        private const val REMOTE_DESK_SPEED = "remote_desk_speed"
+        private const val REMOTE_DESK_SENSITIVITY = "remote_desk_sensitivity"
+        private const val REMOTE_TAP_TO_CLICK = "remote_tap_to_click"
+        private const val REMOTE_FINGER_TRAILS = "remote_finger_trails"
+        private const val REMOTE_NATURAL_SCROLLING = "remote_natural_scrolling"
+        private const val REMOTE_MOMENTUM = "remote_momentum"
+        private const val REMOTE_DESK_TWIST = "remote_desk_twist"
+        private const val REMOTE_HAPTICS = "remote_haptics"
+        private const val REMOTE_VOLUME_CLICKS = "remote_volume_clicks"
+        private const val REMOTE_KEEP_AWAKE = "remote_keep_awake"
+        private const val REMOTE_THREE_FINGER_MIDDLE = "remote_three_finger_middle"
+        private const val REMOTE_AIR_ALWAYS_ON = "remote_air_always_on"
+        private const val REMOTE_LANDSCAPE_ROTATED = "remote_landscape_rotated"
+
+        fun loadRemotePreferences(prefs: android.content.SharedPreferences): RemotePreferences {
+            val pointerSpeed = when {
+                prefs.contains(REMOTE_POINTER_SPEED) -> prefs.getFloat(REMOTE_POINTER_SPEED, RemotePreferences.DEFAULT_POINTER_SPEED)
+                prefs.contains(TOUCHPAD_SENSITIVITY) -> prefs.getFloat(TOUCHPAD_SENSITIVITY, RemotePreferences.DEFAULT_POINTER_SPEED)
+                else -> RemotePreferences.DEFAULT_POINTER_SPEED
+            }
+            return RemotePreferences(
+                pointerSpeed = pointerSpeed,
+                acceleration = prefs.getFloat(REMOTE_ACCELERATION, RemotePreferences.DEFAULT_ACCELERATION),
+                scrollSpeed = prefs.getFloat(REMOTE_SCROLL_SPEED, RemotePreferences.DEFAULT_SCROLL_SPEED),
+                airSpeed = prefs.getFloat(REMOTE_AIR_SPEED, RemotePreferences.DEFAULT_AIR_SPEED),
+                stickSpeed = prefs.getFloat(REMOTE_STICK_SPEED, RemotePreferences.DEFAULT_STICK_SPEED),
+                deskSpeed = prefs.getFloat(REMOTE_DESK_SPEED, RemotePreferences.DEFAULT_DESK_SPEED),
+                deskSensitivity = prefs.getFloat(REMOTE_DESK_SENSITIVITY, RemotePreferences.DEFAULT_DESK_SENSITIVITY),
+                tapToClick = prefs.getBoolean(REMOTE_TAP_TO_CLICK, true),
+                fingerTrails = prefs.getBoolean(REMOTE_FINGER_TRAILS, true),
+                naturalScrolling = prefs.getBoolean(REMOTE_NATURAL_SCROLLING, true),
+                momentum = prefs.getBoolean(REMOTE_MOMENTUM, true),
+                deskTwist = prefs.getBoolean(REMOTE_DESK_TWIST, true),
+                haptics = prefs.getBoolean(REMOTE_HAPTICS, true),
+                volumeClicks = prefs.getBoolean(REMOTE_VOLUME_CLICKS, true),
+                keepAwake = prefs.getBoolean(REMOTE_KEEP_AWAKE, true),
+                threeFingerMiddleClick = prefs.getBoolean(REMOTE_THREE_FINGER_MIDDLE, false),
+                airAlwaysOn = prefs.getBoolean(REMOTE_AIR_ALWAYS_ON, false),
+                landscapeRotated = prefs.getBoolean(REMOTE_LANDSCAPE_ROTATED, false),
+            ).sanitized()
+        }
+
+        fun saveRemotePreferences(prefs: android.content.SharedPreferences, value: RemotePreferences) {
+            val clean = value.sanitized()
+            prefs.edit {
+                putFloat(TOUCHPAD_SENSITIVITY, clean.pointerSpeed)
+                putFloat(REMOTE_POINTER_SPEED, clean.pointerSpeed)
+                putFloat(REMOTE_ACCELERATION, clean.acceleration)
+                putFloat(REMOTE_SCROLL_SPEED, clean.scrollSpeed)
+                putFloat(REMOTE_AIR_SPEED, clean.airSpeed)
+                putFloat(REMOTE_STICK_SPEED, clean.stickSpeed)
+                putFloat(REMOTE_DESK_SPEED, clean.deskSpeed)
+                putFloat(REMOTE_DESK_SENSITIVITY, clean.deskSensitivity)
+                putBoolean(REMOTE_TAP_TO_CLICK, clean.tapToClick)
+                putBoolean(REMOTE_FINGER_TRAILS, clean.fingerTrails)
+                putBoolean(REMOTE_NATURAL_SCROLLING, clean.naturalScrolling)
+                putBoolean(REMOTE_MOMENTUM, clean.momentum)
+                putBoolean(REMOTE_DESK_TWIST, clean.deskTwist)
+                putBoolean(REMOTE_HAPTICS, clean.haptics)
+                putBoolean(REMOTE_VOLUME_CLICKS, clean.volumeClicks)
+                putBoolean(REMOTE_KEEP_AWAKE, clean.keepAwake)
+                putBoolean(REMOTE_THREE_FINGER_MIDDLE, clean.threeFingerMiddleClick)
+                putBoolean(REMOTE_AIR_ALWAYS_ON, clean.airAlwaysOn)
+                putBoolean(REMOTE_LANDSCAPE_ROTATED, clean.landscapeRotated)
+            }
+        }
+
+        fun lastRemotePcId(context: Context): String? =
+            context.applicationContext
+                .getSharedPreferences("appearance", Context.MODE_PRIVATE)
+                .getString(LAST_REMOTE_PC, null)
+                ?.takeIf { it.isNotBlank() }
+
+        fun setLastRemotePcId(context: Context, pcId: String) {
+            context.applicationContext
+                .getSharedPreferences("appearance", Context.MODE_PRIVATE)
+                .edit { putString(LAST_REMOTE_PC, pcId) }
+        }
+
+        fun manualAddress(context: Context, deviceId: String): String =
+            context.applicationContext
+                .getSharedPreferences("manual_addresses", Context.MODE_PRIVATE)
+                .getString(MANUAL_ADDR_PREFIX + deviceId, "")
+                .orEmpty()
+
+        fun setManualAddress(context: Context, deviceId: String, address: String) {
+            val trimmed = address.trim()
+            context.applicationContext
+                .getSharedPreferences("manual_addresses", Context.MODE_PRIVATE)
+                .edit {
+                    if (trimmed.isEmpty()) remove(MANUAL_ADDR_PREFIX + deviceId)
+                    else putString(MANUAL_ADDR_PREFIX + deviceId, trimmed)
+                }
+        }
+
+        fun allManualAddresses(context: Context): Map<String, String> {
+            val prefs = context.applicationContext.getSharedPreferences("manual_addresses", Context.MODE_PRIVATE)
+            return prefs.all.entries.mapNotNull { (k, v) ->
+                if (k.startsWith(MANUAL_ADDR_PREFIX) && v is String && v.isNotBlank()) {
+                    k.removePrefix(MANUAL_ADDR_PREFIX) to v
+                } else {
+                    null
+                }
+            }.toMap()
+        }
+
+        fun audioMixerPrefs(context: Context): android.content.SharedPreferences =
+            context.applicationContext.getSharedPreferences("audio_mixer", Context.MODE_PRIVATE)
 
         val VALID_THEMES = setOf("hive", "bloom", "graphite", "glass")
         val VALID_MODES = setOf("system", "light", "dark")
@@ -342,6 +478,49 @@ class Preferences(context: Context) {
                 .getSharedPreferences("appearance", Context.MODE_PRIVATE)
                 .edit { putBoolean(BACKGROUND_SERVICE_ENABLED, enabled) }
         }
+    }
+}
+
+/** Persisted precision Remote settings matching Drift defaults. */
+@androidx.compose.runtime.Immutable
+data class RemotePreferences(
+    val pointerSpeed: Float = DEFAULT_POINTER_SPEED,
+    val acceleration: Float = DEFAULT_ACCELERATION,
+    val scrollSpeed: Float = DEFAULT_SCROLL_SPEED,
+    val airSpeed: Float = DEFAULT_AIR_SPEED,
+    val stickSpeed: Float = DEFAULT_STICK_SPEED,
+    val deskSpeed: Float = DEFAULT_DESK_SPEED,
+    val deskSensitivity: Float = DEFAULT_DESK_SENSITIVITY,
+    val tapToClick: Boolean = true,
+    val fingerTrails: Boolean = true,
+    val naturalScrolling: Boolean = true,
+    val momentum: Boolean = true,
+    val deskTwist: Boolean = true,
+    val haptics: Boolean = true,
+    val volumeClicks: Boolean = true,
+    val keepAwake: Boolean = true,
+    val threeFingerMiddleClick: Boolean = false,
+    val airAlwaysOn: Boolean = false,
+    val landscapeRotated: Boolean = false,
+) {
+    fun sanitized(): RemotePreferences = copy(
+        pointerSpeed = pointerSpeed.coerceIn(0.4f, 4.0f),
+        acceleration = acceleration.coerceIn(0f, 1f),
+        scrollSpeed = scrollSpeed.coerceIn(0.3f, 3.0f),
+        airSpeed = airSpeed.coerceIn(0.3f, 3.0f),
+        stickSpeed = stickSpeed.coerceIn(0.3f, 3.0f),
+        deskSpeed = deskSpeed.coerceIn(0.3f, 3.0f),
+        deskSensitivity = deskSensitivity.coerceIn(0f, 1f),
+    )
+
+    companion object {
+        const val DEFAULT_POINTER_SPEED = 1.6f
+        const val DEFAULT_ACCELERATION = 0.65f
+        const val DEFAULT_SCROLL_SPEED = 1.0f
+        const val DEFAULT_AIR_SPEED = 1.0f
+        const val DEFAULT_STICK_SPEED = 1.0f
+        const val DEFAULT_DESK_SPEED = 1.0f
+        const val DEFAULT_DESK_SENSITIVITY = 0.5f
     }
 }
 

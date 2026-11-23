@@ -136,6 +136,9 @@ impl Activity {
 }
 
 fn has_local_path(shared: &Shared, session: &Session) -> bool {
+    if session.path() == crate::ConnectionPath::Usb {
+        return true;
+    }
     session
         .selected_ip_path()
         .is_some_and(|(addr, usb)| usb || shared.is_unlock_local_ip(&session.peer, addr.ip()))
@@ -145,8 +148,9 @@ async fn local_path_lost(shared: &Shared, session: &Session, mut events: PathEve
     while let Some(event) = events.next().await {
         match event {
             PathEvent::Selected { remote_addr, .. } => {
-                if !matches!(remote_addr, TransportAddr::Ip(addr)
-                    if session.is_usb_addr(&addr) || shared.is_unlock_local_ip(&session.peer, addr.ip()))
+                if session.path() != crate::ConnectionPath::Usb
+                    && !matches!(remote_addr, TransportAddr::Ip(addr)
+                        if session.is_usb_addr(&addr) || shared.is_unlock_local_ip(&session.peer, addr.ip()))
                 {
                     return;
                 }

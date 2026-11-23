@@ -20,7 +20,10 @@ use std::{
     sync::{Arc, Mutex, OnceLock},
 };
 
-use nectarlink_core::{ButtonAction, KeyMod, MouseButton, PowerAction, SlideAction, TouchAction};
+use nectarlink_core::{
+    ButtonAction, GestureAction, KeyMod, MouseButton, PowerAction, RemoteInfo, RemoteMonitorRect,
+    SlideAction, TouchAction,
+};
 
 // ---- Linux `/dev/uinput` kernel ABI constants ----
 const EV_SYN: u16 = 0x00;
@@ -33,10 +36,14 @@ const REL_X: u16 = 0x00;
 const REL_Y: u16 = 0x01;
 const REL_HWHEEL: u16 = 0x06;
 const REL_WHEEL: u16 = 0x08;
+const REL_WHEEL_HI_RES: u16 = 0x0b;
+const REL_HWHEEL_HI_RES: u16 = 0x0c;
 
 const BTN_LEFT: u16 = 0x110;
 const BTN_RIGHT: u16 = 0x111;
 const BTN_MIDDLE: u16 = 0x112;
+const BTN_SIDE: u16 = 0x113;
+const BTN_EXTRA: u16 = 0x114;
 
 const BUS_USB: u16 = 0x03;
 
@@ -108,8 +115,11 @@ impl UinputDevice {
                     return None;
                 }
             }
+            for rel in [REL_WHEEL_HI_RES, REL_HWHEEL_HI_RES] {
+                let _ = libc::ioctl(fd, UI_SET_RELBIT, c_int::from(rel));
+            }
 
-            for btn in [BTN_LEFT, BTN_RIGHT, BTN_MIDDLE] {
+            for btn in [BTN_LEFT, BTN_RIGHT, BTN_MIDDLE, BTN_SIDE, BTN_EXTRA] {
                 if libc::ioctl(fd, UI_SET_KEYBIT, c_int::from(btn)) < 0 {
                     let _ = libc::close(fd);
                     return None;
@@ -133,6 +143,15 @@ impl UinputDevice {
                 return None;
             }
         }
+
+        // Best-effort: request flat acceleration on Hyprland so precision cursor
+        // gain computed on the phone is not doubled by compositor acceleration.
+        let _ = std::thread::Builder::new().name("hypr-flat-accel".into()).spawn(|| {
+            std::thread::sleep(std::time::Duration::from_millis(120));
+            if let Ok(hypr) = super::hyprland::Hyprland::discover() {
+                let _ = hypr.set_virtual_mouse_flat_accel("nectarlink-virtual-input");
+            }
+        });
 
         Some(Self { fd })
     }
@@ -164,16 +183,26 @@ impl UinputDevice {
         self.emit(EV_KEY, btn, i32::from(down)) && self.syn()
     }
 
-    fn scroll(&self, nx: i32, ny: i32) -> bool {
+    fn scroll(&self, nx: i32, ny: i32, hx: i32, hy: i32) -> bool {
         let mut ok = true;
+        if hy != 0 {
+            ok &= self.emit(EV_REL, REL_WHEEL_HI_RES, -hy);
+        }
         if ny != 0 {
             // In evdev, positive REL_WHEEL is scroll up; our `ny > 0` is scroll down.
             ok &= self.emit(EV_REL, REL_WHEEL, -ny);
+        }
+        if hx != 0 {
+            ok &= self.emit(EV_REL, REL_HWHEEL_HI_RES, hx);
         }
         if nx != 0 {
             ok &= self.emit(EV_REL, REL_HWHEEL, nx);
         }
         ok && self.syn()
+    }
+
+    fn key_state(&self, keycode: u16, down: bool) -> bool {
+        self.emit(EV_KEY, keycode, i32::from(down)) && self.syn()
     }
 
     fn key_combo(&self, keycode: u16, mods: &[u16]) -> bool {
@@ -215,6 +244,8 @@ fn evdev_button_code(button: MouseButton) -> u16 {
         MouseButton::Left => BTN_LEFT,
         MouseButton::Right => BTN_RIGHT,
         MouseButton::Middle => BTN_MIDDLE,
+        MouseButton::Back => BTN_SIDE,
+        MouseButton::Forward => BTN_EXTRA,
     }
 }
 
@@ -236,6 +267,7 @@ pub(crate) fn evdev_key_for_sym(sym: &str) -> Option<u16> {
         "Tab" => 15,
         "Return" => 28,
         "space" => 57,
+        "Caps_Lock" => 58,
         "F1" => 59,
         "F2" => 60,
         "F3" => 61,
@@ -262,9 +294,15 @@ pub(crate) fn evdev_key_for_sym(sym: &str) -> Option<u16> {
         "XF86AudioMute" => 113,
         "XF86AudioLowerVolume" => 114,
         "XF86AudioRaiseVolume" => 115,
+        "Pause" => 119,
+        "Super_L" => 125,
+        "Menu" => 139,
+        "XF86Back" => 158,
+        "XF86Forward" => 159,
         "XF86AudioNext" => 163,
         "XF86AudioPlay" => 164,
         "XF86AudioPrev" => 165,
+        "XF86AudioStop" => 166,
         _ => return None,
     };
     Some(code)
@@ -728,9 +766,15 @@ struct InputState {
     move_rem_y: f32,
     scroll_rem_x: f32,
     scroll_rem_y: f32,
+    hires_rem_x: f32,
+    hires_rem_y: f32,
     held_left: bool,
     held_right: bool,
     held_middle: bool,
+    held_back: bool,
+    held_forward: bool,
+    held_mods: Vec<KeyMod>,
+    alt_tab_held: bool,
 }
 
 impl InputState {
@@ -754,11 +798,23 @@ impl InputState {
         (nx, ny)
     }
 
+    fn accumulate_hires_scroll(&mut self, dx: f32, dy: f32) -> (i32, i32) {
+        let total_x = self.hires_rem_x + dx * 120.0;
+        let total_y = self.hires_rem_y + dy * 120.0;
+        let hx = total_x.round() as i32;
+        let hy = total_y.round() as i32;
+        self.hires_rem_x = total_x - (hx as f32);
+        self.hires_rem_y = total_y - (hy as f32);
+        (hx, hy)
+    }
+
     fn record_button(&mut self, button: MouseButton, action: ButtonAction) {
         let slot = match button {
             MouseButton::Left => &mut self.held_left,
             MouseButton::Right => &mut self.held_right,
             MouseButton::Middle => &mut self.held_middle,
+            MouseButton::Back => &mut self.held_back,
+            MouseButton::Forward => &mut self.held_forward,
         };
         *slot = matches!(action, ButtonAction::Down);
     }
@@ -772,7 +828,18 @@ impl InputState {
         self.move_rem_y = 0.0;
         self.scroll_rem_x = 0.0;
         self.scroll_rem_y = 0.0;
+        self.hires_rem_x = 0.0;
+        self.hires_rem_y = 0.0;
         held
+    }
+
+    fn take_extra_held(&mut self) -> (bool, bool, Vec<KeyMod>, bool) {
+        let extra =
+            (self.held_back, self.held_forward, std::mem::take(&mut self.held_mods), self.alt_tab_held);
+        self.held_back = false;
+        self.held_forward = false;
+        self.alt_tab_held = false;
+        extra
     }
 }
 
@@ -781,9 +848,15 @@ static STATE: Mutex<InputState> = Mutex::new(InputState {
     move_rem_y: 0.0,
     scroll_rem_x: 0.0,
     scroll_rem_y: 0.0,
+    hires_rem_x: 0.0,
+    hires_rem_y: 0.0,
     held_left: false,
     held_right: false,
     held_middle: false,
+    held_back: false,
+    held_forward: false,
+    held_mods: Vec::new(),
+    alt_tab_held: false,
 });
 
 fn has_display_env() -> bool {
@@ -1000,6 +1073,8 @@ fn x11_button_num(button: MouseButton) -> c_uint {
         MouseButton::Left => 1,
         MouseButton::Middle => 2,
         MouseButton::Right => 3,
+        MouseButton::Back => 8,
+        MouseButton::Forward => 9,
     }
 }
 
@@ -1008,6 +1083,8 @@ fn xdotool_button_id(button: MouseButton) -> &'static str {
         MouseButton::Left => "1",
         MouseButton::Middle => "2",
         MouseButton::Right => "3",
+        MouseButton::Back => "8",
+        MouseButton::Forward => "9",
     }
 }
 
@@ -1042,6 +1119,12 @@ pub fn mouse_button(button: MouseButton, action: ButtonAction) {
         (MouseButton::Middle, ButtonAction::Click) => "0xC2",
         (MouseButton::Middle, ButtonAction::Down) => "0x42",
         (MouseButton::Middle, ButtonAction::Up) => "0x82",
+        (MouseButton::Back, ButtonAction::Click) => "0xC3",
+        (MouseButton::Back, ButtonAction::Down) => "0x43",
+        (MouseButton::Back, ButtonAction::Up) => "0x83",
+        (MouseButton::Forward, ButtonAction::Click) => "0xC4",
+        (MouseButton::Forward, ButtonAction::Down) => "0x44",
+        (MouseButton::Forward, ButtonAction::Up) => "0x84",
     };
     if has_wayland_display() && run_quiet("ydotool", &["click", ydo_code]) {
         return;
@@ -1074,13 +1157,36 @@ pub fn mouse_button(button: MouseButton, action: ButtonAction) {
     }
 }
 
-/// Releases any mouse buttons still held down by remote input.
+fn send_modifier_state(m: KeyMod, down: bool) {
+    let code = evdev_key_for_mod(m);
+    if with_uinput(|u| u.key_state(code, down)) {
+        return;
+    }
+    if with_wayland_portal(|p| p.keycode(i32::from(code), down)) {
+        return;
+    }
+    let _ = with_xtest(|api, dpy| unsafe {
+        let mks = (api.string_to_keysym)(mod_x11_keysym_name(m).as_ptr());
+        let mkc = (api.keysym_to_keycode)(dpy, mks);
+        if mkc != 0 {
+            let _ = (api.fake_key)(dpy, c_uint::from(mkc), i32::from(down), 0);
+        }
+    });
+}
+
+/// Releases any mouse buttons and modifiers still held down by remote input.
 pub fn release_held_buttons() {
-    let (left, right, middle) = {
+    let ((left, right, middle), (back, forward, held_mods, alt_tab_held)) = {
         let mut s = STATE.lock().unwrap_or_else(|e| e.into_inner());
-        s.take_held_and_reset()
+        (s.take_held_and_reset(), s.take_extra_held())
     };
-    if !left && !right && !middle {
+    for m in held_mods.into_iter().rev() {
+        send_modifier_state(m, false);
+    }
+    if alt_tab_held {
+        send_modifier_state(KeyMod::Alt, false);
+    }
+    if !left && !right && !middle && !back && !forward {
         return;
     }
     if with_uinput(|u| {
@@ -1093,6 +1199,12 @@ pub fn release_held_buttons() {
         }
         if right {
             ok &= u.button(BTN_RIGHT, false);
+        }
+        if back {
+            ok &= u.button(BTN_SIDE, false);
+        }
+        if forward {
+            ok &= u.button(BTN_EXTRA, false);
         }
         ok
     }) {
@@ -1110,6 +1222,12 @@ pub fn release_held_buttons() {
             if right {
                 ok &= p.button(i32::from(BTN_RIGHT), false);
             }
+            if back {
+                ok &= p.button(i32::from(BTN_SIDE), false);
+            }
+            if forward {
+                ok &= p.button(i32::from(BTN_EXTRA), false);
+            }
             ok
         })
     }) {
@@ -1126,6 +1244,12 @@ pub fn release_held_buttons() {
         if right {
             handled &= run_quiet("ydotool", &["click", "0x81"]);
         }
+        if back {
+            handled &= run_quiet("ydotool", &["click", "0x83"]);
+        }
+        if forward {
+            handled &= run_quiet("ydotool", &["click", "0x84"]);
+        }
         if handled {
             return;
         }
@@ -1141,6 +1265,12 @@ pub fn release_held_buttons() {
             if right {
                 let _ = (api.fake_button)(dpy, 3, 0, 0);
             }
+            if back {
+                let _ = (api.fake_button)(dpy, 8, 0, 0);
+            }
+            if forward {
+                let _ = (api.fake_button)(dpy, 9, 0, 0);
+            }
         })
     {
         return;
@@ -1154,6 +1284,12 @@ pub fn release_held_buttons() {
     if right && !run_quiet("xdotool", &["mouseup", "3"]) {
         let _ = run_quiet("ydotool", &["click", "0x81"]);
     }
+    if back && !run_quiet("xdotool", &["mouseup", "8"]) {
+        let _ = run_quiet("ydotool", &["click", "0x83"]);
+    }
+    if forward && !run_quiet("xdotool", &["mouseup", "9"]) {
+        let _ = run_quiet("ydotool", &["click", "0x84"]);
+    }
 }
 
 /// Scrolls the mouse wheel smoothly (`dy > 0` scrolls down, `dx > 0` scrolls right).
@@ -1161,14 +1297,14 @@ pub fn scroll(dx: f32, dy: f32) {
     if !dx.is_finite() || !dy.is_finite() {
         return;
     }
-    let (nx, ny) = {
+    let ((nx, ny), (hx, hy)) = {
         let mut s = STATE.lock().unwrap_or_else(|e| e.into_inner());
-        s.accumulate_scroll(dx, dy)
+        (s.accumulate_scroll(dx, dy), s.accumulate_hires_scroll(dx, dy))
     };
-    if nx == 0 && ny == 0 {
+    if (hx != 0 || hy != 0 || nx != 0 || ny != 0) && with_uinput(|u| u.scroll(nx, ny, hx, hy)) {
         return;
     }
-    if with_uinput(|u| u.scroll(nx, ny)) {
+    if nx == 0 && ny == 0 {
         return;
     }
     if with_wayland_portal(|p| p.scroll(nx, ny)) {
@@ -1361,8 +1497,12 @@ pub(crate) fn resolve_key(key: &str) -> Option<(String, &'static [KeyMod])> {
         "home" => ("Home", NONE),
         "end" => ("End", NONE),
         "page_up" | "pageup" | "pgup" | "prior" => ("Prior", NONE),
-        "page_down" | "pagedown" | "pgdn" | "next" => ("Next", NONE),
-        "print" | "printscreen" | "sysrq" => ("Print", NONE),
+        "page_down" | "pagedown" | "pgdn" => ("Next", NONE),
+        "print" | "printscreen" | "print_screen" | "sysrq" => ("Print", NONE),
+        "win" | "super" => ("Super_L", NONE),
+        "pause" => ("Pause", NONE),
+        "capslock" => ("Caps_Lock", NONE),
+        "menu" => ("Menu", NONE),
         "f1" => ("F1", NONE),
         "f2" => ("F2", NONE),
         "f3" => ("F3", NONE),
@@ -1375,12 +1515,15 @@ pub(crate) fn resolve_key(key: &str) -> Option<(String, &'static [KeyMod])> {
         "f10" => ("F10", NONE),
         "f11" => ("F11", NONE),
         "f12" => ("F12", NONE),
-        "volume_up" | "xf86audioraisevolume" => ("XF86AudioRaiseVolume", NONE),
-        "volume_down" | "xf86audiolowervolume" => ("XF86AudioLowerVolume", NONE),
-        "volume_mute" | "xf86audiomute" => ("XF86AudioMute", NONE),
-        "play_pause" | "xf86audioplay" => ("XF86AudioPlay", NONE),
-        "next_track" | "xf86audionext" => ("XF86AudioNext", NONE),
-        "prev_track" | "xf86audioprev" => ("XF86AudioPrev", NONE),
+        "volume_up" | "volup" | "xf86audioraisevolume" => ("XF86AudioRaiseVolume", NONE),
+        "volume_down" | "voldown" | "xf86audiolowervolume" => ("XF86AudioLowerVolume", NONE),
+        "volume_mute" | "mute" | "xf86audiomute" => ("XF86AudioMute", NONE),
+        "play_pause" | "media_play_pause" | "playpause" | "xf86audioplay" => ("XF86AudioPlay", NONE),
+        "next_track" | "media_next" | "next" | "xf86audionext" => ("XF86AudioNext", NONE),
+        "prev_track" | "media_previous" | "prev" | "xf86audioprev" => ("XF86AudioPrev", NONE),
+        "media_stop" | "stop" | "xf86audiostop" => ("XF86AudioStop", NONE),
+        "browserback" => ("XF86Back", NONE),
+        "browserforward" => ("XF86Forward", NONE),
         s if s.len() == 1 => {
             let b = s.as_bytes()[0];
             if b.is_ascii_lowercase() || b.is_ascii_digit() {
@@ -1533,6 +1676,276 @@ pub fn slide(action: SlideAction) {
         SlideAction::Black => "b",
     };
     press_key(key, &[]);
+}
+
+/// Precision relative pointer move (flat acceleration is applied on Hyprland uinput).
+pub fn move_precise(dx: f32, dy: f32) {
+    move_relative(dx, dy);
+}
+
+/// Moves the cursor to normalized virtual-desktop coordinates `(0.0..=1.0)`
+/// across all monitors, optionally clicking `button` after moving.
+pub fn move_virtual_desktop(x: f32, y: f32, click: Option<MouseButton>) {
+    if !x.is_finite() || !y.is_finite() {
+        return;
+    }
+    let nx = x.clamp(0.0, 1.0);
+    let ny = y.clamp(0.0, 1.0);
+    let moved_via_hypr = super::hyprland::Hyprland::discover().ok().and_then(|hypr| {
+        let monitors = hypr.query_monitors().ok()?;
+        if monitors.is_empty() {
+            return None;
+        }
+        let min_x = monitors.iter().map(|m| m.x).min()?;
+        let min_y = monitors.iter().map(|m| m.y).min()?;
+        let max_x = monitors.iter().map(|m| m.x.saturating_add(m.width)).max()?;
+        let max_y = monitors.iter().map(|m| m.y.saturating_add(m.height)).max()?;
+        let span_x = (max_x - min_x).max(2) - 1;
+        let span_y = (max_y - min_y).max(2) - 1;
+        let px = min_x + (nx * span_x as f32).round() as i32;
+        let py = min_y + (ny * span_y as f32).round() as i32;
+        hypr.move_cursor(px, py).ok()?;
+        Some(())
+    });
+    if moved_via_hypr.is_none() {
+        move_absolute(nx, ny);
+    }
+    if let Some(btn) = click {
+        mouse_button(btn, ButtonAction::Click);
+    }
+}
+
+/// Pinch-zoom via a scoped `Ctrl` + vertical wheel gesture (`delta > 0` zooms in).
+pub fn zoom(delta: f32) {
+    if !delta.is_finite() || delta == 0.0 {
+        return;
+    }
+    send_modifier_state(KeyMod::Ctrl, true);
+    scroll(0.0, -delta);
+    send_modifier_state(KeyMod::Ctrl, false);
+}
+
+/// Presses (or releases) `mods` on their own and keeps them for
+/// [`release_held_buttons`]; `remote` uses it for holds shared by phones.
+pub fn hold_mods(mods: &[KeyMod], down: bool) {
+    if mods.is_empty() {
+        return;
+    }
+    {
+        let mut s = STATE.lock().unwrap_or_else(|e| e.into_inner());
+        if down {
+            for &m in mods {
+                if !s.held_mods.contains(&m) {
+                    s.held_mods.push(m);
+                }
+            }
+        } else {
+            s.held_mods.retain(|m| !mods.contains(m));
+        }
+    }
+    if down {
+        for &m in mods {
+            send_modifier_state(m, true);
+        }
+    } else {
+        for &m in mods.iter().rev() {
+            send_modifier_state(m, false);
+        }
+    }
+}
+
+/// Executes a mouse button action while holding `mods`.
+pub fn modified_button(button: MouseButton, action: ButtonAction, mods: &[KeyMod]) {
+    if mods.is_empty() {
+        mouse_button(button, action);
+        return;
+    }
+    match action {
+        ButtonAction::Click => {
+            for &m in mods {
+                send_modifier_state(m, true);
+            }
+            mouse_button(button, ButtonAction::Click);
+            for &m in mods.iter().rev() {
+                send_modifier_state(m, false);
+            }
+        }
+        ButtonAction::Down => {
+            {
+                let mut s = STATE.lock().unwrap_or_else(|e| e.into_inner());
+                for &m in mods {
+                    if !s.held_mods.contains(&m) {
+                        s.held_mods.push(m);
+                    }
+                }
+            }
+            for &m in mods {
+                send_modifier_state(m, true);
+            }
+            mouse_button(button, ButtonAction::Down);
+        }
+        ButtonAction::Up => {
+            mouse_button(button, ButtonAction::Up);
+            for &m in mods.iter().rev() {
+                send_modifier_state(m, false);
+            }
+            let mut s = STATE.lock().unwrap_or_else(|e| e.into_inner());
+            s.held_mods.retain(|m| !mods.contains(m));
+        }
+    }
+}
+
+/// Executes a desktop gesture, using Hyprland IPC when available and key combos otherwise.
+pub fn gesture(action: GestureAction) {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    static HYPR_DESKTOP_EMPTY: AtomicBool = AtomicBool::new(false);
+
+    if let Ok(hypr) = super::hyprland::Hyprland::discover() {
+        match action {
+            GestureAction::SwitchStart | GestureAction::SwitchEnd | GestureAction::SwitchCancel => {}
+            GestureAction::SwitchNext => {
+                let _ = hypr.cycle_window(true);
+            }
+            GestureAction::SwitchPrev => {
+                let _ = hypr.cycle_window(false);
+            }
+            GestureAction::OverviewOpen => {
+                let _ = hypr.toggle_maximize();
+            }
+            GestureAction::OverviewClose => press_key("escape", &[]),
+            GestureAction::DesktopToggle => {
+                let was_empty = HYPR_DESKTOP_EMPTY.fetch_xor(true, Ordering::AcqRel);
+                let _ = if was_empty { hypr.workspace_previous() } else { hypr.workspace_empty() };
+            }
+            GestureAction::WorkspaceNext => {
+                HYPR_DESKTOP_EMPTY.store(false, Ordering::Release);
+                let _ = hypr.workspace_step(true);
+            }
+            GestureAction::WorkspacePrev => {
+                HYPR_DESKTOP_EMPTY.store(false, Ordering::Release);
+                let _ = hypr.workspace_step(false);
+            }
+            GestureAction::Search | GestureAction::Launcher => {
+                if let Ok(Some(cmd)) = hypr.find_super_space_launcher() {
+                    let _ = hypr.exec_launcher(&cmd);
+                } else {
+                    press_key("space", &[KeyMod::Win]);
+                }
+            }
+            GestureAction::Notifications => {
+                if super::hyprland::restore_notification().is_err() {
+                    press_key("n", &[KeyMod::Win]);
+                }
+            }
+            GestureAction::CloseWindow => press_key("f4", &[KeyMod::Alt]),
+            GestureAction::Screenshot => press_key("printscreen", &[]),
+            GestureAction::Emoji => press_key("e", &[KeyMod::Ctrl, KeyMod::Shift]),
+        }
+        return;
+    }
+
+    match action {
+        GestureAction::SwitchStart => {
+            let mut s = STATE.lock().unwrap_or_else(|e| e.into_inner());
+            let already = s.alt_tab_held;
+            s.alt_tab_held = true;
+            drop(s);
+            if !already {
+                send_modifier_state(KeyMod::Alt, true);
+            }
+            press_key("tab", &[]);
+        }
+        GestureAction::SwitchNext => {
+            let already = {
+                let mut s = STATE.lock().unwrap_or_else(|e| e.into_inner());
+                let prev = s.alt_tab_held;
+                s.alt_tab_held = true;
+                prev
+            };
+            if !already {
+                send_modifier_state(KeyMod::Alt, true);
+            }
+            press_key("tab", &[]);
+        }
+        GestureAction::SwitchPrev => {
+            let already = {
+                let mut s = STATE.lock().unwrap_or_else(|e| e.into_inner());
+                let prev = s.alt_tab_held;
+                s.alt_tab_held = true;
+                prev
+            };
+            if !already {
+                send_modifier_state(KeyMod::Alt, true);
+            }
+            press_key("tab", &[KeyMod::Shift]);
+        }
+        GestureAction::SwitchEnd => {
+            let was = {
+                let mut s = STATE.lock().unwrap_or_else(|e| e.into_inner());
+                std::mem::replace(&mut s.alt_tab_held, false)
+            };
+            if was {
+                send_modifier_state(KeyMod::Alt, false);
+            }
+        }
+        GestureAction::SwitchCancel => {
+            press_key("escape", &[]);
+            let was = {
+                let mut s = STATE.lock().unwrap_or_else(|e| e.into_inner());
+                std::mem::replace(&mut s.alt_tab_held, false)
+            };
+            if was {
+                send_modifier_state(KeyMod::Alt, false);
+            }
+        }
+        GestureAction::OverviewOpen => press_key("win", &[]),
+        GestureAction::OverviewClose => press_key("escape", &[]),
+        GestureAction::DesktopToggle => press_key("d", &[KeyMod::Win]),
+        GestureAction::WorkspaceNext => press_key("right", &[KeyMod::Ctrl, KeyMod::Alt]),
+        GestureAction::WorkspacePrev => press_key("left", &[KeyMod::Ctrl, KeyMod::Alt]),
+        GestureAction::Search | GestureAction::Launcher => press_key("win", &[]),
+        GestureAction::Notifications => press_key("v", &[KeyMod::Win]),
+        GestureAction::CloseWindow => press_key("f4", &[KeyMod::Alt]),
+        GestureAction::Screenshot => press_key("printscreen", &[]),
+        GestureAction::Emoji => press_key("e", &[KeyMod::Ctrl, KeyMod::Shift]),
+    }
+}
+
+/// Reports this Linux desktop's remote profile, supported gestures, and monitors.
+pub fn remote_info() -> RemoteInfo {
+    if let Ok(hypr) = super::hyprland::Hyprland::discover()
+        && let Ok(monitors) = hypr.query_monitors()
+        && !monitors.is_empty()
+    {
+        return RemoteInfo {
+            profile: "hyprland".to_owned(),
+            supported_actions: GestureAction::ALL.to_vec(),
+            monitors: monitors
+                .into_iter()
+                .map(|m| RemoteMonitorRect {
+                    name: m.name,
+                    x: m.x,
+                    y: m.y,
+                    width: m.width.max(1) as u32,
+                    height: m.height.max(1) as u32,
+                    primary: m.primary,
+                })
+                .collect(),
+        };
+    }
+    let (w, h) = display_dimensions();
+    RemoteInfo {
+        profile: "linux".to_owned(),
+        supported_actions: GestureAction::ALL.to_vec(),
+        monitors: vec![RemoteMonitorRect {
+            name: "Primary".to_owned(),
+            x: 0,
+            y: 0,
+            width: w.max(1) as u32,
+            height: h.max(1) as u32,
+            primary: true,
+        }],
+    }
 }
 
 /// Parses idle milliseconds from `xprintidle` output (`"8801\n"`) or D-Bus

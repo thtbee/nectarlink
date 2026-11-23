@@ -2251,6 +2251,43 @@ private fun PcAudioCardSection(
                 onCheckedChange = null,
             )
         }
+        run {
+            val mixerContext = LocalContext.current
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .bentoWell(
+                        cornerRadius = 16.dp,
+                        fillColor = fillInk.copy(alpha = 0.06f),
+                    )
+                    .clickable(role = Role.Button) {
+                        mixerContext.startActivity(
+                            app.nectarlink.android.audio.AudioMixerActivity.openIntent(
+                                mixerContext,
+                                startListening = false,
+                            ),
+                        )
+                    }
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.ic_speaker),
+                    contentDescription = null,
+                    tint = ink.copy(alpha = 0.85f),
+                    modifier = Modifier.size(18.dp),
+                )
+                Text(
+                    text = stringResource(R.string.audio_mixer_title),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = ink,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
         if (micAvailable) {
             Row(
                 modifier = Modifier
@@ -3189,6 +3226,7 @@ private fun linkText(link: Link): String = when (link) {
     is Link.Online -> when {
         link.relayed -> stringResource(R.string.link_away)
         link.usb -> if (link.rttMs >= 1u) stringResource(R.string.link_usb_rtt, link.rttMs.toInt()) else stringResource(R.string.link_usb)
+        link.tailscale -> if (link.rttMs >= 1u) stringResource(R.string.link_tailscale_rtt, link.rttMs.toInt()) else stringResource(R.string.link_tailscale)
         link.rttMs >= 1u -> stringResource(R.string.link_online_rtt, link.rttMs.toInt())
         else -> stringResource(R.string.link_online)
     }

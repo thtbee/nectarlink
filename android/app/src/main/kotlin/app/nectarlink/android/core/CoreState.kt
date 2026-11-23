@@ -371,6 +371,7 @@ data class CoreState(
                 if (oldLink is Link.Online && newLink is Link.Online &&
                     oldLink.relayed == newLink.relayed &&
                     oldLink.usb == newLink.usb &&
+                    oldLink.tailscale == newLink.tailscale &&
                     (oldLink.rttMs >= 1u) == (newLink.rttMs >= 1u) &&
                     kotlin.math.abs(oldLink.rttMs.toInt() - newLink.rttMs.toInt()) < 3 &&
                     prev.wakeState == WakeState.Idle
@@ -464,6 +465,12 @@ data class CoreState(
         is Event.PcMirrorFrame,
         is Event.PcMirrorEnded,
         is Event.PcMirrorCaptureFailed,
+        is Event.RemotePresence,
+        is Event.AudioRouteSet,
+        is Event.AudioRouteStatus,
+        is Event.AudioRouteLevels,
+        is Event.AudioRoutePcm,
+        is Event.MicStatus,
         -> this
     }
 
@@ -553,6 +560,12 @@ internal fun Event.affectsCoreState(): Boolean = when (this) {
     is Event.PcMirrorFrame,
     is Event.PcMirrorEnded,
     is Event.PcMirrorCaptureFailed,
+    is Event.RemotePresence,
+    is Event.AudioRouteSet,
+    is Event.AudioRouteStatus,
+    is Event.AudioRouteLevels,
+    is Event.AudioRoutePcm,
+    is Event.MicStatus,
     -> false
     else -> true
 }

@@ -721,60 +721,185 @@ class SignalMonitor(private val context: Context, private val onChange: (SignalS
 /**
  * Tells the core when connectivity changes. Android doesn't let native code
  * watch the network, so iroh needs this to re-check paths quickly.
+ *
+ * Watches the default network plus visible VPN and physical networks so
+ * Wi-Fi <-> cellular transitions under an active Tailscale VPN are never
+ * missed, and extracts Tailscale IPs strictly from active VPN interfaces.
  */
 class NetworkMonitor(context: Context, private val onChange: () -> Unit) {
-    private val connectivity = context.getSystemService(ConnectivityManager::class.java)
-    private val callback = object : ConnectivityManager.NetworkCallback() {
-        /** Whether the default network was confirmed working, last we heard. */
-        private var validated = false
+    data class Snapshot(
+        val hasLocalNetwork: Boolean,
+        val hasPhysicalLocal: Boolean,
+        val hasVpn: Boolean,
+        val tailscaleIps: List<String>,
+        val signature: String,
+    )
 
-        override fun onAvailable(network: Network) = onChange()
-        override fun onLost(network: Network) {
-            validated = false
+    private val connectivity = context.getSystemService(ConnectivityManager::class.java)
+    @Volatile private var lastSignature: String? = null
+
+    private fun notifyIfChanged() {
+        val snap = snapshot()
+        if (snap.signature != lastSignature) {
+            lastSignature = snap.signature
             onChange()
         }
+    }
 
-        // Right after boot a network is "available" before it has its
-        // addresses and routes, and before it's known to work: both come
-        // later, and the core has to hear of them too.
-        override fun onLinkPropertiesChanged(network: Network, linkProperties: LinkProperties) = onChange()
-        override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
-            val now = capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
-            if (now != validated) {
-                validated = now
-                onChange()
-            }
-        }
+    private val defaultCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) = notifyIfChanged()
+        override fun onLost(network: Network) = notifyIfChanged()
+        override fun onLinkPropertiesChanged(network: Network, linkProperties: LinkProperties) = notifyIfChanged()
+        override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) = notifyIfChanged()
+    }
+
+    private val allNetworksCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) = notifyIfChanged()
+        override fun onLost(network: Network) = notifyIfChanged()
+        override fun onLinkPropertiesChanged(network: Network, linkProperties: LinkProperties) = notifyIfChanged()
+        override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) = notifyIfChanged()
     }
 
     fun start() {
-        connectivity?.registerDefaultNetworkCallback(callback)
+        val manager = connectivity ?: return
+        lastSignature = snapshot().signature
+        runCatching { manager.registerDefaultNetworkCallback(defaultCallback) }
+        val request = NetworkRequest.Builder()
+            .removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
+            .addTransportType(NetworkCapabilities.TRANSPORT_VPN)
+            .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+            .addTransportType(NetworkCapabilities.TRANSPORT_ETHERNET)
+            .addTransportType(NetworkCapabilities.TRANSPORT_CELLULAR)
+            .apply {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    addTransportType(NetworkCapabilities.TRANSPORT_USB)
+                }
+            }
+            .build()
+        runCatching { manager.registerNetworkCallback(request, allNetworksCallback) }
     }
 
     fun stop() {
-        runCatching { connectivity?.unregisterNetworkCallback(callback) }
+        runCatching { connectivity?.unregisterNetworkCallback(defaultCallback) }
+        runCatching { connectivity?.unregisterNetworkCallback(allNetworksCallback) }
     }
+
+    /**
+     * Current network snapshot covering physical LAN, VPN/Tailscale IPs, and
+     * active route/underlay signature.
+     */
+    @Suppress("DEPRECATION")
+    fun snapshot(): Snapshot {
+        val manager = connectivity ?: return Snapshot(
+            hasLocalNetwork = true,
+            hasPhysicalLocal = true,
+            hasVpn = false,
+            tailscaleIps = emptyList(),
+            signature = "no-cm",
+        )
+        return runCatching {
+            var hasPhysicalLocal = false
+            var hasVpn = false
+            val tsIps = linkedSetOf<String>()
+            val sigParts = mutableListOf<String>()
+
+            val active = manager.activeNetwork
+            if (active != null) {
+                val activeCaps = manager.getNetworkCapabilities(active)
+                val activeValidated = activeCaps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true
+                val activeMetered = activeCaps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED) != true
+                sigParts += "def:${active.networkHandle}:$activeValidated:$activeMetered"
+            }
+
+            for (network in manager.allNetworks) {
+                val caps = manager.getNetworkCapabilities(network) ?: continue
+                val lp = manager.getLinkProperties(network)
+                val isVpn = caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
+                val isWifi = caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+                val isEth = caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
+                val isCell = caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
+                val isUsb = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                    caps.hasTransport(NetworkCapabilities.TRANSPORT_USB)
+
+                if (isWifi || isEth || isUsb) hasPhysicalLocal = true
+                if (isVpn) hasVpn = true
+
+                val addrs = lp?.linkAddresses?.mapNotNull { la ->
+                    val addr = la.address ?: return@mapNotNull null
+                    val raw = addr.hostAddress?.substringBefore('%') ?: return@mapNotNull null
+                    if (isVpn && isTailscaleAddress(addr)) tsIps += raw
+                    "$raw/${la.prefixLength}"
+                }?.sorted().orEmpty()
+
+                val routes = lp?.routes?.mapNotNull { r ->
+                    val dest = r.destination?.toString() ?: return@mapNotNull null
+                    val gw = r.gateway?.hostAddress?.substringBefore('%').orEmpty()
+                    "$dest->$gw"
+                }?.sorted().orEmpty()
+
+                if (isVpn || isWifi || isEth || isCell || isUsb) {
+                    val kind = buildString {
+                        if (isVpn) append('V')
+                        if (isWifi) append('W')
+                        if (isEth) append('E')
+                        if (isCell) append('C')
+                        if (isUsb) append('U')
+                    }
+                    val validated = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+                    val metered = !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+                    sigParts += "$kind:${lp?.interfaceName.orEmpty()}:$validated:$metered:${addrs.joinToString(",")}:${routes.size}"
+                }
+            }
+
+            sigParts.sort()
+            Snapshot(
+                hasLocalNetwork = hasPhysicalLocal || hasVpn,
+                hasPhysicalLocal = hasPhysicalLocal,
+                hasVpn = hasVpn,
+                tailscaleIps = tsIps.toList().sorted(),
+                signature = sigParts.joinToString("|"),
+            )
+        }.getOrElse {
+            Snapshot(
+                hasLocalNetwork = true,
+                hasPhysicalLocal = true,
+                hasVpn = false,
+                tailscaleIps = emptyList(),
+                signature = "err",
+            )
+        }
+    }
+
+    /** Tailscale IPv4 (`100.64.0.0/10`) and IPv6 (`fd7a:115c:a1e0::/48`) addresses on active VPN links only. */
+    fun localTailscaleIps(): List<String> = snapshot().tailscaleIps
 
     /**
      * Whether the phone is on a network a PC could share with it: Wi-Fi,
      * Ethernet, a USB link or a VPN such as Tailscale (#397). Mobile data
      * alone isn't, unless Connect over mobile data is on.
      */
-    @Suppress("DEPRECATION")
-    fun hasLocalNetwork(): Boolean {
-        val manager = connectivity ?: return true
-        val transports = buildList {
-            add(NetworkCapabilities.TRANSPORT_WIFI)
-            add(NetworkCapabilities.TRANSPORT_ETHERNET)
-            add(NetworkCapabilities.TRANSPORT_VPN)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) add(NetworkCapabilities.TRANSPORT_USB)
-        }
-        return runCatching {
-            manager.allNetworks.any { network ->
-                val caps = manager.getNetworkCapabilities(network) ?: return@any false
-                transports.any(caps::hasTransport)
+    fun hasLocalNetwork(): Boolean = snapshot().hasLocalNetwork
+
+    companion object {
+        internal fun isTailscaleAddress(address: java.net.InetAddress): Boolean {
+            val bytes = address.address
+            return when (bytes.size) {
+                4 -> {
+                    val b0 = bytes[0].toInt() and 0xFF
+                    val b1 = bytes[1].toInt() and 0xFF
+                    b0 == 100 && (b1 in 64..127)
+                }
+                16 -> {
+                    (bytes[0].toInt() and 0xFF) == 0xFD &&
+                        (bytes[1].toInt() and 0xFF) == 0x7A &&
+                        (bytes[2].toInt() and 0xFF) == 0x11 &&
+                        (bytes[3].toInt() and 0xFF) == 0x5C &&
+                        (bytes[4].toInt() and 0xFF) == 0xA1 &&
+                        (bytes[5].toInt() and 0xFF) == 0xE0
+                }
+                else -> false
             }
-        }.getOrDefault(true)
+        }
     }
 }
 

@@ -1609,7 +1609,7 @@ pub(crate) async fn accept_stream(
                 && h.op == nectarlink_protocol::messages::remote::OP_MOTION
                 && h.v == 1 =>
         {
-            crate::remote::receive_motion(shared, session.peer, send, recv).await;
+            crate::remote::receive_motion(shared, session.clone(), send, recv).await;
         }
         Some(h)
             if h.svc == nectarlink_protocol::messages::storage::SERVICE

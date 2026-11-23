@@ -437,7 +437,9 @@ fn recent_failure(diag_dir: &Path) -> Option<health::Feature> {
         .filter_map(|(feature, codes)| {
             let failed: u32 = codes
                 .iter()
-                .filter(|(code, _)| !matches!(code.as_str(), "ok" | "lan" | "usb" | "relay" | "cancelled"))
+                .filter(|(code, _)| {
+                    !matches!(code.as_str(), "ok" | "lan" | "usb" | "relay" | "tailscale" | "cancelled")
+                })
                 .map(|(_, n)| n)
                 .sum();
             (failed > 0).then(|| (Feature::parse(feature), failed))

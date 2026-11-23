@@ -1,9 +1,17 @@
 // SPDX-License-Identifier: MPL-2.0
 //! Message bodies for protocol v0 (protocol §5, §7, §9).
 
-use serde::{Deserialize, Serialize};
+use std::net::SocketAddr;
 
-use crate::{DeviceId, ErrorCode};
+use serde::{Deserialize, Deserializer, Serialize};
+
+use crate::{DeviceId, ErrorCode, ProtocolError};
+
+pub const CAP_AUDIO_ROUTE_SOURCE: &str = "audio.route.source.v1";
+pub const CAP_AUDIO_ROUTE_SINK: &str = "audio.route.sink.v1";
+pub const CAP_AUDIO_ROUTE_CONTROLLER: &str = "audio.route.controller.v1";
+pub const CAP_MIC_STATUS: &str = "mic.status.v1";
+pub const CAP_INPUT_PRECISION: &str = "input.precision";
 
 /// Message type names (the envelope's `t` field).
 pub mod types {
@@ -110,6 +118,7 @@ pub mod types {
     pub const POINTER_WHERE: &str = "pointer.where";
     pub const POINTER_LEAVE: &str = "pointer.leave";
     pub const REMOTE_CHECK: &str = "remote.check";
+    pub const REMOTE_INFO: &str = "remote.info";
     pub const REMOTE_INPUT: &str = "remote.input";
     pub const PHONE_TOGGLES: &str = "phone.toggles";
     pub const PHONE_TOGGLE_SET: &str = "phone.toggle.set";
@@ -132,6 +141,8 @@ pub mod types {
     pub const ELEVATED_USB_READY: &str = "elevated.usb.ready";
     pub const MIC_START: &str = "mic.start";
     pub const MIC_STOP: &str = "mic.stop";
+    pub const MIC_STATUS: &str = "mic.status";
+    pub const MIC_SETUP: &str = "mic.setup";
     pub const DIAG_ASK: &str = "diag.ask";
     pub const DIAG_PART: &str = "diag.part";
     pub const DIAG_LOG: &str = "diag.log";
@@ -146,6 +157,10 @@ pub mod types {
     pub const FILES_CANCEL: &str = "files.cancel";
     pub const WAKE_RELAY: &str = "wake.relay";
     pub const AUDIO_PCM: &str = "audio.pcm";
+    pub const AUDIO_ROUTE_SET: &str = "audio.route.set";
+    pub const AUDIO_ROUTE_STATUS: &str = "audio.route.status";
+    pub const AUDIO_ROUTE_LEVELS: &str = "audio.route.levels";
+    pub const AUDIO_ROUTE_PCM: &str = "audio.route.pcm";
 }
 
 /// What kind of device this is.
@@ -421,7 +436,45 @@ pub fn is_valid_install_id(id: &str) -> bool {
     id.len() == INSTALL_ID_LEN && id.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+/// Maximum number of entries in a direct address advertisement.
+pub const MAX_DIRECT_ADDRS: usize = 8;
+
+/// Parses a snapshot of direct listener sockets, removing duplicates in input order.
+pub fn validate_direct_addrs(addrs: &[String]) -> Result<Vec<SocketAddr>, ProtocolError> {
+    if addrs.len() > MAX_DIRECT_ADDRS {
+        return Err(ProtocolError::BadMessage("too many advertised direct addresses".into()));
+    }
+
+    let mut sockets = Vec::with_capacity(addrs.len());
+    for address in addrs {
+        let socket: SocketAddr = address
+            .parse()
+            .map_err(|_| ProtocolError::BadMessage("invalid advertised direct socket address".into()))?;
+        let ip = socket.ip().to_canonical();
+        if socket.port() == 0
+            || ip.is_loopback()
+            || ip.is_multicast()
+            || ip.is_unspecified()
+            || matches!(socket, SocketAddr::V6(v6) if v6.ip().is_unicast_link_local() && v6.scope_id() == 0)
+        {
+            return Err(ProtocolError::BadMessage("unusable advertised direct socket address".into()));
+        }
+        if !sockets.contains(&socket) {
+            sockets.push(socket);
+        }
+    }
+    Ok(sockets)
+}
+
+fn deserialize_direct_addrs<'de, D: Deserializer<'de>>(decoder: D) -> Result<Option<Vec<String>>, D::Error> {
+    let addrs = Option::<Vec<String>>::deserialize(decoder)?;
+    if let Some(addrs) = &addrs {
+        validate_direct_addrs(addrs).map_err(serde::de::Error::custom)?;
+    }
+    Ok(addrs)
+}
+
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Hello {
     pub proto: u32,
     pub min: u32,
@@ -435,6 +488,24 @@ pub struct Hello {
     /// list: it's reached as a paired device already.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub localsend: Option<String>,
+    /// Complete snapshot of direct listener sockets. Absent leaves the previous snapshot in place.
+    #[serde(default, skip_serializing_if = "Option::is_none", deserialize_with = "deserialize_direct_addrs")]
+    pub direct_addrs: Option<Vec<String>>,
+}
+
+impl std::fmt::Debug for Hello {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Hello")
+            .field("proto", &self.proto)
+            .field("min", &self.min)
+            .field("app", &self.app)
+            .field("device", &self.device)
+            .field("caps", &self.caps)
+            .field("power", &self.power)
+            .field("localsend", &self.localsend)
+            .field("direct_addrs", &self.direct_addrs.as_ref().map(Vec::len))
+            .finish()
+    }
 }
 
 impl Hello {
@@ -447,7 +518,7 @@ impl Hello {
     }
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct HelloUpdate {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub caps: Option<Vec<String>>,
@@ -455,6 +526,20 @@ pub struct HelloUpdate {
     pub power: Option<PowerLevel>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub device: Option<DeviceInfo>,
+    /// Complete snapshot of direct listener sockets. An empty list withdraws the previous snapshot.
+    #[serde(default, skip_serializing_if = "Option::is_none", deserialize_with = "deserialize_direct_addrs")]
+    pub direct_addrs: Option<Vec<String>>,
+}
+
+impl std::fmt::Debug for HelloUpdate {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("HelloUpdate")
+            .field("caps", &self.caps)
+            .field("power", &self.power)
+            .field("device", &self.device)
+            .field("direct_addrs", &self.direct_addrs.as_ref().map(Vec::len))
+            .finish()
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -1387,6 +1472,226 @@ pub struct AudioPcmFrame {
     pub pcm: Vec<u8>,
 }
 
+// ---- Managed audio routing (docs/protocol/audio-route.md) ----
+
+pub mod audio_route {
+    pub const MAX_LANES: usize = 16;
+    pub const MAX_SOURCE_ID_BYTES: usize = 64;
+    pub const MAX_REASON_BYTES: usize = 256;
+    pub const MIN_SAMPLE_RATE: u32 = 8_000;
+    pub const MAX_SAMPLE_RATE: u32 = 96_000;
+    pub const MAX_CHANNELS: u8 = 2;
+}
+
+/// Discriminator at the start of a managed PCM datagram.
+pub const NLRP_MAGIC: &[u8; 4] = b"NLRP";
+const NLRP_HEADER_BYTES: usize = 24;
+
+fn is_bounded_text(text: &str, max_bytes: usize) -> bool {
+    !text.trim().is_empty() && text.len() <= max_bytes && !text.chars().any(char::is_control)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AudioRouteRole {
+    Idle,
+    Source,
+    Sink,
+    PhonePlayback,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AudioPlaybackPolicy {
+    Pause,
+    Mute,
+    Lower,
+    Off,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AudioLatencyPreset {
+    Lowest,
+    Balanced,
+    Stable,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AudioRouteLane {
+    pub source_id: String,
+    pub gain: f32,
+    pub muted: bool,
+}
+
+impl AudioRouteLane {
+    pub fn is_valid(&self) -> bool {
+        is_bounded_text(&self.source_id, audio_route::MAX_SOURCE_ID_BYTES) && (0.0..=2.0).contains(&self.gain)
+    }
+}
+
+/// Complete route configuration sent by the controller for one generation.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AudioRouteSet {
+    pub generation: u64,
+    pub role: AudioRouteRole,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub target_device_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub output_id: Option<String>,
+    pub master_gain: f32,
+    pub master_muted: bool,
+    pub silence_local_speaker: bool,
+    pub include_phone_audio: bool,
+    pub latency_preset: AudioLatencyPreset,
+    pub playback_policy: AudioPlaybackPolicy,
+    pub selective_resume: bool,
+    pub phone_playback_active: bool,
+    pub lanes: Vec<AudioRouteLane>,
+}
+
+impl AudioRouteSet {
+    pub fn is_valid(&self) -> bool {
+        self.lanes.len() <= audio_route::MAX_LANES
+            && (0.0..=2.0).contains(&self.master_gain)
+            && self
+                .target_device_id
+                .as_deref()
+                .is_none_or(|id| is_bounded_text(id, audio_route::MAX_SOURCE_ID_BYTES))
+            && self.output_id.as_deref().is_none_or(|id| is_bounded_text(id, deck::MAX_DEVICE_ID_BYTES))
+            && self.lanes.iter().enumerate().all(|(i, lane)| {
+                lane.is_valid() && !self.lanes[..i].iter().any(|prior| prior.source_id == lane.source_id)
+            })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AudioRouteStatus {
+    pub generation: u64,
+    pub role: AudioRouteRole,
+    pub active: bool,
+    pub local_paused: bool,
+    pub speaker_muted_by_route: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub output_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+}
+
+impl AudioRouteStatus {
+    pub fn is_valid(&self) -> bool {
+        self.output_id.as_deref().is_none_or(|id| is_bounded_text(id, deck::MAX_DEVICE_ID_BYTES))
+            && self
+                .reason
+                .as_deref()
+                .is_none_or(|reason| is_bounded_text(reason, audio_route::MAX_REASON_BYTES))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AudioLaneLevel {
+    pub source_id: String,
+    pub peak: f32,
+    pub active: bool,
+}
+
+impl AudioLaneLevel {
+    pub fn is_valid(&self) -> bool {
+        is_bounded_text(&self.source_id, audio_route::MAX_SOURCE_ID_BYTES) && (0.0..=1.0).contains(&self.peak)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AudioRouteLevels {
+    pub generation: u64,
+    pub levels: Vec<AudioLaneLevel>,
+}
+
+impl AudioRouteLevels {
+    pub fn is_valid(&self) -> bool {
+        self.levels.len() <= audio_route::MAX_LANES
+            && self.levels.iter().enumerate().all(|(i, level)| {
+                level.is_valid() && !self.levels[..i].iter().any(|prior| prior.source_id == level.source_id)
+            })
+    }
+}
+
+/// A managed audio frame. Its CBOR body is the fallback for an NLRP datagram.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AudioRoutePcm {
+    pub generation: u64,
+    pub seq: u32,
+    pub sample_rate: u32,
+    pub channels: u8,
+    pub frame_count: u16,
+    pub source_id: String,
+    /// Interleaved signed 16-bit PCM samples in little-endian byte order.
+    #[serde(with = "serde_bytes")]
+    pub pcm: Vec<u8>,
+}
+
+impl AudioRoutePcm {
+    fn format_is_valid(sample_rate: u32, channels: u8, frame_count: u16, pcm_bytes: usize) -> bool {
+        (audio_route::MIN_SAMPLE_RATE..=audio_route::MAX_SAMPLE_RATE).contains(&sample_rate)
+            && (1..=audio_route::MAX_CHANNELS).contains(&channels)
+            && frame_count != 0
+            && pcm_bytes == usize::from(frame_count) * usize::from(channels) * 2
+    }
+
+    pub fn is_valid(&self) -> bool {
+        is_bounded_text(&self.source_id, audio_route::MAX_SOURCE_ID_BYTES)
+            && Self::format_is_valid(self.sample_rate, self.channels, self.frame_count, self.pcm.len())
+    }
+
+    /// Encodes the frame with fixed-width little-endian fields and no CBOR overhead.
+    pub fn to_datagram(&self) -> Result<Vec<u8>, ProtocolError> {
+        if !self.is_valid() {
+            return Err(ProtocolError::BadMessage("invalid managed PCM frame".into()));
+        }
+        let mut bytes = Vec::with_capacity(NLRP_HEADER_BYTES + self.source_id.len() + self.pcm.len());
+        bytes.extend_from_slice(NLRP_MAGIC);
+        bytes.extend_from_slice(&self.generation.to_le_bytes());
+        bytes.extend_from_slice(&self.seq.to_le_bytes());
+        bytes.extend_from_slice(&self.sample_rate.to_le_bytes());
+        bytes.push(self.channels);
+        bytes.extend_from_slice(&self.frame_count.to_le_bytes());
+        bytes.push(self.source_id.len() as u8);
+        bytes.extend_from_slice(self.source_id.as_bytes());
+        bytes.extend_from_slice(&self.pcm);
+        Ok(bytes)
+    }
+
+    /// Decodes NLRP, checking the header and lengths before copying the payload.
+    pub fn from_datagram(bytes: &[u8]) -> Result<Self, ProtocolError> {
+        let invalid = || ProtocolError::BadMessage("invalid managed PCM datagram".into());
+        let (header, payload) = bytes.split_first_chunk::<NLRP_HEADER_BYTES>().ok_or_else(invalid)?;
+        if !header.starts_with(NLRP_MAGIC) {
+            return Err(invalid());
+        }
+        let generation = u64::from_le_bytes(header[4..12].try_into().expect("fixed header"));
+        let seq = u32::from_le_bytes(header[12..16].try_into().expect("fixed header"));
+        let sample_rate = u32::from_le_bytes(header[16..20].try_into().expect("fixed header"));
+        let channels = header[20];
+        let frame_count = u16::from_le_bytes([header[21], header[22]]);
+        let (source_id, pcm) = payload.split_at_checked(usize::from(header[23])).ok_or_else(invalid)?;
+        let source_id = std::str::from_utf8(source_id).map_err(|_| invalid())?;
+        if !is_bounded_text(source_id, audio_route::MAX_SOURCE_ID_BYTES)
+            || !Self::format_is_valid(sample_rate, channels, frame_count, pcm.len())
+        {
+            return Err(invalid());
+        }
+        Ok(Self {
+            generation,
+            seq,
+            sample_rate,
+            channels,
+            frame_count,
+            source_id: source_id.into(),
+            pcm: pcm.to_vec(),
+        })
+    }
+}
+
 // ---- Screen mirroring (docs/protocol/mirror.md) ----
 
 pub mod mirror {
@@ -2058,6 +2363,47 @@ pub mod mic {
     pub const VERSION: u32 = 1;
     /// Stream reset code: the microphone stopped.
     pub const STOPPED: u32 = 13;
+}
+
+/// Virtual microphone readiness and activity (`mic.status`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MicStatus {
+    pub ready: bool,
+    pub active: bool,
+    pub is_default_input: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub device_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub setup_reason: Option<String>,
+    pub can_open_setup: bool,
+}
+
+impl MicStatus {
+    pub fn is_valid(&self) -> bool {
+        self.device_name.as_deref().is_none_or(|name| is_bounded_text(name, deck::MAX_DEVICE_NAME_BYTES))
+            && self
+                .setup_reason
+                .as_deref()
+                .is_none_or(|reason| is_bounded_text(reason, audio_route::MAX_REASON_BYTES))
+    }
+}
+
+/// Asks the desktop to open its local virtual microphone setup UI (`mic.setup`).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MicSetupRequest {}
+
+/// Reply to `mic.setup`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MicSetupResponse {
+    pub ok: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+}
+
+impl MicSetupResponse {
+    pub fn is_valid(&self) -> bool {
+        self.message.as_deref().is_none_or(|message| is_bounded_text(message, audio_route::MAX_REASON_BYTES))
+    }
 }
 
 pub mod webcam {
@@ -3535,8 +3881,11 @@ pub mod remote {
     pub const MAX_SCROLL_DELTA: f32 = 200.0;
     /// Most UTF-8 bytes in one `Text` event.
     pub const MAX_TEXT_BYTES: usize = 256;
-    /// Most modifiers on a key press.
+    /// Most modifiers on a key or mouse button action.
     pub const MAX_MODS: usize = 4;
+    pub const MAX_PROFILE_BYTES: usize = 64;
+    pub const MAX_MONITORS: usize = 32;
+    pub const MAX_MONITOR_NAME_BYTES: usize = 128;
     /// Stream service and operation when falling back from datagrams.
     pub const SERVICE: &str = "remote";
     pub const OP_MOTION: &str = "motion";
@@ -3602,6 +3951,8 @@ pub enum MouseButton {
     Left,
     Right,
     Middle,
+    Back,
+    Forward,
 }
 
 /// What to do with a [`MouseButton`].
@@ -3613,7 +3964,7 @@ pub enum ButtonAction {
     Click,
 }
 
-/// A modifier held during a [`RemoteInput::Key`] press.
+/// A modifier held during a key or mouse button action.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum KeyMod {
@@ -3632,6 +3983,95 @@ pub enum SlideAction {
     Start,
     Stop,
     Black,
+}
+
+/// A desktop gesture that a precision remote can request.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum GestureAction {
+    SwitchStart,
+    SwitchNext,
+    SwitchPrev,
+    SwitchEnd,
+    SwitchCancel,
+    OverviewOpen,
+    OverviewClose,
+    DesktopToggle,
+    WorkspaceNext,
+    WorkspacePrev,
+    Search,
+    Notifications,
+    Launcher,
+    CloseWindow,
+    Screenshot,
+    Emoji,
+}
+
+impl GestureAction {
+    pub const ALL: [Self; 16] = [
+        Self::SwitchStart,
+        Self::SwitchNext,
+        Self::SwitchPrev,
+        Self::SwitchEnd,
+        Self::SwitchCancel,
+        Self::OverviewOpen,
+        Self::OverviewClose,
+        Self::DesktopToggle,
+        Self::WorkspaceNext,
+        Self::WorkspacePrev,
+        Self::Search,
+        Self::Notifications,
+        Self::Launcher,
+        Self::CloseWindow,
+        Self::Screenshot,
+        Self::Emoji,
+    ];
+}
+
+/// Checks permission and can optionally report whether the remote is present.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RemoteCheck {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub presence: Option<bool>,
+}
+
+/// One display in the PC's virtual desktop coordinate space.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RemoteMonitorRect {
+    pub name: String,
+    pub x: i32,
+    pub y: i32,
+    pub width: u32,
+    pub height: u32,
+    pub primary: bool,
+}
+
+impl RemoteMonitorRect {
+    pub fn is_valid(&self) -> bool {
+        is_bounded_text(&self.name, remote::MAX_MONITOR_NAME_BYTES) && self.width != 0 && self.height != 0
+    }
+}
+
+/// Reply to an empty `remote.info` request.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RemoteInfo {
+    pub profile: String,
+    pub supported_actions: Vec<GestureAction>,
+    pub monitors: Vec<RemoteMonitorRect>,
+}
+
+impl RemoteInfo {
+    pub fn is_valid(&self) -> bool {
+        is_bounded_text(&self.profile, remote::MAX_PROFILE_BYTES)
+            && self.monitors.len() <= remote::MAX_MONITORS
+            && self.monitors.iter().all(RemoteMonitorRect::is_valid)
+            && self.supported_actions.len() <= GestureAction::ALL.len()
+            && self
+                .supported_actions
+                .iter()
+                .enumerate()
+                .all(|(i, action)| !self.supported_actions[..i].contains(action))
+    }
 }
 
 /// Keys and shortcuts accepted by [`RemoteInput::Key`].
@@ -3665,10 +4105,75 @@ pub mod remote_keys {
     pub const F11: &str = "f11";
     pub const F12: &str = "f12";
     pub const WIN: &str = "win";
+    pub const SUPER: &str = "super";
+    pub const INSERT: &str = "insert";
+    pub const PRINTSCREEN: &str = "printscreen";
+    pub const PAUSE: &str = "pause";
+    pub const CAPS_LOCK: &str = "capslock";
+    pub const MENU: &str = "menu";
+    pub const MEDIA_PLAY_PAUSE: &str = "media_play_pause";
+    pub const MEDIA_NEXT: &str = "media_next";
+    pub const MEDIA_PREVIOUS: &str = "media_previous";
+    pub const MEDIA_STOP: &str = "media_stop";
+    pub const VOLUME_MUTE: &str = "volume_mute";
+    pub const VOLUME_DOWN: &str = "volume_down";
+    pub const VOLUME_UP: &str = "volume_up";
 
     pub const NAMED: &[&str] = &[
-        ENTER, BACKSPACE, TAB, ESCAPE, SPACE, LEFT, RIGHT, UP, DOWN, HOME, END, PAGE_UP, PAGE_DOWN, DELETE,
-        F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, WIN,
+        ENTER,
+        BACKSPACE,
+        TAB,
+        ESCAPE,
+        SPACE,
+        LEFT,
+        RIGHT,
+        UP,
+        DOWN,
+        HOME,
+        END,
+        PAGE_UP,
+        PAGE_DOWN,
+        DELETE,
+        F1,
+        F2,
+        F3,
+        F4,
+        F5,
+        F6,
+        F7,
+        F8,
+        F9,
+        F10,
+        F11,
+        F12,
+        WIN,
+        SUPER,
+        INSERT,
+        PRINTSCREEN,
+        PAUSE,
+        CAPS_LOCK,
+        MENU,
+        MEDIA_PLAY_PAUSE,
+        MEDIA_NEXT,
+        MEDIA_PREVIOUS,
+        MEDIA_STOP,
+        VOLUME_MUTE,
+        VOLUME_DOWN,
+        VOLUME_UP,
+        "esc",
+        "pageup",
+        "pagedown",
+        "print",
+        "print_screen",
+        "mute",
+        "voldown",
+        "volup",
+        "next",
+        "prev",
+        "stop",
+        "playpause",
+        "browserback",
+        "browserforward",
     ];
 
     /// Common shortcut aliases (`mods` must be empty when using an alias).
@@ -3676,22 +4181,21 @@ pub mod remote_keys {
     pub const PASTE: &str = "paste";
     pub const CUT: &str = "cut";
     pub const UNDO: &str = "undo";
+    pub const REDO: &str = "redo";
     pub const SELECT_ALL: &str = "select_all";
     pub const TASK_VIEW: &str = "task_view";
     pub const LOCK: &str = "lock";
 
-    pub const SHORTCUTS: &[&str] = &[COPY, PASTE, CUT, UNDO, SELECT_ALL, TASK_VIEW, LOCK];
+    pub const SHORTCUTS: &[&str] = &[COPY, PASTE, CUT, UNDO, SELECT_ALL, TASK_VIEW, LOCK, REDO];
+
+    pub(super) fn mods_are_valid(mods: &[KeyMod]) -> bool {
+        mods.len() <= super::remote::MAX_MODS && mods.iter().enumerate().all(|(i, m)| !mods[..i].contains(m))
+    }
 
     /// Whether `key` and `mods` form a valid [`super::RemoteInput::Key`].
     pub fn is_valid(key: &str, mods: &[KeyMod]) -> bool {
-        if mods.len() > super::remote::MAX_MODS {
+        if !mods_are_valid(mods) {
             return false;
-        }
-        // Reject duplicate modifiers.
-        for (i, m) in mods.iter().enumerate() {
-            if mods[i + 1..].contains(m) {
-                return false;
-            }
         }
         if NAMED.contains(&key) {
             return true;
@@ -3715,13 +4219,24 @@ pub enum RemoteInput {
     /// Relative pointer motion in logical pixels (`dx` right, `dy` down).
     /// Travels in QUIC datagrams (or the `remote/motion` stream), never on the
     /// control stream.
-    Move { dx: f32, dy: f32 },
+    Move {
+        dx: f32,
+        dy: f32,
+    },
     /// Mouse button press, release or click.
-    Button { button: MouseButton, action: ButtonAction },
+    Button {
+        button: MouseButton,
+        action: ButtonAction,
+    },
     /// Smooth or stepped scroll in wheel notches (`dx` right, `dy` vertical).
-    Scroll { dx: f32, dy: f32 },
+    Scroll {
+        dx: f32,
+        dy: f32,
+    },
     /// Typed Unicode text.
-    Text { text: String },
+    Text {
+        text: String,
+    },
     /// A named key, modified key, or shortcut.
     Key {
         key: String,
@@ -3729,7 +4244,9 @@ pub enum RemoteInput {
         mods: Vec<KeyMod>,
     },
     /// A presentation remote action.
-    Slide { action: SlideAction },
+    Slide {
+        action: SlideAction,
+    },
     /// Laser pointer position on the PC's primary screen (`0.0..=1.0`).
     Laser {
         on: bool,
@@ -3741,10 +4258,41 @@ pub enum RemoteInput {
     /// The phone's game controller as it is now. Only to PCs that offer
     /// `input.gamepad`; repeated while the controller is open, so the PC lets
     /// go of everything when updates stop.
-    Pad { pad: PadState },
+    Pad {
+        pad: PadState,
+    },
     /// The phone closed its game controller: the PC unplugs it.
     #[serde(rename = "pad_off")]
     PadOff,
+    /// Relative motion with gain already applied by the sender.
+    #[serde(rename = "move_precise")]
+    MovePrecise {
+        dx: f32,
+        dy: f32,
+    },
+    /// Virtual desktop position, with an optional reliable click at that position.
+    #[serde(rename = "move_absolute")]
+    MoveAbsolute {
+        x: f32,
+        y: f32,
+        seq: u32,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        click: Option<MouseButton>,
+    },
+    /// Signed wheel notches. Positive values zoom in.
+    Zoom {
+        delta: f32,
+    },
+    #[serde(rename = "modified_button")]
+    ModifiedButton {
+        button: MouseButton,
+        action: ButtonAction,
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        mods: Vec<KeyMod>,
+    },
+    Gesture {
+        action: GestureAction,
+    },
 }
 
 /// Never prints typed text (protocol v0 §11).
@@ -3762,6 +4310,15 @@ impl std::fmt::Debug for RemoteInput {
             RemoteInput::Laser { on: true, x, y } => write!(f, "Laser({x}, {y})"),
             RemoteInput::Pad { pad } => write!(f, "Pad({pad:?})"),
             RemoteInput::PadOff => f.write_str("PadOff"),
+            RemoteInput::MovePrecise { dx, dy } => write!(f, "MovePrecise({dx}, {dy})"),
+            RemoteInput::MoveAbsolute { x, y, seq, click } => {
+                write!(f, "MoveAbsolute({x}, {y}, {seq}, {click:?})")
+            }
+            RemoteInput::Zoom { delta } => write!(f, "Zoom({delta})"),
+            RemoteInput::ModifiedButton { button, action, mods } => {
+                write!(f, "ModifiedButton({button:?}, {action:?}, {mods:?})")
+            }
+            RemoteInput::Gesture { action } => write!(f, "Gesture({action:?})"),
         }
     }
 }
@@ -3769,7 +4326,7 @@ impl std::fmt::Debug for RemoteInput {
 impl RemoteInput {
     pub fn is_valid(&self) -> bool {
         match self {
-            RemoteInput::Move { dx, dy } => {
+            RemoteInput::Move { dx, dy } | RemoteInput::MovePrecise { dx, dy } => {
                 dx.is_finite()
                     && dy.is_finite()
                     && dx.abs() <= remote::MAX_MOVE_DELTA
@@ -3795,7 +4352,12 @@ impl RemoteInput {
                     && (!*on || ((0.0..=1.0).contains(x) && (0.0..=1.0).contains(y)))
             }
             RemoteInput::Pad { pad } => pad.is_valid(),
-            RemoteInput::PadOff => true,
+            RemoteInput::PadOff | RemoteInput::Gesture { .. } => true,
+            RemoteInput::MoveAbsolute { x, y, .. } => (0.0..=1.0).contains(x) && (0.0..=1.0).contains(y),
+            RemoteInput::Zoom { delta } => {
+                (-remote::MAX_SCROLL_DELTA..=remote::MAX_SCROLL_DELTA).contains(delta)
+            }
+            RemoteInput::ModifiedButton { mods, .. } => remote_keys::mods_are_valid(mods),
         }
     }
 
@@ -3804,16 +4366,24 @@ impl RemoteInput {
         matches!(
             self,
             RemoteInput::Move { .. }
+                | RemoteInput::MovePrecise { .. }
+                | RemoteInput::MoveAbsolute { click: None, .. }
                 | RemoteInput::Scroll { .. }
+                | RemoteInput::Zoom { .. }
                 | RemoteInput::Laser { .. }
                 | RemoteInput::Pad { .. }
         )
     }
 
     /// Whether this event may travel in a `remote.input` control request.
-    /// Pointer motion (`Move`) never uses the control stream.
+    /// Pointer motion travels separately unless it includes a reliable click.
     pub fn is_control_allowed(&self) -> bool {
-        !matches!(self, RemoteInput::Move { .. })
+        !matches!(
+            self,
+            RemoteInput::Move { .. }
+                | RemoteInput::MovePrecise { .. }
+                | RemoteInput::MoveAbsolute { click: None, .. }
+        )
     }
 
     /// Encodes a datagram prefixed with [`remote::DATAGRAM_TAG`].
@@ -5640,6 +6210,7 @@ mod tests {
             caps: vec!["core.ping".into(), "device.battery".into()],
             power: PowerLevel::Elevated,
             localsend: Some("ab".repeat(32)),
+            direct_addrs: Some(vec!["100.64.1.2:7718".into()]),
         };
         let env = Envelope::new(types::HELLO, &hello).unwrap();
         let back: Hello = Envelope::from_cbor(&env.to_cbor()).unwrap().expect_body(types::HELLO).unwrap();
@@ -5657,6 +6228,7 @@ mod tests {
             caps: Vec::new(),
             power: PowerLevel::Basic,
             localsend: f.map(str::to_owned),
+            direct_addrs: None,
         };
         assert_eq!(
             with(Some("0123456789ABCDEFabcdef")).localsend_fingerprint(),
@@ -5669,6 +6241,76 @@ mod tests {
         let old = Envelope::new(types::HELLO, &with(None)).unwrap();
         let back: Hello = Envelope::from_cbor(&old.to_cbor()).unwrap().expect_body(types::HELLO).unwrap();
         assert_eq!(back.localsend, None);
+        assert_eq!(back.direct_addrs, None);
+    }
+
+    #[test]
+    fn direct_addresses_are_validated_and_deduplicated_in_order() {
+        let addrs = [
+            "[fd7a:115c:a1e0::1]:7718",
+            "100.64.1.2:7718",
+            "[fd7a:115c:a1e0:0:0:0:0:1]:7718",
+            "[fe80::1%4]:7718",
+            "[fe80::1%2]:7718",
+        ]
+        .map(str::to_owned);
+        let expected = [0, 1, 3, 4].map(|i| addrs[i].parse::<SocketAddr>().unwrap());
+        assert_eq!(validate_direct_addrs(&addrs).unwrap(), expected);
+        assert!(validate_direct_addrs(&[]).unwrap().is_empty());
+        let mut full: Vec<_> = (1..=MAX_DIRECT_ADDRS).map(|n| format!("192.168.1.{n}:7718")).collect();
+        assert_eq!(validate_direct_addrs(&full).unwrap().len(), MAX_DIRECT_ADDRS);
+        full.push(full[0].clone());
+        assert!(matches!(validate_direct_addrs(&full), Err(ProtocolError::BadMessage(_))));
+
+        for address in [
+            "local.example:7718",
+            "100.64.1.2",
+            "100.64.1.2:0",
+            "127.0.1.1:7718",
+            "[::1]:7718",
+            "[::ffff:127.0.0.1]:7718",
+            "224.0.0.1:7718",
+            "[ff02::1%2]:7718",
+            "0.0.0.0:7718",
+            "[::]:7718",
+            "[fe80::1]:7718",
+            "[febf::1%0]:7718",
+        ] {
+            assert!(
+                matches!(validate_direct_addrs(&[address.into()]), Err(ProtocolError::BadMessage(_))),
+                "{address}"
+            );
+        }
+    }
+
+    #[test]
+    fn hello_address_updates_distinguish_absence_and_withdrawal() {
+        let unchanged = Envelope::new(types::HELLO_UPDATE, &HelloUpdate::default()).unwrap();
+        assert_eq!(unchanged.b, Some(ciborium::Value::Map(vec![])));
+        assert_eq!(unchanged.body::<HelloUpdate>().unwrap().direct_addrs, None);
+
+        for direct_addrs in [Some(vec![]), Some(vec!["192.168.1.10:7718".into()])] {
+            let update = HelloUpdate { direct_addrs, ..Default::default() };
+            let env = Envelope::new(types::HELLO_UPDATE, &update).unwrap();
+            assert_eq!(Envelope::from_cbor(&env.to_cbor()).unwrap().body::<HelloUpdate>().unwrap(), update);
+            assert!(!format!("{update:?}").contains("192.168.1.10"));
+        }
+
+        let bad = Some(vec!["127.0.0.1:7718".into()]);
+        let update = HelloUpdate { direct_addrs: bad.clone(), ..Default::default() };
+        assert!(Envelope::new(types::HELLO_UPDATE, &update).unwrap().body::<HelloUpdate>().is_err());
+        let hello = Hello {
+            proto: 0,
+            min: 0,
+            app: "0.0.1".into(),
+            device: info(),
+            caps: vec![],
+            power: PowerLevel::Basic,
+            localsend: None,
+            direct_addrs: bad,
+        };
+        assert!(Envelope::new(types::HELLO, &hello).unwrap().body::<Hello>().is_err());
+        assert!(!format!("{hello:?}").contains("127.0.0.1"));
     }
 
     #[test]
@@ -6392,6 +7034,114 @@ mod tests {
         assert_eq!(ipv4_broadcast(Ipv4Addr::new(169, 254, 10, 20), 16), None);
         assert_eq!(ipv4_broadcast(Ipv4Addr::new(224, 0, 0, 1), 24), None);
         assert_eq!(ipv4_broadcast(Ipv4Addr::BROADCAST, 24), None);
+    }
+
+    #[test]
+    fn precision_remote_preserves_reliable_clicks_and_checks_motion_bounds() {
+        let precise = RemoteInput::MovePrecise { dx: 0.25, dy: -remote::MAX_MOVE_DELTA };
+        let absolute = RemoteInput::MoveAbsolute { x: 0.0, y: 1.0, seq: u32::MAX, click: None };
+        let zoom = RemoteInput::Zoom { delta: -remote::MAX_SCROLL_DELTA };
+        for event in [&precise, &absolute, &zoom] {
+            assert!(event.is_valid());
+            assert_eq!(&RemoteInput::from_datagram(&event.to_datagram()).unwrap(), event);
+        }
+        assert!(!precise.is_control_allowed());
+        assert!(!absolute.is_control_allowed());
+        assert!(zoom.is_control_allowed());
+
+        let click = RemoteInput::MoveAbsolute { x: 0.25, y: 0.75, seq: 42, click: Some(MouseButton::Back) };
+        let button = RemoteInput::ModifiedButton {
+            button: MouseButton::Forward,
+            action: ButtonAction::Click,
+            mods: vec![KeyMod::Ctrl, KeyMod::Alt, KeyMod::Shift, KeyMod::Win],
+        };
+        let gesture = RemoteInput::Gesture { action: GestureAction::SwitchPrev };
+        for (event, wire_name) in
+            [(&click, "move_absolute"), (&button, "modified_button"), (&gesture, "gesture")]
+        {
+            assert!(event.is_valid() && event.is_control_allowed());
+            assert!(RemoteInput::from_datagram(&event.to_datagram()).is_err());
+            let request = Envelope::new(types::REMOTE_INPUT, event).unwrap().with_id(1);
+            assert!(matches!(&request.b, Some(ciborium::Value::Map(fields)) if fields.contains(&(
+                ciborium::Value::Text("type".into()), ciborium::Value::Text(wire_name.into())
+            ))));
+            assert_eq!(
+                &Envelope::from_cbor(&request.to_cbor()).unwrap().body::<RemoteInput>().unwrap(),
+                event
+            );
+        }
+
+        for invalid in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY, 4_001.0] {
+            assert!(!RemoteInput::MovePrecise { dx: invalid, dy: 0.0 }.is_valid());
+            assert!(!RemoteInput::Zoom { delta: invalid }.is_valid());
+            assert!(!RemoteInput::MoveAbsolute { x: 0.5, y: invalid, seq: 0, click: None }.is_valid());
+        }
+        assert!(!RemoteInput::Zoom { delta: -201.0 }.is_valid());
+        assert!(!RemoteInput::MoveAbsolute { x: -0.1, y: 0.5, seq: 0, click: None }.is_valid());
+        for mods in [vec![KeyMod::Ctrl, KeyMod::Ctrl], vec![KeyMod::Alt; 5]] {
+            assert!(
+                !RemoteInput::ModifiedButton { button: MouseButton::Left, action: ButtonAction::Down, mods }
+                    .is_valid()
+            );
+        }
+    }
+
+    #[test]
+    fn remote_info_round_trips_and_remote_check_preserves_the_legacy_body() {
+        let legacy = Envelope::empty(types::REMOTE_CHECK);
+        assert_eq!(legacy.body::<RemoteCheck>().unwrap().presence, None);
+        assert_eq!(
+            Envelope::new(types::REMOTE_CHECK, &RemoteCheck::default()).unwrap().b,
+            Some(ciborium::Value::Map(vec![]))
+        );
+        for presence in [Some(true), Some(false)] {
+            let request = Envelope::new(types::REMOTE_CHECK, &RemoteCheck { presence }).unwrap();
+            assert_eq!(request.body::<RemoteCheck>().unwrap().presence, presence);
+        }
+
+        let info = RemoteInfo {
+            profile: "hyprland".into(),
+            supported_actions: GestureAction::ALL.to_vec(),
+            monitors: vec![RemoteMonitorRect {
+                name: "DP-1".into(),
+                x: -1920,
+                y: 0,
+                width: 1920,
+                height: 1080,
+                primary: false,
+            }],
+        };
+        assert!(info.is_valid());
+        let response = Envelope::new(types::REMOTE_INFO, &info).unwrap().reply_to(Some(7));
+        assert_eq!(
+            Envelope::from_cbor(&response.to_cbor())
+                .unwrap()
+                .expect_body::<RemoteInfo>(types::REMOTE_INFO)
+                .unwrap(),
+            info
+        );
+
+        let mut invalid = info.clone();
+        invalid.monitors[0].width = 0;
+        assert!(!invalid.is_valid());
+        assert!(
+            !RemoteInfo {
+                monitors: vec![info.monitors[0].clone(); remote::MAX_MONITORS + 1],
+                ..info.clone()
+            }
+            .is_valid()
+        );
+        assert!(!RemoteInfo { supported_actions: vec![GestureAction::Emoji; 2], ..info }.is_valid());
+
+        #[derive(Serialize)]
+        struct UnknownGesture {
+            r#type: &'static str,
+            action: &'static str,
+        }
+        let env =
+            Envelope::new(types::REMOTE_INPUT, &UnknownGesture { r#type: "gesture", action: "unlisted" })
+                .unwrap();
+        assert!(env.body::<RemoteInput>().is_err());
     }
 
     #[test]
@@ -7121,6 +7871,152 @@ mod tests {
                 assert_eq!(from_cbor.sanitized().unwrap(), clean);
             }
         }
+    }
+
+    #[test]
+    fn managed_audio_configuration_status_and_levels_validate_and_round_trip() {
+        let route = AudioRouteSet {
+            generation: 42,
+            role: AudioRouteRole::PhonePlayback,
+            target_device_id: Some("target".into()),
+            output_id: Some("default".into()),
+            master_gain: 2.0,
+            master_muted: false,
+            silence_local_speaker: true,
+            include_phone_audio: true,
+            latency_preset: AudioLatencyPreset::Balanced,
+            playback_policy: AudioPlaybackPolicy::Pause,
+            selective_resume: true,
+            phone_playback_active: false,
+            lanes: (0..audio_route::MAX_LANES)
+                .map(|i| AudioRouteLane { source_id: format!("source-{i}"), gain: 0.0, muted: false })
+                .collect(),
+        };
+        assert!(route.is_valid());
+        let request = Envelope::new(types::AUDIO_ROUTE_SET, &route).unwrap().with_id(7);
+        assert_eq!(Envelope::from_cbor(&request.to_cbor()).unwrap().body::<AudioRouteSet>().unwrap(), route);
+        assert!(matches!(&request.b, Some(ciborium::Value::Map(fields)) if fields.contains(&(
+            ciborium::Value::Text("role".into()), ciborium::Value::Text("phone_playback".into())
+        ))));
+
+        for gain in [f32::NAN, f32::INFINITY, -0.1, 2.1] {
+            assert!(!AudioRouteSet { master_gain: gain, ..route.clone() }.is_valid());
+            assert!(!AudioRouteLane { gain, ..route.lanes[0].clone() }.is_valid());
+        }
+        let mut oversized = route.clone();
+        oversized.lanes.push(AudioRouteLane { source_id: "extra".into(), gain: 1.0, muted: false });
+        assert!(!oversized.is_valid());
+        assert!(!AudioRouteSet { lanes: vec![route.lanes[0].clone(); 2], ..route.clone() }.is_valid());
+
+        let status = AudioRouteStatus {
+            generation: route.generation,
+            role: route.role,
+            active: true,
+            local_paused: false,
+            speaker_muted_by_route: false,
+            output_id: route.output_id,
+            reason: None,
+        };
+        assert!(status.is_valid());
+        let response = Envelope::new(types::AUDIO_ROUTE_STATUS, &status).unwrap().reply_to(request.id);
+        assert_eq!(
+            Envelope::from_cbor(&response.to_cbor()).unwrap().body::<AudioRouteStatus>().unwrap(),
+            status
+        );
+        assert!(
+            !AudioRouteStatus { reason: Some("x".repeat(audio_route::MAX_REASON_BYTES + 1)), ..status }
+                .is_valid()
+        );
+
+        let level = AudioLaneLevel { source_id: "source-0".into(), peak: 1.0, active: true };
+        let levels = AudioRouteLevels { generation: route.generation, levels: vec![level.clone()] };
+        assert!(levels.is_valid());
+        let event = Envelope::new(types::AUDIO_ROUTE_LEVELS, &levels).unwrap();
+        assert_eq!(
+            Envelope::from_cbor(&event.to_cbor()).unwrap().body::<AudioRouteLevels>().unwrap(),
+            levels
+        );
+        for peak in [f32::NAN, f32::INFINITY, -0.1, 1.1] {
+            assert!(!AudioLaneLevel { peak, ..level.clone() }.is_valid());
+        }
+        let too_many_levels = (0..=audio_route::MAX_LANES)
+            .map(|i| AudioLaneLevel { source_id: format!("source-{i}"), ..level.clone() })
+            .collect();
+        assert!(!AudioRouteLevels { levels: too_many_levels, ..levels }.is_valid());
+    }
+
+    #[test]
+    fn managed_pcm_datagram_has_a_fixed_header_and_a_cbor_fallback() {
+        let frame = AudioRoutePcm {
+            generation: 0x0102_0304_0506_0708,
+            seq: 0x1112_1314,
+            sample_rate: 48_000,
+            channels: 2,
+            frame_count: 1,
+            source_id: "pc".into(),
+            pcm: vec![0xff, 0x7f, 0x00, 0x80],
+        };
+        let expected =
+            b"NLRP\x08\x07\x06\x05\x04\x03\x02\x01\x14\x13\x12\x11\x80\xbb\0\0\x02\x01\0\x02pc\xff\x7f\0\x80";
+        let datagram = frame.to_datagram().unwrap();
+        assert_eq!(datagram, expected);
+        assert_eq!(AudioRoutePcm::from_datagram(expected).unwrap(), frame);
+        let event = Envelope::new(types::AUDIO_ROUTE_PCM, &frame).unwrap();
+        assert!(matches!(&event.b, Some(ciborium::Value::Map(fields)) if fields.contains(&(
+            ciborium::Value::Text("pcm".into()), ciborium::Value::Bytes(frame.pcm.clone())
+        ))));
+        assert_eq!(Envelope::from_cbor(&event.to_cbor()).unwrap().body::<AudioRoutePcm>().unwrap(), frame);
+
+        for end in 0..datagram.len() {
+            assert!(AudioRoutePcm::from_datagram(&datagram[..end]).is_err());
+        }
+        for (index, value) in [(20, 0), (20, 3), (21, 2), (23, 0), (23, 65), (24, 0xff)] {
+            let mut bad = datagram.clone();
+            bad[index] = value;
+            assert!(AudioRoutePcm::from_datagram(&bad).is_err());
+        }
+        let mut legacy = datagram.clone();
+        legacy[..4].copy_from_slice(b"NLPA");
+        assert!(AudioRoutePcm::from_datagram(&legacy).is_err());
+        let mut trailing = datagram;
+        trailing.push(0);
+        assert!(AudioRoutePcm::from_datagram(&trailing).is_err());
+
+        let max_id =
+            AudioRoutePcm { source_id: "é".repeat(audio_route::MAX_SOURCE_ID_BYTES / 2), ..frame.clone() };
+        assert_eq!(AudioRoutePcm::from_datagram(&max_id.to_datagram().unwrap()).unwrap(), max_id);
+        assert!(AudioRoutePcm { source_id: max_id.source_id + "x", ..frame.clone() }.to_datagram().is_err());
+        assert!(AudioRoutePcm { frame_count: 0, pcm: vec![], ..frame.clone() }.to_datagram().is_err());
+        assert!(AudioRoutePcm { sample_rate: 0, ..frame }.to_datagram().is_err());
+    }
+
+    #[test]
+    fn virtual_mic_status_and_setup_use_regular_envelopes() {
+        let status = MicStatus {
+            ready: false,
+            active: false,
+            is_default_input: false,
+            device_name: None,
+            setup_reason: Some("Install the virtual input".into()),
+            can_open_setup: true,
+        };
+        assert!(status.is_valid());
+        let event = Envelope::new(types::MIC_STATUS, &status).unwrap();
+        assert_eq!(Envelope::from_cbor(&event.to_cbor()).unwrap().body::<MicStatus>().unwrap(), status);
+        assert!(!MicStatus { device_name: Some("bad\nname".into()), ..status }.is_valid());
+
+        let request = Envelope::empty(types::MIC_SETUP).with_id(13);
+        assert_eq!(request.body::<MicSetupRequest>().unwrap(), MicSetupRequest {});
+        let setup = MicSetupResponse { ok: true, message: None };
+        assert!(setup.is_valid());
+        let reply = Envelope::new(types::MIC_SETUP, &setup).unwrap().reply_to(request.id);
+        let decoded = Envelope::from_cbor(&reply.to_cbor()).unwrap();
+        assert_eq!(decoded.re, request.id);
+        assert_eq!(decoded.expect_body::<MicSetupResponse>(types::MIC_SETUP).unwrap(), setup);
+        assert!(
+            !MicSetupResponse { message: Some("x".repeat(audio_route::MAX_REASON_BYTES + 1)), ..setup }
+                .is_valid()
+        );
     }
 
     #[test]

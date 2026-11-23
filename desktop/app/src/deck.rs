@@ -238,6 +238,9 @@ fn commit_config(mutate: impl FnOnce(&mut DeckConfig)) {
 
 /// Called when a paired phone presses a Deck tile (`Platform::deck_press`).
 pub fn handle_press(_peer: &DeviceId, tile_id: &str) -> Result<(), String> {
+    if crate::remote::is_paused() {
+        return Err("remote control is paused on this PC".into());
+    }
     execute_tile(tile_id)
 }
 

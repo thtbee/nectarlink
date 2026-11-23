@@ -10,11 +10,12 @@ use std::{
 use bytes::Bytes;
 use iroh::endpoint::{RecvStream, SendStream};
 pub use nectarlink_protocol::messages::{
-    ButtonAction, KeyMod, MouseButton, PadState, RemoteInput, SlideAction, remote_keys,
+    ButtonAction, GestureAction, KeyMod, MouseButton, PadState, RemoteCheck, RemoteInfo, RemoteInput,
+    RemoteMonitorRect, SlideAction, remote_keys,
 };
 use nectarlink_protocol::{
     DeviceId, Envelope, ErrorCode,
-    messages::{StreamHeader, remote, types},
+    messages::{CAP_INPUT_PRECISION, StreamHeader, remote, types},
     read_frame, write_frame,
 };
 
@@ -34,8 +35,32 @@ pub const INPUT_GAMEPAD: &str = "input.gamepad";
 /// isn't installed.
 pub const PAD_DRIVER_MISSING: &str = "gamepad driver missing";
 
+/// Capability ID announced by a desktop that takes precision motion, absolute
+/// positions, zoom, modified buttons, desktop gestures and the back and forward
+/// buttons, and answers `remote.info` (`docs/protocol/remote.md` §3.2).
+pub const INPUT_PRECISION: &str = CAP_INPUT_PRECISION;
+
 fn is_pad(event: &RemoteInput) -> bool {
     matches!(event, RemoteInput::Pad { .. } | RemoteInput::PadOff)
+}
+
+/// Whether `event` needs a PC that offers [`INPUT_PRECISION`].
+pub(crate) fn needs_precision(event: &RemoteInput) -> bool {
+    let extra_button = |b: &MouseButton| matches!(b, MouseButton::Back | MouseButton::Forward);
+    match event {
+        RemoteInput::MovePrecise { .. }
+        | RemoteInput::MoveAbsolute { .. }
+        | RemoteInput::Zoom { .. }
+        | RemoteInput::ModifiedButton { .. }
+        | RemoteInput::Gesture { .. } => true,
+        RemoteInput::Button { button, .. } => extra_button(button),
+        _ => false,
+    }
+}
+
+/// Whether sequence number `seq` comes after `last`, wrapping around `u32`.
+pub(crate) fn seq_is_newer(seq: u32, last: u32) -> bool {
+    (seq.wrapping_sub(last) as i32) > 0
 }
 
 /// Per-device toggle name on the PC (off by default).
@@ -163,34 +188,90 @@ fn check_allowed(shared: &Shared, peer: &DeviceId) -> std::result::Result<(), (E
     check_allowed_with(shared, peer, false)
 }
 
-/// Whether this PC takes `event`: a controller only where it offers one.
+/// Whether this PC takes `event`: a controller only where it offers one, and
+/// precision input only where it offers [`INPUT_PRECISION`].
 fn takes(shared: &Shared, event: &RemoteInput) -> bool {
-    !is_pad(event) || shared.we_offer(INPUT_GAMEPAD)
+    (!is_pad(event) || shared.we_offer(INPUT_GAMEPAD))
+        && (!needs_precision(event) || shared.we_offer(INPUT_PRECISION))
 }
 
 /// Hands `event` to the platform; `wait` for a reliable request.
 fn inject(
     shared: &Shared,
-    peer: &DeviceId,
+    session: &Session,
     event: RemoteInput,
     wait: bool,
-) -> std::result::Result<(), String> {
-    match event {
+) -> std::result::Result<(), (ErrorCode, String)> {
+    // Serialize input dispatch with cleanup and with absolute moves arriving on
+    // the other transport. A blocking task can outlive a closed control stream.
+    let mut last = session.last_absolute_seq.lock().unwrap_or_else(|e| e.into_inner());
+    if !session.is_alive() || !shared.toggle_on(&session.peer, TOGGLE) {
+        return Err((ErrorCode::Denied, "remote input is no longer allowed".into()));
+    }
+    if !takes(shared, &event) {
+        return Err((ErrorCode::Unsupported, "input is no longer supported".into()));
+    }
+    if let RemoteInput::MoveAbsolute { seq, .. } = event {
+        let newer = last.is_none_or(|previous| seq_is_newer(seq, previous));
+        if !wait && !newer {
+            return Ok(());
+        }
+        if newer {
+            *last = Some(seq);
+        }
+    }
+    let peer = &session.peer;
+    let result = match event {
         RemoteInput::Pad { pad } => shared.platform.remote_pad(peer, Some(pad), wait),
         RemoteInput::PadOff => shared.platform.remote_pad(peer, None, wait),
         event => shared.platform.remote_input(peer, event),
-    }
+    };
+    result.map_err(|reason| {
+        let code = if reason == PAD_DRIVER_MISSING { ErrorCode::Unsupported } else { ErrorCode::Internal };
+        (code, reason)
+    })
 }
 
 /// Checks whether `peer` (a PC) currently accepts remote input from this phone.
 pub(crate) async fn check(shared: &Arc<Shared>, session: &Arc<Session>) -> Result<()> {
+    check_with_presence(shared, session, None).await
+}
+
+/// [`check`], also telling a precision PC whether the remote is open now
+/// (`presence: true`) or just closed (`false`). `None` is the legacy check, sent
+/// without a body.
+pub(crate) async fn check_with_presence(
+    shared: &Arc<Shared>,
+    session: &Arc<Session>,
+    presence: Option<bool>,
+) -> Result<()> {
     if !peer_offers(shared, &session.peer, INPUT_INJECT)?
         && !peer_offers(shared, &session.peer, crate::deck::DECK_ACTIONS)?
     {
         return Err(Error::Unsupported);
     }
-    session.request(Envelope::empty(types::REMOTE_CHECK), TIMEOUT).await?.expect(types::OK)?;
+    let presence = presence.filter(|_| peer_offers(shared, &session.peer, INPUT_PRECISION).unwrap_or(false));
+    let env = match presence {
+        Some(presence) => Envelope::new(types::REMOTE_CHECK, &RemoteCheck { presence: Some(presence) })?,
+        None => Envelope::empty(types::REMOTE_CHECK),
+    };
+    session.request(env, TIMEOUT).await?.expect(types::OK)?;
     Ok(())
+}
+
+/// Asks a precision PC for its gesture profile and display map (`remote.info`).
+pub(crate) async fn info(shared: &Arc<Shared>, session: &Arc<Session>) -> Result<RemoteInfo> {
+    if !peer_offers(shared, &session.peer, INPUT_PRECISION)? {
+        return Err(Error::Unsupported);
+    }
+    let info: RemoteInfo = session
+        .request(Envelope::new(types::REMOTE_INFO, &serde_json::Map::new())?, TIMEOUT)
+        .await?
+        .expect_body(types::REMOTE_INFO)?;
+    if !info.is_valid() {
+        return Err(Error::Protocol("invalid remote.info".into()));
+    }
+    Ok(info)
 }
 
 /// Sends a remote input event to `peer` (a PC).
@@ -204,12 +285,14 @@ pub(crate) async fn input(shared: &Arc<Shared>, session: &Arc<Session>, event: R
     }
     if !peer_offers(shared, &session.peer, INPUT_INJECT)?
         || (is_pad(&event) && !peer_offers(shared, &session.peer, INPUT_GAMEPAD)?)
+        || (needs_precision(&event) && !peer_offers(shared, &session.peer, INPUT_PRECISION)?)
     {
         return Err(Error::Unsupported);
     }
-    if let RemoteInput::Move { dx, dy } = event {
+    // Motion without a click never goes on the control stream.
+    if !event.is_control_allowed() {
         check(shared, session).await?;
-        return move_pointer(shared, session, dx, dy).await;
+        return send_datagram(shared, session, &event).await;
     }
     let give_up = Instant::now() + RATE_LIMIT_RETRY_FOR;
     loop {
@@ -254,6 +337,22 @@ pub(crate) async fn scroll_fast(
         return Err(Error::Protocol("scroll delta out of bounds".into()));
     }
     send_datagram(shared, session, &event).await
+}
+
+/// Sends precision input to a PC that offers [`INPUT_PRECISION`]: relative
+/// motion, an absolute position or zoom in a QUIC datagram; an absolute position
+/// with a click, a modified button or a gesture as a reliable request.
+pub(crate) async fn precise(shared: &Arc<Shared>, session: &Arc<Session>, event: RemoteInput) -> Result<()> {
+    if !event.is_valid() {
+        return Err(Error::Protocol("invalid remote input".into()));
+    }
+    if !peer_offers(shared, &session.peer, INPUT_PRECISION)? {
+        return Err(Error::Unsupported);
+    }
+    if event.is_datagram_allowed() && !matches!(event, RemoteInput::MoveAbsolute { click: Some(_), .. }) {
+        return send_datagram(shared, session, &event).await;
+    }
+    input(shared, session, event).await
 }
 
 /// Sends the phone's controller as it is now in a QUIC datagram. The phone
@@ -316,15 +415,63 @@ async fn send_datagram(shared: &Arc<Shared>, session: &Arc<Session>, event: &Rem
 /// Handles incoming `remote.*` requests on the control stream.
 pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &Envelope) -> Result<bool> {
     let reply = match env.t.as_str() {
-        types::REMOTE_CHECK => match check_allowed_with(shared, &session.peer, true) {
-            Ok(()) => Envelope::empty(types::OK),
-            Err((code, msg)) => Envelope::error(code, msg),
-        },
+        types::REMOTE_CHECK => {
+            // Older phones send no body; a precision remote may say whether it's open.
+            let presence = if env.b.is_some() {
+                match env.body::<RemoteCheck>() {
+                    Ok(check) => check.presence,
+                    Err(_) => {
+                        session
+                            .send(
+                                Envelope::error(ErrorCode::BadMessage, "invalid remote.check")
+                                    .reply_to(env.id),
+                            )
+                            .await?;
+                        return Ok(true);
+                    }
+                }
+            } else {
+                None
+            };
+            match check_allowed_with(shared, &session.peer, true) {
+                Ok(()) => {
+                    if let Some(present) = presence.filter(|_| shared.we_offer(INPUT_PRECISION)) {
+                        shared.emit(NodeEvent::RemotePresence { device: session.peer, present });
+                        if !present {
+                            release(shared, session.peer, Some(session));
+                        }
+                    }
+                    Envelope::empty(types::OK)
+                }
+                Err((code, msg)) => Envelope::error(code, msg),
+            }
+        }
+        types::REMOTE_INFO => {
+            if !shared.we_offer(INPUT_PRECISION) {
+                Envelope::error(ErrorCode::Unsupported, "precision input is not supported here")
+            } else {
+                match check_allowed(shared, &session.peer) {
+                    Err((code, msg)) => Envelope::error(code, msg),
+                    Ok(()) => {
+                        let platform = shared.platform.clone();
+                        match tokio::task::spawn_blocking(move || platform.remote_info()).await {
+                            Ok(info) if info.is_valid() => Envelope::new(types::REMOTE_INFO, &info)?,
+                            Ok(_) => Envelope::error(ErrorCode::Internal, "invalid remote info"),
+                            Err(_) => Envelope::error(ErrorCode::Internal, "remote info task failed"),
+                        }
+                    }
+                }
+            }
+        }
         types::REMOTE_INPUT => match check_allowed(shared, &session.peer) {
             Err((code, msg)) => Envelope::error(code, msg),
             Ok(()) => match env.body::<RemoteInput>() {
                 Ok(event) if !takes(shared, &event) => {
-                    Envelope::error(ErrorCode::Unsupported, "no game controller here")
+                    if is_pad(&event) {
+                        Envelope::error(ErrorCode::Unsupported, "no game controller here")
+                    } else {
+                        Envelope::error(ErrorCode::Unsupported, "precision input is not supported here")
+                    }
                 }
                 Ok(event) if event.is_control_allowed() && event.is_valid() => {
                     let allowed = shared
@@ -336,13 +483,12 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
                         Envelope::error(ErrorCode::Denied, RATE_LIMITED)
                     } else {
                         let shared = shared.clone();
-                        let peer = session.peer;
-                        match tokio::task::spawn_blocking(move || inject(&shared, &peer, event, true)).await {
+                        let session = session.clone();
+                        match tokio::task::spawn_blocking(move || inject(&shared, &session, event, true))
+                            .await
+                        {
                             Ok(Ok(())) => Envelope::empty(types::OK),
-                            Ok(Err(e)) if e == PAD_DRIVER_MISSING => {
-                                Envelope::error(ErrorCode::Unsupported, e)
-                            }
-                            Ok(Err(e)) => Envelope::error(ErrorCode::Internal, e),
+                            Ok(Err((code, reason))) => Envelope::error(code, reason),
                             Err(_) => Envelope::error(ErrorCode::Internal, "input task failed"),
                         }
                     }
@@ -356,8 +502,17 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
     Ok(true)
 }
 
-/// Handles an incoming QUIC datagram from `peer`.
-pub(crate) fn handle_datagram(shared: &Arc<Shared>, peer: DeviceId, bytes: &[u8]) {
+/// Lets go of whatever a paired phone's remote still holds down on this PC
+/// (a button, a modifier, a gesture's switcher): its session ended, its remote
+/// closed, `remote_input` was turned off, or it was unpaired.
+pub(crate) fn release(shared: &Shared, peer: DeviceId, session: Option<&Session>) {
+    let _input = session.map(|s| s.last_absolute_seq.lock().unwrap_or_else(|e| e.into_inner()));
+    shared.platform.remote_release(peer);
+}
+
+/// Handles an incoming QUIC datagram from `session`'s peer.
+pub(crate) fn handle_datagram(shared: &Arc<Shared>, session: &Session, bytes: &[u8]) {
+    let peer = session.peer;
     if check_allowed(shared, &peer).is_err() {
         return;
     }
@@ -372,16 +527,17 @@ pub(crate) fn handle_datagram(shared: &Arc<Shared>, peer: DeviceId, bytes: &[u8]
     if !allowed {
         return;
     }
-    let _ = inject(shared, &peer, event, false);
+    let _ = inject(shared, session, event, false);
 }
 
 /// Handles a fallback `remote/motion` stream when QUIC datagrams aren't used.
 pub(crate) async fn receive_motion(
     shared: Arc<Shared>,
-    peer: DeviceId,
+    session: Arc<Session>,
     mut send: SendStream,
     mut recv: RecvStream,
 ) {
+    let peer = session.peer;
     while let Ok(Some(bytes)) = read_frame(&mut recv).await {
         if check_allowed(&shared, &peer).is_err() {
             break;
@@ -394,7 +550,7 @@ pub(crate) async fn receive_motion(
         let allowed =
             shared.remote.lock().unwrap_or_else(|e| e.into_inner()).allow_datagram(peer, Instant::now());
         if allowed {
-            let _ = inject(&shared, &peer, event, false);
+            let _ = inject(&shared, &session, event, false);
         }
     }
     let _ = send.finish();
@@ -417,6 +573,35 @@ mod tests {
         let later = start + Duration::from_millis(100);
         assert!(b.take(later));
         assert!(!b.take(later));
+    }
+
+    #[test]
+    fn absolute_motion_order_wraps_around() {
+        assert!(seq_is_newer(1, 0));
+        assert!(!seq_is_newer(0, 0), "a repeat is stale");
+        assert!(!seq_is_newer(4, 5));
+        assert!(seq_is_newer(0, u32::MAX), "wraps");
+        assert!(seq_is_newer(3, u32::MAX - 2));
+        assert!(!seq_is_newer(u32::MAX, 2));
+    }
+
+    #[test]
+    fn precision_input_is_told_apart() {
+        let button = |button| RemoteInput::Button { button, action: ButtonAction::Click };
+        assert!(needs_precision(&RemoteInput::MovePrecise { dx: 1.0, dy: 1.0 }));
+        assert!(needs_precision(&RemoteInput::MoveAbsolute { x: 0.5, y: 0.5, seq: 1, click: None }));
+        assert!(needs_precision(&RemoteInput::Zoom { delta: 1.0 }));
+        assert!(needs_precision(&RemoteInput::Gesture { action: GestureAction::Search }));
+        assert!(needs_precision(&RemoteInput::ModifiedButton {
+            button: MouseButton::Left,
+            action: ButtonAction::Click,
+            mods: vec![KeyMod::Ctrl],
+        }));
+        assert!(needs_precision(&button(MouseButton::Back)));
+        assert!(needs_precision(&button(MouseButton::Forward)));
+        assert!(!needs_precision(&button(MouseButton::Left)));
+        assert!(!needs_precision(&RemoteInput::Move { dx: 1.0, dy: 1.0 }));
+        assert!(!needs_precision(&RemoteInput::Scroll { dx: 0.0, dy: 1.0 }));
     }
 
     #[test]

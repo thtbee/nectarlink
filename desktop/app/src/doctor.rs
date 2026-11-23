@@ -68,6 +68,10 @@ pub struct Facts {
     pub devices: Vec<DeviceFact>,
     /// adb, which phones on a USB cable connect through; `None` when USB is off.
     pub adb: Option<AdbFact>,
+    /// Local Tailscale status from `peer_addrs`, when Tailscale was checked.
+    pub tailscale: Option<crate::peer_addrs::TailscaleFacts>,
+    /// UDP ports the core is currently listening on.
+    pub bound_ports: Vec<u16>,
     /// Optional helper tools missing from `PATH` on Linux.
     #[cfg(target_os = "linux")]
     pub missing_tools: Vec<&'static str>,
@@ -105,6 +109,16 @@ pub fn gather() -> Facts {
         installed: nectarlink_core::locate_adb().is_some(),
         running: nectarlink_core::adb_server_answers(nectarlink_core::DEFAULT_ADB_ADDR),
     });
+    let tailscale = node
+        .as_ref()
+        .map(crate::peer_addrs::refresh_tailscale_blocking)
+        .or_else(crate::peer_addrs::tailscale_facts);
+    let mut bound_ports: Vec<u16> = node
+        .as_ref()
+        .map(|n| n.local_bound_addrs().into_iter().map(|a| a.port()).filter(|&p| p > 0).collect())
+        .unwrap_or_default();
+    bound_ports.sort_unstable();
+    bound_ports.dedup();
     Facts {
         local_address: adapters.local_address,
         vpn: adapters.vpn,
@@ -112,6 +126,8 @@ pub fn gather() -> Facts {
         firewall,
         devices,
         adb,
+        tailscale,
+        bound_ports,
         #[cfg(target_os = "linux")]
         missing_tools: windows_checks::missing_tools(),
         #[cfg(target_os = "linux")]
@@ -311,7 +327,26 @@ pub fn diagnose(facts: &Facts, now_secs: i64) -> Vec<Check> {
         }
     }
 
-    if facts.vpn {
+    let tailscale_ready = facts.tailscale.as_ref().is_some_and(|ts| ts.running && !ts.local_ips.is_empty());
+    if let Some(ts) = &facts.tailscale
+        && ts.running
+        && !ts.local_ips.is_empty()
+    {
+        let ports = if facts.bound_ports.is_empty() {
+            String::new()
+        } else {
+            let list: Vec<String> = facts.bound_ports.iter().map(u16::to_string).collect();
+            format!(" · UDP {}", list.join(", "))
+        };
+        let detail = if ts.matched_peers > 0 {
+            tr!("Doctor", "%1 paired device(s) found on your tailnet%2", ts.matched_peers, ports)
+        } else {
+            tr!("Doctor", "Ready to accept Tailscale connections%1", ports)
+        };
+        checks.push(check("tailscale", Outcome::Ok, tr!("Doctor", "Tailscale is active"), detail, None));
+    }
+
+    if facts.vpn && !tailscale_ready {
         checks.push(check(
             "vpn",
             Outcome::Warn,
@@ -396,8 +431,13 @@ pub fn diagnose(facts: &Facts, now_secs: i64) -> Vec<Check> {
         // A network numbered outside the private ranges (#131): NectarLink
         // before 0.1.5 refused it without Connect over mobile data, which
         // looks the same from here as a router keeping devices apart.
-        let direct =
-            matches!(d.link, LinkState::Online { path: ConnectionPath::Lan | ConnectionPath::Usb, .. });
+        let direct = matches!(
+            d.link,
+            LinkState::Online {
+                path: ConnectionPath::Lan | ConnectionPath::Usb | ConnectionPath::Tailscale,
+                ..
+            }
+        );
         let outside_private = !direct
             && d.mdns_seen_ago_secs.is_some_and(|s| s <= 120)
             && !d.mdns_addrs.is_empty()
@@ -450,6 +490,7 @@ pub fn diagnose(facts: &Facts, now_secs: i64) -> Vec<Check> {
                 let how = match path {
                     ConnectionPath::Lan => tr!("Doctor", "On this network"),
                     ConnectionPath::Usb => tr!("Doctor", "On USB"),
+                    ConnectionPath::Tailscale => tr!("Doctor", "Over Tailscale"),
                     ConnectionPath::Relay => tr!("Doctor", "While away"),
                 };
                 check(
@@ -588,6 +629,8 @@ mod tests {
             firewall: Some(windows_checks::Firewall { on: true, allowed: true, blocked: false }),
             devices: vec![device_fact("Pixel", LinkState::Online { path: ConnectionPath::Lan, rtt_ms: 4 })],
             adb: None,
+            tailscale: None,
+            bound_ports: Vec::new(),
             #[cfg(target_os = "linux")]
             missing_tools: Vec::new(),
             #[cfg(target_os = "linux")]

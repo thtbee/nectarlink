@@ -7,6 +7,8 @@
 //! `docs/architecture/core-api.md` for the design.
 
 mod actions;
+pub mod audio_mix;
+pub mod audio_route;
 mod call_audio;
 mod calls;
 pub mod clip_kind;
@@ -59,6 +61,11 @@ pub use actions::{PC_WAKE, PowerAction};
 pub const PC_HIBERNATE: &str = nectarlink_protocol::messages::pc_power::HIBERNATE;
 /// Offered by PCs a phone may shut down.
 pub const PC_SHUTDOWN: &str = nectarlink_protocol::messages::pc_power::SHUTDOWN;
+pub use audio_route::{
+    AUDIO_ROUTE_CONTROLLER, AUDIO_ROUTE_SINK, AUDIO_ROUTE_SOURCE, AudioLaneLevel, AudioLatencyPreset,
+    AudioPlaybackPolicy, AudioRouteLane, AudioRouteLevels, AudioRoutePcm, AudioRouteRole, AudioRouteSet,
+    AudioRouteStatus, MIC_STATUS, MicSetupResponse, MicStatus, RouteLevels,
+};
 pub use calls::CallCommand;
 pub use clip_kind::{
     ClipKind, ClipSuggestion, classify_clip, maps_web_url, percent_encode, tracking_search_url,
@@ -164,7 +171,9 @@ pub use nectarlink_protocol::{
     },
     pairing::PairingUri,
 };
-pub use node::{DataRetentionCounts, Node, PeerDiagnostics};
+pub use node::{
+    AddrKind, DataRetentionCounts, Node, PeerAddrCandidate, PeerAddrDiagnostics, PeerDiagnostics,
+};
 pub use notifications::{NotificationError, SHOW as NOTIFY_SHOW};
 pub use palette::{
     ACHROMATIC_SEED_RGB, MAX_SAMPLE_SIDE, Palette as ThemePaletteMap, RolePalette, ThemeScheme,
@@ -173,8 +182,9 @@ pub use palette::{
 };
 pub use play_on_phone::PlayOnPhone;
 pub use remote::{
-    ButtonAction, INPUT_GAMEPAD, INPUT_INJECT, KeyMod, MouseButton, PAD_DRIVER_MISSING, PadState,
-    RemoteInput, SlideAction, remote_keys,
+    ButtonAction, GestureAction, INPUT_GAMEPAD, INPUT_INJECT, INPUT_PRECISION, KeyMod, MouseButton,
+    PAD_DRIVER_MISSING, PadState, RemoteCheck, RemoteInfo, RemoteInput, RemoteMonitorRect, SlideAction,
+    remote_keys,
 };
 pub use resync::Resync;
 pub use session::is_lan_ip;
@@ -182,10 +192,10 @@ pub use storage::{
     FolderStorage, MAX_LISTED as MAX_STORAGE_LISTED, StorageError, StorageReadFile, TOGGLE as STORAGE_TOGGLE,
 };
 pub use store::{
-    CHAT_RETENTION_SECS, ChatMessageRecord, ChatThreadRecord, MAX_CHAT_MESSAGES_PER_THREAD,
-    MAX_CHAT_THREADS_PER_PEER, MAX_QUEUE_ACTIVE_BYTES, MAX_QUEUE_ACTIVE_ITEMS,
-    MAX_QUEUE_CLIPBOARD_IMAGE_BYTES, QueueItem, QueueKind, QueuePayload, QueueStatus, QueuedFileSpec,
-    chat_thread_id, file_mtime_ms,
+    AddrCandidate, CHAT_RETENTION_SECS, CandidateSource, ChatMessageRecord, ChatThreadRecord,
+    MAX_CANDIDATES_PER_SOURCE, MAX_CHAT_MESSAGES_PER_THREAD, MAX_CHAT_THREADS_PER_PEER,
+    MAX_QUEUE_ACTIVE_BYTES, MAX_QUEUE_ACTIVE_ITEMS, MAX_QUEUE_CLIPBOARD_IMAGE_BYTES, QueueItem, QueueKind,
+    QueuePayload, QueueStatus, QueuedFileSpec, chat_thread_id, file_mtime_ms,
 };
 pub use timeline::{
     DEFAULT_TIMELINE_MAX_DAYS, DEFAULT_TIMELINE_MAX_ENTRIES, DEFAULT_TIMELINE_PAGE_LIMIT,

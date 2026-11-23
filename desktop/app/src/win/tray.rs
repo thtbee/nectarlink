@@ -65,6 +65,7 @@ pub enum TrayEvent {
     /// Open the link on the clipboard on the phone.
     OpenLinkOnPhone,
     ToggleNotificationsPause,
+    ToggleRemotePause,
     Quit,
     /// The PC woke from sleep.
     Resumed,
@@ -85,6 +86,8 @@ pub struct MenuLabels {
     pub open_link: String,
     pub pause_notifications: String,
     pub resume_notifications: String,
+    pub pause_remote: String,
+    pub resume_remote: String,
     pub quit: String,
 }
 
@@ -105,6 +108,7 @@ const CMD_SCAN_DOCUMENT: u32 = 6;
 const CMD_COMMAND_PALETTE: u32 = 7;
 const CMD_SHELF: u32 = 8;
 const CMD_PAUSE_NOTIFICATIONS: u32 = 9;
+const CMD_PAUSE_REMOTE: u32 = 10;
 const PBT_APMRESUMEAUTOMATIC: usize = 0x12;
 const PBT_APMPOWERSTATUSCHANGE: usize = 0x0A;
 /// NIN_SELECT | NINF_KEY (shellapi.h): the icon was activated with the keyboard.
@@ -547,6 +551,9 @@ impl Tray {
     /// The menu reads this when it opens.
     pub fn set_notifications_paused(&self, _paused: bool) {}
 
+    /// The menu reads this when it opens.
+    pub fn set_remote_paused(&self, _paused: bool) {}
+
     /// Whether "Find my phone" is offered (a phone is paired).
     pub fn set_find_phone_enabled(&self, enabled: bool) {
         CAN_FIND_PHONE.with(|c| c.set(enabled));
@@ -706,6 +713,8 @@ fn show_menu(hwnd: HWND, x: i32, y: i32) {
     } else {
         &labels.pause_notifications
     });
+    let pause_remote =
+        to_wide(if crate::remote::is_paused() { &labels.resume_remote } else { &labels.pause_remote });
     // SAFETY: the menu and strings outlive TrackPopupMenuEx; the menu is
     // destroyed afterwards. SetForegroundWindow/WM_NULL are the documented
     // way to make the menu close when clicking elsewhere.
@@ -721,6 +730,7 @@ fn show_menu(hwnd: HWND, x: i32, y: i32) {
         let _ = AppendMenuW(menu, find_flags, CMD_FIND_PHONE as usize, PCWSTR(find.as_ptr()));
         let _ = AppendMenuW(menu, find_flags, CMD_OPEN_LINK as usize, PCWSTR(link.as_ptr()));
         let _ = AppendMenuW(menu, MF_STRING, CMD_PAUSE_NOTIFICATIONS as usize, PCWSTR(pause.as_ptr()));
+        let _ = AppendMenuW(menu, MF_STRING, CMD_PAUSE_REMOTE as usize, PCWSTR(pause_remote.as_ptr()));
         let _ = AppendMenuW(menu, MF_SEPARATOR, 0, PCWSTR::null());
         let _ = AppendMenuW(menu, MF_STRING, CMD_QUIT as usize, PCWSTR(quit.as_ptr()));
         let _ = SetForegroundWindow(hwnd);
@@ -739,6 +749,7 @@ fn show_menu(hwnd: HWND, x: i32, y: i32) {
         CMD_FIND_PHONE => emit(TrayEvent::FindPhone),
         CMD_OPEN_LINK => emit(TrayEvent::OpenLinkOnPhone),
         CMD_PAUSE_NOTIFICATIONS => emit(TrayEvent::ToggleNotificationsPause),
+        CMD_PAUSE_REMOTE => emit(TrayEvent::ToggleRemotePause),
         CMD_QUIT => emit(TrayEvent::Quit),
         _ => {}
     }

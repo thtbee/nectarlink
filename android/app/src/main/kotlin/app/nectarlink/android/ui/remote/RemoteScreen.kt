@@ -124,8 +124,33 @@ import app.nectarlink.android.ui.theme.LocalReducedMotion
 import kotlin.math.abs
 import kotlin.math.hypot
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.systemGestureExclusion
+import androidx.compose.material3.FilterChip
 
-enum class RemoteMode { Touchpad, AirMouse, Presentation, Screen }
+enum class RemoteMode(val wireName: String) {
+    Touchpad("touchpad"),
+    AirMouse("air"),
+    ScreenMap("screen_map"),
+    DeskMouse("desk"),
+    Stick("stick"),
+    Presentation("presentation"),
+    Screen("screen"),
+    ;
+
+    companion object {
+        fun fromWireName(raw: String?): RemoteMode = when (raw?.trim()?.lowercase()) {
+            "air", "air_mouse", "airmouse" -> AirMouse
+            "map", "screen_map", "screenmap" -> ScreenMap
+            "desk", "desk_mouse", "deskmouse" -> DeskMouse
+            "stick", "thumbstick" -> Stick
+            "presentation", "slides" -> Presentation
+            "screen", "mirror" -> Screen
+            else -> Touchpad
+        }
+    }
+}
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -136,16 +161,36 @@ fun RemoteScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     initialMode: RemoteMode = RemoteMode.Touchpad,
+    remotePrefs: app.nectarlink.android.ui.RemotePreferences = app.nectarlink.android.ui.RemotePreferences(),
+    onUpdateRemotePrefs: ((app.nectarlink.android.ui.RemotePreferences) -> app.nectarlink.android.ui.RemotePreferences) -> Unit = {},
+    onModeChanged: (RemoteMode) -> Unit = {},
 ) {
     val view = LocalView.current
     val context = LocalContext.current
 
-    // Keep the phone's screen on while controlling the PC (for a while after each
-    // touch), and release any held laser/button when leaving.
-    app.nectarlink.android.ui.KeepScreenOn(device.online && app.nectarlink.android.ui.rememberTouchedRecently())
+    // Keep the phone's screen on while controlling the PC, and release held state on leave.
+    app.nectarlink.android.ui.KeepScreenOn(
+        device.online && (remotePrefs.keepAwake || app.nectarlink.android.ui.rememberTouchedRecently()),
+    )
     DisposableEffect(view, device.id) {
         onDispose {
+            core.clearPendingRemoteMotion()
             core.remoteLaser(device.id, false)
+        }
+    }
+
+    // Apply persisted landscape/portrait orientation preference while in Remote.
+    DisposableEffect(context, remotePrefs.landscapeRotated) {
+        val activity = context as? Activity
+        if (activity != null) {
+            activity.requestedOrientation = if (remotePrefs.landscapeRotated) {
+                android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            } else {
+                android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            }
+        }
+        onDispose {
+            (context as? Activity)?.requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         }
     }
 
@@ -159,6 +204,9 @@ fun RemoteScreen(
     var mode by rememberSaveable(initialMode) { mutableStateOf(initialMode) }
     var screenFullScreen by rememberSaveable { mutableStateOf(false) }
     var access by remember(device.id) { mutableStateOf(Core.RemoteAccess.Allowed) }
+    var remoteInfo by remember(device.id) { mutableStateOf<app.nectarlink.core.RemoteInfo?>(null) }
+    var showGesturesHelp by rememberSaveable { mutableStateOf(false) }
+    var showHyperOsHint by rememberSaveable { mutableStateOf(false) }
     // In landscape the touchpad takes the screen, with its buttons under it.
     var touchpadOnlyChosen by rememberSaveable { mutableStateOf(true) }
     val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -179,23 +227,113 @@ fun RemoteScreen(
     val utteranceJoiner = remember(device.id) { UtteranceJoiner() }
 
     LaunchedEffect(mode) {
+        onModeChanged(mode)
+        core.clearPendingRemoteMotion()
         if (mode != RemoteMode.Screen && screenFullScreen) {
             screenFullScreen = false
         }
     }
 
-    // Check access on entry and poll while denied so the prompt banner clears
-    // as soon as the user clicks Allow on the PC.
+    // Check access, announce foreground presence, and fetch precision display layout (`remote.info`).
     LaunchedEffect(device.id, device.online) {
         if (!device.online) {
             access = Core.RemoteAccess.Offline
             return@LaunchedEffect
         }
-        access = core.remoteCheck(device.id)
-        while (access == Core.RemoteAccess.Denied && device.online) {
-            delay(1_500)
-            access = core.remoteCheck(device.id)
+        access = core.remoteCheckWithPresence(device.id, presence = true)
+        if (device.has("input.precision")) {
+            remoteInfo = core.remoteInfo(device.id)
         }
+        while (device.online) {
+            delay(if (access == Core.RemoteAccess.Denied) 1_500L else 15_000L)
+            access = core.remoteCheckWithPresence(device.id, presence = true)
+        }
+    }
+    DisposableEffect(device.id) {
+        onDispose {
+            if (device.online) {
+                kotlinx.coroutines.MainScope().launch {
+                    runCatching { core.remoteCheckWithPresence(device.id, presence = false) }
+                }
+            }
+        }
+    }
+
+    val performHaptic: (TouchpadHaptic) -> Unit = remember(view, remotePrefs.haptics) {
+        { kind ->
+            if (remotePrefs.haptics) {
+                val feedback = when (kind) {
+                    TouchpadHaptic.Soft -> android.view.HapticFeedbackConstants.CLOCK_TICK
+                    TouchpadHaptic.Tick -> android.view.HapticFeedbackConstants.KEYBOARD_TAP
+                    TouchpadHaptic.Click -> android.view.HapticFeedbackConstants.CONTEXT_CLICK
+                    TouchpadHaptic.Heavy -> android.view.HapticFeedbackConstants.LONG_PRESS
+                    TouchpadHaptic.Double -> android.view.HapticFeedbackConstants.CONFIRM
+                }
+                view.performHapticFeedback(feedback)
+            }
+        }
+    }
+
+    val dispatchAction: (TouchpadAction) -> Unit = remember(device.id, core) {
+        { action ->
+            val wire = when (action) {
+                TouchpadAction.SwitchStart -> "switch_start"
+                TouchpadAction.SwitchNext -> "switch_next"
+                TouchpadAction.SwitchPrevious -> "switch_prev"
+                TouchpadAction.SwitchEnd -> "switch_end"
+                TouchpadAction.SwitchCancel -> "switch_cancel"
+                TouchpadAction.WorkspaceNext -> "workspace_next"
+                TouchpadAction.WorkspacePrevious -> "workspace_prev"
+                TouchpadAction.Overview -> "overview_open"
+                TouchpadAction.OverviewClose -> "overview_close"
+                TouchpadAction.ShowDesktop -> "desktop_toggle"
+                TouchpadAction.Search -> "search"
+                TouchpadAction.Notifications -> "notifications"
+            }
+            if (device.has("input.precision")) {
+                core.remoteGesture(device.id, wire) { access = it }
+            }
+        }
+    }
+
+    if (showGesturesHelp) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showGesturesHelp = false },
+            title = { Text(stringResource(R.string.remote_gestures_help)) },
+            text = { Text(stringResource(R.string.remote_gestures_guide_body)) },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = { showGesturesHelp = false }) {
+                    Text(stringResource(R.string.remote_close))
+                }
+            },
+        )
+    }
+
+    if (showHyperOsHint) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showHyperOsHint = false },
+            title = { Text(stringResource(R.string.remote_hyperos_stolen_title)) },
+            text = { Text(stringResource(R.string.remote_hyperos_stolen_body)) },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    showHyperOsHint = false
+                    val oem = Intent().setClassName(
+                        "com.android.settings",
+                        "com.android.settings.SubSettings",
+                    )
+                    val fallback = Intent(android.provider.Settings.ACTION_SETTINGS)
+                    runCatching { context.startActivity(oem) }
+                        .onFailure { runCatching { context.startActivity(fallback) } }
+                }) {
+                    Text(stringResource(R.string.remote_hyperos_open_settings))
+                }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { showHyperOsHint = false }) {
+                    Text(stringResource(R.string.remote_close))
+                }
+            },
+        )
     }
 
     val onStatus: (Core.RemoteAccess) -> Unit = { next -> access = next }
@@ -232,6 +370,18 @@ fun RemoteScreen(
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.weight(1f),
                 )
+                androidx.compose.material3.TextButton(
+                    onClick = { onUpdateRemotePrefs { it.copy(landscapeRotated = !it.landscapeRotated) } },
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                ) {
+                    Text(stringResource(R.string.remote_rotate), style = MaterialTheme.typography.labelMedium)
+                }
+                androidx.compose.material3.TextButton(
+                    onClick = { showGesturesHelp = true },
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                ) {
+                    Text(stringResource(R.string.remote_gestures_help), style = MaterialTheme.typography.labelMedium)
+                }
                 if (device.has("input.gamepad")) {
                     IconButton(onClick = { gamepadOpen = true }) {
                         Icon(
@@ -248,68 +398,35 @@ fun RemoteScreen(
                 ) {}
             }
 
-            // Mode switcher: Touchpad | Air mouse | Presentation | Screen. A label shrinks
-            // to fit (large fonts, longer languages) before it's cut short.
-            val modeLabelSize = TextAutoSize.StepBased(
-                minFontSize = 9.sp,
-                maxFontSize = MaterialTheme.typography.labelLarge.fontSize,
-                stepSize = 0.5.sp,
-            )
-            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                SegmentedButton(
-                    selected = mode == RemoteMode.Touchpad,
-                    onClick = { mode = RemoteMode.Touchpad },
-                    shape = SegmentedButtonDefaults.itemShape(0, 4),
-                    icon = {},
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text(
-                        stringResource(R.string.remote_mode_touchpad),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        autoSize = modeLabelSize,
-                    )
-                }
-                SegmentedButton(
-                    selected = mode == RemoteMode.AirMouse,
-                    onClick = { mode = RemoteMode.AirMouse },
-                    shape = SegmentedButtonDefaults.itemShape(1, 4),
-                    icon = {},
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text(
-                        stringResource(R.string.remote_mode_air),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        autoSize = modeLabelSize,
-                    )
-                }
-                SegmentedButton(
-                    selected = mode == RemoteMode.Presentation,
-                    onClick = { mode = RemoteMode.Presentation },
-                    shape = SegmentedButtonDefaults.itemShape(2, 4),
-                    icon = {},
-                    modifier = Modifier.weight(1.1f),
-                ) {
-                    Text(
-                        stringResource(R.string.remote_mode_presentation),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        autoSize = modeLabelSize,
-                    )
-                }
-                SegmentedButton(
-                    selected = mode == RemoteMode.Screen,
-                    onClick = { mode = RemoteMode.Screen },
-                    shape = SegmentedButtonDefaults.itemShape(3, 4),
-                    icon = {},
-                    modifier = Modifier.weight(0.95f),
-                ) {
-                    Text(
-                        stringResource(R.string.remote_mode_screen),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        autoSize = modeLabelSize,
+            // Mode switcher across all pointer, presentation, and mirror modes.
+            val modes = remember {
+                listOf(
+                    RemoteMode.Touchpad to R.string.remote_mode_touchpad,
+                    RemoteMode.AirMouse to R.string.remote_mode_air,
+                    RemoteMode.ScreenMap to R.string.remote_mode_screen_map,
+                    RemoteMode.DeskMouse to R.string.remote_mode_desk,
+                    RemoteMode.Stick to R.string.remote_mode_stick,
+                    RemoteMode.Presentation to R.string.remote_mode_presentation,
+                    RemoteMode.Screen to R.string.remote_mode_screen,
+                )
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                for ((m, labelRes) in modes) {
+                    FilterChip(
+                        selected = mode == m,
+                        onClick = { mode = m },
+                        label = {
+                            Text(
+                                stringResource(labelRes),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        },
                     )
                 }
             }
@@ -354,6 +471,11 @@ fun RemoteScreen(
                     pcName = device.name,
                     core = core,
                     sensitivity = sensitivity,
+                    remotePrefs = remotePrefs,
+                    hasPrecision = device.has("input.precision"),
+                    onAction = dispatchAction,
+                    onHaptic = performHaptic,
+                    onGestureStolen = { showHyperOsHint = true },
                     utteranceJoiner = utteranceJoiner,
                     onStatus = onStatus,
                     canBeTouchpadOnly = landscape,
@@ -365,8 +487,39 @@ fun RemoteScreen(
                     pcId = device.id,
                     pcName = device.name,
                     core = core,
-                    sensitivity = sensitivity,
+                    sensitivity = remotePrefs.airSpeed,
+                    remotePrefs = remotePrefs,
+                    onUpdateRemotePrefs = onUpdateRemotePrefs,
                     utteranceJoiner = utteranceJoiner,
+                    onStatus = onStatus,
+                    modifier = Modifier.fillMaxSize(),
+                )
+                RemoteMode.ScreenMap -> ScreenMapView(
+                    pcId = device.id,
+                    core = core,
+                    remoteInfo = remoteInfo,
+                    remotePrefs = remotePrefs,
+                    onAction = dispatchAction,
+                    onHaptic = performHaptic,
+                    onGestureStolen = { showHyperOsHint = true },
+                    onStatus = onStatus,
+                    modifier = Modifier.fillMaxSize(),
+                )
+                RemoteMode.DeskMouse -> DeskMouseView(
+                    pcId = device.id,
+                    core = core,
+                    remotePrefs = remotePrefs,
+                    onHaptic = performHaptic,
+                    onStatus = onStatus,
+                    modifier = Modifier.fillMaxSize(),
+                )
+                RemoteMode.Stick -> StickView(
+                    pcId = device.id,
+                    core = core,
+                    remotePrefs = remotePrefs,
+                    onAction = dispatchAction,
+                    onHaptic = performHaptic,
+                    onGestureStolen = { showHyperOsHint = true },
                     onStatus = onStatus,
                     modifier = Modifier.fillMaxSize(),
                 )
@@ -400,6 +553,11 @@ fun RemoteScreen(
                             pcId = device.id,
                             core = core,
                             sensitivity = sensitivity,
+                            remotePrefs = remotePrefs,
+                            hasPrecision = device.has("input.precision"),
+                            onAction = dispatchAction,
+                            onHaptic = performHaptic,
+                            onGestureStolen = { showHyperOsHint = true },
                             onStatus = onStatus,
                             modifier = Modifier.fillMaxWidth().height(180.dp),
                         )
@@ -490,7 +648,7 @@ private fun StatusBanner(title: String?, text: String) {
     }
 }
 
-/** The touchpad surface: moves, clicks, drags and scrolls the PC pointer. */
+/** The touchpad surface: moves, clicks, drags, pinches, gestures, and scrolls the PC pointer. */
 @Composable
 private fun TouchpadSurface(
     pcId: String,
@@ -498,12 +656,30 @@ private fun TouchpadSurface(
     sensitivity: Float,
     onStatus: (Core.RemoteAccess) -> Unit,
     modifier: Modifier = Modifier,
+    remotePrefs: app.nectarlink.android.ui.RemotePreferences = app.nectarlink.android.ui.RemotePreferences(),
+    hasPrecision: Boolean = false,
+    onAction: (TouchpadAction) -> Unit = {},
+    onHaptic: (TouchpadHaptic) -> Unit = {},
+    onGestureStolen: () -> Unit = {},
 ) {
     var dragging by remember { mutableStateOf(false) }
     var touchPoint by remember { mutableStateOf<Offset?>(null) }
     val primaryColor = MaterialTheme.colorScheme.primary
     val outlineColor = MaterialTheme.colorScheme.outlineVariant
     val touchpadDesc = stringResource(R.string.remote_mode_touchpad)
+    val densityPx = androidx.compose.ui.platform.LocalDensity.current.density
+    val options = remember(remotePrefs, sensitivity) {
+        TouchpadGestureOptions(
+            pointerSpeed = remotePrefs.pointerSpeed,
+            acceleration = remotePrefs.acceleration,
+            scrollSpeed = remotePrefs.scrollSpeed,
+            tapToClick = remotePrefs.tapToClick,
+            threeFingerMiddleClick = remotePrefs.threeFingerMiddleClick,
+            naturalScroll = remotePrefs.naturalScrolling,
+            momentum = remotePrefs.momentum,
+            relativePointer = true,
+        )
+    }
     Surface(
         shape = MaterialTheme.shapes.extraLarge,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -512,31 +688,48 @@ private fun TouchpadSurface(
             color = if (dragging) primaryColor else outlineColor,
         ),
         modifier = modifier
+            .systemGestureExclusion { coords ->
+                val strip = (32f * densityPx).coerceAtMost(coords.size.width / 2f)
+                val maxH = (200f * densityPx).coerceAtMost(coords.size.height.toFloat())
+                val top = (coords.size.height - maxH) / 2f
+                androidx.compose.ui.geometry.Rect(0f, top, strip.coerceAtLeast(1f), top + maxH)
+            }
             .semantics { contentDescription = touchpadDesc }
-            .pointerInput(pcId, sensitivity) {
+            .pointerInput(pcId, options, hasPrecision) {
                 touchpadGestures(
                     pcId = pcId,
                     core = core,
-                    sensitivity = sensitivity,
+                    sensitivity = 1f,
                     onStatus = onStatus,
                     onTouch = { touchPoint = it },
                     onDragging = { dragging = it },
+                    options = options,
+                    onAction = onAction,
+                    onZoom = { dy ->
+                        // NectarLink Zoom uses positive = zoom in; pinchNotches returns down-positive (negative = zoom in).
+                        if (hasPrecision) core.remoteZoom(pcId, -dy)
+                    },
+                    onHaptic = onHaptic,
+                    onGestureStolen = onGestureStolen,
+                    usePreciseMove = hasPrecision,
                 )
             },
     ) {
         Box(Modifier.fillMaxSize()) {
-            Canvas(Modifier.fillMaxSize()) {
-                touchPoint?.let { pt ->
-                    drawCircle(
-                        color = primaryColor.copy(alpha = 0.22f),
-                        radius = 28.dp.toPx(),
-                        center = pt,
-                    )
-                    drawCircle(
-                        color = primaryColor.copy(alpha = 0.65f),
-                        radius = 6.dp.toPx(),
-                        center = pt,
-                    )
+            if (remotePrefs.fingerTrails) {
+                Canvas(Modifier.fillMaxSize()) {
+                    touchPoint?.let { pt ->
+                        drawCircle(
+                            color = primaryColor.copy(alpha = 0.22f),
+                            radius = 28.dp.toPx(),
+                            center = pt,
+                        )
+                        drawCircle(
+                            color = primaryColor.copy(alpha = 0.65f),
+                            radius = 6.dp.toPx(),
+                            center = pt,
+                        )
+                    }
                 }
             }
             Text(
@@ -565,6 +758,11 @@ private fun TouchpadView(
     touchpadOnly: Boolean,
     onTouchpadOnly: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    remotePrefs: app.nectarlink.android.ui.RemotePreferences = app.nectarlink.android.ui.RemotePreferences(),
+    hasPrecision: Boolean = false,
+    onAction: (TouchpadAction) -> Unit = {},
+    onHaptic: (TouchpadHaptic) -> Unit = {},
+    onGestureStolen: () -> Unit = {},
 ) {
     var showKeyboard by rememberSaveable { mutableStateOf(false) }
     // What's been typed since the last Enter: a real field, so the keyboard
@@ -602,18 +800,27 @@ private fun TouchpadView(
                     pcId = pcId,
                     core = core,
                     sensitivity = sensitivity,
+                    remotePrefs = remotePrefs,
+                    hasPrecision = hasPrecision,
+                    onAction = onAction,
+                    onHaptic = onHaptic,
+                    onGestureStolen = onGestureStolen,
                     onStatus = onStatus,
                     modifier = Modifier.weight(1f).fillMaxWidth(),
                 )
             }
 
-            // Mouse buttons + Keyboard toggle row
+            // Mouse buttons + Keyboard toggle row (armed modifiers apply to mouse buttons too!)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 FilledTonalButton(
-                    onClick = { core.remoteButton(pcId, "left", "click", onStatus) },
+                    onClick = {
+                        val mods = activeMods.toList()
+                        core.remoteModifiedButton(pcId, "left", "click", mods, onStatus)
+                        if (mods.isNotEmpty()) activeMods.clear()
+                    },
                     contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
                     modifier = Modifier.weight(0.88f).height(46.dp),
                 ) {
@@ -625,7 +832,11 @@ private fun TouchpadView(
                     )
                 }
                 OutlinedButton(
-                    onClick = { core.remoteButton(pcId, "middle", "click", onStatus) },
+                    onClick = {
+                        val mods = activeMods.toList()
+                        core.remoteModifiedButton(pcId, "middle", "click", mods, onStatus)
+                        if (mods.isNotEmpty()) activeMods.clear()
+                    },
                     contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
                     modifier = Modifier.weight(1.04f).height(46.dp),
                 ) {
@@ -637,7 +848,11 @@ private fun TouchpadView(
                     )
                 }
                 FilledTonalButton(
-                    onClick = { core.remoteButton(pcId, "right", "click", onStatus) },
+                    onClick = {
+                        val mods = activeMods.toList()
+                        core.remoteModifiedButton(pcId, "right", "click", mods, onStatus)
+                        if (mods.isNotEmpty()) activeMods.clear()
+                    },
                     contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
                     modifier = Modifier.weight(0.94f).height(46.dp),
                 ) {
@@ -798,6 +1013,8 @@ private fun AirMouseView(
     utteranceJoiner: UtteranceJoiner,
     onStatus: (Core.RemoteAccess) -> Unit,
     modifier: Modifier = Modifier,
+    remotePrefs: app.nectarlink.android.ui.RemotePreferences = app.nectarlink.android.ui.RemotePreferences(),
+    onUpdateRemotePrefs: ((app.nectarlink.android.ui.RemotePreferences) -> app.nectarlink.android.ui.RemotePreferences) -> Unit = {},
 ) {
     val context = LocalContext.current
     val sensorManager = remember(context) {
@@ -806,33 +1023,68 @@ private fun AirMouseView(
     val gyroSensor = remember(sensorManager) {
         sensorManager?.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
     }
+    val gravitySensor = remember(sensorManager) {
+        sensorManager?.getDefaultSensor(Sensor.TYPE_GRAVITY)
+    }
     val hasGyro = gyroSensor != null
 
     var padHeld by remember { mutableStateOf(false) }
     var aimOffset by remember { mutableStateOf(Offset.Zero) }
     val filter = remember { AirMouseFilter() }
     val currentSensitivity by rememberUpdatedState(sensitivity)
+    val aimingActive = (padHeld || remotePrefs.airAlwaysOn) && hasGyro
 
-    DisposableEffect(padHeld, pcId, hasGyro) {
-        if (!padHeld || gyroSensor == null || sensorManager == null) {
+    DisposableEffect(aimingActive, pcId, hasGyro) {
+        if (!aimingActive || sensorManager == null) {
             filter.reset()
             aimOffset = Offset.Zero
             return@DisposableEffect onDispose {}
         }
+        val gyro = gyroSensor
 
         filter.reset()
+        var gx = 0f
+        var gy = 0f
+        var gz = 9.81f
+        var lastTsNs = 0L
         val listener = object : SensorEventListener {
             override fun onSensorChanged(event: SensorEvent) {
-                if (!padHeld || event.sensor.type != Sensor.TYPE_GYROSCOPE || event.values.size < 3) return
-                val (dx, dy) = filter.onSample(
-                    wx = event.values[0],
-                    wy = event.values[1],
-                    wz = event.values[2],
-                    timestampNs = event.timestamp,
-                    sensitivity = currentSensitivity,
-                )
+                if (event.values.size < 3) return
+                if (event.sensor.type == Sensor.TYPE_GRAVITY) {
+                    gx = event.values[0]
+                    gy = event.values[1]
+                    gz = event.values[2]
+                    return
+                }
+                if (!aimingActive || event.sensor.type != Sensor.TYPE_GYROSCOPE) return
+                val dtSec = if (lastTsNs == 0L || event.timestamp <= lastTsNs) {
+                    0.016f
+                } else {
+                    ((event.timestamp - lastTsNs) * 1e-9f).coerceIn(0.001f, 0.08f)
+                }
+                lastTsNs = event.timestamp
+                val (dx, dy) = if (gravitySensor != null) {
+                    val rot = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        DisplayRotation.fromSurfaceRotation(context.display.rotation)
+                    } else {
+                        DisplayRotation.Rotation0
+                    }
+                    val (yaw, pitch) = AirMouseProjection.rates(
+                        event.values[0], event.values[1], event.values[2],
+                        gx, gy, gz, rot,
+                    )
+                    AirMouseProjection.pointerDelta(yaw * dtSec, pitch * dtSec, dtSec, currentSensitivity)
+                } else {
+                    filter.onSample(
+                        wx = event.values[0],
+                        wy = event.values[1],
+                        wz = event.values[2],
+                        timestampNs = event.timestamp,
+                        sensitivity = currentSensitivity,
+                    )
+                }
                 if (abs(dx) >= 0.05f || abs(dy) >= 0.05f) {
-                    core.remoteMove(pcId, dx, dy)
+                    core.remoteMovePrecise(pcId, dx, dy)
                     val nextX = (aimOffset.x + dx * 0.35f).coerceIn(-120f, 120f)
                     val nextY = (aimOffset.y + dy * 0.35f).coerceIn(-120f, 120f)
                     aimOffset = Offset(nextX, nextY)
@@ -842,6 +1094,7 @@ private fun AirMouseView(
             override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
         }
 
+        gravitySensor?.let { sensorManager.registerListener(listener, it, SensorManager.SENSOR_DELAY_GAME) }
         sensorManager.registerListener(listener, gyroSensor, SensorManager.SENSOR_DELAY_GAME)
         onDispose {
             sensorManager.unregisterListener(listener)
@@ -854,6 +1107,17 @@ private fun AirMouseView(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(stringResource(R.string.remote_air_always_on), style = MaterialTheme.typography.bodyMedium)
+            androidx.compose.material3.Switch(
+                checked = remotePrefs.airAlwaysOn,
+                onCheckedChange = { on -> onUpdateRemotePrefs { it.copy(airAlwaysOn = on) } },
+            )
+        }
         if (!hasGyro) {
             StatusBanner(
                 title = stringResource(R.string.remote_air_no_gyro_title),
@@ -1785,6 +2049,449 @@ private fun PresentationView(
                 }
             }
         }
+    }
+}
+
+/** Screen map mode: touch jumps directly across the union of monitors; hold 380 ms switches to fine relative control. */
+@Composable
+private fun ScreenMapView(
+    pcId: String,
+    core: Core,
+    remoteInfo: app.nectarlink.core.RemoteInfo?,
+    remotePrefs: app.nectarlink.android.ui.RemotePreferences,
+    onAction: (TouchpadAction) -> Unit,
+    onHaptic: (TouchpadHaptic) -> Unit,
+    onGestureStolen: () -> Unit,
+    onStatus: (Core.RemoteAccess) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val monitors = remember(remoteInfo) {
+        remoteInfo?.monitors?.map {
+            MonitorRect(it.name, it.x, it.y, it.width.toInt(), it.height.toInt(), it.primary)
+        }.orEmpty()
+    }
+    var seq by remember(pcId) { mutableStateOf(0u) }
+    var cursorNorm by remember(pcId) { mutableStateOf(0.5f to 0.5f) }
+    var fineMode by remember { mutableStateOf(false) }
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val outlineColor = MaterialTheme.colorScheme.outlineVariant
+
+    Column(modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            val transform = remember(monitors, maxWidth, maxHeight) {
+                ScreenMapTransform(monitors, maxWidth.value, maxHeight.value)
+            }
+            val options = remember(remotePrefs) {
+                TouchpadGestureOptions(
+                    pointerSpeed = remotePrefs.pointerSpeed,
+                    acceleration = remotePrefs.acceleration,
+                    scrollSpeed = remotePrefs.scrollSpeed,
+                    tapToClick = remotePrefs.tapToClick,
+                    threeFingerMiddleClick = remotePrefs.threeFingerMiddleClick,
+                    naturalScroll = remotePrefs.naturalScrolling,
+                    momentum = remotePrefs.momentum,
+                    relativePointer = false,
+                )
+            }
+            Surface(
+                shape = MaterialTheme.shapes.extraLarge,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                border = BorderStroke(if (fineMode) 2.dp else 1.dp, if (fineMode) primaryColor else outlineColor),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(pcId, transform, options) {
+                        var startTimeMs = 0L
+                        var startTravel = 0f
+                        var fineActive = false
+                        touchpadGestures(
+                            pcId = pcId,
+                            core = core,
+                            sensitivity = 1f,
+                            onStatus = onStatus,
+                            options = options,
+                            onAction = onAction,
+                            onZoom = { dy -> core.remoteZoom(pcId, -dy) },
+                            onHaptic = onHaptic,
+                            onGestureStolen = onGestureStolen,
+                            onTap = {
+                                seq += 1u
+                                core.remoteMoveAbsolute(pcId, cursorNorm.first, cursorNorm.second, seq, click = "left", onStatus = onStatus)
+                            },
+                            onSingleFinger = { ev ->
+                                when (ev) {
+                                    is TouchpadSingleFinger.Start -> {
+                                        startTimeMs = android.os.SystemClock.uptimeMillis()
+                                        startTravel = 0f
+                                        fineActive = false
+                                        fineMode = false
+                                        val norm = transform.normalizedAt(ev.contact.xDp, ev.contact.yDp)
+                                        cursorNorm = norm
+                                        seq += 1u
+                                        core.remoteMoveAbsolute(pcId, norm.first, norm.second, seq, click = null)
+                                    }
+                                    is TouchpadSingleFinger.Move -> {
+                                        startTravel += hypot(ev.dxDp, ev.dyDp)
+                                        val elapsed = android.os.SystemClock.uptimeMillis() - startTimeMs
+                                        if (!fineActive && elapsed >= 380L && startTravel < 7f) {
+                                            fineActive = true
+                                            fineMode = true
+                                            onHaptic(TouchpadHaptic.Tick)
+                                        }
+                                        if (fineActive) {
+                                            core.remoteMovePrecise(pcId, ev.dxDp * 0.25f * remotePrefs.pointerSpeed, ev.dyDp * 0.25f * remotePrefs.pointerSpeed)
+                                        } else {
+                                            val norm = transform.normalizedAt(ev.contact.xDp, ev.contact.yDp)
+                                            cursorNorm = norm
+                                            seq += 1u
+                                            core.remoteMoveAbsolute(pcId, norm.first, norm.second, seq, click = null)
+                                        }
+                                    }
+                                    TouchpadSingleFinger.End, TouchpadSingleFinger.Cancel -> {
+                                        fineActive = false
+                                        fineMode = false
+                                    }
+                                }
+                            },
+                        )
+                    },
+            ) {
+                Box(Modifier.fillMaxSize()) {
+                    Canvas(Modifier.fillMaxSize()) {
+                        for (m in transform.monitors) {
+                            val r = transform.monitorBounds(m)
+                            drawRoundRect(
+                                color = if (m.primary) primaryColor.copy(alpha = 0.16f) else outlineColor.copy(alpha = 0.18f),
+                                topLeft = Offset(r.x.dp.toPx(), r.y.dp.toPx()),
+                                size = androidx.compose.ui.geometry.Size(r.width.dp.toPx(), r.height.dp.toPx()),
+                                cornerRadius = androidx.compose.ui.geometry.CornerRadius(8.dp.toPx()),
+                            )
+                        }
+                        val (cx, cy) = transform.padPosition(cursorNorm.first, cursorNorm.second)
+                        drawCircle(
+                            color = primaryColor,
+                            radius = 6.dp.toPx(),
+                            center = Offset(cx.dp.toPx(), cy.dp.toPx()),
+                        )
+                    }
+                    Text(
+                        stringResource(R.string.remote_map_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.align(Alignment.BottomCenter).padding(12.dp),
+                    )
+                }
+            }
+        }
+        RemoteMouseButtonsRow(pcId = pcId, core = core, onStatus = onStatus)
+    }
+}
+
+/** Desk mouse mode: phone flat on desk acts as an optical mouse with holdable L/R halves and center scroll wheel. */
+@Composable
+private fun DeskMouseView(
+    pcId: String,
+    core: Core,
+    remotePrefs: app.nectarlink.android.ui.RemotePreferences,
+    onHaptic: (TouchpadHaptic) -> Unit,
+    onStatus: (Core.RemoteAccess) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val sensorManager = remember(context) { context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager }
+    val tracker = remember(sensorManager) { sensorManager?.let { DeskTracker(it) } }
+    var deskStatus by remember { mutableStateOf(DeskStatus.Ready) }
+
+    LaunchedEffect(tracker, remotePrefs.deskSpeed, remotePrefs.deskSensitivity, remotePrefs.deskTwist) {
+        tracker?.apply {
+            deskSpeed = remotePrefs.deskSpeed
+            sensitivity = remotePrefs.deskSensitivity
+            deskTwist = remotePrefs.deskTwist
+        }
+    }
+
+    DisposableEffect(tracker, pcId) {
+        if (tracker == null || !tracker.isAvailable) return@DisposableEffect onDispose {}
+        tracker.start()
+        onDispose { tracker.stop() }
+    }
+
+    LaunchedEffect(tracker, pcId) {
+        if (tracker == null || !tracker.isAvailable) return@LaunchedEffect
+        var prevStatus = DeskStatus.Ready
+        while (true) {
+            delay(16L)
+            val frame = tracker.readFrame()
+            if (prevStatus == DeskStatus.Lifted && frame.status == DeskStatus.Ready) {
+                onHaptic(TouchpadHaptic.Soft)
+            }
+            prevStatus = frame.status
+            deskStatus = frame.status
+            if (abs(frame.dx) >= 0.05f || abs(frame.dy) >= 0.05f) {
+                core.remoteMovePrecise(pcId, frame.dx, frame.dy)
+            }
+        }
+    }
+
+    Column(modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        if (tracker == null || !tracker.isAvailable) {
+            StatusBanner(title = null, text = stringResource(R.string.remote_desk_unavailable))
+            return@Column
+        }
+        val statusRes = when (deskStatus) {
+            DeskStatus.Ready -> R.string.remote_desk_ready
+            DeskStatus.Tracking -> R.string.remote_desk_tracking
+            DeskStatus.Lifted -> R.string.remote_desk_lifted
+            DeskStatus.Tilted -> R.string.remote_desk_tilted
+        }
+        Text(
+            stringResource(statusRes),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.align(Alignment.CenterHorizontally),
+        )
+        Row(
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            HoldableMouseHalf(
+                label = stringResource(R.string.remote_btn_left),
+                onDown = { core.remoteButton(pcId, "left", "down", onStatus); onHaptic(TouchpadHaptic.Click) },
+                onUp = { core.remoteButton(pcId, "left", "up", onStatus) },
+                modifier = Modifier.weight(1f).fillMaxSize(),
+            )
+            Surface(
+                shape = MaterialTheme.shapes.large,
+                color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                modifier = Modifier
+                    .width(64.dp)
+                    .fillMaxSize()
+                    .pointerInput(pcId, remotePrefs.scrollSpeed, remotePrefs.naturalScrolling) {
+                        awaitEachGesture {
+                            val down = awaitFirstDown(requireUnconsumed = false)
+                            val downMs = down.uptimeMillis
+                            var totalY = 0f
+                            var moved = 0f
+                            while (true) {
+                                val ev = awaitPointerEvent()
+                                val c = ev.changes.firstOrNull { it.id == down.id } ?: break
+                                if (!c.pressed) break
+                                val d = c.positionChange()
+                                moved += abs(d.y)
+                                totalY += d.y / density
+                                if (abs(totalY) >= 8f) {
+                                    val (_, dyNotch) = TouchpadBallistics.scrollNotches(
+                                        0f,
+                                        totalY,
+                                        remotePrefs.scrollSpeed,
+                                        remotePrefs.naturalScrolling,
+                                    )
+                                    core.remoteScroll(pcId, 0f, dyNotch, fast = true)
+                                    totalY = 0f
+                                }
+                                c.consume()
+                            }
+                            if (moved < 8f * density && (android.os.SystemClock.uptimeMillis() - downMs) < 260L) {
+                                core.remoteButton(pcId, "middle", "click", onStatus)
+                                onHaptic(TouchpadHaptic.Click)
+                            }
+                        }
+                    },
+            ) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("⇅", style = MaterialTheme.typography.titleMedium)
+                }
+            }
+            HoldableMouseHalf(
+                label = stringResource(R.string.remote_btn_right),
+                onDown = { core.remoteButton(pcId, "right", "down", onStatus); onHaptic(TouchpadHaptic.Click) },
+                onUp = { core.remoteButton(pcId, "right", "up", onStatus) },
+                modifier = Modifier.weight(1f).fillMaxSize(),
+            )
+        }
+    }
+}
+
+@Composable
+private fun HoldableMouseHalf(
+    label: String,
+    onDown: () -> Unit,
+    onUp: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var pressed by remember { mutableStateOf(false) }
+    Surface(
+        shape = MaterialTheme.shapes.extraLarge,
+        color = if (pressed) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = modifier.pointerInput(Unit) {
+            awaitEachGesture {
+                val down = awaitFirstDown(requireUnconsumed = false)
+                pressed = true
+                onDown()
+                try {
+                    while (true) {
+                        val ev = awaitPointerEvent()
+                        val c = ev.changes.firstOrNull { it.id == down.id } ?: break
+                        if (!c.pressed) break
+                        c.consume()
+                    }
+                } finally {
+                    pressed = false
+                    onUp()
+                }
+            }
+        },
+    ) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text(label, style = MaterialTheme.typography.titleMedium)
+        }
+    }
+}
+
+/** Floating virtual thumbstick mode using Drift's 64 dp stick curve. */
+@Composable
+private fun StickView(
+    pcId: String,
+    core: Core,
+    remotePrefs: app.nectarlink.android.ui.RemotePreferences,
+    onAction: (TouchpadAction) -> Unit,
+    onHaptic: (TouchpadHaptic) -> Unit,
+    onGestureStolen: () -> Unit,
+    onStatus: (Core.RemoteAccess) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var originDp by remember { mutableStateOf<Offset?>(null) }
+    var thumbDp by remember { mutableStateOf(Offset.Zero) }
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val outlineColor = MaterialTheme.colorScheme.outlineVariant
+
+    LaunchedEffect(pcId, originDp, remotePrefs.stickSpeed) {
+        if (originDp == null) return@LaunchedEffect
+        while (originDp != null) {
+            delay(16L)
+            val (vx, vy) = StickCurve.velocity(thumbDp.x, thumbDp.y, remotePrefs.stickSpeed)
+            val dx = vx * 0.016f
+            val dy = vy * 0.016f
+            if (abs(dx) >= 0.05f || abs(dy) >= 0.05f) {
+                core.remoteMovePrecise(pcId, dx, dy)
+            }
+        }
+    }
+
+    Column(modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        val options = remember(remotePrefs) {
+            TouchpadGestureOptions(
+                pointerSpeed = remotePrefs.pointerSpeed,
+                acceleration = remotePrefs.acceleration,
+                scrollSpeed = remotePrefs.scrollSpeed,
+                tapToClick = remotePrefs.tapToClick,
+                threeFingerMiddleClick = remotePrefs.threeFingerMiddleClick,
+                naturalScroll = remotePrefs.naturalScrolling,
+                momentum = remotePrefs.momentum,
+                relativePointer = false,
+            )
+        }
+        Surface(
+            shape = MaterialTheme.shapes.extraLarge,
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            border = BorderStroke(1.dp, outlineColor),
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .pointerInput(pcId, options) {
+                    var atRim = false
+                    touchpadGestures(
+                        pcId = pcId,
+                        core = core,
+                        sensitivity = 1f,
+                        onStatus = onStatus,
+                        options = options,
+                        onAction = onAction,
+                        onZoom = { dy -> core.remoteZoom(pcId, -dy) },
+                        onHaptic = onHaptic,
+                        onGestureStolen = onGestureStolen,
+                        onTap = { core.remoteButton(pcId, "left", "click", onStatus) },
+                        onSingleFinger = { ev ->
+                            when (ev) {
+                                is TouchpadSingleFinger.Start -> {
+                                    originDp = Offset(ev.contact.xDp, ev.contact.yDp)
+                                    thumbDp = Offset.Zero
+                                    atRim = false
+                                }
+                                is TouchpadSingleFinger.Move -> {
+                                    val o = originDp ?: return@touchpadGestures
+                                    val rawX = ev.contact.xDp - o.x
+                                    val rawY = ev.contact.yDp - o.y
+                                    val dist = hypot(rawX, rawY)
+                                    val clamped = if (dist > StickCurve.RADIUS_DP) {
+                                        if (!atRim) {
+                                            atRim = true
+                                            onHaptic(TouchpadHaptic.Soft)
+                                        }
+                                        val s = StickCurve.RADIUS_DP / dist
+                                        Offset(rawX * s, rawY * s)
+                                    } else {
+                                        atRim = false
+                                        Offset(rawX, rawY)
+                                    }
+                                    thumbDp = clamped
+                                }
+                                TouchpadSingleFinger.End, TouchpadSingleFinger.Cancel -> {
+                                    originDp = null
+                                    thumbDp = Offset.Zero
+                                    atRim = false
+                                }
+                            }
+                        },
+                    )
+                },
+        ) {
+            Box(Modifier.fillMaxSize()) {
+                Canvas(Modifier.fillMaxSize()) {
+                    val o = originDp ?: return@Canvas
+                    val center = Offset(o.x.dp.toPx(), o.y.dp.toPx())
+                    val knob = Offset((o.x + thumbDp.x).dp.toPx(), (o.y + thumbDp.y).dp.toPx())
+                    drawCircle(
+                        color = primaryColor.copy(alpha = 0.14f),
+                        radius = StickCurve.RADIUS_DP.dp.toPx(),
+                        center = center,
+                    )
+                    drawCircle(
+                        color = primaryColor,
+                        radius = 18.dp.toPx(),
+                        center = knob,
+                    )
+                }
+                Text(
+                    stringResource(R.string.remote_stick_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(12.dp),
+                )
+            }
+        }
+        RemoteMouseButtonsRow(pcId = pcId, core = core, onStatus = onStatus)
+    }
+}
+
+@Composable
+private fun RemoteMouseButtonsRow(
+    pcId: String,
+    core: Core,
+    onStatus: (Core.RemoteAccess) -> Unit,
+) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FilledTonalButton(
+            onClick = { core.remoteButton(pcId, "left", "click", onStatus) },
+            modifier = Modifier.weight(1f).height(46.dp),
+        ) { Text(stringResource(R.string.remote_btn_left)) }
+        OutlinedButton(
+            onClick = { core.remoteButton(pcId, "middle", "click", onStatus) },
+            modifier = Modifier.weight(1f).height(46.dp),
+        ) { Text(stringResource(R.string.remote_btn_middle)) }
+        FilledTonalButton(
+            onClick = { core.remoteButton(pcId, "right", "click", onStatus) },
+            modifier = Modifier.weight(1f).height(46.dp),
+        ) { Text(stringResource(R.string.remote_btn_right)) }
     }
 }
 

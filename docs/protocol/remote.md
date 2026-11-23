@@ -11,6 +11,7 @@ controller for a paired PC.
 | ID | Offered by | Meaning |
 |---|---|---|
 | `input.inject` | desktop | Accepts pointer, keyboard, and presentation input from a paired phone |
+| `input.precision` | desktop | Accepts precision motion and desktop gestures and supplies a display map (§3.2). Offered with `input.inject` |
 | `input.gamepad` | desktop | Also plugs in a game controller for a phone's `pad` input (§3.1); offered with `input.inject` |
 
 Input is governed by the `remote_input` per-device toggle on the PC, which is
@@ -37,16 +38,20 @@ followed by at most 256 bytes of CBOR-encoded `Input`:
 ```
 
 If QUIC datagrams are unavailable on a connection, the sender opens a
-unidirectional stream with header `{ svc: "remote", op: "motion", v: 1 }` and
-sends length-prefixed CBOR `Input` frames there. Pointer motion (`type =
-"move"`) **MUST NOT** be sent on the control stream.
+bidirectional stream with header `{ svc: "remote", op: "motion", v: 1 }` and
+sends length-prefixed `remote.input` envelopes with CBOR `Input` bodies.
+Pointer motion without a click uses datagrams or this fallback stream.
 
 Datagram-eligible `Input` variants:
 
 ```
-{ type: "move",   dx: float32, dy: float32 }
-{ type: "scroll", dx: float32, dy: float32 }
-{ type: "laser",  on: bool, x?: float32, y?: float32 }
+{ type: "move",          dx: float32, dy: float32 }
+{ type: "move_precise",  dx: float32, dy: float32 }
+{ type: "move_absolute", x: float32, y: float32, seq: uint32 }
+{ type: "scroll",        dx: float32, dy: float32 }
+{ type: "zoom",          delta: float32 }
+{ type: "laser",         on: bool, x?: float32, y?: float32 }
+{ type: "pad",           pad: Pad }
 ```
 
 ### 2.2 Control stream requests
@@ -55,8 +60,11 @@ Discrete actions that must arrive, and permission checks when opening the
 remote screen, use control-stream requests:
 
 ```
-t = "remote.check"  id = n  b = {}
+t = "remote.check"  id = n  b = { presence?: bool }
 t = "ok"            re = n
+
+t = "remote.info"   id = n  b = {}
+t = "remote.info"   re = n  b = RemoteInfo
 
 t = "remote.input"  id = n  b = Input
 t = "ok"            re = n
@@ -64,14 +72,20 @@ t = "ok"            re = n
 
 **`remote.check`** verifies whether the PC currently accepts remote input from
 the sender. If `remote_input` is off, the PC replies with `DENIED` and shows
-its one-time prompt if it hasn't already asked for this phone.
+its one-time prompt if it hasn't already asked for this phone. A precision
+remote can report `presence: true` while open or `presence: false` when it
+closes. Omission keeps the legacy permission check. Older peers can send an
+empty body or omit it entirely.
 
-**`remote.input`** executes a discrete input action (`button`, `scroll`,
-`text`, `key`, `slide`, or `laser`). Sending `type = "move"` in `remote.input`
-is rejected with `BAD_MESSAGE`. Errors: `UNSUPPORTED` when the receiver does
-not offer `input.inject`, `DENIED` when `remote_input` is off for the sender
-or rate-limited, `BAD_MESSAGE` when values are out of bounds or name an
-unknown key.
+**`remote.info`** reports the gesture profile and display map (§3.2). It
+requires `input.precision` and the same `remote_input` permission as input.
+
+**`remote.input`** on the control stream executes actions that can take a
+reliable request. `move`, `move_precise`, and `move_absolute` without a click
+are rejected with `BAD_MESSAGE`. The receiver also uses `BAD_MESSAGE` for
+out-of-bounds values or unknown keys. It returns `UNSUPPORTED` when it lacks
+the required capability and `DENIED` when permission is off or the sender is
+rate-limited.
 
 ## 3. Input payloads
 
@@ -86,8 +100,13 @@ Input =
   | { type: "laser",  on: bool, x?: float32, y?: float32 }
   | { type: "pad",    pad: Pad }
   | { type: "pad_off" }
+  | { type: "move_precise", dx: float32, dy: float32 }
+  | { type: "move_absolute", x: float32, y: float32, seq: uint32, click?: Button }
+  | { type: "zoom", delta: float32 }
+  | { type: "modified_button", button: Button, action: ButtonAction, mods?: [KeyMod] }
+  | { type: "gesture", action: GestureAction }
 
-Button       = "left" | "right" | "middle"
+Button       = "left" | "right" | "middle" | "back" | "forward"
 ButtonAction = "down" | "up" | "click"
 KeyMod       = "ctrl" | "alt" | "shift" | "win"
 SlideAction  = "next" | "previous" | "start" | "stop" | "black"
@@ -97,12 +116,12 @@ SlideAction  = "next" | "previous" | "start" | "stop" | "black"
   right, `dy` down), each finite and within `[-4000, 4000]`. Dragging holds a
   button with `button` `down`, sends `move` datagrams, and finishes with
   `button` `up`.
-- **Buttons (`button`):** `left`, `right`, or `middle` mouse button `down`,
-  `up`, or `click` (press and release). If a session ends or `remote_input` is
-  turned off while a button is held down, the PC releases the held button.
+- **Buttons (`button`):** mouse button `down`, `up`, or `click` (press and
+  release). `back` and `forward` require `input.precision`. If a session ends
+  or `remote_input` is turned off while a button is held down, the PC
+  releases the held button.
 - **Scroll (`scroll`):** horizontal (`dx`, positive right) and vertical (`dy`,
-  positive down/towards the user or wheel delta; on Windows `dy > 0` scrolls
-  up / standard wheel ticks, `dx > 0` scrolls right) in wheel notches
+  positive down on Windows and Linux) in wheel notches
   (fractions allowed for smooth scrolling), each finite and within
   `[-200, 200]`.
 - **Text (`text`):** 1 to 256 UTF-8 bytes of printable Unicode text (no control
@@ -112,12 +131,19 @@ SlideAction  = "next" | "previous" | "start" | "stop" | "black"
   - Named keys: `enter`, `backspace`, `tab`, `escape`, `space`, `left`,
     `right`, `up`, `down`, `home`, `end`, `page_up`, `page_down`, `delete`,
     `f1` to `f12`, `win`.
+  - Precision remotes can also send `super`, `insert`, `printscreen`, `pause`,
+    `capslock`, `menu`, `browserback`, `browserforward`, `media_play_pause`,
+    `media_next`, `media_previous`, `media_stop`, `volume_mute`, `volume_down`,
+    and `volume_up`. Accepted aliases include `esc`, `pageup`, `pagedown`,
+    `print`, `print_screen`, `playpause`, `next`, `prev`, `stop`, `mute`,
+    `voldown`, and `volup`.
   - Modified keys: a single ASCII lowercase letter (`a` to `z`) or digit
-    (`0` to `9`) when `mods` is non-empty (up to 4 modifiers from `ctrl`, `alt`,
-    `shift`, `win`).
+    (`0` to `9`) when `mods` is non-empty. Use up to four distinct modifiers
+    from `ctrl`, `alt`, `shift`, and `win`.
   - Named shortcuts (with empty `mods`): `copy` (`Ctrl+C`), `paste`
     (`Ctrl+V`), `cut` (`Ctrl+X`), `undo` (`Ctrl+Z`), `select_all` (`Ctrl+A`),
-    `task_view` (`Win+Tab`), `lock` (`Win+L`).
+    `task_view` (`Win+Tab`), `lock` (`Win+L`), and `redo` (`Ctrl+Y`, requires
+    `input.precision`).
 - **Presentation (`slide`):** `next` (next slide), `previous` (previous
   slide), `start` (`F5`), `stop` (`Escape`), `black` (`B`).
 - **Laser pointer (`laser`):** when `on` is `true`, `x` and `y` are finite
@@ -156,9 +182,48 @@ X, `0x8000` Y. A missing field is 0.
   phone sends `pad_off` (control stream only), when the link drops, or when
   `remote_input` is turned off. Each phone gets its own controller, up to 4.
 
+### 3.2 Precision motion, gestures, and displays
+
+Send these actions to PCs that advertise `input.precision`.
+
+- `move_precise` carries relative motion with the sender's gain already
+  applied. Each axis uses the same units and bounds as `move`.
+- `move_absolute` uses finite `x` and `y` from `0.0` to `1.0`, increasing
+  right and down across the bounding rectangle of all monitors. `seq` is a
+  wrapping sequence number the receiver can use to discard stale motion.
+  With `click`, send the position and button together as a control request.
+  The PC moves and clicks at that position as one action.
+- `zoom` carries signed wheel notches in `[-200, 200]`. Values must be finite.
+  Positive values zoom in.
+- `modified_button` carries a reliable button action with up to four
+  distinct modifiers. An omitted modifier list is empty.
+- `gesture` carries a reliable desktop action. The controller uses the
+  `supported_actions` list from `remote.info` to decide which to offer.
+
+```
+GestureAction =
+  "switch_start" | "switch_next" | "switch_prev" | "switch_end" | "switch_cancel"
+  | "overview_open" | "overview_close" | "desktop_toggle"
+  | "workspace_next" | "workspace_prev" | "search" | "notifications" | "launcher"
+  | "close_window" | "screenshot" | "emoji"
+
+RemoteInfo = {
+  profile: text,
+  supported_actions: [GestureAction],
+  monitors: [{ name: text, x: int32, y: int32, width: uint32, height: uint32, primary: bool }],
+}
+```
+
+`profile` identifies the PC's active gesture profile. Its name has at most
+64 UTF-8 bytes. The actions list has no duplicates. The display map contains
+up to 32 monitors, each with a name of up to 128 bytes and positive width
+and height. Profile and monitor names contain non-whitespace text and no
+control characters. Monitor origins can be negative and share the PC's
+virtual desktop coordinate space. `primary` marks the primary display.
+
 ## 4. Validation and rate limiting
 
 - The PC validates all bounds and key names before touching the OS input APIs.
 - Per-peer token buckets bound incoming rates (240 datagrams/s with burst 60;
-  60 control requests/s with burst 30).
+  500 control requests/s with burst 500).
 - Implementations **MUST NOT** log typed `text` (v0 §11).

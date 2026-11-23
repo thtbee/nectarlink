@@ -9,6 +9,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
@@ -17,6 +18,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import app.nectarlink.android.NectarlinkApplication
 import app.nectarlink.android.R
+import app.nectarlink.android.audio.AudioRouting
 
 /**
  * A PC asking for this phone's microphone (`mic.start`). The microphone only turns on when
@@ -70,19 +72,39 @@ object MicRequests {
         return runCatching { NotificationManagerCompat.from(context).notify(TAG, pcId.hashCode(), notification) }.isSuccess
     }
 
+    /** Opens the foreground permission handoff for a microphone target selected in the mixer. */
+    fun startFromMixer(context: Context, pcId: String) {
+        context.startActivity(
+            Intent(context, MicStartActivity::class.java)
+                .putExtra(MicStartActivity.EXTRA_PC, pcId)
+                .putExtra(MicStartActivity.EXTRA_FROM_MIXER, true)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
+    }
+
     fun dismiss(context: Context, pcId: String) {
         runCatching { NotificationManagerCompat.from(context).cancel(TAG, pcId.hashCode()) }
     }
 }
 
-/** Starts the microphone for a PC after the user tapped its request; shows nothing itself. */
+/**
+ * Starts the microphone for a PC after the user tapped its request; shows nothing itself.
+ * With a Bluetooth headset picked as the input on Android 12+, it asks for nearby devices
+ * too. Declining that only means the built-in mic records.
+ */
 class MicStartActivity : ComponentActivity() {
     private var pcId: String? = null
+    private val fromMixer: Boolean get() = intent.getBooleanExtra(EXTRA_FROM_MIXER, false)
 
-    private val permission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+    private val permission = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { results ->
         pcId?.let { pc ->
-            // Declined: the PC hears the microphone is off instead of waiting it out.
-            if (granted) MicService.start(this, pc) else (application as NectarlinkApplication).core.micStop(pc)
+            val granted = results[Manifest.permission.RECORD_AUDIO] == true || MicService.hasPermission(this)
+            if (granted) startMic(pc) else if (fromMixer) {
+                clearMixerTarget(pc)
+            } else {
+                // A declined PC request must stop waiting for the microphone.
+                (application as NectarlinkApplication).core.micStop(pc)
+            }
         }
         finish()
     }
@@ -95,17 +117,41 @@ class MicStartActivity : ComponentActivity() {
             return
         }
         pcId = pc
-        (application as NectarlinkApplication).core.clearMicRequest(pc)
-        if (MicService.hasPermission(this)) {
-            MicService.start(this, pc)
+        if (!fromMixer) (application as NectarlinkApplication).core.clearMicRequest(pc)
+        val missing = missingPermissions()
+        if (missing.isEmpty()) {
+            startMic(pc)
             finish()
         } else if (savedInstanceState == null) {
-            permission.launch(Manifest.permission.RECORD_AUDIO)
+            permission.launch(missing.toTypedArray())
         }
+    }
+
+    private fun missingPermissions(): List<String> = buildList {
+        if (!MicService.hasPermission(this@MicStartActivity)) add(Manifest.permission.RECORD_AUDIO)
+        val bluetooth = AudioRouting.state.value.mic.input.type == AudioRouting.MicInputType.BLUETOOTH
+        if (bluetooth && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            !MicService.hasBluetoothPermission(this@MicStartActivity)
+        ) {
+            add(Manifest.permission.BLUETOOTH_CONNECT)
+        }
+    }
+
+    private fun startMic(pcId: String) {
+        if (fromMixer) {
+            if (AudioRouting.state.value.mic.target == pcId && !MicService.switchTarget(this, pcId)) clearMixerTarget(pcId)
+        } else {
+            MicService.start(this, pcId)
+        }
+    }
+
+    private fun clearMixerTarget(pcId: String) {
+        if (AudioRouting.state.value.mic.target == pcId) AudioRouting.selectMicTarget(null)
     }
 
     companion object {
         const val EXTRA_PC = "mic_pc"
+        internal const val EXTRA_FROM_MIXER = "mic_from_mixer"
     }
 }
 

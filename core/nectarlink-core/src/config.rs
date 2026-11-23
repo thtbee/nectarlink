@@ -28,6 +28,15 @@ pub struct NodeConfig {
     /// Fixed UDP port to listen on (0 = any). A fixed port makes firewall
     /// rules simpler on the desktop.
     pub port: u16,
+    /// The UDP port to listen on the first time, when `port` is 0: a port saved
+    /// from an earlier run wins, and any free port is taken if it's busy. Desktop
+    /// passes `Some(7718)` so a Tailscale or manual address stays the same.
+    pub preferred_port: Option<u16>,
+    /// Also read this device's Tailscale addresses from up `tailscale*` network
+    /// interfaces (Linux only), besides what the app passes to
+    /// `Node::set_local_tailscale_ips`. On by default; tests turn it off so a
+    /// machine running Tailscale doesn't change which path they see.
+    pub tailscale_interfaces: bool,
     /// How the device key is protected at rest. `None` uses the platform
     /// default (DPAPI on Windows).
     pub key_protector: Option<std::sync::Arc<dyn KeyProtector>>,
@@ -139,6 +148,8 @@ impl NodeConfig {
             network_interface: None,
             lan_discovery: true,
             port: 0,
+            preferred_port: None,
+            tailscale_interfaces: true,
             key_protector: None,
             downloads_dir: None,
             capabilities: vec![nectarlink_protocol::messages::continuity_camera::RECEIVE.into()],
@@ -161,6 +172,8 @@ impl fmt::Debug for NodeConfig {
             .field("away_mode", &self.away_mode)
             .field("lan_discovery", &self.lan_discovery)
             .field("port", &self.port)
+            .field("preferred_port", &self.preferred_port)
+            .field("tailscale_interfaces", &self.tailscale_interfaces)
             .field("localsend_port", &self.localsend_port)
             .field("usb_port", &self.usb_port)
             .field("adb_server", &self.adb_server)
@@ -768,6 +781,60 @@ pub trait Platform: Send + Sync + 'static {
 
     /// The peer cancelled an in-flight Continuity Camera capture (`camera.capture.cancel`).
     fn camera_capture_cancelled(&self, _peer: &nectarlink_protocol::DeviceId, _request_id: &str) {}
+
+    /// Stops anything a phone left held on this PC through remote input:
+    /// pressed buttons and keys, a drag, a zoom or a gesture in progress.
+    /// Called when its session ends, when `remote_input` is turned off for it,
+    /// and when it is unpaired. Must be idempotent.
+    fn remote_release(&self, _peer: nectarlink_protocol::DeviceId) {}
+
+    /// This PC's gesture profile, supported gestures and display map
+    /// (`remote.info`, `docs/protocol/remote.md`). Only asked for when this
+    /// device offers `input.precision`.
+    fn remote_info(&self) -> crate::RemoteInfo {
+        crate::RemoteInfo { profile: "default".into(), supported_actions: Vec::new(), monitors: Vec::new() }
+    }
+
+    /// A paired controller set this device's managed audio route
+    /// (`audio.route.set`, `docs/protocol/audio-route.md`). The set is valid,
+    /// the role is one this device offers, and the `media` toggle is on.
+    /// Returns the effective status the controller gets back; `Err` holds a
+    /// reason sent to the controller (no personal info).
+    fn on_audio_route_set(
+        &self,
+        _peer: nectarlink_protocol::DeviceId,
+        _set: crate::AudioRouteSet,
+    ) -> Result<crate::AudioRouteStatus, String> {
+        Err("this device doesn't route audio".into())
+    }
+
+    /// A managed audio frame from an enrolled source for the current route
+    /// generation. Called on the connection's datagram reader: must return
+    /// quickly. (The same frame also arrives as
+    /// [`NodeEvent::AudioRoutePcm`](crate::NodeEvent::AudioRoutePcm).)
+    fn on_audio_route_pcm(&self, _peer: nectarlink_protocol::DeviceId, _pcm: crate::AudioRoutePcm) {}
+
+    /// Lane levels from a paired sink, for a controller's meters.
+    fn on_audio_route_levels(&self, _peer: nectarlink_protocol::DeviceId, _levels: crate::AudioRouteLevels) {}
+
+    /// A paired device asked for this PC's virtual microphone readiness
+    /// (`mic.status`). Only asked for when this device offers `mic.status.v1`
+    /// and the `mic` toggle is on.
+    fn on_mic_status_request(
+        &self,
+        _peer: nectarlink_protocol::DeviceId,
+    ) -> Result<crate::MicStatus, String> {
+        Err("this device has no virtual microphone".into())
+    }
+
+    /// A paired device asked this PC to open its virtual microphone setup
+    /// (`mic.setup`). Reply with whether the setup UI opened.
+    fn on_mic_setup_request(
+        &self,
+        _peer: nectarlink_protocol::DeviceId,
+    ) -> Result<crate::MicSetupResponse, String> {
+        Err("this device has no virtual microphone setup".into())
+    }
 }
 
 /// A platform that does nothing; useful for tests and headless tools.

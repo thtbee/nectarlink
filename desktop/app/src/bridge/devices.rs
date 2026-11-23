@@ -109,14 +109,18 @@ struct Row {
     screen_json: String,
     /// The name the user gave it, part of the row so renaming it updates the row.
     nickname: Option<String>,
+    /// Optional manual address ("Connect by address") saved for this device.
+    manual_addr: Option<String>,
 }
 
 impl Row {
     fn from_device(device: DeviceView) -> Self {
         let screen_json =
             device.info.screen.as_ref().and_then(|s| serde_json::to_string(s).ok()).unwrap_or_default();
-        let nickname = crate::settings::nickname_for(&device.id.to_string());
-        Self { device, screen_json, nickname }
+        let id = device.id.to_string();
+        let nickname = crate::settings::nickname_for(&id);
+        let manual_addr = crate::settings::manual_addr_for(&id);
+        Self { device, screen_json, nickname, manual_addr }
     }
 
     /// The name shown: the nickname, or the device's own.
@@ -166,6 +170,7 @@ const ROLES: &[&str] = &[
     "accent",
     "screen",
     "reconnect",
+    "manualAddr",
 ];
 const USER_ROLE: i32 = 0x0100;
 
@@ -190,6 +195,7 @@ fn role_value(device: &Row, role: &str) -> QVariant {
         "path" => text(match device.link {
             LinkState::Online { path: ConnectionPath::Lan, .. } => "lan",
             LinkState::Online { path: ConnectionPath::Usb, .. } => "usb",
+            LinkState::Online { path: ConnectionPath::Tailscale, .. } => "tailscale",
             LinkState::Online { path: ConnectionPath::Relay, .. } => "relay",
             LinkState::Connecting => "connecting",
             LinkState::Offline { .. } => "offline",
@@ -229,6 +235,7 @@ fn role_value(device: &Row, role: &str) -> QVariant {
             text(&device.info.accent.map(|argb| format!("#{:06X}", argb & 0x00FF_FFFF)).unwrap_or_default())
         }
         "screen" => text(&device.screen_json),
+        "manualAddr" => text(device.manual_addr.as_deref().unwrap_or_default()),
         _ => QVariant::default(),
     }
 }

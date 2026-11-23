@@ -1765,6 +1765,7 @@ Item {
                         required property bool online
                         required property string kind
                         required property string os
+                        required property string manualAddr
                         visible: index === page.selectedDeviceIndex
                         width: visible ? column.width : 0
 
@@ -1817,6 +1818,64 @@ Item {
                                         unpairSheet.deviceId = deviceCard.deviceId
                                         unpairSheet.deviceName = deviceCard.name
                                         unpairSheet.open()
+                                    }
+                                }
+                            }
+                            // Connect by address: optional Tailscale IP, IPv6, or MagicDNS name.
+                            ListRow {
+                                id: manualAddrRow
+                                width: parent.width
+                                iconPath: Icons.globe
+                                title: qsTr("Connect by address")
+                                description: manualAddrRow.errorText.length > 0
+                                    ? manualAddrRow.errorText
+                                    : (deviceCard.manualAddr.length > 0
+                                        ? qsTr("Direct address: %1").arg(deviceCard.manualAddr)
+                                        : qsTr("Optional IP, IPv6, or Tailscale MagicDNS host (with optional :port)."))
+                                property string errorText: ""
+                                Row {
+                                    spacing: 8
+                                    Rectangle {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: 210
+                                        height: 32
+                                        radius: Theme.radiusSm
+                                        color: Theme.surfaceContainerHighest
+                                        border.width: manualAddrField.activeFocus ? 2 : 1
+                                        border.color: manualAddrField.activeFocus ? Theme.primary : Theme.outlineVariant
+                                        TextInput {
+                                            id: manualAddrField
+                                            anchors.fill: parent
+                                            anchors.leftMargin: 8
+                                            anchors.rightMargin: 8
+                                            verticalAlignment: TextInput.AlignVCenter
+                                            color: Theme.surfaceContent
+                                            selectionColor: Theme.primaryContainer
+                                            selectedTextColor: Theme.primaryContainerContent
+                                            font.pixelSize: 12
+                                            text: deviceCard.manualAddr
+                                            Accessible.name: qsTr("Connect by address")
+                                            onAccepted: manualAddrSave.clicked()
+                                            Txt {
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                visible: manualAddrField.text.length === 0 && !manualAddrField.activeFocus
+                                                role: "bodySmall"
+                                                muted: true
+                                                text: qsTr("100.x.y.z or host.ts.net")
+                                            }
+                                        }
+                                    }
+                                    Button {
+                                        id: manualAddrSave
+                                        variant: "tonal"
+                                        size: "sm"
+                                        text: manualAddrField.text.trim().length > 0 ? qsTr("Save") : qsTr("Clear")
+                                        onClicked: {
+                                            manualAddrRow.errorText = AppController.setManualAddress(
+                                                deviceCard.deviceId,
+                                                manualAddrField.text.trim()
+                                            )
+                                        }
                                     }
                                 }
                             }

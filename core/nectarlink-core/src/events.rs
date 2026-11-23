@@ -11,7 +11,8 @@ use nectarlink_protocol::{
 use crate::{features::CapabilityMatrix, transfer::Transfer};
 
 /// How a session is currently carried.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum ConnectionPath {
     /// A direct connection on the local network.
     Lan,
@@ -19,6 +20,34 @@ pub enum ConnectionPath {
     Usb,
     /// Through a relay server (away mode).
     Relay,
+    /// A direct connection over the user's Tailscale tailnet: off this network but
+    /// without a relay. Only a tailnet address this device's own Tailscale
+    /// interface confirms counts (carrier CGNAT shares `100.64.0.0/10`). Never
+    /// physically local: it doesn't unlock a PC.
+    Tailscale,
+}
+
+impl ConnectionPath {
+    /// Its name in diagnostics: `usb`, `lan`, `tailscale` or `relay`.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            ConnectionPath::Usb => "usb",
+            ConnectionPath::Lan => "lan",
+            ConnectionPath::Tailscale => "tailscale",
+            ConnectionPath::Relay => "relay",
+        }
+    }
+
+    /// How strongly a path is preferred: USB, then LAN, then Tailscale, then a relay.
+    /// Lower is better.
+    pub fn rank(self) -> u8 {
+        match self {
+            ConnectionPath::Usb => 0,
+            ConnectionPath::Lan => 1,
+            ConnectionPath::Tailscale => 2,
+            ConnectionPath::Relay => 3,
+        }
+    }
 }
 
 /// Connection state of a paired device.
@@ -308,6 +337,34 @@ pub enum NodeEvent {
         sample_rate: u32,
         channels: u8,
         pcm: Vec<u8>,
+    },
+    /// A paired phone said whether its user is on the remote screen
+    /// (`remote.check` with `presence`). Going away releases held input.
+    RemotePresence {
+        device: DeviceId,
+        present: bool,
+    },
+    /// A paired device reported its managed audio route (`audio.route.status`
+    /// sent without a request).
+    AudioRouteStatus {
+        device: DeviceId,
+        status: crate::AudioRouteStatus,
+    },
+    /// Lane levels from a paired sink (`audio.route.levels`).
+    AudioRouteLevels {
+        device: DeviceId,
+        levels: crate::audio_route::RouteLevels,
+    },
+    /// A managed audio frame from an enrolled source of the current route
+    /// (NLRP datagram or `audio.route.pcm`).
+    AudioRoutePcm {
+        device: DeviceId,
+        pcm: crate::AudioRoutePcm,
+    },
+    /// A paired PC reported its virtual microphone readiness (`mic.status`).
+    MicStatus {
+        device: DeviceId,
+        status: crate::MicStatus,
     },
     /// The persistent outgoing send queue changed.
     QueueChanged,

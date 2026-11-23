@@ -125,6 +125,9 @@ pub enum Link {
         #[uniffi(default = false)]
         usb: bool,
         rtt_ms: u32,
+        /// Direct over this device's own Tailscale (not a relay, not the LAN).
+        #[uniffi(default = false)]
+        tailscale: bool,
     },
 }
 
@@ -582,7 +585,7 @@ pub struct DeviceToggle {
 }
 
 /// Everything the UI needs to know about, as it happens.
-#[derive(Debug, Clone, PartialEq, Eq, uniffi::Enum)]
+#[derive(Debug, Clone, PartialEq, uniffi::Enum)]
 pub enum Event {
     DeviceAdded {
         device: PairedDevice,
@@ -809,6 +812,39 @@ pub enum Event {
         device_id: String,
         device_name: String,
         dropped_count: u32,
+    },
+    /// A paired phone said whether its user is on the remote screen (PCs only).
+    RemotePresence {
+        id: String,
+        present: bool,
+    },
+    /// A paired controller set this device's managed audio route
+    /// (`audio.route.set`). It was valid, this device offers the role, and the
+    /// toggles allow it. The controller was already told `active` (any role
+    /// but idle); report anything else with `send_audio_route_status`.
+    AudioRouteSet {
+        id: String,
+        set: AudioRouteSet,
+    },
+    /// A paired device reported its managed audio route on its own.
+    AudioRouteStatus {
+        id: String,
+        status: AudioRouteStatus,
+    },
+    /// Lane levels from a paired sink, for a controller's meters.
+    AudioRouteLevels {
+        id: String,
+        levels: AudioRouteLevels,
+    },
+    /// A managed audio frame from an enrolled source of the current route.
+    AudioRoutePcm {
+        id: String,
+        pcm: AudioRoutePcm,
+    },
+    /// A paired PC reported its virtual microphone readiness.
+    MicStatus {
+        id: String,
+        status: MicStatus,
     },
 }
 
@@ -2130,6 +2166,7 @@ impl From<LinkState> for Link {
                 relayed: path == ConnectionPath::Relay,
                 usb: path == ConnectionPath::Usb,
                 rtt_ms,
+                tailscale: path == ConnectionPath::Tailscale,
             },
         }
     }
@@ -2616,12 +2653,510 @@ impl Event {
                 Event::PcAudioFrame { device: device.to_string(), sample_rate, channels, pcm }
             }
             NodeEvent::CallAudioUplink { device, pcm } => Event::CallAudioUplink { device: device.to_string(), pcm },
+            NodeEvent::RemotePresence { device, present } => {
+                Event::RemotePresence { id: device.to_string(), present }
+            }
+            NodeEvent::AudioRouteStatus { device, status } => {
+                Event::AudioRouteStatus { id: device.to_string(), status: status.into() }
+            }
+            NodeEvent::AudioRouteLevels { device, levels } => {
+                Event::AudioRouteLevels { id: device.to_string(), levels: levels.0.into() }
+            }
+            NodeEvent::AudioRoutePcm { device, pcm } => {
+                Event::AudioRoutePcm { id: device.to_string(), pcm: pcm.into() }
+            }
+            NodeEvent::MicStatus { device, status } => {
+                Event::MicStatus { id: device.to_string(), status: status.into() }
+            }
         })
     }
 }
 
 fn parse_id(id: &str) -> Result<DeviceId> {
     id.parse().map_err(|_| NectarlinkError::InvalidDeviceId)
+}
+
+fn invalid(what: &str, value: &str) -> NectarlinkError {
+    NectarlinkError::Internal { reason: format!("invalid {what}: {value}") }
+}
+
+fn parse_mouse_button(button: &str) -> Result<core::MouseButton> {
+    Ok(match button {
+        "left" => core::MouseButton::Left,
+        "right" => core::MouseButton::Right,
+        "middle" => core::MouseButton::Middle,
+        "back" => core::MouseButton::Back,
+        "forward" => core::MouseButton::Forward,
+        _ => return Err(invalid("mouse button", button)),
+    })
+}
+
+fn parse_button_action(action: &str) -> Result<core::ButtonAction> {
+    Ok(match action {
+        "down" => core::ButtonAction::Down,
+        "up" => core::ButtonAction::Up,
+        "click" => core::ButtonAction::Click,
+        _ => return Err(invalid("button action", action)),
+    })
+}
+
+fn parse_key_mod(m: &str) -> Result<core::KeyMod> {
+    Ok(match m {
+        "ctrl" => core::KeyMod::Ctrl,
+        "alt" => core::KeyMod::Alt,
+        "shift" => core::KeyMod::Shift,
+        "win" => core::KeyMod::Win,
+        _ => return Err(invalid("key modifier", m)),
+    })
+}
+
+/// Gesture names as the protocol spells them (`docs/protocol/remote.md`).
+const GESTURES: [(core::GestureAction, &str); 16] = [
+    (core::GestureAction::SwitchStart, "switch_start"),
+    (core::GestureAction::SwitchNext, "switch_next"),
+    (core::GestureAction::SwitchPrev, "switch_prev"),
+    (core::GestureAction::SwitchEnd, "switch_end"),
+    (core::GestureAction::SwitchCancel, "switch_cancel"),
+    (core::GestureAction::OverviewOpen, "overview_open"),
+    (core::GestureAction::OverviewClose, "overview_close"),
+    (core::GestureAction::DesktopToggle, "desktop_toggle"),
+    (core::GestureAction::WorkspaceNext, "workspace_next"),
+    (core::GestureAction::WorkspacePrev, "workspace_prev"),
+    (core::GestureAction::Search, "search"),
+    (core::GestureAction::Notifications, "notifications"),
+    (core::GestureAction::Launcher, "launcher"),
+    (core::GestureAction::CloseWindow, "close_window"),
+    (core::GestureAction::Screenshot, "screenshot"),
+    (core::GestureAction::Emoji, "emoji"),
+];
+
+fn gesture_name(action: core::GestureAction) -> String {
+    GESTURES.iter().find(|(a, _)| *a == action).map(|(_, name)| (*name).to_owned()).unwrap_or_default()
+}
+
+fn parse_gesture(action: &str) -> Result<core::GestureAction> {
+    GESTURES
+        .iter()
+        .find(|(_, name)| *name == action)
+        .map(|(a, _)| *a)
+        .ok_or_else(|| invalid("gesture", action))
+}
+
+fn parse_socket_addrs(addrs: &[String]) -> Result<Vec<std::net::SocketAddr>> {
+    addrs.iter().map(|a| a.trim().parse().map_err(|_| invalid("address", a))).collect()
+}
+
+/// One display in a PC's virtual desktop.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct RemoteMonitorRect {
+    pub name: String,
+    pub x: i32,
+    pub y: i32,
+    pub width: u32,
+    pub height: u32,
+    pub primary: bool,
+}
+
+/// A PC's precision remote profile (`remote.info`).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct RemoteInfo {
+    pub profile: String,
+    /// Gesture names, e.g. `"switch_next"`, for `send_remote_gesture`.
+    pub supported_actions: Vec<String>,
+    pub monitors: Vec<RemoteMonitorRect>,
+}
+
+impl From<core::RemoteInfo> for RemoteInfo {
+    fn from(info: core::RemoteInfo) -> Self {
+        RemoteInfo {
+            profile: info.profile,
+            supported_actions: info.supported_actions.into_iter().map(gesture_name).collect(),
+            monitors: info
+                .monitors
+                .into_iter()
+                .map(|m| RemoteMonitorRect {
+                    name: m.name,
+                    x: m.x,
+                    y: m.y,
+                    width: m.width,
+                    height: m.height,
+                    primary: m.primary,
+                })
+                .collect(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum AudioRouteRole {
+    Idle,
+    Source,
+    Sink,
+    PhonePlayback,
+}
+
+impl From<core::AudioRouteRole> for AudioRouteRole {
+    fn from(role: core::AudioRouteRole) -> Self {
+        match role {
+            core::AudioRouteRole::Idle => AudioRouteRole::Idle,
+            core::AudioRouteRole::Source => AudioRouteRole::Source,
+            core::AudioRouteRole::Sink => AudioRouteRole::Sink,
+            core::AudioRouteRole::PhonePlayback => AudioRouteRole::PhonePlayback,
+        }
+    }
+}
+
+impl From<AudioRouteRole> for core::AudioRouteRole {
+    fn from(role: AudioRouteRole) -> Self {
+        match role {
+            AudioRouteRole::Idle => core::AudioRouteRole::Idle,
+            AudioRouteRole::Source => core::AudioRouteRole::Source,
+            AudioRouteRole::Sink => core::AudioRouteRole::Sink,
+            AudioRouteRole::PhonePlayback => core::AudioRouteRole::PhonePlayback,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum AudioPlaybackPolicy {
+    Pause,
+    Mute,
+    Lower,
+    Off,
+}
+
+impl From<core::AudioPlaybackPolicy> for AudioPlaybackPolicy {
+    fn from(policy: core::AudioPlaybackPolicy) -> Self {
+        match policy {
+            core::AudioPlaybackPolicy::Pause => AudioPlaybackPolicy::Pause,
+            core::AudioPlaybackPolicy::Mute => AudioPlaybackPolicy::Mute,
+            core::AudioPlaybackPolicy::Lower => AudioPlaybackPolicy::Lower,
+            core::AudioPlaybackPolicy::Off => AudioPlaybackPolicy::Off,
+        }
+    }
+}
+
+impl From<AudioPlaybackPolicy> for core::AudioPlaybackPolicy {
+    fn from(policy: AudioPlaybackPolicy) -> Self {
+        match policy {
+            AudioPlaybackPolicy::Pause => core::AudioPlaybackPolicy::Pause,
+            AudioPlaybackPolicy::Mute => core::AudioPlaybackPolicy::Mute,
+            AudioPlaybackPolicy::Lower => core::AudioPlaybackPolicy::Lower,
+            AudioPlaybackPolicy::Off => core::AudioPlaybackPolicy::Off,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum AudioLatencyPreset {
+    Lowest,
+    Balanced,
+    Stable,
+}
+
+impl From<core::AudioLatencyPreset> for AudioLatencyPreset {
+    fn from(preset: core::AudioLatencyPreset) -> Self {
+        match preset {
+            core::AudioLatencyPreset::Lowest => AudioLatencyPreset::Lowest,
+            core::AudioLatencyPreset::Balanced => AudioLatencyPreset::Balanced,
+            core::AudioLatencyPreset::Stable => AudioLatencyPreset::Stable,
+        }
+    }
+}
+
+impl From<AudioLatencyPreset> for core::AudioLatencyPreset {
+    fn from(preset: AudioLatencyPreset) -> Self {
+        match preset {
+            AudioLatencyPreset::Lowest => core::AudioLatencyPreset::Lowest,
+            AudioLatencyPreset::Balanced => core::AudioLatencyPreset::Balanced,
+            AudioLatencyPreset::Stable => core::AudioLatencyPreset::Stable,
+        }
+    }
+}
+
+/// One source's lane in a route: `source_id` is that device's ID.
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct AudioRouteLane {
+    pub source_id: String,
+    /// Linear, 0 to 2.
+    pub gain: f32,
+    pub muted: bool,
+}
+
+/// A complete route for one device and generation (`audio.route.set`).
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct AudioRouteSet {
+    pub generation: u64,
+    pub role: AudioRouteRole,
+    pub target_device_id: Option<String>,
+    pub output_id: Option<String>,
+    pub master_gain: f32,
+    pub master_muted: bool,
+    pub silence_local_speaker: bool,
+    pub include_phone_audio: bool,
+    pub latency_preset: AudioLatencyPreset,
+    pub playback_policy: AudioPlaybackPolicy,
+    pub selective_resume: bool,
+    pub phone_playback_active: bool,
+    pub lanes: Vec<AudioRouteLane>,
+}
+
+impl From<core::AudioRouteSet> for AudioRouteSet {
+    fn from(set: core::AudioRouteSet) -> Self {
+        AudioRouteSet {
+            generation: set.generation,
+            role: set.role.into(),
+            target_device_id: set.target_device_id,
+            output_id: set.output_id,
+            master_gain: set.master_gain,
+            master_muted: set.master_muted,
+            silence_local_speaker: set.silence_local_speaker,
+            include_phone_audio: set.include_phone_audio,
+            latency_preset: set.latency_preset.into(),
+            playback_policy: set.playback_policy.into(),
+            selective_resume: set.selective_resume,
+            phone_playback_active: set.phone_playback_active,
+            lanes: set
+                .lanes
+                .into_iter()
+                .map(|l| AudioRouteLane { source_id: l.source_id, gain: l.gain, muted: l.muted })
+                .collect(),
+        }
+    }
+}
+
+impl From<AudioRouteSet> for core::AudioRouteSet {
+    fn from(set: AudioRouteSet) -> Self {
+        core::AudioRouteSet {
+            generation: set.generation,
+            role: set.role.into(),
+            target_device_id: set.target_device_id,
+            output_id: set.output_id,
+            master_gain: set.master_gain,
+            master_muted: set.master_muted,
+            silence_local_speaker: set.silence_local_speaker,
+            include_phone_audio: set.include_phone_audio,
+            latency_preset: set.latency_preset.into(),
+            playback_policy: set.playback_policy.into(),
+            selective_resume: set.selective_resume,
+            phone_playback_active: set.phone_playback_active,
+            lanes: set
+                .lanes
+                .into_iter()
+                .map(|l| core::AudioRouteLane { source_id: l.source_id, gain: l.gain, muted: l.muted })
+                .collect(),
+        }
+    }
+}
+
+/// A device's effective route (`audio.route.status`).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct AudioRouteStatus {
+    pub generation: u64,
+    pub role: AudioRouteRole,
+    pub active: bool,
+    pub local_paused: bool,
+    pub speaker_muted_by_route: bool,
+    pub output_id: Option<String>,
+    pub reason: Option<String>,
+}
+
+impl From<core::AudioRouteStatus> for AudioRouteStatus {
+    fn from(s: core::AudioRouteStatus) -> Self {
+        AudioRouteStatus {
+            generation: s.generation,
+            role: s.role.into(),
+            active: s.active,
+            local_paused: s.local_paused,
+            speaker_muted_by_route: s.speaker_muted_by_route,
+            output_id: s.output_id,
+            reason: s.reason,
+        }
+    }
+}
+
+impl From<AudioRouteStatus> for core::AudioRouteStatus {
+    fn from(s: AudioRouteStatus) -> Self {
+        core::AudioRouteStatus {
+            generation: s.generation,
+            role: s.role.into(),
+            active: s.active,
+            local_paused: s.local_paused,
+            speaker_muted_by_route: s.speaker_muted_by_route,
+            output_id: s.output_id,
+            reason: s.reason,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct AudioLaneLevel {
+    pub source_id: String,
+    /// 0 to 1.
+    pub peak: f32,
+    pub active: bool,
+}
+
+/// A sink's lane levels (`audio.route.levels`).
+#[derive(Debug, Clone, PartialEq, uniffi::Record)]
+pub struct AudioRouteLevels {
+    pub generation: u64,
+    pub levels: Vec<AudioLaneLevel>,
+}
+
+impl From<core::AudioRouteLevels> for AudioRouteLevels {
+    fn from(l: core::AudioRouteLevels) -> Self {
+        AudioRouteLevels {
+            generation: l.generation,
+            levels: l
+                .levels
+                .into_iter()
+                .map(|l| AudioLaneLevel { source_id: l.source_id, peak: l.peak, active: l.active })
+                .collect(),
+        }
+    }
+}
+
+impl From<AudioRouteLevels> for core::AudioRouteLevels {
+    fn from(l: AudioRouteLevels) -> Self {
+        core::AudioRouteLevels {
+            generation: l.generation,
+            levels: l
+                .levels
+                .into_iter()
+                .map(|l| core::AudioLaneLevel { source_id: l.source_id, peak: l.peak, active: l.active })
+                .collect(),
+        }
+    }
+}
+
+/// One managed audio frame: interleaved signed 16-bit little-endian PCM.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct AudioRoutePcm {
+    pub generation: u64,
+    pub seq: u32,
+    pub sample_rate: u32,
+    pub channels: u8,
+    pub frame_count: u16,
+    pub source_id: String,
+    pub pcm: Vec<u8>,
+}
+
+impl From<core::AudioRoutePcm> for AudioRoutePcm {
+    fn from(p: core::AudioRoutePcm) -> Self {
+        AudioRoutePcm {
+            generation: p.generation,
+            seq: p.seq,
+            sample_rate: p.sample_rate,
+            channels: p.channels,
+            frame_count: p.frame_count,
+            source_id: p.source_id,
+            pcm: p.pcm,
+        }
+    }
+}
+
+impl From<AudioRoutePcm> for core::AudioRoutePcm {
+    fn from(p: AudioRoutePcm) -> Self {
+        core::AudioRoutePcm {
+            generation: p.generation,
+            seq: p.seq,
+            sample_rate: p.sample_rate,
+            channels: p.channels,
+            frame_count: p.frame_count,
+            source_id: p.source_id,
+            pcm: p.pcm,
+        }
+    }
+}
+
+/// A PC's virtual microphone readiness (`mic.status`).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct MicStatus {
+    pub ready: bool,
+    pub active: bool,
+    pub is_default_input: bool,
+    pub device_name: Option<String>,
+    pub setup_reason: Option<String>,
+    pub can_open_setup: bool,
+}
+
+impl From<core::MicStatus> for MicStatus {
+    fn from(s: core::MicStatus) -> Self {
+        MicStatus {
+            ready: s.ready,
+            active: s.active,
+            is_default_input: s.is_default_input,
+            device_name: s.device_name,
+            setup_reason: s.setup_reason,
+            can_open_setup: s.can_open_setup,
+        }
+    }
+}
+
+/// Whether a PC opened its virtual microphone setup (`mic.setup`).
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct MicSetupResponse {
+    pub ok: bool,
+    pub message: Option<String>,
+}
+
+impl From<core::MicSetupResponse> for MicSetupResponse {
+    fn from(r: core::MicSetupResponse) -> Self {
+        MicSetupResponse { ok: r.ok, message: r.message }
+    }
+}
+
+/// One address known for a paired device.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct PeerAddrCandidate {
+    /// `ip:port`.
+    pub addr: String,
+    /// `"manual"`, `"advertised"`, `"observed"`, `"discovery"` or `"legacy"`.
+    pub source: String,
+    /// `"lan"`, `"tailscale"`, `"cgnat"` or `"public"`.
+    pub kind: String,
+    /// Unix seconds.
+    pub first_seen: i64,
+    pub last_seen: i64,
+    /// Whether this device would dial it now (Away mode and LAN rules).
+    pub dialable: bool,
+    /// Whether the live connection uses it.
+    pub selected: bool,
+}
+
+/// Every address known for a paired device and the path in use.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct PeerAddrDiagnostics {
+    pub candidates: Vec<PeerAddrCandidate>,
+    /// `"usb"`, `"lan"`, `"tailscale"` or `"relay"` while connected.
+    pub path: Option<String>,
+    /// Whether this device's own Tailscale is up.
+    pub local_tailscale: bool,
+    pub away_mode: bool,
+}
+
+impl From<core::PeerAddrDiagnostics> for PeerAddrDiagnostics {
+    fn from(d: core::PeerAddrDiagnostics) -> Self {
+        PeerAddrDiagnostics {
+            candidates: d
+                .candidates
+                .into_iter()
+                .map(|c| PeerAddrCandidate {
+                    addr: c.addr.to_string(),
+                    source: c.source.as_str().to_owned(),
+                    kind: c.kind.as_str().to_owned(),
+                    first_seen: c.first_seen,
+                    last_seen: c.last_seen,
+                    dialable: c.dialable,
+                    selected: c.selected,
+                })
+                .collect(),
+            path: d.path.map(|p| p.as_str().to_owned()),
+            local_tailscale: d.local_tailscale,
+            away_mode: d.away_mode,
+        }
+    }
 }
 
 // ---- Foreign interfaces (implemented in Kotlin) ----
@@ -3269,6 +3804,23 @@ impl core::Platform for PlatformAdapter {
     }
     fn camera_capture_cancelled(&self, peer: &DeviceId, request_id: &str) {
         self.0.camera_capture_cancelled(peer.to_string(), request_id.to_owned());
+    }
+    fn on_audio_route_set(
+        &self,
+        peer: DeviceId,
+        set: core::AudioRouteSet,
+    ) -> Result<core::AudioRouteStatus, String> {
+        let status = core::AudioRouteStatus {
+            generation: set.generation,
+            role: set.role,
+            active: set.role != core::AudioRouteRole::Idle,
+            local_paused: false,
+            speaker_muted_by_route: false,
+            output_id: set.output_id.clone(),
+            reason: None,
+        };
+        self.1.on_event(Event::AudioRouteSet { id: peer.to_string(), set: set.into() });
+        Ok(status)
     }
     fn phone_apps(&self) -> Result<Vec<core::PhoneApp>, String> {
         Ok(self
@@ -4681,6 +5233,174 @@ impl NectarlinkNode {
         self.run(async move { Ok(node.remote_input(id, core::RemoteInput::PadOff).await?) }).await
     }
 
+    // ---- Drift: precision remote input (`input.precision`) ----
+
+    /// Like `remote_check`, and tells a PC that offers `input.precision`
+    /// whether this phone's user is on the remote screen (`false` releases
+    /// anything held there). `None` sends a plain check.
+    pub async fn remote_check_with_presence(&self, id: String, presence: Option<bool>) -> Result<()> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.remote_check_with_presence(id, presence).await?) }).await
+    }
+
+    /// The PC's gesture profile, supported gestures and display map.
+    pub async fn remote_info(&self, id: String) -> Result<RemoteInfo> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.remote_info(id).await?.into()) }).await
+    }
+
+    /// Relative motion with this phone's acceleration already applied, in
+    /// logical pixels (a QUIC datagram).
+    pub async fn send_remote_move_precise(&self, id: String, dx: f32, dy: f32) -> Result<()> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.remote_move_precise(id, dx, dy).await?) }).await
+    }
+
+    /// Puts the PC's pointer at `(x, y)` in `0.0..=1.0` of its virtual
+    /// desktop. `seq` increases with each move (wrapping); older moves are
+    /// dropped. With `click` (`"left"`, `"right"` or `"middle"`), it is sent
+    /// reliably and clicks there.
+    pub async fn send_remote_move_absolute(
+        &self,
+        id: String,
+        x: f32,
+        y: f32,
+        seq: u32,
+        click: Option<String>,
+    ) -> Result<()> {
+        let id = parse_id(&id)?;
+        let click = click.as_deref().map(parse_mouse_button).transpose()?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.remote_move_absolute(id, x, y, seq, click).await?) }).await
+    }
+
+    /// Zooms on the PC (`delta` > 0 zooms in, in steps).
+    pub async fn send_remote_zoom(&self, id: String, delta: f32) -> Result<()> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.remote_zoom(id, delta).await?) }).await
+    }
+
+    /// A mouse button (`"left"`, `"right"`, `"middle"`, `"back"` or
+    /// `"forward"`; `action` `"down"`, `"up"` or `"click"`) with modifiers held
+    /// (`"ctrl"`, `"alt"`, `"shift"`, `"win"`).
+    pub async fn send_remote_modified_button(
+        &self,
+        id: String,
+        button: String,
+        action: String,
+        mods: Vec<String>,
+    ) -> Result<()> {
+        let id = parse_id(&id)?;
+        let button = parse_mouse_button(&button)?;
+        let action = parse_button_action(&action)?;
+        let mods = mods.iter().map(|m| parse_key_mod(m)).collect::<Result<Vec<_>>>()?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.remote_modified_button(id, button, action, mods).await?) }).await
+    }
+
+    /// Asks the PC for a desktop gesture (`remote.info` lists the supported
+    /// ones), e.g. `"switch_next"` or `"overview_open"`.
+    pub async fn send_remote_gesture(&self, id: String, action: String) -> Result<()> {
+        let id = parse_id(&id)?;
+        let action = parse_gesture(&action)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.remote_gesture(id, action).await?) }).await
+    }
+
+    // ---- AudioLink: managed audio routes and the virtual microphone ----
+
+    /// As the controller, sets a paired device's managed audio route and
+    /// returns the status it reports.
+    pub async fn set_audio_route(&self, id: String, set: AudioRouteSet) -> Result<AudioRouteStatus> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.set_audio_route(id, set.into()).await?.into()) }).await
+    }
+
+    /// As the controller, the route this device applied to itself, so PCM
+    /// from its enrolled sources is accepted here. `None` stops it.
+    pub fn set_local_audio_route(&self, set: Option<AudioRouteSet>) -> Result<()> {
+        Ok(self.node.set_local_audio_route(set.map(Into::into))?)
+    }
+
+    /// As a source, sends one managed PCM frame (`source_id` must be this
+    /// device's ID). Dropped rather than queued when the link is busy.
+    pub fn send_route_pcm(&self, id: String, pcm: AudioRoutePcm) -> Result<()> {
+        let id = parse_id(&id)?;
+        Ok(self.node.send_route_pcm(id, pcm.into())?)
+    }
+
+    /// As a sink, sends lane levels to the route's controller.
+    pub fn send_audio_route_levels(&self, id: String, levels: AudioRouteLevels) -> Result<()> {
+        let id = parse_id(&id)?;
+        Ok(self.node.send_audio_route_levels(id, levels.into())?)
+    }
+
+    /// Tells a controller this device's route changed on its own.
+    pub async fn send_audio_route_status(&self, id: String, status: AudioRouteStatus) -> Result<()> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.send_audio_route_status(id, status.into()).await?) }).await
+    }
+
+    /// Asks a paired PC for its virtual microphone readiness.
+    pub async fn request_mic_status(&self, id: String) -> Result<MicStatus> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.request_mic_status(id).await?.into()) }).await
+    }
+
+    /// Asks a paired PC to open its virtual microphone setup.
+    pub async fn request_mic_setup(&self, id: String) -> Result<MicSetupResponse> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.request_mic_setup(id).await?.into()) }).await
+    }
+
+    // ---- Tailscale and direct addresses ----
+
+    /// Addresses the user typed for a paired device (`ip:port`, e.g. its
+    /// Tailscale address). Replaces earlier ones; empty clears them.
+    pub fn set_manual_addrs(&self, id: String, addrs: Vec<String>) -> Result<()> {
+        let id = parse_id(&id)?;
+        let addrs = parse_socket_addrs(&addrs)?;
+        Ok(self.node.set_manual_addrs(id, &addrs)?)
+    }
+
+    /// Tailscale addresses found for a paired device (from the Tailscale
+    /// app). Only Tailscale-range ones are kept; returns how many.
+    pub fn add_tailscale_candidates(&self, id: String, addrs: Vec<String>) -> Result<u32> {
+        let id = parse_id(&id)?;
+        let addrs = parse_socket_addrs(&addrs)?;
+        Ok(self.node.add_tailscale_candidates(id, &addrs)?.try_into().unwrap_or(u32::MAX))
+    }
+
+    /// This device's own Tailscale addresses, as the platform sees them
+    /// (Android: the VPN interface's addresses while Tailscale is up). Only
+    /// these make a `100.64/10` address a Tailscale one; others are a
+    /// carrier's CGNAT. Invalid entries are ignored.
+    pub async fn set_local_tailscale_ips(&self, ips: Vec<String>) {
+        let ips: Vec<std::net::IpAddr> = ips.iter().filter_map(|ip| ip.trim().parse().ok()).collect();
+        let node = self.node.clone();
+        self.run(async move { node.set_local_tailscale_ips(ips).await }).await
+    }
+
+    /// The UDP sockets this device listens on (`ip:port`).
+    pub fn local_bound_addrs(&self) -> Vec<String> {
+        self.node.local_bound_addrs().iter().map(ToString::to_string).collect()
+    }
+
+    /// Every address known for a paired device, where it came from, and the
+    /// path in use: for a connection diagnostics screen.
+    pub fn peer_addr_diagnostics(&self, id: String) -> Result<PeerAddrDiagnostics> {
+        let id = parse_id(&id)?;
+        Ok(self.node.peer_addr_diagnostics(&id)?.into())
+    }
+
     // ---- Deck (macro pad) ----
 
     /// The latest Deck layout reported by a connected PC, if any.
@@ -5958,6 +6678,48 @@ mod tests {
         assert_eq!(back.cell_bars, Some(4));
         assert_eq!(back.cell_type.as_deref(), Some("5G"));
         assert_eq!(back.wifi_bars, Some(4));
+    }
+
+    #[test]
+    fn every_gesture_has_a_name_that_round_trips() {
+        for action in core::GestureAction::ALL {
+            let name = gesture_name(action);
+            assert!(!name.is_empty(), "{action:?}");
+            assert_eq!(parse_gesture(&name).unwrap(), action);
+        }
+        assert!(parse_gesture("make_coffee").is_err());
+    }
+
+    #[test]
+    fn a_tailscale_path_is_neither_relayed_nor_usb() {
+        let link = Link::from(LinkState::Online { path: ConnectionPath::Tailscale, rtt_ms: 9 });
+        assert_eq!(link, Link::Online { relayed: false, usb: false, rtt_ms: 9, tailscale: true });
+        let lan = Link::from(LinkState::Online { path: ConnectionPath::Lan, rtt_ms: 2 });
+        assert_eq!(lan, Link::Online { relayed: false, usb: false, rtt_ms: 2, tailscale: false });
+    }
+
+    #[test]
+    fn audio_route_events_reach_the_app() {
+        let id = DeviceId([7u8; 32]);
+        let pcm = core::AudioRoutePcm {
+            generation: 4,
+            seq: 1,
+            sample_rate: 48_000,
+            channels: 1,
+            frame_count: 2,
+            source_id: id.to_string(),
+            pcm: vec![0; 4],
+        };
+        let ev = Event::from_node(NodeEvent::AudioRoutePcm { device: id, pcm: pcm.clone() });
+        assert_eq!(ev, Some(Event::AudioRoutePcm { id: id.to_string(), pcm: pcm.into() }));
+        let levels = core::AudioRouteLevels {
+            generation: 4,
+            levels: vec![core::AudioLaneLevel { source_id: "a".into(), peak: 0.5, active: true }],
+        };
+        let ev =
+            Event::from_node(NodeEvent::AudioRouteLevels { device: id, levels: core::RouteLevels(levels) });
+        let Some(Event::AudioRouteLevels { levels, .. }) = ev else { panic!("{ev:?}") };
+        assert_eq!(levels.levels[0].peak, 0.5);
     }
 
     #[test]

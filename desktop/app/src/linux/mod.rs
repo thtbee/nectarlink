@@ -16,6 +16,7 @@ pub mod doctor;
 pub mod elevated;
 pub mod h264;
 pub mod http;
+pub mod hyprland;
 pub mod icon;
 pub mod image;
 pub mod input;

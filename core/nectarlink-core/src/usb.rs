@@ -307,32 +307,33 @@ pub(crate) fn start_adb_watcher(shared: &Arc<Shared>, adb_addr: SocketAddr) {
     });
 }
 
+/// Whether a listed adb device gets a USB tunnel worker: online, allowed, and on a
+/// cable. Wireless adb isn't a cable: the connection would go through adb's TCP over
+/// Wi-Fi, which stutters where a direct one over the same Wi-Fi doesn't.
+fn wants_usb_worker(dev: &nectarlink_adb::AdbDevice) -> bool {
+    dev.is_online()
+        && nectarlink_adb::is_serial_allowed(&dev.serial)
+        && !nectarlink_adb::is_network_serial(&dev.serial)
+}
+
 fn reconcile_adb_devices(
     shared: &Arc<Shared>,
     adb_addr: SocketAddr,
     devices: &[nectarlink_adb::AdbDevice],
     active: &mut HashMap<String, CancellationToken>,
 ) {
+    // A worker is kept only while its device still wants one: a serial that turned
+    // into (or was always) a network one loses its worker too.
     active.retain(|serial, token| {
-        let still_online = devices
-            .iter()
-            .any(|d| d.serial == *serial && d.is_online() && nectarlink_adb::is_serial_allowed(&d.serial));
-        if !still_online {
+        let keep = devices.iter().any(|d| d.serial == *serial && wants_usb_worker(d));
+        if !keep {
             token.cancel();
         }
-        still_online
+        keep
     });
 
     for dev in devices {
-        if !dev.is_online() || !nectarlink_adb::is_serial_allowed(&dev.serial) {
-            continue;
-        }
-        // Wireless adb isn't a cable: the connection would go through adb's TCP over
-        // Wi-Fi, which stutters where a direct one over the same Wi-Fi doesn't.
-        if nectarlink_adb::is_network_serial(&dev.serial) {
-            continue;
-        }
-        if active.contains_key(&dev.serial) {
+        if !wants_usb_worker(dev) || active.contains_key(&dev.serial) {
             continue;
         }
         let token = shared.cancel.child_token();
@@ -592,6 +593,25 @@ async fn relay_until_silent(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn wireless_adb_serials_never_get_a_usb_worker() {
+        let dev = |serial: &str, state: &str| nectarlink_adb::AdbDevice {
+            serial: serial.into(),
+            state: state.into(),
+            model: None,
+            product: None,
+            transport_id: None,
+        };
+        assert!(wants_usb_worker(&dev("R58M123ABC", "device")));
+        assert!(wants_usb_worker(&dev("emulator-5554", "device")));
+        assert!(wants_usb_worker(&dev("127.0.0.1:5555", "device")));
+        assert!(!wants_usb_worker(&dev("R58M123ABC", "unauthorized")));
+        assert!(!wants_usb_worker(&dev("192.168.1.40:5555", "device")));
+        assert!(!wants_usb_worker(&dev("[fd00::4]:5555", "device")));
+        assert!(!wants_usb_worker(&dev("adb-R58M-abc._adb-tls-connect._tcp", "device")));
+        assert!(!wants_usb_worker(&dev("100.101.102.103:5555", "device")));
+    }
 
     /// Tests that bind real ports run one at a time, or one's probing takes another's port.
     static PORTS: Mutex<()> = Mutex::new(());

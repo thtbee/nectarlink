@@ -505,6 +505,7 @@ fn resolve_target_device(requested: Option<&str>) -> Option<DeviceId> {
 async fn route_request(req: HttpRequest) -> (u16, &'static str, Value) {
     match (req.method.as_str(), req.path.as_str()) {
         ("GET", "/v1/devices") => handle_get_devices(),
+        ("POST", "/v1/devices/address") => handle_post_device_address(&req.body),
         ("POST", "/v1/send") => handle_post_send(&req.body).await,
         ("GET", "/v1/clipboard") => handle_get_clipboard(),
         ("POST", "/v1/clipboard") => handle_post_clipboard(&req.body).await,
@@ -530,6 +531,7 @@ fn handle_get_devices() -> (u16, &'static str, Value) {
                         match path {
                             nectarlink_core::ConnectionPath::Lan => "lan",
                             nectarlink_core::ConnectionPath::Usb => "usb",
+                            nectarlink_core::ConnectionPath::Tailscale => "tailscale",
                             nectarlink_core::ConnectionPath::Relay => "relay",
                         },
                     ),
@@ -556,6 +558,31 @@ fn handle_get_devices() -> (u16, &'static str, Value) {
     .unwrap_or_default();
 
     (200, "OK", json!({ "ok": true, "devices": devices }))
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct DeviceAddressPayload {
+    #[serde(default)]
+    device: Option<String>,
+    #[serde(default)]
+    address: String,
+}
+
+fn handle_post_device_address(body: &[u8]) -> (u16, &'static str, Value) {
+    let payload: DeviceAddressPayload = match serde_json::from_slice(body) {
+        Ok(p) => p,
+        Err(_) => return (400, "Bad Request", json!({ "ok": false, "error": "invalid_json" })),
+    };
+    let Some(device) = resolve_target_device(payload.device.as_deref()) else {
+        return (404, "Not Found", json!({ "ok": false, "error": "device_not_found" }));
+    };
+    match crate::peer_addrs::set_manual(device, &payload.address) {
+        Ok(()) => {
+            crate::core_host::host().hub.changed(crate::state::Changes::DEVICES);
+            (200, "OK", json!({ "ok": true }))
+        }
+        Err(err) => (400, "Bad Request", json!({ "ok": false, "error": format!("{err:?}") })),
+    }
 }
 
 #[derive(Debug, Default, Deserialize)]
