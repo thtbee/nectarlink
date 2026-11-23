@@ -277,7 +277,8 @@ change things that need a step from you, and its notes say so.
   Thanks to José María Garcia Dominguez, and to
   [@KevinL50-sysadmin](https://github.com/KevinL50-sysadmin) for review passes on it
   ([#348](https://github.com/thtbee/nectarlink/pull/348), [#402](https://github.com/thtbee/nectarlink/pull/402),
-  [#438](https://github.com/thtbee/nectarlink/pull/438), [#480](https://github.com/thtbee/nectarlink/pull/480)).
+  [#438](https://github.com/thtbee/nectarlink/pull/438), [#480](https://github.com/thtbee/nectarlink/pull/480),
+  [#547](https://github.com/thtbee/nectarlink/pull/547)).
 
 - **Vietnamese.** NectarLink speaks Tiếng Việt now: on the Android phone and
   the Windows PC, every screen is translated. Language (Settings › Appearance on the
@@ -479,6 +480,14 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **Linux file pickers are the desktop's own.** Send files and the other file dialogs use the
+  desktop portal when no Qt theme is set, so COSMIC, GNOME and others show their usual picker
+  with sorting by date and size. Thanks to [@krakotay](https://github.com/krakotay)
+  ([#545](https://github.com/thtbee/nectarlink/pull/545)).
+- **Showing the PC's screen on Wayland is steadier.** Stopping it no longer panics during
+  cleanup, and when the OpenGL capture stalls or comes out black it tries the plain PipeWire
+  path again on a fresh connection. Thanks to [@krakotay](https://github.com/krakotay)
+  ([#540](https://github.com/thtbee/nectarlink/pull/540)).
 - **A phone app's shortcut can be taken away again.** Once an app has a shortcut, its menu
   on the PC's Apps page says **Remove from app menu** (Linux, where app menus have no way to
   delete an entry) or **Remove from desktop** (Windows). Thanks to
