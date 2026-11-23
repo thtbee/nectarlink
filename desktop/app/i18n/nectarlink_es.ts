@@ -826,12 +826,12 @@
     <message>
         <location filename="../qml/pages/AppsPage.qml" line="88"/>
         <source>Install an app on %1</source>
-        <translation>Instalar una app en %1</translation>
+        <translation>Instalar una aplicación en %1</translation>
     </message>
     <message>
         <location filename="../qml/pages/AppsPage.qml" line="90"/>
         <source>Android apps (*.apk)</source>
-        <translation>Apps de Android (*.apk)</translation>
+        <translation>Aplicaciones de Android (*.apk)</translation>
     </message>
     <message>
         <location filename="../qml/pages/AppsPage.qml" line="114"/>
@@ -876,7 +876,7 @@
     <message>
         <location filename="../qml/pages/AppsPage.qml" line="199"/>
         <source>Install an app (.apk) on %1</source>
-        <translation>Instalar una app (.apk) en %1</translation>
+        <translation>Instalar una aplicación (.apk) en %1</translation>
     </message>
     <message>
         <location filename="../qml/pages/AppsPage.qml" line="206"/>
@@ -2164,7 +2164,7 @@
     <message>
         <location filename="../qml/components/CrashCard.qml" line="53"/>
         <source>Thanks, the crash report is sent</source>
-        <translation>Gracias, el informe de cierre se envió</translation>
+        <translation>Gracias, el informe de fallo se envió</translation>
     </message>
     <message>
         <location filename="../qml/components/CrashCard.qml" line="53"/>
@@ -2179,12 +2179,12 @@
     <message>
         <location filename="../qml/components/CrashCard.qml" line="64"/>
         <source>The crash report couldn&apos;t be sent. Use Look first to send it another way.</source>
-        <translation>No se pudo enviar el informe de cierre. Usa Ver antes para enviarlo de otra forma.</translation>
+        <translation>No se pudo enviar el informe de fallo. Usa Ver antes para enviarlo de otra forma.</translation>
     </message>
     <message>
         <location filename="../qml/components/CrashCard.qml" line="65"/>
         <source>A crash report helps fix it. It says where in NectarLink it happened and which versions you run, nothing personal.</source>
-        <translation>Un informe de cierre ayuda a arreglarlo. Dice en qué parte de NectarLink pasó y qué versiones usas, nada personal.</translation>
+        <translation>Un informe de fallo ayuda a arreglarlo. Dice en qué parte de NectarLink pasó y qué versiones usas, nada personal.</translation>
     </message>
     <message>
         <location filename="../qml/components/CrashCard.qml" line="73"/>
@@ -2380,7 +2380,7 @@
     <message>
         <location filename="../qml/pages/DeckPage.qml" line="106"/>
         <source>Screenshot (Win+Shift+S)</source>
-        <translation>Captura de pantalla (Win+Shift+S)</translation>
+        <translation>Captura de pantalla (Win+Mayús+S)</translation>
     </message>
     <message>
         <location filename="../qml/pages/DeckPage.qml" line="106"/>
@@ -6935,7 +6935,7 @@ Qué necesitas
     <message>
         <location filename="../qml/MirrorWindow.qml" line="784"/>
         <source>Copy screenshot (Ctrl+Shift+C)</source>
-        <translation>Copiar captura de pantalla (Ctrl+Shift+C)</translation>
+        <translation>Copiar captura de pantalla (Ctrl+Mayús+C)</translation>
     </message>
     <message>
         <location filename="../qml/MirrorWindow.qml" line="791"/>
@@ -7572,7 +7572,7 @@ Qué necesitas
     <message>
         <location filename="../qml/pages/PairingPanel.qml" line="359"/>
         <source>The other device isn&apos;t ready to pair. Open its pairing screen, then try again.</source>
-        <translation>El otro dispositivo no está listo para vincularse. Abre su pantalla de vinculación y vuelve a intentarlo.</translation>
+        <translation>El otro dispositivo no está listo para emparejarse. Abre su pantalla de emparejamiento y vuelve a intentarlo.</translation>
     </message>
     <message>
         <location filename="../qml/pages/PairingPanel.qml" line="360"/>
@@ -8741,7 +8741,7 @@ Qué necesitas
     <message>
         <location filename="../qml/components/ReportSheet.qml" line="21"/>
         <source>Mirroring and app windows</source>
-        <translation>Duplicación y ventanas de apps</translation>
+        <translation>Duplicación y ventanas de aplicaciones</translation>
     </message>
     <message>
         <location filename="../qml/components/ReportSheet.qml" line="22"/>
@@ -9966,7 +9966,7 @@ Qué necesitas
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="107"/>
         <source>Discord, news and support</source>
-        <translation>Discord, novedades y apoyo</translation>
+        <translation>Discord, novedades y ayuda</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="108"/>
@@ -9990,7 +9990,7 @@ Qué necesitas
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="301"/>
         <source>Unlock the lock screen with your fingerprint on the phone. Off by default; asks for an administrator once.</source>
-        <translation>Desbloquea la pantalla de bloqueo con tu huella en el teléfono. Desactivado por defecto; pide un administrador una vez.</translation>
+        <translation>Desbloquea la pantalla de bloqueo con tu huella en el teléfono. Desactivado por defecto; pide permisos de administrador una vez.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="653"/>
@@ -10001,7 +10001,7 @@ Qué necesitas
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="679"/>
         <source>No setting matches &quot;%1&quot;.</source>
-        <translation>Ningún ajuste coincide con «%1».</translation>
+        <translation>Ningún ajuste coincide con “%1”.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1268"/>
@@ -10026,7 +10026,7 @@ Qué necesitas
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1439"/>
         <source>Where the pill sits along the top of the screen.</source>
-        <translation>Dónde se coloca el indicador superior en la parte de arriba de la pantalla.</translation>
+        <translation>Dónde se coloca el indicador en la parte superior de la pantalla.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1443"/>
@@ -10041,12 +10041,12 @@ Qué necesitas
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1457"/>
         <source>Always dark, or light and dark with the app.</source>
-        <translation>Siempre oscuro, o claro y oscuro como la app.</translation>
+        <translation>Siempre oscuro, o claro y oscuro como la aplicación.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1461"/>
         <source>Like the app</source>
-        <translation>Como la app</translation>
+        <translation>Como la aplicación</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1474"/>
@@ -10144,7 +10144,7 @@ Qué necesitas
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="2172"/>
         <source>Starts at Balanced and lowers the picture while this PC can&apos;t keep up, then goes back up once it can.</source>
-        <translation>Empieza en Equilibrado y baja la imagen mientras este PC no pueda seguir; vuelve a subirla cuando pueda.</translation>
+        <translation>Empieza en Equilibrado y baja la calidad de imagen mientras este PC no pueda seguir; vuelve a subirla cuando pueda.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="2179"/>
@@ -10159,12 +10159,12 @@ Qué necesitas
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="2191"/>
         <source>Smoother motion where the phone&apos;s screen refreshes that fast. Uses more battery, Wi-Fi and PC.</source>
-        <translation>Movimiento más fluido donde la pantalla del teléfono se actualiza así de rápido. Usa más batería, wifi y PC.</translation>
+        <translation>Movimiento más fluido donde la pantalla del teléfono se actualiza así de rápido. Usa más batería, Wi-Fi y PC.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="2193"/>
         <source>Half the frames: easier on the phone&apos;s battery and weak Wi-Fi.</source>
-        <translation>La mitad de fotogramas: cuida la batería del teléfono y una wifi débil.</translation>
+        <translation>La mitad de fotogramas: cuida la batería del teléfono y una Wi-Fi débil.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="2292"/>
@@ -11122,7 +11122,7 @@ Qué necesitas
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="4328"/>
         <source>Follow me. I post what&apos;s coming to NectarLink and other things I make.</source>
-        <translation>Sígueme. Publico lo que viene a NectarLink y otras cosas que hago.</translation>
+        <translation>Sígueme. Publico lo que llegará a NectarLink y otras cosas que hago.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="4341"/>
@@ -12465,7 +12465,7 @@ Qué necesitas
     <message>
         <location filename="rust_strings.h" line="563"/>
         <source>Windows didn&apos;t accept the password saved for it, so it was probably changed. Set it up again under Unlock this PC with the phone.</source>
-        <translation>Windows no aceptó la contraseña guardada para ello, así que probablemente cambió. Vuelve a configurarlo en «Desbloquear este PC con el teléfono».</translation>
+        <translation>Windows no aceptó la contraseña guardada, así que probablemente se cambió. Vuelve a configurarlo en Desbloquear este PC con el teléfono.</translation>
     </message>
 </context>
 <context>
