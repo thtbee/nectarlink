@@ -34,6 +34,9 @@ using Microsoft::WRL::ComPtr;
 #endif
 
 #include <algorithm>
+#ifdef _WIN32
+#include <chrono>
+#endif
 #include <memory>
 #include <mutex>
 #include <vector>
@@ -89,6 +92,12 @@ quint64 nextSerial = 1;
 #ifdef _WIN32
 bool g_gpuUnsupported = false;
 QSet<QString> &failedGpuStreams = *new QSet<QString>;
+
+qint64 steadyMs()
+{
+    return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch())
+        .count();
+}
 #endif
 
 void wakeViews(const QString &stream)
@@ -353,6 +362,20 @@ VideoView::VideoView(QQuickItem *parent)
 {
     setFlag(ItemHasContents, true);
     QGuiApplication::instance()->installNativeEventFilter(this);
+#ifdef _WIN32
+    m_gpuCheckTimer.setSingleShot(true);
+    m_gpuCheckTimer.setTimerType(Qt::PreciseTimer);
+    connect(&m_gpuCheckTimer, &QTimer::timeout, this, [this]() {
+        if (!m_frozen || !m_holding.load(std::memory_order_relaxed) || !m_watchChanges || m_changedSinceFrozen)
+            return;
+        const qint64 last = m_lastGpuCheckMs.load(std::memory_order_relaxed);
+        const qint64 elapsed = steadyMs() - last;
+        if (last != 0 && elapsed < 100)
+            m_gpuCheckTimer.start(qMax(1, int(100 - elapsed)));
+        else
+            update();
+    });
+#endif
     std::lock_guard guard(lock);
     views.push_back(this);
 }
@@ -431,8 +454,12 @@ void VideoView::setFrozen(bool on)
         return;
     m_frozen = on;
     // Turned on: the newest picture is taken once more, then kept.
-    m_holding = false;
+    m_holding.store(false, std::memory_order_relaxed);
+#ifdef _WIN32
     m_lastFrozenCheckSerial = 0;
+    m_lastGpuCheckMs.store(0, std::memory_order_relaxed);
+    m_gpuCheckTimer.stop();
+#endif
     {
         std::lock_guard guard(lock);
         m_kept = on ? latest.value(m_stream).image : QImage();
@@ -443,6 +470,31 @@ void VideoView::setFrozen(bool on)
     }
     emit frozenChanged();
     update();
+}
+
+void VideoView::setWatchChanges(bool on)
+{
+    if (on == m_watchChanges)
+        return;
+    m_watchChanges = on;
+#ifdef _WIN32
+    m_lastFrozenCheckSerial = 0;
+    m_lastGpuCheckMs.store(0, std::memory_order_relaxed);
+    m_gpuCheckTimer.stop();
+#endif
+    emit watchChangesChanged();
+    if (on && m_frozen && !m_changedSinceFrozen) {
+        QImage image;
+        {
+            std::lock_guard guard(lock);
+            image = latest.value(m_stream).image;
+        }
+        if (!image.isNull() && looksDifferent(m_kept, image)) {
+            m_changedSinceFrozen = true;
+            emit changedSinceFrozenChanged();
+        }
+        update();
+    }
 }
 
 void VideoView::setKeepShape(bool on)
@@ -671,7 +723,8 @@ void VideoView::frameArrived()
         picture = latest.value(m_stream);
     }
     const QSize size = picture.size();
-    if (m_frozen && !m_changedSinceFrozen && !picture.image.isNull() && looksDifferent(m_kept, picture.image)) {
+    if (m_frozen && m_watchChanges && !m_changedSinceFrozen && !picture.image.isNull()
+        && looksDifferent(m_kept, picture.image)) {
         m_changedSinceFrozen = true;
         emit changedSinceFrozenChanged();
     }
@@ -681,7 +734,20 @@ void VideoView::frameArrived()
     }
     ++m_frames;
     emit framesChanged();
-    update();
+    if (!m_frozen || !m_holding.load(std::memory_order_relaxed)) {
+        update();
+#ifdef _WIN32
+    } else if (m_watchChanges && !m_changedSinceFrozen && picture.isGpu()) {
+        const qint64 last = m_lastGpuCheckMs.load(std::memory_order_relaxed);
+        const qint64 elapsed = steadyMs() - last;
+        if (last == 0 || elapsed >= 100) {
+            m_gpuCheckTimer.stop();
+            update();
+        } else if (!m_gpuCheckTimer.isActive()) {
+            m_gpuCheckTimer.start(qMax(1, int(100 - elapsed)));
+        }
+#endif
+    }
 }
 
 QSGNode *VideoView::updatePaintNode(QSGNode *old, UpdatePaintNodeData *)
@@ -703,9 +769,10 @@ QSGNode *VideoView::updatePaintNode(QSGNode *old, UpdatePaintNodeData *)
 #ifdef _WIN32
     if (picture.isGpu()) {
         const HANDLE handle = reinterpret_cast<HANDLE>(picture.gpuHandle.get());
+        const bool holding = m_holding.load(std::memory_order_relaxed);
         if (m_frosted || m_frozen) {
-            const bool needDisplay = !node->texture() || (picture.serial != m_shown && !m_holding)
-                || (m_frozen && !m_holding && m_kept.isNull());
+            const bool needDisplay = !node->texture() || (picture.serial != m_shown && !holding)
+                || (m_frozen && !holding && m_kept.isNull());
             if (needDisplay) {
                 QImage img;
                 bool nonD3d11 = false;
@@ -725,29 +792,38 @@ QSGNode *VideoView::updatePaintNode(QSGNode *old, UpdatePaintNodeData *)
                 if (status == VideoNode::GpuStatus::Busy) {
                     update();
                 } else {
-                    if (m_frozen && m_kept.isNull())
+                    if (m_frozen && m_kept.isNull()) {
                         m_kept = img;
+                        m_lastFrozenCheckSerial = picture.serial;
+                        m_lastGpuCheckMs.store(steadyMs(), std::memory_order_relaxed);
+                    }
                     QSGTexture *texture = window()->createTextureFromImage(m_frosted ? frost(img) : img);
                     texture->setFiltering(QSGTexture::Linear);
                     node->replaceCpuTexture(texture, true);
                     m_shown = picture.serial;
-                    m_holding = m_frozen;
+                    m_holding.store(m_frozen, std::memory_order_relaxed);
                 }
-            } else if (m_frozen && m_holding && !m_changedSinceFrozen && picture.serial != m_lastFrozenCheckSerial) {
-                QImage newest;
-                bool nonD3d11 = false;
-                const auto status = node->readGpuImage(window(), picture.gpuEpoch, handle, &newest, &nonD3d11);
-                if (status == VideoNode::GpuStatus::Busy) {
-                    update();
-                } else if (status == VideoNode::GpuStatus::Ok) {
-                    m_lastFrozenCheckSerial = picture.serial;
-                    if (!m_kept.isNull() && looksDifferent(m_kept, newest)) {
-                        QMetaObject::invokeMethod(this, [this]() {
-                            if (m_frozen && !m_changedSinceFrozen) {
-                                m_changedSinceFrozen = true;
-                                emit changedSinceFrozenChanged();
-                            }
-                        }, Qt::QueuedConnection);
+            } else if (m_frozen && holding && m_watchChanges && !m_changedSinceFrozen
+                       && picture.serial != m_lastFrozenCheckSerial) {
+                const qint64 last = m_lastGpuCheckMs.load(std::memory_order_relaxed);
+                const qint64 now = steadyMs();
+                if (last == 0 || now - last >= 100) {
+                    QImage newest;
+                    bool nonD3d11 = false;
+                    const auto status = node->readGpuImage(window(), picture.gpuEpoch, handle, &newest, &nonD3d11);
+                    if (status == VideoNode::GpuStatus::Busy) {
+                        update();
+                    } else if (status == VideoNode::GpuStatus::Ok) {
+                        m_lastFrozenCheckSerial = picture.serial;
+                        m_lastGpuCheckMs.store(now, std::memory_order_relaxed);
+                        if (!m_kept.isNull() && looksDifferent(m_kept, newest)) {
+                            QMetaObject::invokeMethod(this, [this]() {
+                                if (m_frozen && m_watchChanges && !m_changedSinceFrozen) {
+                                    m_changedSinceFrozen = true;
+                                    emit changedSinceFrozenChanged();
+                                }
+                            }, Qt::QueuedConnection);
+                        }
                     }
                 }
             }
@@ -781,17 +857,17 @@ QSGNode *VideoView::updatePaintNode(QSGNode *old, UpdatePaintNodeData *)
                 else
                     m_shown = picture.serial;
             }
-            m_holding = false;
+            m_holding.store(false, std::memory_order_relaxed);
         }
     } else
 #endif
     {
-        if (!node->texture() || (picture.serial != m_shown && !m_holding)) {
+        if (!node->texture() || (picture.serial != m_shown && !m_holding.load(std::memory_order_relaxed))) {
             QSGTexture *texture = window()->createTextureFromImage(m_frosted ? frost(picture.image) : picture.image);
             texture->setFiltering(QSGTexture::Linear);
             node->replaceCpuTexture(texture);
             m_shown = picture.serial;
-            m_holding = m_frozen;
+            m_holding.store(m_frozen, std::memory_order_relaxed);
         }
     }
 

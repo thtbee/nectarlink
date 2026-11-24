@@ -4,6 +4,9 @@
 #include <QtCore/QAbstractNativeEventFilter>
 #include <QtCore/QSize>
 #include <QtCore/QString>
+#ifdef _WIN32
+#include <QtCore/QTimer>
+#endif
 #include <QtGui/QImage>
 #include <QtQml/qqmlregistration.h>
 #include <QtQuick/QQuickItem>
@@ -49,6 +52,9 @@ class VideoView : public QQuickItem, public QAbstractNativeEventFilter
     // Frozen, and a picture has come since that looks different from the
     // kept one (the app drew itself anew, say after a change of zoom).
     Q_PROPERTY(bool changedSinceFrozen READ changedSinceFrozen NOTIFY changedSinceFrozenChanged)
+    // Frozen, watch incoming pictures to detect when one looks different
+    // (`changedSinceFrozen`). Off during resize frost so GPU frames stay untouched.
+    Q_PROPERTY(bool watchChanges READ watchChanges WRITE setWatchChanges NOTIFY watchChangesChanged)
     // While the user drags its edges, the window keeps the picture's shape
     // (on Windows; maximized and full screen are left alone).
     Q_PROPERTY(bool keepShape READ keepShape WRITE setKeepShape NOTIFY keepShapeChanged)
@@ -78,6 +84,8 @@ public:
     bool frozen() const { return m_frozen; }
     void setFrozen(bool on);
     bool changedSinceFrozen() const { return m_changedSinceFrozen; }
+    bool watchChanges() const { return m_watchChanges; }
+    void setWatchChanges(bool on);
     bool keepShape() const { return m_keepShape; }
     void setKeepShape(bool on);
     bool sizing() const { return m_sizing; }
@@ -101,6 +109,7 @@ signals:
     void frostedChanged();
     void frozenChanged();
     void changedSinceFrozenChanged();
+    void watchChangesChanged();
     void fillsNearShapeChanged();
     void keepShapeChanged();
     void sizingChanged();
@@ -122,7 +131,6 @@ private:
     quint64 m_frames = 0;
     // The serial of the picture on screen.
     quint64 m_shown = 0;
-    quint64 m_lastFrozenCheckSerial = 0;
     QString m_windowIcon;
     QString m_windowAppId;
     QString m_windowRelaunch;
@@ -131,13 +139,19 @@ private:
     bool m_frozen = false;
     bool m_fillsNearShape = false;
     // Frozen, and the picture to keep is on screen.
-    bool m_holding = false;
+    std::atomic_bool m_holding{false};
     // The picture when it froze, to tell a different one by.
     QImage m_kept;
     bool m_changedSinceFrozen = false;
+    bool m_watchChanges = false;
     bool m_keepShape = false;
     bool m_sizing = false;
     std::atomic_bool m_framePending{false};
+#ifdef _WIN32
+    quint64 m_lastFrozenCheckSerial = 0;
+    std::atomic<qint64> m_lastGpuCheckMs{0};
+    QTimer m_gpuCheckTimer;
+#endif
 };
 
 // The latest picture of `stream`: `width` x `height`, 32-bit BGRX rows.

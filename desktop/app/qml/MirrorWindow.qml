@@ -652,7 +652,8 @@ Window {
             anchors.fill: parent
             stream: win.mirrorKey
             frosted: true
-            frozen: win.frosted
+            frozen: frost.visible
+            watchChanges: win.zooming
             layer.enabled: win.dark
             layer.effect: ShaderEffect {
                 fragmentShader: "qrc:/shaders/darken.frag.qsb"
