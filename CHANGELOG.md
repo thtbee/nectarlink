@@ -8,6 +8,11 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **The phone's sound has its own volume on the PC.** **Phone sound on this PC** on the PC's
+  Home has a slider for how loud it plays there, apart from the PC's own volume, and it applies
+  to a mirrored phone's sound too. While the phone's sound plays on the PC, the phone's volume
+  keys move that slider instead of turning the phone's speaker back up, and the phone's volume
+  panel shows it ([#577](https://github.com/thtbee/nectarlink/issues/577)).
 - **Restart the PC from the phone.** A Windows PC's card on the phone's Home has **Restart**
   next to **Shut down**, with the same confirmation; an app with unsaved work can still stop
   it. Thanks to [@w-rakeeb](https://github.com/w-rakeeb)

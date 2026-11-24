@@ -3391,6 +3391,13 @@ impl Node {
         crate::mirror::rotate(&self.shared, &session, landscape).await
     }
 
+    /// Tells `peer` how loud the phone's sound plays on the PC (`0..=100`,
+    /// #577). Only to a device that offers `mirror.volume`.
+    pub async fn mirror_volume(&self, peer: DeviceId, level: u8) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::mirror::volume(&self.shared, &session, level).await
+    }
+
     /// Sends a mirrored phone's sound to this PC, or leaves it on the phone.
     pub async fn mirror_sound(&self, peer: DeviceId, on: bool) -> Result<()> {
         let session = self.connected(&peer)?;

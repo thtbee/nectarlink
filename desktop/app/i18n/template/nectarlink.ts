@@ -4700,13 +4700,13 @@ What it needs
     </message>
     <message>
         <location filename="../../qml/pages/HomePage.qml" line="520"/>
-        <location filename="../../qml/pages/HomePage.qml" line="3334"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3390"/>
         <source>Transfers</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../qml/pages/HomePage.qml" line="529"/>
-        <location filename="../../qml/pages/HomePage.qml" line="3351"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3407"/>
         <source>Clear finished</source>
         <translation type="unfinished"></translation>
     </message>
@@ -4738,13 +4738,13 @@ What it needs
     </message>
     <message>
         <location filename="../../qml/pages/HomePage.qml" line="1157"/>
-        <location filename="../../qml/pages/HomePage.qml" line="3238"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3294"/>
         <source>Away · %1 ms</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../qml/pages/HomePage.qml" line="1157"/>
-        <location filename="../../qml/pages/HomePage.qml" line="3238"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3294"/>
         <source>Away</source>
         <translation type="unfinished"></translation>
     </message>
@@ -4784,19 +4784,19 @@ What it needs
     </message>
     <message>
         <location filename="../../qml/pages/HomePage.qml" line="1166"/>
-        <location filename="../../qml/pages/HomePage.qml" line="3240"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3296"/>
         <source>Not reconnecting</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../qml/pages/HomePage.qml" line="1167"/>
-        <location filename="../../qml/pages/HomePage.qml" line="3241"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3297"/>
         <source>Offline · %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../qml/pages/HomePage.qml" line="1168"/>
-        <location filename="../../qml/pages/HomePage.qml" line="3242"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3298"/>
         <source>Offline</source>
         <translation type="unfinished"></translation>
     </message>
@@ -4842,32 +4842,32 @@ What it needs
     </message>
     <message>
         <location filename="../../qml/pages/HomePage.qml" line="1324"/>
-        <location filename="../../qml/pages/HomePage.qml" line="3264"/>
-        <location filename="../../qml/pages/HomePage.qml" line="3870"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3320"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3926"/>
         <source>Send files</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../qml/pages/HomePage.qml" line="1330"/>
-        <location filename="../../qml/pages/HomePage.qml" line="3270"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3326"/>
         <source>Send a folder</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../qml/pages/HomePage.qml" line="1337"/>
-        <location filename="../../qml/pages/HomePage.qml" line="3276"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3332"/>
         <source>Send clipboard</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../qml/pages/HomePage.qml" line="1343"/>
-        <location filename="../../qml/pages/HomePage.qml" line="2933"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2989"/>
         <source>Clipboard history</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../qml/pages/HomePage.qml" line="1353"/>
-        <location filename="../../qml/pages/HomePage.qml" line="3285"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3341"/>
         <source>Stop ringing</source>
         <translation type="unfinished"></translation>
     </message>
@@ -4878,7 +4878,7 @@ What it needs
     </message>
     <message>
         <location filename="../../qml/pages/HomePage.qml" line="1363"/>
-        <location filename="../../qml/pages/HomePage.qml" line="3309"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3365"/>
         <source>Send to %1</source>
         <translation type="unfinished"></translation>
     </message>
@@ -4889,7 +4889,7 @@ What it needs
     </message>
     <message>
         <location filename="../../qml/pages/HomePage.qml" line="1385"/>
-        <location filename="../../qml/pages/HomePage.qml" line="3315"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3371"/>
         <source>Send a folder to %1</source>
         <translation type="unfinished"></translation>
     </message>
@@ -4955,15 +4955,15 @@ What it needs
     </message>
     <message>
         <location filename="../../qml/pages/HomePage.qml" line="1569"/>
-        <location filename="../../qml/pages/HomePage.qml" line="2129"/>
-        <location filename="../../qml/pages/HomePage.qml" line="2221"/>
-        <location filename="../../qml/pages/HomePage.qml" line="2776"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2185"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2277"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2832"/>
         <source>Cancel</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2520"/>
-        <location filename="../../qml/pages/HomePage.qml" line="3343"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2576"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3399"/>
         <source>Timeline</source>
         <translation type="unfinished"></translation>
     </message>
@@ -5049,7 +5049,7 @@ What it needs
     </message>
     <message>
         <location filename="../../qml/pages/HomePage.qml" line="1864"/>
-        <location filename="../../qml/pages/HomePage.qml" line="2355"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2411"/>
         <source>Stop</source>
         <translation type="unfinished"></translation>
     </message>
@@ -5169,369 +5169,377 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2120"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2126"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2141"/>
+        <source>Phone sound volume</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/HomePage.qml" line="2176"/>
         <source>Turning off Wi‑Fi may disconnect %1.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2135"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2191"/>
         <source>Turn off</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2160"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2216"/>
         <source>Ring</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2161"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2217"/>
         <source>Vibrate</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2162"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2218"/>
         <source>Silent</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2179"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2235"/>
         <source>Volume</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2190"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2246"/>
         <source>Brightness</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2211"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2267"/>
         <source>Continuity Camera</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2222"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2278"/>
         <source>Scan document</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2235"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2291"/>
         <source>Phone as webcam</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2238"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2294"/>
         <source>Streaming</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2331"/>
-        <location filename="../../qml/pages/HomePage.qml" line="2392"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2387"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2448"/>
         <source>Type on phone</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2342"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2398"/>
         <source>Sent: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2344"/>
-        <location filename="../../qml/pages/HomePage.qml" line="3466"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2400"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3522"/>
         <source>When connected</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2355"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2411"/>
         <source>Start</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2407"/>
-        <location filename="../../qml/pages/HomePage.qml" line="2487"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2463"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2543"/>
         <source>Clipboard</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2467"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2523"/>
         <source>Type here: keys go to %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2468"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2524"/>
         <source>Click to focus keyboard</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2475"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2531"/>
         <source>Ctrl+V pastes · Esc stops</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2484"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2540"/>
         <source>Paste</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2529"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2585"/>
         <source>View all</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2539"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2595"/>
         <source>No recent activity</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2633"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2689"/>
         <source>%1 notifications</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2675"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2731"/>
         <source>Copy text</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2683"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2739"/>
         <source>Copy title and text</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2689"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2745"/>
         <source>Show</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2690"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2746"/>
         <source>No pop-ups</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2691"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2747"/>
         <source>Hide</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2705"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2761"/>
         <source>Hidden on this PC.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2707"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2763"/>
         <source>Shown in feed without pop-ups.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2710"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2766"/>
         <source>Shown in feed and as desktop pop-ups.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="3302"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3358"/>
         <source>Sync clipboard is off in Settings, so copies only go over with Send clipboard.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2709"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2765"/>
         <source>Shown in feed and as Windows pop-ups.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2714"/>
-        <location filename="../../qml/pages/HomePage.qml" line="2910"/>
-        <location filename="../../qml/pages/HomePage.qml" line="3153"/>
-        <location filename="../../qml/pages/HomePage.qml" line="3947"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2770"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2966"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3209"/>
+        <location filename="../../qml/pages/HomePage.qml" line="4003"/>
         <source>Done</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2781"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2837"/>
         <source>Save</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2802"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2858"/>
         <source>Notification history</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2810"/>
-        <location filename="../../qml/pages/HomePage.qml" line="2941"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2866"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2997"/>
         <source>Clear history</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2820"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2876"/>
         <source>Dismissed notifications from the last 24 hours.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2821"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2877"/>
         <source>No recent notifications.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2863"/>
-        <location filename="../../qml/pages/HomePage.qml" line="2869"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2919"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2925"/>
         <source>Search notification history</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2906"/>
-        <location filename="../../qml/pages/HomePage.qml" line="3149"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2962"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3205"/>
         <source>Nothing matches “%1”.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2951"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3007"/>
         <source>Last 50 shared clips.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2952"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3008"/>
         <source>No shared clips yet.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2992"/>
-        <location filename="../../qml/pages/HomePage.qml" line="2998"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3048"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3054"/>
         <source>Search clipboard history</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="3018"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3074"/>
         <source>From %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="3018"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3074"/>
         <source>From phone</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="3019"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3075"/>
         <source>Sent to %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="3019"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3075"/>
         <source>From this PC</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="3025"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3081"/>
         <source>Image</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="3063"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3119"/>
         <source>Pinned</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="3107"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3163"/>
         <source>Open on phone</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="3116"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3172"/>
         <source>Send to phone</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="3124"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3180"/>
         <source>Copy</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="3130"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3186"/>
         <source>Unpin</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="3130"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3186"/>
         <source>Pin</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="3135"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3191"/>
         <source>Delete</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="3239"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3295"/>
         <source>Connected · %1 ms</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="3239"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3295"/>
         <source>Connected</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="3244"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3300"/>
         <source>%1% · charging</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="3245"/>
-        <location filename="../../qml/pages/HomePage.qml" line="3639"/>
-        <location filename="../../qml/pages/HomePage.qml" line="3650"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2134"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2142"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3301"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3695"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3706"/>
         <source>%1%</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="3285"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3341"/>
         <source>Ring PC</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="3301"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3357"/>
         <source>What you copy here also goes to %1, and what you copy there comes here.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="3791"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3847"/>
         <source>LocalSend nearby · %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="3792"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3848"/>
         <source>LocalSend nearby</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="3801"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3857"/>
         <source>Refresh</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="3812"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3868"/>
         <source>Listening for LocalSend devices on your Wi‑Fi network.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="3813"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3869"/>
         <source>LocalSend port 53317 is busy on this PC (another LocalSend app may be running).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="3852"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3908"/>
         <source>Nearby device</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="3908"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3964"/>
         <source>Image preview</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="3915"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3971"/>
         <source>Close</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="3943"/>
+        <location filename="../../qml/pages/HomePage.qml" line="3999"/>
         <source>Open externally</source>
         <translation type="unfinished"></translation>
     </message>
@@ -5546,17 +5554,17 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2343"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2399"/>
         <source>Tap a text box on the phone, then type</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2743"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2799"/>
         <source>Phone nickname</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../qml/pages/HomePage.qml" line="2751"/>
+        <location filename="../../qml/pages/HomePage.qml" line="2807"/>
         <source>Set a custom name for this phone on your PC. Leave blank to use &quot;%1&quot;.</source>
         <translation type="unfinished"></translation>
     </message>

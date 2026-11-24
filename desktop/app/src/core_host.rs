@@ -133,6 +133,7 @@ pub fn compute_capabilities(
         nectarlink_core::MIRROR_VIEW.into(),
         nectarlink_core::MIRROR_LISTEN.into(),
         nectarlink_core::MIRROR_LISTEN_ASK.into(),
+        nectarlink_core::MIRROR_VOLUME.into(),
         nectarlink_core::MIC_LISTEN.into(),
         nectarlink_core::RECORDER.into(),
     ];

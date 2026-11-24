@@ -25,6 +25,7 @@ import app.nectarlink.android.mirror.InputService
 import app.nectarlink.android.mirror.MirrorRequest
 import app.nectarlink.android.mirror.MirrorRequests
 import app.nectarlink.android.mirror.MirrorService
+import app.nectarlink.android.mirror.PcSoundVolume
 import app.nectarlink.android.sms.PhoneSms
 import app.nectarlink.android.storage.PhoneStorage
 import app.nectarlink.android.toggles.PhoneToggles
@@ -217,6 +218,8 @@ internal class PhonePlatform(
     }
 
     override fun mirrorSoundRequested(pcId: String, on: Boolean) = MirrorService.setSound(pcId, on)
+
+    override fun mirrorVolumeChanged(pcId: String, level: UByte) = PcSoundVolume.fromPc(context, pcId, level.toInt())
 
     override fun mirrorRotateRequested(pcId: String, landscape: Boolean) = MirrorService.rotate(pcId, landscape)
 

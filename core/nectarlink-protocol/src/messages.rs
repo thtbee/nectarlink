@@ -93,6 +93,7 @@ pub mod types {
     pub const MIRROR_POWER: &str = "mirror.power";
     pub const MIRROR_ROTATE: &str = "mirror.rotate";
     pub const MIRROR_SOUND: &str = "mirror.sound";
+    pub const MIRROR_VOLUME: &str = "mirror.volume";
     /// Phone → PC: play my sound (#398). The PC starts its phone sound as
     /// if its user had turned it on; answered `ok`.
     pub const MIRROR_LISTEN_ASK: &str = "mirror.listen.ask";
@@ -1424,6 +1425,10 @@ pub mod mirror {
     /// Offered by phones that share their sound on its own, without the
     /// screen (`MirrorStart::sound_only`).
     pub const SOUND: &str = "mirror.sound";
+    /// Offered by devices that keep the phone's sound on the PC at its own
+    /// volume and share it both ways (`mirror.volume`, #577): the PC's slider,
+    /// and the phone's volume keys while its sound plays on the PC.
+    pub const VOLUME: &str = "mirror.volume";
     pub const OP_AUDIO: &str = "audio";
     /// 16-bit little-endian PCM, channels interleaved.
     pub const PCM: &str = "pcm_s16le";
@@ -1559,6 +1564,20 @@ pub struct MirrorRotate {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MirrorSound {
     pub on: bool,
+}
+
+/// Body of `mirror.volume`: how loud the phone's sound plays on the PC,
+/// `0..=100`, set on either side (the PC's slider, the phone's volume keys).
+/// Not answered.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MirrorVolume {
+    pub level: u8,
+}
+
+impl MirrorVolume {
+    pub fn is_valid(&self) -> bool {
+        self.level <= 100
+    }
 }
 
 /// Which mirroring a `mirror.stop`, `mirror.keyframe` or `mirror.input` is
@@ -5302,6 +5321,15 @@ mod tests {
         assert!(hint("stable", "").is_none());
         assert!(hint("stable", "0.1.5; rm -rf /").is_none());
         assert!(hint("stable", &"9".repeat(65)).is_none());
+    }
+
+    #[test]
+    fn the_phones_sound_volume_is_a_percentage() {
+        assert!(MirrorVolume { level: 0 }.is_valid());
+        assert!(MirrorVolume { level: 100 }.is_valid());
+        assert!(!MirrorVolume { level: 101 }.is_valid());
+        let env = crate::Envelope::new(types::MIRROR_VOLUME, &MirrorVolume { level: 40 }).unwrap();
+        assert_eq!(env.body::<MirrorVolume>().unwrap(), MirrorVolume { level: 40 });
     }
 
     #[test]

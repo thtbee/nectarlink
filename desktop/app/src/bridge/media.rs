@@ -117,6 +117,15 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "phoneSoundState"]
         fn phone_sound_state(self: &MediaList, device: &QString) -> QString;
+        /// How loud a phone's sound plays here, `0..=100`. Bindings also
+        /// depend on `revision`.
+        #[qinvokable]
+        #[cxx_name = "phoneSoundVolume"]
+        fn phone_sound_volume(self: &MediaList) -> i32;
+        /// The slider under Phone sound on this PC; `done` once let go.
+        #[qinvokable]
+        #[cxx_name = "setPhoneSoundVolume"]
+        fn set_phone_sound_volume(self: &MediaList, level: i32, done: bool);
     }
 
     impl cxx_qt::Threading for MediaList {}
@@ -285,6 +294,14 @@ impl qobject::MediaList {
 
     pub fn phone_sound_state(&self, device: &QString) -> QString {
         QString::from(super::parse_device(device).map_or("off", |id| crate::phone_sound::state(&id)))
+    }
+
+    pub fn phone_sound_volume(&self) -> i32 {
+        i32::from(crate::settings::phone_sound_volume())
+    }
+
+    pub fn set_phone_sound_volume(&self, level: i32, done: bool) {
+        crate::phone_sound::set_volume(level.clamp(0, 100) as u8, done);
     }
 
     pub fn first_for(&self, device: &QString) -> i32 {

@@ -2869,6 +2869,8 @@ pub trait Platform: Send + Sync {
     /// The PC wants the phone's sound sent to it, or left on the phone, while
     /// mirroring the screen.
     fn mirror_sound_requested(&self, pc_id: String, on: bool);
+    /// The PC set how loud the phone's sound plays there (`0..=100`, #577).
+    fn mirror_volume_changed(&self, pc_id: String, level: u8);
     /// The PC's mouse or keyboard on the mirrored screen (only while this
     /// phone offers `mirror.input`) or an app window. Return quickly.
     fn mirror_input(&self, pc_id: String, session: u32, input: MirrorInputEvent);
@@ -3187,6 +3189,9 @@ impl core::Platform for PlatformAdapter {
     }
     fn mirror_sound_requested(&self, peer: &DeviceId, on: bool) {
         self.0.mirror_sound_requested(peer.to_string(), on);
+    }
+    fn mirror_volume_changed(&self, peer: &DeviceId, level: u8) {
+        self.0.mirror_volume_changed(peer.to_string(), level);
     }
     fn mirror_input(&self, peer: &DeviceId, session: u32, input: core::MirrorInput) {
         self.0.mirror_input(peer.to_string(), session, input.into());
@@ -4755,6 +4760,14 @@ impl NectarlinkNode {
             node.mirror_notice(id, session, core::MIRROR_NOTICE_INPUT_BLOCKED).await.map_err(Into::into)
         })
         .await
+    }
+
+    /// Tells a paired PC how loud to play this phone's sound (`0..=100`, #577):
+    /// the phone's volume keys while its sound plays there.
+    pub async fn mirror_volume(&self, pc_id: String, level: u8) -> Result<()> {
+        let id = parse_id(&pc_id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.mirror_volume(id, level).await?) }).await
     }
 
     /// Tells a paired PC that mirroring or remote keyboard input on `session` has stopped (`mirror.stop`).

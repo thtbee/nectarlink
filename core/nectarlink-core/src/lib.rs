@@ -138,7 +138,7 @@ pub use nectarlink_protocol::{
             NOTICE_INPUT_BLOCKED as MIRROR_NOTICE_INPUT_BLOCKED,
             NOTICE_PC_CAPTURE_FAILED as MIRROR_NOTICE_PC_CAPTURE_FAILED, PCM as MIRROR_PCM,
             POINTER as MIRROR_POINTER, SCREEN as MIRROR_SCREEN, SOUND as MIRROR_SOUND, VIEW as MIRROR_VIEW,
-            VIRTUAL_DISPLAY as MIRROR_VIRTUAL_DISPLAY,
+            VIRTUAL_DISPLAY as MIRROR_VIRTUAL_DISPLAY, VOLUME as MIRROR_VOLUME,
         },
         mirror_keys, notify_limits, parse_mac,
         photos::{
