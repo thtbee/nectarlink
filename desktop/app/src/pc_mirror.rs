@@ -1989,17 +1989,22 @@ mod imp {
             if !pipewire_capture_installed() {
                 return false;
             }
-            let Ok(conn) = zbus::blocking::Connection::session() else {
-                return false;
-            };
-            let Ok(dbus) = zbus::blocking::fdo::DBusProxy::new(&conn) else {
-                return false;
-            };
-            "org.freedesktop.portal.Desktop"
-                .try_into()
-                .ok()
-                .and_then(|name| dbus.name_has_owner(name).ok())
-                .unwrap_or(false)
+            // The capability check runs on the core's runtime, where zbus's
+            // blocking calls panic ("Cannot start a runtime from within a
+            // runtime") and take the core down with them.
+            crate::win::non_tokio(|| {
+                let Ok(conn) = zbus::blocking::Connection::session() else {
+                    return false;
+                };
+                let Ok(dbus) = zbus::blocking::fdo::DBusProxy::new(&conn) else {
+                    return false;
+                };
+                "org.freedesktop.portal.Desktop"
+                    .try_into()
+                    .ok()
+                    .and_then(|name| dbus.name_has_owner(name).ok())
+                    .unwrap_or(false)
+            })
         })
     }
 
