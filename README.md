@@ -303,6 +303,28 @@ cargo run -p nectarlink-desktop                                           # desk
 cd android && ./gradlew assembleDebug                                     # Android app
 ```
 
+### Building the macOS app on Intel
+
+Verified on a 2019 Intel MacBook Pro, Qt 6.12.1 installed with the Qt online installer, and tested on a second Intel Mac with the built DMG.
+
+Run the exports in the same Terminal tab as the build — a new tab forgets them, and build-dmg.sh then fails with 'macdeployqt not found'.
+
+```sh
+export PATH="$HOME/Qt/6.12.1/macos/bin:$PATH"
+export QT_ROOT_DIR="$HOME/Qt/6.12.1/macos"
+git clone https://github.com/thtbee/nectarlink.git
+cd nectarlink
+cargo run -p nectarlink-desktop
+```
+
+To build the installer:
+
+```sh
+./desktop/packaging/macos/build-dmg.sh
+```
+
+This produces `dist/Nectarlink-0.1.5-macos-x86_64.dmg`. The DMG contains only the app — no pairing or phone data. Phone as webcam is not yet available on macOS.
+
 ```powershell
 ./scripts/package.ps1    # Windows installer: target\package\Nectarlink-<version>-x64-setup.exe
 ./scripts/check.ps1      # every check CI runs; add -Android and -Arm64 for the full set
