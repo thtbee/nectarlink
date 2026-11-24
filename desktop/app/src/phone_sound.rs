@@ -121,9 +121,10 @@ fn scale(data: &mut [u8], level: u8) {
         return;
     }
     let gain = gain(level);
-    for sample in data.chunks_exact_mut(2) {
-        let value = f32::from(i16::from_le_bytes([sample[0], sample[1]])) * gain;
-        sample.copy_from_slice(&(value.round() as i16).to_le_bytes());
+    let (samples, _) = data.as_chunks_mut::<2>();
+    for sample in samples {
+        let value = f32::from(i16::from_le_bytes(*sample)) * gain;
+        *sample = (value.round() as i16).to_le_bytes();
     }
 }
 
@@ -493,7 +494,7 @@ mod tests {
         assert_eq!(full, samples);
         let mut half = samples.clone();
         scale(&mut half, 50);
-        let half: Vec<i16> = half.chunks_exact(2).map(|b| i16::from_le_bytes([b[0], b[1]])).collect();
+        let half: Vec<i16> = half.as_chunks::<2>().0.iter().map(|b| i16::from_le_bytes(*b)).collect();
         assert_eq!(half, [250, -250, 8192, -8192]);
         let mut silent = samples;
         scale(&mut silent, 0);
