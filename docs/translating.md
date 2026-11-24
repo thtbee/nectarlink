@@ -2,7 +2,7 @@
 
 NectarLink's Android and desktop apps can be translated into any language.
 Simplified Chinese, German, Spanish, Japanese, Polish, Turkish, Brazilian
-Portuguese, Vietnamese and Russian are complete today.
+Portuguese, Vietnamese, Russian and Ukrainian are complete today.
 
 ## How to help
 
