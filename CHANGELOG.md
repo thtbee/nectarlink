@@ -8,6 +8,10 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Zoom into a photo on the PC.** In the Photos viewer the mouse wheel zooms around the
+  pointer, a double click goes between fitting the window and a close look, and a zoomed photo
+  can be dragged around. It shows the full photo, so screenshots stay sharp up close
+  ([#587](https://github.com/thtbee/nectarlink/issues/587)).
 - **The phone's sound has its own volume on the PC.** **Phone sound on this PC** on the PC's
   Home has a slider for how loud it plays there, apart from the PC's own volume, and it applies
   to a mirrored phone's sound too. While the phone's sound plays on the PC, the phone's volume
