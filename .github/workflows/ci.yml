@@ -397,7 +397,7 @@ jobs:
       - name: Install the pinned Rust toolchain and the Android targets
         run: |
           rustup show active-toolchain || rustup toolchain install
-          rustup target add aarch64-linux-android x86_64-linux-android
+          rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Install cargo-ndk
         run: cargo install --locked cargo-ndk
