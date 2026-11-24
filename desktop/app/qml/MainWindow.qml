@@ -609,6 +609,7 @@ NativeWindow {
             }
         }
         Column {
+            id: navColumn
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.top: mark.bottom
             anchors.topMargin: 31
@@ -707,7 +708,9 @@ NativeWindow {
         // The device the pages show: click to pick another.
         FocusScope {
             id: deviceChip
-            visible: DeviceList.count > 0
+            // Only where it fits under the pages: a short window has no room (the
+            // pages switch devices too).
+            visible: DeviceList.count > 0 && navColumn.y + navColumn.height + 8 + height + anchors.bottomMargin <= pairButton.y
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.bottom: pairButton.top
             anchors.bottomMargin: 14
