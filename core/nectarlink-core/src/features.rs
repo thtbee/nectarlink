@@ -721,6 +721,16 @@ pub const FEATURES: &[FeatureDef] = &[
         partial: None,
     },
     FeatureDef {
+        id: "device.unlock_from_phone",
+        group: FeatureGroup::Device,
+        requires: &[
+            phone("unlock.key", UPDATE),
+            desktop("unlock.pc.from-phone", UPDATE),
+            DeviceToggle("unlock"),
+        ],
+        partial: None,
+    },
+    FeatureDef {
         id: "device.pc_actions",
         group: FeatureGroup::Device,
         requires: &[desktop("pc.power", UPDATE), DeviceToggle("pc_actions")],

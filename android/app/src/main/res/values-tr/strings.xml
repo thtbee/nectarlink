@@ -302,6 +302,8 @@
     <string name="update_current_version">NectarLink %1$s sürümü yüklü.</string>
     <string name="update_check_failed">Güncellemeler denetlenemedi. İnternet bağlantınızı kontrol edin.</string>
     <string name="action_lock_pc">Bilgisayarı kilitle</string>
+    <string name="action_unlock_pc">Bilgisayarın kilidini aç</string>
+    <string name="pc_unlock_unavailable">Bilgisayarı kilitle, ardından iki cihaz da aynı ağa bağlıyken tekrar dene.</string>
     <string name="action_sleep_pc">Uyut</string>
     <string name="action_hibernate_pc">Hazırda beklet</string>
     <string name="action_phone_sound_on_pc">Telefon sesini bilgisayarda çal</string>

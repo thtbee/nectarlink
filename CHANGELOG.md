@@ -8,6 +8,11 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Unlock the PC from the phone.** With unlock with phone set up, **Unlock PC** on a Windows
+  PC's card on the phone brings up the fingerprint prompt for its lock screen, so you don't
+  have to pick NectarLink on the PC first. It works only for a phone the PC unlocks with
+  already, on the same network, and only while the PC is locked. Thanks to
+  [@w-rakeeb](https://github.com/w-rakeeb) ([#565](https://github.com/thtbee/nectarlink/pull/565)).
 - **Ukrainian.** NectarLink speaks Українська on the phone and the PC. Language (Settings ›
   Appearance on the phone, Settings › General on the PC) picks it, or the system language does. Thanks to
   [@Lik1ch](https://github.com/Lik1ch).

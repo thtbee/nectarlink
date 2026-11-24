@@ -140,6 +140,11 @@ impl Platform for DesktopPlatform {
         #[cfg(not(windows))]
         win::clipboard::write_image(mime, bytes)
     }
+    #[cfg(windows)]
+    fn unlock_from_phone(&self, phone: nectarlink_core::DeviceId) -> bool {
+        win::unlock::request_from_phone(phone)
+    }
+
     fn power(&self, action: PowerAction) -> Result<(), String> {
         links::power(action)
     }

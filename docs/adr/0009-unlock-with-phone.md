@@ -128,6 +128,10 @@ What each side holds:
 - **Asked for, never by itself:** picking the tile doesn't ask the phone; the
   arrow does. Windows remembers the last sign-in option, so otherwise any key
   pressed at the lock screen would make the phone ask its owner.
+- **Starting on the phone:** the paired and enrolled phone can request an unlock
+  while the existing Windows session is locked. The PC keeps one intent for
+  ten seconds, tied to the requesting phone. The sign-in provider can consume
+  it once and start the same biometric challenge for that phone.
 - **Only for accounts set up with a phone:** NectarLink serves the pipe only
   once its user has set up a phone, and the tile shows only while the pipe is
   served, so other accounts on a PC where the provider is registered never see

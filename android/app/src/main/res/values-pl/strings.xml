@@ -306,6 +306,8 @@
     <string name="update_current_version">Masz wersję NectarLink %1$s.</string>
     <string name="update_check_failed">Nie udało się sprawdzić aktualizacji. Sprawdź połączenie z internetem.</string>
     <string name="action_lock_pc">Zablokuj komputer</string>
+    <string name="action_unlock_pc">Odblokuj komputer</string>
+    <string name="pc_unlock_unavailable">Zablokuj komputer i spróbuj ponownie, gdy oba urządzenia będą połączone z tą samą siecią.</string>
     <string name="action_sleep_pc">Uśpij</string>
     <string name="action_hibernate_pc">Hibernuj</string>
     <string name="action_phone_sound_on_pc">Odtwarzaj dźwięk telefonu na komputerze</string>

@@ -23,6 +23,7 @@ pub mod types {
     pub const UNLOCK_WRAPPED: &str = "unlock.wrapped";
     pub const UNLOCK_REQUEST: &str = "unlock.request";
     pub const UNLOCK_RELEASE: &str = "unlock.release";
+    pub const UNLOCK_FROM_PHONE: &str = "unlock.from-phone";
     pub const UNLOCK_FORGET: &str = "unlock.forget";
     pub const LINUX_UNLOCK_ENROLL: &str = "unlock.linux.v1.enroll";
     pub const LINUX_UNLOCK_ENROLLED: &str = "unlock.linux.v1.enrolled";
@@ -5062,6 +5063,7 @@ pub mod unlock {
     pub const CAP_KEY: &str = "unlock.key";
     /// Offered by a PC that can unlock its locked session with a phone.
     pub const CAP_PC: &str = "unlock.pc";
+    pub const CAP_FROM_PHONE: &str = "unlock.pc.from-phone";
     /// The per-device toggle on both sides, off by default.
     pub const TOGGLE: &str = "unlock";
     /// Bytes in the key `K`.
