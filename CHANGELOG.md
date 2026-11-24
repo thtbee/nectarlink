@@ -8,6 +8,10 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Select photos with a box.** In Photos on the PC, while you're selecting, drag from a photo
+  to draw a box: everything it covers is added, and the grid scrolls when you reach its edge.
+  Ctrl or Shift and a drag does it any time; dragging a selected photo still drags it out
+  ([#587](https://github.com/thtbee/nectarlink/issues/587)).
 - **Ukrainian.** NectarLink speaks Українська on the phone and the PC. Language (Settings ›
   Appearance on the phone, Settings › General on the PC) picks it, or the system language does. Thanks to
   [@Lik1ch](https://github.com/Lik1ch).

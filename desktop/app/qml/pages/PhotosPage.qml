@@ -27,6 +27,16 @@ Item {
     property bool selectMode: false
     property int lastClickedIndex: -1
 
+    // Box select (#587): a drag paints a box over the grid and selects what it
+    // covers, on top of what was selected already. Points are in the grid's
+    // content coordinates, so the box stays put while the grid scrolls.
+    property bool banding: false
+    property point bandFrom: Qt.point(0, 0)
+    property point bandTo: Qt.point(0, 0)
+    // Where the pointer is, in the grid's own coordinates (for scrolling at the edges).
+    property point bandPointer: Qt.point(0, 0)
+    property var bandBase: ({})
+
     // In-app viewer index (-1 when closed).
     property int viewerIndex: -1
     // The photo the viewer shows: its row moves when the grid's columns change
@@ -214,6 +224,47 @@ Item {
         selectedMap = next
         selectedIds = Object.keys(next)
         selectMode = true
+    }
+
+    function startBand(from) {
+        bandBase = Object.assign({}, selectedMap)
+        bandFrom = from
+        bandTo = from
+        banding = true
+        selectMode = true
+    }
+
+    function moveBand(pointer) {
+        bandPointer = pointer
+        bandTo = grid.mapToItem(grid.contentItem, pointer.x, pointer.y)
+        bandSelect()
+    }
+
+    function bandSelect() {
+        const columns = grid.columns
+        const w = grid.cellWidth
+        const h = grid.cellHeight
+        if (columns <= 0 || w <= 0 || h <= 0) return
+        const c1 = Math.max(0, Math.floor(Math.min(bandFrom.x, bandTo.x) / w))
+        const c2 = Math.min(columns - 1, Math.floor(Math.max(bandFrom.x, bandTo.x) / w))
+        const r1 = Math.max(0, Math.floor(Math.min(bandFrom.y, bandTo.y) / h))
+        const r2 = Math.floor(Math.max(bandFrom.y, bandTo.y) / h)
+        const next = Object.assign({}, bandBase)
+        for (let r = r1; r <= r2 && r * columns < Photos.count; r++) {
+            for (let c = c1; c <= c2; c++) {
+                const i = r * columns + c
+                if (i >= Photos.count) break
+                const id = Photos.idAt(i)
+                if (id.length > 0) next[id] = true
+            }
+        }
+        selectedMap = next
+        selectedIds = Object.keys(next)
+    }
+
+    function endBand() {
+        banding = false
+        bandBase = ({})
     }
 
     function clearSelection() {
@@ -827,6 +878,40 @@ Item {
                         anchors.centerIn: parent
                         visible: Photos.loadingOlder
                     }
+                }
+            }
+
+            // The box being dragged out (#587), drawn in the grid's content so it scrolls with it.
+            Rectangle {
+                parent: grid.contentItem
+                z: 5
+                visible: page.banding
+                x: Math.min(page.bandFrom.x, page.bandTo.x)
+                y: Math.min(page.bandFrom.y, page.bandTo.y)
+                width: Math.abs(page.bandTo.x - page.bandFrom.x)
+                height: Math.abs(page.bandTo.y - page.bandFrom.y)
+                radius: 4
+                color: Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.14)
+                border.width: 1
+                border.color: Theme.primary
+            }
+
+            // Scrolls while the box is dragged to the top or bottom edge.
+            Timer {
+                interval: 16
+                repeat: true
+                running: page.banding
+                onTriggered: {
+                    const edge = 48
+                    const y = page.bandPointer.y
+                    let step = 0
+                    if (y < grid.topMargin + edge) step = -Math.min(edge, grid.topMargin + edge - y) / 2
+                    else if (y > grid.height - edge) step = Math.min(edge, y - (grid.height - edge)) / 2
+                    if (step === 0) return
+                    const top = grid.originY - grid.topMargin
+                    const bottom = Math.max(top, grid.originY + grid.contentHeight + grid.bottomMargin - grid.height)
+                    grid.contentY = Math.max(top, Math.min(bottom, grid.contentY + step))
+                    page.moveBand(page.bandPointer)
                 }
             }
 
@@ -1547,19 +1632,37 @@ Item {
                 anchors.fill: parent
                 property point pressPos: Qt.point(0, 0)
                 property bool dragStarted: false
+                // A drag from here paints a box (#587) rather than dragging the photo out:
+                // while selecting, from a photo not selected yet, or with Ctrl or Shift held.
+                property bool boxes: false
                 onPressed: (ev) => {
                     pressPos = Qt.point(ev.x, ev.y)
                     dragStarted = false
+                    const held = (ev.modifiers & (Qt.ShiftModifier | Qt.ControlModifier)) !== 0
+                    boxes = held || (!tile.selected && (page.selectMode || page.selectedCount > 0))
+                    // A mouse drags; a finger still scrolls the grid.
+                    preventStealing = ev.source === Qt.MouseEventNotSynthesized
                     if (!tile.isVideo && tile.fullUrl.length === 0)
                         Photos.ensureFull(tile.itemId)
                 }
                 onPositionChanged: (ev) => {
-                    if (pressed && !dragStarted
+                    if (page.banding) {
+                        page.moveBand(mapToItem(grid, ev.x, ev.y))
+                    } else if (pressed && !dragStarted
                         && Math.hypot(ev.x - pressPos.x, ev.y - pressPos.y) > Qt.styleHints.startDragDistance) {
                         dragStarted = true
-                        Photos.startDrag(tile.itemId)
+                        if (boxes) {
+                            page.startBand(mapToItem(grid.contentItem, pressPos.x, pressPos.y))
+                            page.moveBand(mapToItem(grid, ev.x, ev.y))
+                        } else {
+                            Photos.startDrag(tile.itemId)
+                        }
                     }
                 }
+                onReleased: if (page.banding) page.endBand()
+                onCanceled: if (page.banding) page.endBand()
+                // Scrolled far enough to be dropped while painting a box: stop there.
+                Component.onDestruction: if (pressed && page.banding) page.endBand()
                 onClicked: (ev) => {
                     if (dragStarted)
                         return
