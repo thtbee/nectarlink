@@ -2,6 +2,7 @@
 package app.nectarlink.android.photos
 
 import android.Manifest
+import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.Context
 import android.content.pm.PackageManager
@@ -10,6 +11,7 @@ import android.database.Cursor
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
@@ -23,6 +25,8 @@ import app.nectarlink.core.PhotoAlbum
 import app.nectarlink.core.PhotoItem
 import app.nectarlink.core.PhotoThumb
 import java.io.ByteArrayOutputStream
+import java.util.concurrent.Callable
+import java.util.concurrent.Executors
 
 /**
  * Photos, screenshots and videos for PCs (docs/protocol/photos.md): watches
@@ -136,8 +140,13 @@ internal class RecentPhotos(
 
     companion object {
         private const val TAG = "RecentPhotos"
-        private val checkExecutor = java.util.concurrent.Executors.newSingleThreadExecutor { r ->
+        private val checkExecutor = Executors.newSingleThreadExecutor { r ->
             Thread(r, "nectarlink-photos-check").apply { isDaemon = true }
+        }
+        private val thumbPool = Executors.newFixedThreadPool(
+            minOf(6, Runtime.getRuntime().availableProcessors().coerceAtLeast(2)),
+        ) { r ->
+            Thread(r, "nectarlink-photo-thumb").apply { isDaemon = true }
         }
         private const val LAST_SEEN = "lastSeen"
         private const val LAST_ID = "lastId"
@@ -304,12 +313,22 @@ internal class RecentPhotos(
                     }
                 }
                 runCatching {
+                    val selection = clauses.joinToString(" AND ").ifEmpty { null }
+                    val selectionArgs = args.toTypedArray().ifEmpty { null }
+                    val queryArgs = Bundle().apply {
+                        if (selection != null) putString(ContentResolver.QUERY_ARG_SQL_SELECTION, selection)
+                        if (selectionArgs != null) putStringArray(ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS, selectionArgs)
+                        putString(
+                            ContentResolver.QUERY_ARG_SQL_SORT_ORDER,
+                            "$DATE_KEY DESC, ${MediaStore.MediaColumns._ID} DESC",
+                        )
+                        putInt(ContentResolver.QUERY_ARG_LIMIT, max + 1)
+                    }
                     context.contentResolver.query(
                         uri,
                         columns,
-                        clauses.joinToString(" AND ").ifEmpty { null },
-                        args.toTypedArray().ifEmpty { null },
-                        "$DATE_KEY DESC, ${MediaStore.MediaColumns._ID} DESC",
+                        queryArgs,
+                        null,
                     )?.use { cursor ->
                         var count = 0
                         while (count < max && cursor.moveToNext()) {
@@ -346,11 +365,34 @@ internal class RecentPhotos(
         /** Loads small JPEG thumbnails (<= 32 KiB, ~256 px) for a batch of item IDs. */
         fun thumbs(context: Context, ids: List<String>): List<PhotoThumb> {
             if (!hasAccess(context) || ids.isEmpty()) return emptyList()
-            return ids.take(MAX_BATCH).mapNotNull { rawId ->
-                val (uri, mediaId, isVideo) = parseId(rawId) ?: return@mapNotNull null
+            val batch = ids.take(MAX_BATCH)
+            if (batch.size == 1) {
+                val rawId = batch[0]
+                val (uri, mediaId, isVideo) = parseId(rawId) ?: return emptyList()
                 val bytes = encodeThumbnail(context, uri, mediaId, isVideo, THUMB_PX, MAX_THUMB_BYTES)
-                    ?: return@mapNotNull null
-                PhotoThumb(id = rawId, data = bytes)
+                    ?: return emptyList()
+                return listOf(PhotoThumb(id = rawId, data = bytes))
+            }
+            val futures = batch.map { rawId ->
+                parseId(rawId)?.let { (uri, mediaId, isVideo) ->
+                    thumbPool.submit(
+                        Callable<PhotoThumb?> {
+                            encodeThumbnail(context, uri, mediaId, isVideo, THUMB_PX, MAX_THUMB_BYTES)
+                                ?.let { PhotoThumb(id = rawId, data = it) }
+                        },
+                    )
+                }
+            }
+            return futures.mapNotNull { future ->
+                if (future == null) return@mapNotNull null
+                try {
+                    future.get()
+                } catch (_: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                    null
+                } catch (_: Exception) {
+                    null
+                }
             }
         }
 
@@ -424,11 +466,19 @@ internal class RecentPhotos(
                 }
             } ?: return null
             try {
-                generateSequence(82) { it - 15 }.takeWhile { it >= 35 }
-                    .map { quality ->
-                        ByteArrayOutputStream().also { bitmap.compress(Bitmap.CompressFormat.JPEG, quality, it) }.toByteArray()
+                val out = ByteArrayOutputStream(maxBytes.coerceAtMost(32 * 1024))
+                var quality = 82
+                var encoded: ByteArray? = null
+                while (quality >= 35) {
+                    out.reset()
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, quality, out)
+                    if (out.size() <= maxBytes) {
+                        encoded = out.toByteArray()
+                        break
                     }
-                    .firstOrNull { it.size <= maxBytes }
+                    quality -= 15
+                }
+                encoded
             } finally {
                 bitmap.recycle()
             }
