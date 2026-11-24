@@ -58,7 +58,19 @@ jobs:
         run: ./scripts/install-nsis.ps1
       - name: Build the installer
         shell: pwsh
+        # Debug info goes to .pdb files beside the build, not into the app, and
+        # is published as a symbols zip so crash dumps can be read (#532).
+        env:
+          CARGO_PROFILE_RELEASE_DEBUG: limited
+          CARGO_PROFILE_RELEASE_STRIP: none
         run: ./scripts/package.ps1
+      - name: Keep the debug symbols
+        shell: pwsh
+        run: |
+          $pdbs = Get-ChildItem 'target/release' -Filter *.pdb -File
+          if (-not $pdbs) { throw 'no .pdb files in target/release' }
+          $pdbs | ForEach-Object { $_.Name }
+          Compress-Archive -Path $pdbs.FullName -DestinationPath "target/package/Nectarlink-$env:VERSION-windows-x64-symbols.zip"
       - name: Check it updates the last release, keeping its data
         shell: pwsh
         env:
@@ -70,7 +82,9 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: windows
-          path: target/package/*-setup.exe
+          path: |
+            target/package/*-setup.exe
+            target/package/*-symbols.zip
 
   windows-arm64:
     name: Windows installer (ARM64)
@@ -102,11 +116,25 @@ jobs:
         run: ./scripts/install-nsis.ps1
       - name: Build the installer
         shell: pwsh
+        # Debug info goes to .pdb files beside the build, not into the app, and
+        # is published as a symbols zip so crash dumps can be read (#532).
+        env:
+          CARGO_PROFILE_RELEASE_DEBUG: limited
+          CARGO_PROFILE_RELEASE_STRIP: none
         run: ./scripts/package.ps1 -Arch arm64
+      - name: Keep the debug symbols
+        shell: pwsh
+        run: |
+          $pdbs = Get-ChildItem 'target/aarch64-pc-windows-msvc/release' -Filter *.pdb -File
+          if (-not $pdbs) { throw 'no .pdb files in target/aarch64-pc-windows-msvc/release' }
+          $pdbs | ForEach-Object { $_.Name }
+          Compress-Archive -Path $pdbs.FullName -DestinationPath "target/package/Nectarlink-$env:VERSION-windows-arm64-symbols.zip"
       - uses: actions/upload-artifact@v7
         with:
           name: windows-arm64
-          path: target/package/*-setup.exe
+          path: |
+            target/package/*-setup.exe
+            target/package/*-symbols.zip
 
   linux:
     name: Linux packages (x86_64)
