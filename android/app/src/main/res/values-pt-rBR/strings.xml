@@ -1643,7 +1643,21 @@
     <string name="community_invite_text">Dúvidas, ideias e versões antecipadas, com quem faz e usa o NectarLink.</string>
     <string name="community_invite_join">Entrar no Discord</string>
     <string name="community_invite_later">Agora não</string>
+
+    <string name="disclosure_messages_title">SMS no seu PC</string>
+    <string name="disclosure_messages_text">O NectarLink lê as mensagens de texto deste celular e as envia para seus PCs pareados, para você ler e responder por lá. As mensagens que você escreve no PC são enviadas deste celular.</string>
+    <string name="disclosure_calls_title">Chamadas no seu PC</string>
+    <string name="disclosure_calls_text">O NectarLink lê quem está ligando, seu histórico de chamadas e o estado de uma chamada, e os envia para seus PCs pareados, para que as chamadas apareçam lá e você possa atender, encerrar ou fazer chamadas pelo PC.</string>
+    <string name="disclosure_contacts_title">Contatos no seu PC</string>
+    <string name="disclosure_contacts_text">O NectarLink lê os nomes e números dos seus contatos e os envia para seus PCs pareados, para mostrar quem está mandando mensagem ou ligando e escolher para quem escrever ou ligar.</string>
+    <string name="disclosure_photos_title">Fotos no seu PC</string>
+    <string name="disclosure_photos_text">O NectarLink lê as fotos e vídeos deste celular e os envia para seus PCs pareados, para você ver e salvar por lá e ver novas capturas de tela na hora.</string>
+    <string name="disclosure_notifications_title">Notificações no seu PC</string>
+    <string name="disclosure_notifications_text">O NectarLink lê as notificações deste celular e as envia para seus PCs pareados, para que apareçam lá e você possa responder ou dispensar pelo PC.</string>
+    <string name="disclosure_control_title">Controle este celular pelo PC</string>
+    <string name="disclosure_control_text">O NectarLink usa o serviço de Acessibilidade do Android para que um PC pareado possa controlar este celular: toques, deslizes, rolagem e digitação com o mouse e o teclado do PC, e a leitura do campo de texto em que você está digitando para colocar o texto ali e tocar em Enviar. Ele só age conforme o que você faz no PC e não coleta nem compartilha o que está na sua tela.</string>
+    <string name="disclosure_elevated_title">Elevated</string>
+    <string name="disclosure_elevated_text">O Elevated dá ao NectarLink recursos que apps comuns não têm, como compartilhar a tela sem perguntar toda vez, o ponteiro do PC neste celular, apps em janelas próprias no PC e o som das chamadas no PC. Ele usa a depuração sem fio deste celular, ou Shizuku ou root se você escolher. Você mesmo o ativa e pode desativá-lo nas Configurações a qualquer momento. Ele roda só neste celular.</string>
+    <string name="disclosure_private">Vai só para os seus próprios dispositivos pareados, com criptografia de ponta a ponta, e nunca para nós.</string>
+    <string name="disclosure_continue">Continuar</string>
 </resources>
-
-
-

@@ -1642,7 +1642,21 @@
     <string name="community_invite_text">NectarLink’i yapan ve kullananlarla sorular, fikirler ve erken sürümler.</string>
     <string name="community_invite_join">Discord’a katıl</string>
     <string name="community_invite_later">Şimdi değil</string>
+
+    <string name="disclosure_messages_title">Bilgisayarında SMS</string>
+    <string name="disclosure_messages_text">NectarLink bu telefondaki kısa mesajları okur ve eşlenmiş bilgisayarlarına gönderir; böylece onları orada okuyup yanıtlayabilirsin. Bilgisayarda yazdığın mesajlar bu telefondan gönderilir.</string>
+    <string name="disclosure_calls_title">Bilgisayarında aramalar</string>
+    <string name="disclosure_calls_text">NectarLink kimin aradığını, arama geçmişini ve aramanın durumunu okur ve eşlenmiş bilgisayarlarına gönderir; böylece aramalar orada görünür ve onları bilgisayardan yanıtlayabilir, bitirebilir veya başlatabilirsin.</string>
+    <string name="disclosure_contacts_title">Bilgisayarında kişiler</string>
+    <string name="disclosure_contacts_text">NectarLink kişilerinin adlarını ve numaralarını okur ve eşlenmiş bilgisayarlarına gönderir; kimin yazdığını veya aradığını göstermek ve yazacağın ya da arayacağın kişiyi seçmek için.</string>
+    <string name="disclosure_photos_title">Bilgisayarında fotoğraflar</string>
+    <string name="disclosure_photos_text">NectarLink bu telefondaki fotoğrafları ve videoları okur ve eşlenmiş bilgisayarlarına gönderir; böylece onlara orada göz atıp kaydedebilir ve yeni ekran görüntülerini hemen görebilirsin.</string>
+    <string name="disclosure_notifications_title">Bilgisayarında bildirimler</string>
+    <string name="disclosure_notifications_text">NectarLink bu telefondaki bildirimleri okur ve eşlenmiş bilgisayarlarına gönderir; böylece orada görünürler ve onları bilgisayardan yanıtlayabilir veya kapatabilirsin.</string>
+    <string name="disclosure_control_title">Bu telefonu bilgisayardan kontrol et</string>
+    <string name="disclosure_control_text">NectarLink, eşlenmiş bir bilgisayarın bu telefonu kontrol edebilmesi için Android\'in Erişilebilirlik hizmetini kullanır: bilgisayarın faresi ve klavyesiyle dokunma, kaydırma ve yazma, ayrıca yazdığın metin alanını okuyup oraya metin koymak ve Gönder\'e basmak. Yalnızca bilgisayarda yaptıklarına göre davranır ve ekranındakileri toplamaz ya da paylaşmaz.</string>
+    <string name="disclosure_elevated_title">Elevated</string>
+    <string name="disclosure_elevated_text">Elevated, NectarLink\'e sıradan uygulamaların sahip olmadığı yetenekler verir: her seferinde sormadan ekranı paylaşma, bu telefonda bilgisayarın işaretçisi, bilgisayarda uygulamaların kendi pencerelerinde açılması ve arama sesinin bilgisayarda duyulması gibi. Bu telefonun kablosuz hata ayıklamasını ya da seçersen Shizuku veya root\'u kullanır. Onu sen açarsın ve Ayarlar\'dan istediğin zaman kapatabilirsin. Yalnızca bu telefonda çalışır.</string>
+    <string name="disclosure_private">Yalnızca kendi eşlenmiş cihazlarına, uçtan uca şifreli olarak gider ve asla bize gelmez.</string>
+    <string name="disclosure_continue">Devam</string>
 </resources>
-
-
-

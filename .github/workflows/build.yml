@@ -318,10 +318,10 @@ jobs:
           NECTARLINK_KEYSTORE: ${{ runner.temp }}/release.jks
           NECTARLINK_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         # Phones: 64-bit ARM, and 32-bit ARM for older ones.
-        run: ./gradlew --no-daemon assembleRelease -Pnectarlink.abis=arm64-v8a,armeabi-v7a
+        run: ./gradlew --no-daemon assembleGithubRelease -Pnectarlink.abis=arm64-v8a,armeabi-v7a
       - name: Check the signature, and name the app
         run: |
-          apk=android/app/build/outputs/apk/release/app-release.apk
+          apk=android/app/build/outputs/apk/github/release/app-github-release.apk
           "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --print-certs "$apk"
           mkdir -p out
           cp "$apk" "out/Nectarlink-${VERSION}-android.apk"

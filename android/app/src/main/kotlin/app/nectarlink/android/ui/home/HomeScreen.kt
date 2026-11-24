@@ -124,6 +124,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.nectarlink.android.sms.PhoneSms
 import app.nectarlink.android.ui.WhatsNewButton
 import app.nectarlink.android.ui.guide.GuideHighlightTarget
+import app.nectarlink.android.ui.launchDisclosed
 import app.nectarlink.android.ui.theme.LocalHomeCardColors
 import app.nectarlink.android.ui.theme.LocalGlassTheme
 import app.nectarlink.android.ui.theme.LocalReducedMotion
@@ -462,7 +463,7 @@ fun HomeScreen(
                         null
                     },
                     onSecondaryAction = if (!controlReady) {
-                        { runCatching { context.startActivity(InputService.settingsIntent()) } }
+                        { runCatching { app.nectarlink.android.ui.Disclosures.before(context, app.nectarlink.android.ui.Disclosures.Kind.Control) { context.startActivity(InputService.settingsIntent()) } } }
                     } else {
                         null
                     },
@@ -678,7 +679,7 @@ fun HomeScreen(
                     title = stringResource(R.string.remote_input_requested_title),
                     text = stringResource(R.string.remote_input_requested_text),
                 ) {
-                    runCatching { context.startActivity(InputService.settingsIntent()) }
+                    runCatching { app.nectarlink.android.ui.Disclosures.before(context, app.nectarlink.android.ui.Disclosures.Kind.Control) { context.startActivity(InputService.settingsIntent()) } }
                 }
             }
         }
@@ -1300,7 +1301,7 @@ private fun PermissionsSetupCard(
                         stringResource(R.string.notifications_title),
                         stringResource(R.string.notifications_off),
                     ) {
-                        runCatching { context.startActivity(NotificationListener.settingsIntent(context)) }
+                        runCatching { app.nectarlink.android.ui.Disclosures.before(context, app.nectarlink.android.ui.Disclosures.Kind.Notifications) { context.startActivity(NotificationListener.settingsIntent(context)) } }
                     }
                 }
                 if (!state.hasElevatedCapability(app.nectarlink.services.client.NectarlinkServiceContract.CAP_CLIPBOARD_SYNC)) {
@@ -1310,12 +1311,12 @@ private fun PermissionsSetupCard(
                         secondaryLabel = stringResource(R.string.elevated_open_developer),
                         onSecondary = { openDeveloperOptions(context) },
                     ) {
-                        scope.launch {
+                        app.nectarlink.android.ui.Disclosures.before(context, app.nectarlink.android.ui.Disclosures.Kind.Elevated) { scope.launch {
                             app.nectarlink.android.elevated.PairingNotification.show(context)
                             if (!app.nectarlink.android.elevated.Elevated.start()) {
                                 openDeveloperOptions(context)
                             }
-                        }
+                        } }
                     }
                 }
                 if (!state.inputAccess &&
@@ -1325,32 +1326,32 @@ private fun PermissionsSetupCard(
                         stringResource(R.string.control_title),
                         stringResource(R.string.control_off),
                     ) {
-                        runCatching { context.startActivity(InputService.settingsIntent()) }
+                        runCatching { app.nectarlink.android.ui.Disclosures.before(context, app.nectarlink.android.ui.Disclosures.Kind.Control) { context.startActivity(InputService.settingsIntent()) } }
                     }
                 }
                 if (!state.smsAccess) {
                     SetupCard(
                         stringResource(R.string.sms_title),
                         stringResource(R.string.sms_off),
-                    ) { smsLauncher.launch(PhoneSms.permissions) }
+                    ) { smsLauncher.launchDisclosed(context, PhoneSms.permissions) }
                 }
                 if (!state.callAccess) {
                     SetupCard(
                         stringResource(R.string.calls_title),
                         stringResource(R.string.calls_off),
-                    ) { callsLauncher.launch(PhoneCalls.permissions) }
+                    ) { callsLauncher.launchDisclosed(context, PhoneCalls.permissions) }
                 }
                 if (!state.contactsAccess) {
                     SetupCard(
                         stringResource(R.string.contacts_title),
                         stringResource(R.string.contacts_off),
-                    ) { contactsLauncher.launch(PhoneContacts.permissions) }
+                    ) { contactsLauncher.launchDisclosed(context, PhoneContacts.permissions) }
                 }
                 if (!state.photoAccess) {
                     SetupCard(
                         stringResource(R.string.photos_title),
                         stringResource(R.string.photos_off),
-                    ) { photosLauncher.launch(RecentPhotos.permissions) }
+                    ) { photosLauncher.launchDisclosed(context, RecentPhotos.permissions) }
                 }
             }
         }

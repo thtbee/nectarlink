@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- The GitHub build only: it updates itself from GitHub releases. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Installing its own updates from GitHub releases (the user allows it once),
+         and an APK received from a PC when it's tapped. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- Updates of NectarLink itself without a prompt (Android 12+), when turned on in Settings. -->
+    <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
+
+    <application>
+        <!-- Android's answers while installing an update. -->
+        <receiver
+            android:name=".update.AppUpdater$InstallResult"
+            android:exported="false" />
+    </application>
+</manifest>

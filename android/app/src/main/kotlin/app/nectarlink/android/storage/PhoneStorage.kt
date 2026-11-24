@@ -18,6 +18,7 @@ import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.provider.Settings
 import androidx.core.content.ContextCompat
+import app.nectarlink.android.BuildConfig
 import app.nectarlink.core.FileToSend
 import app.nectarlink.core.StorageEntry
 import app.nectarlink.core.StorageFailure
@@ -613,8 +614,15 @@ class PhoneStorage(
         fun capabilities(context: Context): List<String> =
             if (hasAnyAccess(context)) listOf("storage.read", "storage.write") else emptyList()
 
-        /** Intent to open Android's "All files access" settings screen for NectarLink. */
+        /**
+         * Intent to open Android's "All files access" settings screen for NectarLink. The
+         * Play build can't have All files access (Play keeps it for file managers), so
+         * there it opens the folder picker instead ([PickFolderActivity]).
+         */
         fun allFilesAccessIntent(context: Context): Intent {
+            if (BuildConfig.PLAY && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                return Intent(context, PickFolderActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 val perApp = Intent(
                     Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,

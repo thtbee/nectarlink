@@ -98,10 +98,10 @@ update signed with the same key as the installed app, so:
 - Keep an offline backup of the keystore and its password. If the key is
   lost, no existing install can ever be updated again; everyone would have to
   uninstall and reinstall.
-- Builds signed with the debug key (local `assembleRelease` without
+- Builds signed with the debug key (local `assembleGithubRelease` without
   `NECTARLINK_KEYSTORE`) can't update to or from official releases.
 - To sign locally: set `NECTARLINK_KEYSTORE` to the `.jks` path and
-  `NECTARLINK_KEYSTORE_PASSWORD`, then `./gradlew assembleRelease`.
+  `NECTARLINK_KEYSTORE_PASSWORD`, then `./gradlew assembleGithubRelease`.
 
 **Windows.** The installer and the app aren't Authenticode-signed yet, so
 SmartScreen warns on first download until the files build reputation. Options

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- The Google Play build: what Play's policies don't allow comes out of the
+     merged manifest here, and the code checks BuildConfig.PLAY. CI checks the
+     merged manifest has none of these (scripts/check-play-build.py). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Auto-granted only to calling and alarm apps: ringing and the unlock
+         prompt use a high-priority notification instead. -->
+    <uses-permission
+        android:name="android.permission.USE_FULL_SCREEN_INTENT"
+        tools:node="remove" />
+    <!-- The unlock prompt waits for a tap on its notification. -->
+    <uses-permission
+        android:name="android.permission.SYSTEM_ALERT_WINDOW"
+        tools:node="remove" />
+    <!-- Play allows asking for it only to apps whose core function needs it; the
+         battery settings page is linked instead. -->
+    <uses-permission
+        android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"
+        tools:node="remove" />
+    <!-- File managers only: phone storage on the PC uses the folders picked with
+         the system's folder picker. -->
+    <uses-permission
+        android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:node="remove" />
+
+    <application>
+        <!-- No donation reminder. -->
+        <receiver
+            android:name=".ui.StarNotification$Receiver"
+            tools:node="remove" />
+    </application>
+</manifest>

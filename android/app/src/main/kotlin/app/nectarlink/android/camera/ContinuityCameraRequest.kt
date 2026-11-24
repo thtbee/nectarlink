@@ -117,7 +117,8 @@ object ContinuityCameraRequests {
                 .setContentIntent(openPending)
                 .setAutoCancel(true)
                 .setTimeoutAfter(REQUEST_TIMEOUT_MS)
-                .setCategory(NotificationCompat.CATEGORY_CALL)
+                // Not a call: a request the user answers (calls are the only CATEGORY_CALL).
+                .setCategory(NotificationCompat.CATEGORY_STATUS)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .build()
             runCatching {

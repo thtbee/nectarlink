@@ -107,13 +107,13 @@ cargo xtask notices
 ```powershell
 Push-Location android
 # Debug APK (builds arm64-v8a + x86_64 JNI libs and regenerates UniFFI Kotlin bindings):
-.\gradlew.bat assembleDebug
+.\gradlew.bat assembleGithubDebug
 
 # Fast single-ABI build for an attached arm64 phone:
-.\gradlew.bat assembleDebug -Pabi=arm64-v8a
+.\gradlew.bat assembleGithubDebug -Pnectarlink.abis=arm64-v8a
 
 # Release APK:
-.\gradlew.bat assembleRelease
+.\gradlew.bat assembleGithubRelease
 Pop-Location
 ```
 
@@ -175,6 +175,6 @@ cargo test -p nectarlink-desktop -p nectarlink-vcam
 
 ```powershell
 Push-Location android
-.\gradlew.bat compileDebugKotlin testDebugUnitTest
+.\gradlew.bat compileGithubDebugKotlin testGithubDebugUnitTest
 Pop-Location
 ```

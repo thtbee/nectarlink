@@ -66,6 +66,7 @@ import app.nectarlink.android.photos.RecentPhotos
 import app.nectarlink.android.sms.PhoneSms
 import app.nectarlink.android.storage.PhoneStorage
 import app.nectarlink.android.toggles.PhoneToggles
+import app.nectarlink.android.ui.launchDisclosed
 import app.nectarlink.android.ui.theme.LocalGlassTheme
 import app.nectarlink.android.ui.theme.bentoWell
 import app.nectarlink.android.ui.theme.glassModalBlur
@@ -178,27 +179,27 @@ fun FeaturesGuideScreen(
         { action ->
             when (action) {
                 GuideFixAction.GRANT_NOTIFICATIONS -> {
-                    runCatching { context.startActivity(NotificationListener.settingsIntent(context)) }
+                    runCatching { app.nectarlink.android.ui.Disclosures.before(context, app.nectarlink.android.ui.Disclosures.Kind.Notifications) { context.startActivity(NotificationListener.settingsIntent(context)) } }
                 }
                 GuideFixAction.GRANT_BATTERY -> {
                     runCatching { context.startActivity(BackgroundAccess.requestIntent(context)) }
                 }
                 GuideFixAction.GRANT_CALLS -> {
-                    callsLauncher.launch(PhoneCalls.permissions)
+                    callsLauncher.launchDisclosed(context, PhoneCalls.permissions)
                 }
                 GuideFixAction.GRANT_SMS_CONTACTS -> {
-                    smsContactsLauncher.launch(PhoneSms.permissions + PhoneContacts.permissions)
+                    smsContactsLauncher.launchDisclosed(context, PhoneSms.permissions + PhoneContacts.permissions)
                 }
                 GuideFixAction.GRANT_PHOTOS -> {
-                    photosLauncher.launch(RecentPhotos.permissions)
+                    photosLauncher.launchDisclosed(context, RecentPhotos.permissions)
                 }
                 GuideFixAction.GRANT_STORAGE -> {
                     runCatching { context.startActivity(PhoneStorage.allFilesAccessIntent(context)) }
                 }
                 GuideFixAction.OPEN_ACCESSIBILITY -> {
-                    runCatching { context.startActivity(InputService.settingsIntent()) }
+                    runCatching { app.nectarlink.android.ui.Disclosures.before(context, app.nectarlink.android.ui.Disclosures.Kind.Control) { context.startActivity(InputService.settingsIntent()) } }
                 }
-                GuideFixAction.ENABLE_ELEVATED -> {
+                GuideFixAction.ENABLE_ELEVATED -> app.nectarlink.android.ui.Disclosures.before(context, app.nectarlink.android.ui.Disclosures.Kind.Elevated) {
                     scope.launch {
                         if (Elevated.hasSystemService(context)) {
                             Elevated.start()

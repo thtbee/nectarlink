@@ -20,6 +20,7 @@ import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
+import app.nectarlink.android.BuildConfig
 import app.nectarlink.android.NectarlinkApplication
 import app.nectarlink.android.R
 import app.nectarlink.android.banking.BankingPause
@@ -346,7 +347,9 @@ class ConnectionService : LifecycleService() {
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentIntent(open)
-            .setFullScreenIntent(open, true)
+            // Play allows full-screen intents only to calling and alarm apps: there it rings
+            // with a heads-up notification.
+            .apply { if (!BuildConfig.PLAY) setFullScreenIntent(open, true) }
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setOngoing(true)

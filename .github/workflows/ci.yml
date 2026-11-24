@@ -413,11 +413,25 @@ jobs:
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
       - name: Unit tests and debug build
         working-directory: android
-        run: ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug
+        run: ./gradlew --no-daemon testGithubDebugUnitTest testPlayDebugUnitTest lintGithubDebug lintPlayDebug assembleGithubDebug
+      # The Google Play build (signed with the debug key here): its bundle, and the checks
+      # that it has nothing Play doesn't allow (scripts/check-play-build.py).
+      - name: Google Play build
+        working-directory: android
+        run: ./gradlew --no-daemon assemblePlayRelease bundlePlayRelease -Pnectarlink.abis=arm64-v8a,armeabi-v7a,x86_64
+      - name: Check the Google Play build
+        run: python3 scripts/check-play-build.py android/app/build/outputs/apk/play/release/app-play-release.apk "$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)/aapt2"
       - uses: actions/upload-artifact@v7
         with:
           name: nectarlink-android-debug
-          path: android/app/build/outputs/apk/debug/*.apk
+          path: android/app/build/outputs/apk/github/debug/*.apk
+          retention-days: 14
+      - uses: actions/upload-artifact@v7
+        with:
+          name: nectarlink-android-play
+          path: |
+            android/app/build/outputs/bundle/playRelease/*.aab
+            android/app/build/outputs/apk/play/release/*.apk
           retention-days: 14
 
   report-worker:

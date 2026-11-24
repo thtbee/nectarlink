@@ -16,9 +16,9 @@ cargo install cargo-ndk
 Then, from `android/`:
 
 ```
-./gradlew assembleDebug                          # phones + x86_64 emulator
-./gradlew assembleDebug -Pnectarlink.abis=x86_64 # emulator only (faster)
-./gradlew testDebugUnitTest
+./gradlew assembleGithubDebug                    # phones + x86_64 emulator
+./gradlew assembleGithubDebug -Pnectarlink.abis=x86_64 # emulator only (faster)
+./gradlew testGithubDebugUnitTest testPlayDebugUnitTest
 ```
 
 Gradle builds the core with cargo-ndk (cargo profile `android`: release
@@ -69,11 +69,11 @@ No signing keys or passwords are stored in the repository:
 
 - **Android:** set `NECTARLINK_KEYSTORE` (path to the `.jks` keystore, key alias
   `nectarlink`) and `NECTARLINK_KEYSTORE_PASSWORD` in the environment before
-  running `./gradlew assembleRelease`. In CI (`.github/workflows/release.yml`),
+  running `./gradlew assembleGithubRelease`. In CI (`.github/workflows/release.yml`),
   these come from the `ANDROID_KEYSTORE` (base64) and
   `ANDROID_KEYSTORE_PASSWORD` repository secrets, and the temporary `.jks` file
   is deleted immediately after `apksigner verify`. When `NECTARLINK_KEYSTORE` is
-  unset locally, `assembleRelease` signs `app-release.apk` with the debug key,
+  unset locally, `assembleGithubRelease` signs `app-github-release.apk` with the debug key,
   for testing only; never publish that build.
 - **Windows:** `./scripts/package.ps1` builds `Nectarlink-<version>-x64-setup.exe`,
   and `.github/workflows/release.yml` publishes `SHA256SUMS.txt` alongside the

@@ -1644,7 +1644,22 @@
     <string name="community_invite_text">Questions, ideas and early builds, with the people who make and use NectarLink.</string>
     <string name="community_invite_join">Join Discord</string>
     <string name="community_invite_later">Not now</string>
+
+    <!-- Google Play build: what's shared, said before Android's own prompt (Disclosures.kt). -->
+    <string name="disclosure_messages_title">Texts on your PC</string>
+    <string name="disclosure_messages_text">NectarLink reads the text messages on this phone and sends them to your paired PCs, so you can read and answer them there. Texts you write on a PC are sent from this phone.</string>
+    <string name="disclosure_calls_title">Calls on your PC</string>
+    <string name="disclosure_calls_text">NectarLink reads who\'s calling, your call history and the state of a call, and sends them to your paired PCs, so calls show there and you can answer, end or place them from the PC.</string>
+    <string name="disclosure_contacts_title">Contacts on your PC</string>
+    <string name="disclosure_contacts_text">NectarLink reads your contacts\' names and numbers and sends them to your paired PCs, to show who\'s texting or calling and to pick someone to text or call.</string>
+    <string name="disclosure_photos_title">Photos on your PC</string>
+    <string name="disclosure_photos_text">NectarLink reads the photos and videos on this phone and sends them to your paired PCs, so you can browse and save them there and see new screenshots right away.</string>
+    <string name="disclosure_notifications_title">Notifications on your PC</string>
+    <string name="disclosure_notifications_text">NectarLink reads the notifications on this phone and sends them to your paired PCs, so they show there and you can reply to or dismiss them from the PC.</string>
+    <string name="disclosure_control_title">Control this phone from your PC</string>
+    <string name="disclosure_control_text">NectarLink uses Android\'s Accessibility service so a paired PC can control this phone: taps, swipes, scrolling and typing from the PC\'s mouse and keyboard, and reading the text field you\'re typing in to put text there and press Send. It only acts on what you do on the PC, and doesn\'t collect or share what\'s on your screen.</string>
+    <string name="disclosure_elevated_title">Elevated</string>
+    <string name="disclosure_elevated_text">Elevated gives NectarLink powers ordinary apps don\'t have, such as sharing the screen without asking each time, the PC\'s pointer on this phone, apps in their own windows on the PC and call sound on the PC. It uses this phone\'s own wireless debugging, or Shizuku or root if you pick them. You turn it on yourself and can turn it off in Settings at any time. It runs only on this phone.</string>
+    <string name="disclosure_private">It goes only to your own paired devices, encrypted end to end, and never to us.</string>
+    <string name="disclosure_continue">Continue</string>
 </resources>
-
-
-

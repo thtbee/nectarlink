@@ -1571,4 +1571,21 @@
     <string name="community_invite_text">Câu hỏi, ý tưởng và bản dựng sớm, cùng những người làm và dùng NectarLink.</string>
     <string name="community_invite_join">Tham gia Discord</string>
     <string name="community_invite_later">Để sau</string>
+
+    <string name="disclosure_messages_title">Tin nhắn trên máy tính</string>
+    <string name="disclosure_messages_text">NectarLink đọc tin nhắn SMS trên điện thoại này và gửi đến các máy tính đã ghép đôi, để bạn đọc và trả lời ở đó. Tin nhắn bạn viết trên máy tính được gửi từ điện thoại này.</string>
+    <string name="disclosure_calls_title">Cuộc gọi trên máy tính</string>
+    <string name="disclosure_calls_text">NectarLink đọc ai đang gọi, lịch sử cuộc gọi và trạng thái cuộc gọi, rồi gửi đến các máy tính đã ghép đôi, để cuộc gọi hiện ở đó và bạn có thể trả lời, kết thúc hoặc gọi từ máy tính.</string>
+    <string name="disclosure_contacts_title">Danh bạ trên máy tính</string>
+    <string name="disclosure_contacts_text">NectarLink đọc tên và số điện thoại trong danh bạ và gửi đến các máy tính đã ghép đôi, để hiện ai đang nhắn tin hoặc gọi và chọn người để nhắn tin hoặc gọi.</string>
+    <string name="disclosure_photos_title">Ảnh trên máy tính</string>
+    <string name="disclosure_photos_text">NectarLink đọc ảnh và video trên điện thoại này và gửi đến các máy tính đã ghép đôi, để bạn xem và lưu ở đó và thấy ngay ảnh chụp màn hình mới.</string>
+    <string name="disclosure_notifications_title">Thông báo trên máy tính</string>
+    <string name="disclosure_notifications_text">NectarLink đọc thông báo trên điện thoại này và gửi đến các máy tính đã ghép đôi, để chúng hiện ở đó và bạn có thể trả lời hoặc đóng chúng từ máy tính.</string>
+    <string name="disclosure_control_title">Điều khiển điện thoại từ máy tính</string>
+    <string name="disclosure_control_text">NectarLink dùng dịch vụ Hỗ trợ tiếp cận của Android để máy tính đã ghép đôi có thể điều khiển điện thoại này: chạm, vuốt, cuộn và gõ bằng chuột và bàn phím máy tính, và đọc ô văn bản bạn đang gõ để điền chữ vào và nhấn Gửi. Nó chỉ làm theo những gì bạn làm trên máy tính, và không thu thập hay chia sẻ nội dung trên màn hình.</string>
+    <string name="disclosure_elevated_title">Elevated</string>
+    <string name="disclosure_elevated_text">Elevated cho NectarLink những khả năng mà ứng dụng thường không có, như chia sẻ màn hình mà không hỏi mỗi lần, con trỏ của máy tính trên điện thoại này, ứng dụng trong cửa sổ riêng trên máy tính và âm thanh cuộc gọi trên máy tính. Nó dùng gỡ lỗi không dây của điện thoại này, hoặc Shizuku hay root nếu bạn chọn. Bạn tự bật và có thể tắt trong Cài đặt bất cứ lúc nào. Nó chỉ chạy trên điện thoại này.</string>
+    <string name="disclosure_private">Dữ liệu chỉ đến các thiết bị đã ghép đôi của chính bạn, được mã hóa đầu cuối, và không bao giờ đến chúng tôi.</string>
+    <string name="disclosure_continue">Tiếp tục</string>
 </resources>

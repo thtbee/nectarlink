@@ -1633,7 +1633,21 @@
     <string name="community_invite_text">質問、アイデア、先行ビルド。NectarLink を作る人、使う人と一緒に。</string>
     <string name="community_invite_join">Discord に参加</string>
     <string name="community_invite_later">今はしない</string>
+
+    <string name="disclosure_messages_title">PC でメッセージ</string>
+    <string name="disclosure_messages_text">NectarLink はこのスマホの SMS を読み取り、ペア設定した PC に送ります。PC で読んだり返信したりできます。PC で書いたメッセージはこのスマホから送信されます。</string>
+    <string name="disclosure_calls_title">PC で通話</string>
+    <string name="disclosure_calls_text">NectarLink は着信相手、通話履歴、通話の状態を読み取り、ペア設定した PC に送ります。PC に通話が表示され、PC から応答、終了、発信ができます。</string>
+    <string name="disclosure_contacts_title">PC で連絡先</string>
+    <string name="disclosure_contacts_text">NectarLink は連絡先の名前と電話番号を読み取り、ペア設定した PC に送ります。誰からのメッセージや着信かを表示し、メッセージや電話の相手を選ぶために使います。</string>
+    <string name="disclosure_photos_title">PC で写真</string>
+    <string name="disclosure_photos_text">NectarLink はこのスマホの写真と動画を読み取り、ペア設定した PC に送ります。PC で閲覧や保存ができ、新しいスクリーンショットもすぐに見られます。</string>
+    <string name="disclosure_notifications_title">PC で通知</string>
+    <string name="disclosure_notifications_text">NectarLink はこのスマホの通知を読み取り、ペア設定した PC に送ります。PC に通知が表示され、PC から返信や消去ができます。</string>
+    <string name="disclosure_control_title">PC からこのスマホを操作</string>
+    <string name="disclosure_control_text">NectarLink は Android のユーザー補助サービスを使い、ペア設定した PC がこのスマホを操作できるようにします。PC のマウスとキーボードによるタップ、スワイプ、スクロール、入力、そして入力中のテキスト欄を読み取って文字を入れ、送信を押すことです。PC での操作にだけ反応し、画面の内容を収集したり共有したりはしません。</string>
+    <string name="disclosure_elevated_title">Elevated</string>
+    <string name="disclosure_elevated_text">Elevated は、通常のアプリにはない機能を NectarLink に与えます。毎回確認せずに画面を共有する、このスマホで PC のポインターを使う、PC でアプリを個別のウィンドウに表示する、PC で通話の音声を聞く、などです。このスマホのワイヤレスデバッグ、または選んだ場合は Shizuku や root を使います。有効にするのはあなた自身で、いつでも設定でオフにできます。このスマホの中だけで動きます。</string>
+    <string name="disclosure_private">送信先はあなたがペア設定した自分のデバイスだけで、エンドツーエンドで暗号化され、私たちに送られることはありません。</string>
+    <string name="disclosure_continue">続ける</string>
 </resources>
-
-
-

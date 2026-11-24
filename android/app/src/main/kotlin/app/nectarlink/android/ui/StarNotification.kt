@@ -13,6 +13,7 @@ import android.net.Uri
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.edit
+import app.nectarlink.android.BuildConfig
 import app.nectarlink.android.R
 
 /**
@@ -49,6 +50,8 @@ internal object StarNotification {
      * it is. Whether it went out while this app process runs.
      */
     fun onAppOpened(context: Context): Boolean {
+        // The Play build has no donation link (Play's payments policy).
+        if (BuildConfig.PLAY) return false
         val app = context.applicationContext
         if (posted(app)) return askedThisProcess
         val info = runCatching { app.packageManager.getPackageInfo(app.packageName, 0) }.getOrNull() ?: return false

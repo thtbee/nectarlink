@@ -1643,4 +1643,21 @@
     <string name="community_invite_text">Fragen, Ideen und frühe Builds, mit den Leuten, die NectarLink machen und nutzen.</string>
     <string name="community_invite_join">Discord beitreten</string>
     <string name="community_invite_later">Nicht jetzt</string>
+
+    <string name="disclosure_messages_title">SMS auf deinem PC</string>
+    <string name="disclosure_messages_text">NectarLink liest die SMS auf diesem Handy und sendet sie an deine gekoppelten PCs, damit du sie dort lesen und beantworten kannst. SMS, die du am PC schreibst, werden von diesem Handy gesendet.</string>
+    <string name="disclosure_calls_title">Anrufe auf deinem PC</string>
+    <string name="disclosure_calls_text">NectarLink liest, wer anruft, deinen Anrufverlauf und den Status eines Anrufs und sendet sie an deine gekoppelten PCs, damit Anrufe dort erscheinen und du sie vom PC aus annehmen, beenden oder starten kannst.</string>
+    <string name="disclosure_contacts_title">Kontakte auf deinem PC</string>
+    <string name="disclosure_contacts_text">NectarLink liest die Namen und Nummern deiner Kontakte und sendet sie an deine gekoppelten PCs, um zu zeigen, wer schreibt oder anruft, und um jemanden zum Schreiben oder Anrufen auszuwählen.</string>
+    <string name="disclosure_photos_title">Fotos auf deinem PC</string>
+    <string name="disclosure_photos_text">NectarLink liest die Fotos und Videos auf diesem Handy und sendet sie an deine gekoppelten PCs, damit du sie dort ansehen und speichern kannst und neue Screenshots sofort siehst.</string>
+    <string name="disclosure_notifications_title">Benachrichtigungen auf deinem PC</string>
+    <string name="disclosure_notifications_text">NectarLink liest die Benachrichtigungen auf diesem Handy und sendet sie an deine gekoppelten PCs, damit sie dort erscheinen und du sie vom PC aus beantworten oder schließen kannst.</string>
+    <string name="disclosure_control_title">Dieses Handy vom PC aus steuern</string>
+    <string name="disclosure_control_text">NectarLink nutzt den Bedienungshilfen-Dienst von Android, damit ein gekoppelter PC dieses Handy steuern kann: Tippen, Wischen, Scrollen und Schreiben mit Maus und Tastatur des PCs, und das Lesen des Textfelds, in dem du schreibst, um dort Text einzufügen und auf Senden zu tippen. Es reagiert nur auf das, was du am PC tust, und sammelt oder teilt nicht, was auf deinem Bildschirm ist.</string>
+    <string name="disclosure_elevated_title">Elevated</string>
+    <string name="disclosure_elevated_text">Elevated gibt NectarLink Möglichkeiten, die normale Apps nicht haben, etwa den Bildschirm teilen, ohne jedes Mal zu fragen, den Mauszeiger des PCs auf diesem Handy, Apps in eigenen Fenstern auf dem PC und Anrufton auf dem PC. Es nutzt das kabellose Debugging dieses Handys oder Shizuku oder Root, wenn du sie auswählst. Du schaltest es selbst ein und kannst es jederzeit in den Einstellungen ausschalten. Es läuft nur auf diesem Handy.</string>
+    <string name="disclosure_private">Es geht nur an deine eigenen gekoppelten Geräte, Ende-zu-Ende-verschlüsselt, und nie an uns.</string>
+    <string name="disclosure_continue">Weiter</string>
 </resources>
