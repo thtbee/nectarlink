@@ -305,6 +305,8 @@
     <string name="update_current_version">У вас NectarLink %1$s.</string>
     <string name="update_check_failed">Не вдалося перевірити оновлення. Перевірте інтернет-з\'єднання.</string>
     <string name="action_lock_pc">Заблокувати ПК</string>
+    <string name="action_unlock_pc">Розблокувати ПК</string>
+    <string name="pc_unlock_unavailable">Заблокуйте ПК і спробуйте ще раз, коли обидва пристрої будуть у тій самій мережі.</string>
     <string name="action_sleep_pc">Сон</string>
     <string name="action_hibernate_pc">Глибокий сон</string>
     <string name="action_phone_sound_on_pc">Відтворювати звук телефона на ПК</string>
