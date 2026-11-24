@@ -519,6 +519,11 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **App windows take clicks with the phone locked on more phones.** On some phones (a POCO
+  F5 Pro on HyperOS, say) the window's display went to sleep with the phone, so typing still
+  worked but clicks didn't. The phone is now woken for it as on phones that don't run windows
+  on a display of their own, with its screen kept dark
+  ([#528](https://github.com/thtbee/nectarlink/issues/528)).
 - **Setting up unlock with phone says what's wrong.** With it off on the phone, the PC said
   "Not confirmed on the phone" although the phone never asked; it now says to turn it on there.
   A phone without a fingerprint that Android counts as strong now gets its own message instead
