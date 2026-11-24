@@ -8,6 +8,9 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Ukrainian.** NectarLink speaks Українська on the phone and the PC. Language (Settings ›
+  Appearance on the phone, Settings › General on the PC) picks it, or the system language does. Thanks to
+  [@Lik1ch](https://github.com/Lik1ch).
 - **Zoom into a photo on the PC.** In the Photos viewer the mouse wheel zooms around the
   pointer, a double click goes between fitting the window and a close look, and a zoomed photo
   can be dragged around. It shows the full photo, so screenshots stay sharp up close

@@ -21,6 +21,7 @@ pub const LANGUAGES: &[(&str, &str)] = &[
     ("es", "Español"),
     ("ru", "Русский"),
     ("pl", "Polski"),
+    ("uk", "Українська"),
 ];
 
 /// [`LANGUAGES`] without the system's, as JSON for Settings: `[{ code, name }]`.
@@ -112,6 +113,7 @@ fn system_language(preferred: &[String]) -> &'static str {
             "es" => "es",
             "ja" => "ja",
             "pl" => "pl",
+            "uk" => "uk",
             "ru" => "ru",
             "tr" => "tr",
             "vi" => "vi",
@@ -243,6 +245,7 @@ mod tests {
         assert_eq!(system_language(&list(&["vi-VN"])), "vi");
         assert_eq!(system_language(&list(&["pl-PL"])), "pl");
         assert_eq!(system_language(&list(&["pl"])), "pl");
+        assert_eq!(system_language(&list(&["uk-UA", "en-US"])), "uk");
         assert_eq!(system_language(&list(&["zh-Hans-CN"])), "zh_CN");
         assert_eq!(system_language(&list(&["zh-Hant-TW", "en"])), "en");
         assert_eq!(system_language(&list(&["pt-BR"])), "pt_BR");
