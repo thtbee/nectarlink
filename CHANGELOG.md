@@ -510,6 +510,9 @@ change things that need a step from you, and its notes say so.
 - **Folder sync is quicker with many files.** Comparing a big folder no longer slows down
   with the square of its file count. Thanks to [@aihehye](https://github.com/aihehye)
   ([#537](https://github.com/thtbee/nectarlink/pull/537)).
+- **Less work in the tray.** Storage sizes for Settings are only counted while Settings is
+  open, not on every new clipboard item, text or photo. Thanks to
+  [@aihehye](https://github.com/aihehye) ([#538](https://github.com/thtbee/nectarlink/pull/538)).
 - **Sleep from the phone works on more laptops.** Laptops that sleep the Modern Standby way
   ignored it; the screen now goes off as with the power button, and Windows takes them into
   standby ([#542](https://github.com/thtbee/nectarlink/issues/542)).
