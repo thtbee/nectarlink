@@ -12,6 +12,7 @@ controller for a paired PC.
 |---|---|---|
 | `input.inject` | desktop | Accepts pointer, keyboard, and presentation input from a paired phone |
 | `input.gamepad` | desktop | Also plugs in a game controller for a phone's `pad` input (§3.1); offered with `input.inject` |
+| `input.gestures` | desktop | Also does touchpad `gesture` input (§3.2); offered with `input.inject` on Windows and Linux |
 
 Input is governed by the `remote_input` per-device toggle on the PC, which is
 **off by default**. While `remote_input` is off for a phone:
@@ -86,6 +87,7 @@ Input =
   | { type: "laser",  on: bool, x?: float32, y?: float32 }
   | { type: "pad",    pad: Pad }
   | { type: "pad_off" }
+  | { type: "gesture", gesture: Gesture }
 
 Button       = "left" | "right" | "middle"
 ButtonAction = "down" | "up" | "click"
@@ -155,6 +157,27 @@ X, `0x8000` Y. A missing field is 0.
   come for 1 second, and unplugs the controller after 60 seconds, when the
   phone sends `pad_off` (control stream only), when the link drops, or when
   `remote_input` is turned off. Each phone gets its own controller, up to 4.
+
+### 3.2 Touchpad gestures (`gesture`)
+
+Only to a PC that offers `input.gestures`, under the same `remote_input`
+toggle as the rest; control stream only. The phone recognises the gesture
+and the PC does what its own touchpad would:
+
+| `gesture` | Phone | Windows | Linux |
+|---|---|---|---|
+| `search` | three-finger tap | Win+S | Super |
+| `notifications` | four-finger tap | Win+N (Win+A before Windows 11) | Super+V (not on KDE) |
+| `task_view` | three or four fingers up | Win+Tab | Super (KDE: Meta+W) |
+| `show_desktop` | three or four fingers down | Win+D | Super+D |
+| `switcher_next`, `switcher_previous` | three fingers right, left | Alt held, Tab / Shift+Tab | the same |
+| `switcher_done` | fingers lifted | Alt let go | the same |
+| `desktop_next`, `desktop_previous` | four fingers left, right | Ctrl+Win+Right / Left | Ctrl+Alt+Right / Left (KDE: Meta+Ctrl) |
+| `zoom_in`, `zoom_out` | two fingers spread, close | Ctrl+wheel | Ctrl+wheel |
+
+The first `switcher_*` opens the app switcher and holds it open; the PC lets
+go of Alt on `switcher_done`, after 8 seconds without a `switcher_*`, when
+the link drops, or when `remote_input` is turned off.
 
 ## 4. Validation and rate limiting
 

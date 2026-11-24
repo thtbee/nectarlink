@@ -1120,6 +1120,12 @@ pub const FEATURES: &[FeatureDef] = &[
         partial: None,
     },
     FeatureDef {
+        id: "input.gestures",
+        group: FeatureGroup::Input,
+        requires: &[desktop("input.gestures", UPDATE)],
+        partial: None,
+    },
+    FeatureDef {
         id: "input.deck",
         group: FeatureGroup::Input,
         requires: &[desktop("deck.actions", UPDATE)],

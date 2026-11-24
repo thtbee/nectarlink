@@ -14,6 +14,9 @@ pub fn scroll(_dx: f32, _dy: f32) {}
 pub fn type_text(_text: &str) {}
 pub fn press_key(_key: &str, _mods: &[KeyMod]) {}
 pub fn slide(_action: SlideAction) {}
+/// Not offered on macOS (`input.gestures`), so never called.
+pub fn gesture(_gesture: nectarlink_core::TouchGesture) {}
+pub fn close_switcher() {}
 // This read-only CoreGraphics function accepts value arguments and has no
 // pointer or thread preconditions. It does not request Accessibility access.
 #[allow(unsafe_code)]

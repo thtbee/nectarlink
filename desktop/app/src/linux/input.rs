@@ -1638,6 +1638,122 @@ pub fn is_user_active_within_ms(max_idle_ms: u32) -> bool {
     }
 }
 
+/// Whether the app switcher is open (Alt held) from a three-finger swipe, and
+/// when the phone last moved it.
+static SWITCHER: Mutex<Option<std::time::Instant>> = Mutex::new(None);
+/// How long Alt stays held without word from the phone, in case it left mid-swipe.
+const SWITCHER_IDLE: std::time::Duration = std::time::Duration::from_secs(8);
+
+const KEY_TAB: u16 = 15;
+const KEY_W: u16 = 17;
+const KEY_LEFTCTRL: u16 = 29;
+const KEY_D: u16 = 32;
+const KEY_LEFTSHIFT: u16 = 42;
+const KEY_V: u16 = 47;
+const KEY_LEFTALT: u16 = 56;
+const KEY_LEFT: u16 = 105;
+const KEY_RIGHT: u16 = 106;
+const KEY_LEFTMETA: u16 = 125;
+
+/// Presses and releases keys in order (`true` down), through uinput or the
+/// Remote Desktop portal.
+fn keys(events: &[(u16, bool)]) -> bool {
+    if with_uinput(|u| {
+        let mut ok = true;
+        for &(code, down) in events {
+            ok &= u.emit(EV_KEY, code, i32::from(down)) && u.syn();
+        }
+        ok
+    }) {
+        return true;
+    }
+    with_wayland_portal(|p| events.iter().all(|&(code, down)| p.keycode(i32::from(code), down)))
+}
+
+/// `key` with `mods` held.
+fn chord(mods: &[u16], key: u16) {
+    let mut events: Vec<(u16, bool)> = mods.iter().map(|&m| (m, true)).collect();
+    events.push((key, true));
+    events.push((key, false));
+    events.extend(mods.iter().rev().map(|&m| (m, false)));
+    if !keys(&events) {
+        tracing::debug!("couldn't press a gesture's keys");
+    }
+}
+
+/// A touchpad gesture from the phone, with the keys the desktop's own
+/// touchpad gestures use (GNOME, KDE, and Super-based defaults elsewhere).
+pub fn gesture(gesture: nectarlink_core::TouchGesture) {
+    use nectarlink_core::TouchGesture as G;
+    let desktop = std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_default().to_ascii_lowercase();
+    let kde = desktop.contains("kde");
+    match gesture {
+        // GNOME's overview searches as you type; KDE's Meta opens its launcher.
+        G::Search => chord(&[], KEY_LEFTMETA),
+        G::TaskView if kde => chord(&[KEY_LEFTMETA], KEY_W),
+        G::TaskView => chord(&[], KEY_LEFTMETA),
+        G::ShowDesktop => chord(&[KEY_LEFTMETA], KEY_D),
+        // GNOME's notification list; KDE has no default key for it.
+        G::Notifications if !kde => chord(&[KEY_LEFTMETA], KEY_V),
+        G::Notifications => {}
+        G::DesktopNext if kde => chord(&[KEY_LEFTMETA, KEY_LEFTCTRL], KEY_RIGHT),
+        G::DesktopPrevious if kde => chord(&[KEY_LEFTMETA, KEY_LEFTCTRL], KEY_LEFT),
+        G::DesktopNext => chord(&[KEY_LEFTCTRL, KEY_LEFTALT], KEY_RIGHT),
+        G::DesktopPrevious => chord(&[KEY_LEFTCTRL, KEY_LEFTALT], KEY_LEFT),
+        G::ZoomIn | G::ZoomOut => {
+            keys(&[(KEY_LEFTCTRL, true)]);
+            scroll(0.0, if gesture == G::ZoomIn { -1.0 } else { 1.0 });
+            keys(&[(KEY_LEFTCTRL, false)]);
+        }
+        G::SwitcherNext | G::SwitcherPrevious => {
+            let opening = {
+                let mut open = SWITCHER.lock().unwrap_or_else(|e| e.into_inner());
+                let opening = open.is_none();
+                *open = Some(std::time::Instant::now());
+                opening
+            };
+            let mut events = Vec::with_capacity(5);
+            if opening {
+                events.push((KEY_LEFTALT, true));
+            }
+            let back = gesture == G::SwitcherPrevious;
+            if back {
+                events.push((KEY_LEFTSHIFT, true));
+            }
+            events.push((KEY_TAB, true));
+            events.push((KEY_TAB, false));
+            if back {
+                events.push((KEY_LEFTSHIFT, false));
+            }
+            keys(&events);
+            if opening {
+                std::thread::spawn(|| {
+                    loop {
+                        std::thread::sleep(std::time::Duration::from_millis(500));
+                        let state = *SWITCHER.lock().unwrap_or_else(|e| e.into_inner());
+                        match state {
+                            None => return,
+                            Some(at) if at.elapsed() >= SWITCHER_IDLE => {
+                                close_switcher();
+                                return;
+                            }
+                            Some(_) => {}
+                        }
+                    }
+                });
+            }
+        }
+        G::SwitcherDone => close_switcher(),
+    }
+}
+
+/// Lets go of Alt if a three-finger swipe holds it: the app picked comes up.
+pub fn close_switcher() {
+    if SWITCHER.lock().unwrap_or_else(|e| e.into_inner()).take().is_some() {
+        keys(&[(KEY_LEFTALT, false)]);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
