@@ -502,21 +502,22 @@ Item {
         opacity: 0.6
     }
 
-    // ---- Compact Top Category Pill Bar (narrow windows < 680px) ----
-    Flickable {
+    // ---- Compact Top Category Pills (narrow windows < 680px) ----
+    // They wrap onto more lines rather than scroll sideways: a tiling window
+    // manager can make the window narrower than its minimum, and a sideways
+    // strip can't be scrolled with a mouse wheel, so the last pills were out
+    // of reach.
+    Item {
         id: compactCategoryBar
         visible: !page.wideLayout
         x: Theme.contentPadding
         y: 12
         width: parent.width - Theme.contentPadding * 2
-        height: 38
-        contentWidth: compactRow.width
-        boundsBehavior: Flickable.StopAtBounds
-        clip: true
+        height: compactRow.implicitHeight
 
-        Row {
+        Flow {
             id: compactRow
-            height: parent.height
+            width: parent.width
             spacing: 6
             Repeater {
                 model: page.categories
@@ -529,13 +530,23 @@ Item {
                         : Theme.surfaceContent
                     height: 34
                     width: compactTabRow.implicitWidth + 22
-                    anchors.verticalCenter: parent.verticalCenter
                     radius: Theme.pill(height)
+                    activeFocusOnTab: true
+                    Accessible.role: Accessible.PageTab
+                    Accessible.name: modelData.title
+                    Accessible.selected: selected
+                    Accessible.onPressAction: page.currentSection = modelData.id
+                    Keys.onPressed: (event) => {
+                        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                            page.currentSection = compactTab.modelData.id
+                            event.accepted = true
+                        }
+                    }
                     color: selected
                         ? (Theme.graphite ? Theme.surfaceContent : Theme.secondaryContainer)
                         : Theme.surfaceContainerHigh
-                    border.width: Theme.graphite ? 1 : 0
-                    border.color: Theme.outlineVariant
+                    border.width: Theme.focusVisible(compactTab) ? 2 : (Theme.graphite ? 1 : 0)
+                    border.color: Theme.focusVisible(compactTab) ? Theme.primary : Theme.outlineVariant
                     Row {
                         id: compactTabRow
                         anchors.centerIn: parent
