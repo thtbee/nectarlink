@@ -12,7 +12,7 @@ use std::{
     panic::{AssertUnwindSafe, catch_unwind},
     sync::{
         Arc, Mutex,
-        atomic::{AtomicI32, AtomicU32, Ordering},
+        atomic::{AtomicBool, AtomicI32, AtomicU32, Ordering},
     },
 };
 
@@ -22,7 +22,7 @@ use windows::{
         Globalization::GetUserDefaultUILanguage,
         Graphics::Gdi::{BI_RGB, BITMAPINFO, BITMAPINFOHEADER, CreateDIBSection, DIB_RGB_COLORS, HBITMAP},
         Storage::EnhancedStorage::PKEY_Identity_QualifiedUserName,
-        System::Com::{CoTaskMemAlloc, CoTaskMemFree},
+        System::Com::{COINIT_MULTITHREADED, CoInitializeEx, CoTaskMemAlloc, CoTaskMemFree, CoUninitialize},
         UI::Shell::{
             CPFG_CREDENTIAL_PROVIDER_LABEL, CPFG_CREDENTIAL_PROVIDER_LOGO, CPFIS_NONE, CPFS_DISPLAY_IN_BOTH,
             CPFS_DISPLAY_IN_SELECTED_TILE, CPFT_LARGE_TEXT, CPFT_SMALL_TEXT, CPFT_SUBMIT_BUTTON,
@@ -38,7 +38,7 @@ use windows::{
             ICredentialProviderSetUserArray_Impl, ICredentialProviderUserArray, SHStrDupW,
         },
     },
-    core::{BOOL, GUID, HSTRING, PCWSTR, PWSTR, Ref, implement},
+    core::{AgileReference, BOOL, GUID, HSTRING, PCWSTR, PWSTR, Ref, implement},
 };
 
 use crate::{
@@ -139,11 +139,21 @@ fn take(p: PWSTR) -> Option<String> {
 
 // ---- The provider ----
 
+struct PhoneWatch(Arc<AtomicBool>);
+
+impl Drop for PhoneWatch {
+    fn drop(&mut self) {
+        self.0.store(false, Ordering::Release);
+    }
+}
+
 #[implement(ICredentialProvider, ICredentialProviderSetUserArray)]
 pub struct Provider {
     credentials: Mutex<Vec<ICredentialProviderCredential>>,
     /// The scenario LogonUI set (`0` before it did, or for one it isn't for).
     scenario: Arc<AtomicI32>,
+    auto_unlock: Arc<AtomicBool>,
+    phone_watch: Mutex<Option<PhoneWatch>>,
     _guard: ObjectGuard,
 }
 
@@ -158,6 +168,8 @@ impl Provider {
         Provider {
             credentials: Mutex::default(),
             scenario: Arc::new(AtomicI32::new(0)),
+            auto_unlock: Arc::new(AtomicBool::new(false)),
+            phone_watch: Mutex::new(None),
             _guard: ObjectGuard::new(),
         }
     }
@@ -198,16 +210,63 @@ impl ICredentialProvider_Impl for Provider_Impl {
         Err(E_NOTIMPL.into())
     }
 
-    fn Advise(
-        &self,
-        _pcpe: Ref<'_, ICredentialProviderEvents>,
-        _context: usize,
-    ) -> windows::core::Result<()> {
-        Ok(())
+    fn Advise(&self, pcpe: Ref<'_, ICredentialProviderEvents>, context: usize) -> windows::core::Result<()> {
+        guarded(|| {
+            let mut watch = self.phone_watch.lock().map_err(|_| E_UNEXPECTED)?;
+            *watch = None;
+            let Ok(events) = AgileReference::new(pcpe.ok()?) else {
+                note!("phone unlock: could not share the sign-in callback");
+                return Ok(());
+            };
+            let alive = Arc::new(AtomicBool::new(true));
+            let thread_alive = alive.clone();
+            let auto = self.auto_unlock.clone();
+            let guard = ObjectGuard::new();
+            if std::thread::Builder::new()
+                .name("nectarlink-phone-unlock".into())
+                .spawn(move || {
+                    let _guard = guard;
+                    // SAFETY: this dedicated thread balances COM init and uninit.
+                    if unsafe { CoInitializeEx(None, COINIT_MULTITHREADED) }.is_err() {
+                        return;
+                    }
+                    if let Ok(events) = events.resolve() {
+                        let mut announced = false;
+                        while thread_alive.load(Ordering::Acquire) {
+                            if let Ok(ready) = pipe::phone_request_waiting() {
+                                if ready && !announced && thread_alive.load(Ordering::Acquire) {
+                                    auto.store(true, Ordering::Release);
+                                    // SAFETY: agile reference resolved in our initialized apartment.
+                                    announced = unsafe { events.CredentialsChanged(context) }.is_ok();
+                                    if !announced {
+                                        auto.store(false, Ordering::Release);
+                                    }
+                                } else if !ready {
+                                    announced = false;
+                                    auto.store(false, Ordering::Release);
+                                }
+                            }
+                            std::thread::sleep(std::time::Duration::from_millis(350));
+                        }
+                    }
+                    drop(events);
+                    // SAFETY: COM was initialized on this thread above.
+                    unsafe { CoUninitialize() };
+                })
+                .is_ok()
+            {
+                *watch = Some(PhoneWatch(alive));
+            }
+            Ok(())
+        })
     }
 
     fn UnAdvise(&self) -> windows::core::Result<()> {
-        Ok(())
+        guarded(|| {
+            *self.phone_watch.lock().map_err(|_| E_UNEXPECTED)? = None;
+            self.auto_unlock.store(false, Ordering::Release);
+            Ok(())
+        })
     }
 
     fn GetFieldDescriptorCount(&self) -> windows::core::Result<u32> {
@@ -269,9 +328,9 @@ impl ICredentialProvider_Impl for Provider_Impl {
             // SAFETY: checked non-null above; LogonUI owns them.
             unsafe {
                 *pdwcount = count;
-                // Never the default: the user picks the tile under Sign-in options.
-                *pdwdefault = CREDENTIAL_PROVIDER_NO_DEFAULT;
-                *pbautologonwithdefault = BOOL(0);
+                let tapped = count == 1 && self.auto_unlock.load(Ordering::Acquire);
+                *pdwdefault = if tapped { 0 } else { CREDENTIAL_PROVIDER_NO_DEFAULT };
+                *pbautologonwithdefault = BOOL::from(tapped);
             }
             Ok(())
         })
@@ -317,7 +376,8 @@ impl ICredentialProviderSetUserArray_Impl for Provider_Impl {
                         continue;
                     }
                     let credential: ICredentialProviderCredential2 =
-                        Credential::new(sid, qualified, self.scenario.clone()).into();
+                        Credential::new(sid, qualified, self.scenario.clone(), self.auto_unlock.clone())
+                            .into();
                     credentials.push(credential.into());
                 }
             }
@@ -334,6 +394,7 @@ pub struct Credential {
     sid: String,
     qualified: String,
     scenario: Arc<AtomicI32>,
+    auto_unlock: Arc<AtomicBool>,
     status: Mutex<String>,
     _events: Mutex<Option<ICredentialProviderCredentialEvents>>,
     _guard: ObjectGuard,
@@ -347,11 +408,17 @@ impl std::fmt::Debug for Credential {
 }
 
 impl Credential {
-    fn new(sid: String, qualified: String, scenario: Arc<AtomicI32>) -> Credential {
+    fn new(
+        sid: String,
+        qualified: String,
+        scenario: Arc<AtomicI32>,
+        auto_unlock: Arc<AtomicBool>,
+    ) -> Credential {
         Credential {
             sid,
             qualified,
             scenario,
+            auto_unlock,
             status: Mutex::new(say(Text::Hint).to_owned()),
             _events: Mutex::default(),
             _guard: ObjectGuard::new(),
@@ -361,7 +428,8 @@ impl Credential {
     /// Asks the user's NectarLink and builds the serialization; `Err(text)`
     /// says why it didn't work.
     fn unlock(&self) -> Result<CREDENTIAL_PROVIDER_CREDENTIAL_SERIALIZATION, Text> {
-        let (status, mut password) = pipe::ask(&self.sid).map_err(|e| match e {
+        let from_phone = self.auto_unlock.swap(false, Ordering::AcqRel);
+        let (status, mut password) = pipe::ask(&self.sid, from_phone).map_err(|e| match e {
             pipe::AskError::NotRunning => Text::NotRunning,
             pipe::AskError::Timeout => Text::Declined,
             pipe::AskError::Broken => Text::Failed,
@@ -372,7 +440,7 @@ impl Credential {
             Status::NotEnrolled => Some(Text::NotEnrolled),
             Status::PhoneAway => Some(Text::PhoneAway),
             Status::LockedOut => Some(Text::LockedOut),
-            Status::Failed => Some(Text::Failed),
+            Status::Failed | Status::Ready => Some(Text::Failed),
             Status::PasswordFirst => Some(Text::PasswordFirst),
         };
         if let Some(text) = refusal {

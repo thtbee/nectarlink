@@ -301,6 +301,8 @@
 <string name="update_current_version">Bạn đang dùng NectarLink %1$s.</string>
 <string name="update_check_failed">Không thể kiểm tra cập nhật. Kiểm tra kết nối Internet của bạn.</string>
 <string name="action_lock_pc">Khóa PC</string>
+<string name="action_unlock_pc">Mở khóa PC</string>
+<string name="pc_unlock_unavailable">Khóa PC, rồi thử lại khi cả hai thiết bị kết nối với cùng một mạng.</string>
 <string name="action_sleep_pc">Ngủ</string>
 <string name="action_hibernate_pc">Ngủ đông</string>
 <string name="action_phone_sound_on_pc">Phát âm thanh điện thoại trên PC</string>

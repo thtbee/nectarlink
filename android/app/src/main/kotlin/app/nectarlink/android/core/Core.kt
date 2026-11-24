@@ -2533,6 +2533,21 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     /** Tells paired PCs that `version` is out on `channel`, so they needn't wait for their next check. */
     fun announceUpdate(channel: String, version: String) = command { it.announceUpdate(channel, version) }
 
+    fun unlockPc(id: String) {
+        scope.launch {
+            startJob?.join()
+            val node = node ?: return@launch
+            try {
+                node.unlockFromPhone(id)
+            } catch (e: NectarlinkException) {
+                _messages.tryEmit(
+                    if (e is NectarlinkException.Denied) context.getString(R.string.pc_unlock_unavailable)
+                    else describe(e)
+                )
+            }
+        }
+    }
+
     /** Locks a PC, or puts it to sleep; says how it went. */
     fun pcPower(id: String, sleep: Boolean) {
         scope.launch {

@@ -185,6 +185,7 @@ fun HomeScreen(
     onPairNew: () -> Unit,
     onRefresh: () -> Unit,
     onPower: (pcId: String, sleep: Boolean) -> Unit,
+    onUnlock: (pcId: String) -> Unit,
     onHibernate: (pcId: String) -> Unit,
     onShutdown: (pcId: String) -> Unit = {},
     onRestart: (pcId: String) -> Unit,
@@ -707,6 +708,7 @@ fun HomeScreen(
                     onSendFiles = onSendFiles,
                     onSendFolder = onSendFolder,
                     onPower = onPower,
+                    onUnlock = onUnlock,
                     onHibernate = onHibernate,
                     onShutdown = onShutdown,
                     onRestart = onRestart,
@@ -1511,6 +1513,7 @@ private fun PcCard(
     onSendFiles: (String, List<Uri>) -> Unit,
     onSendFolder: (String, Uri) -> Unit,
     onPower: (String, Boolean) -> Unit,
+    onUnlock: (String) -> Unit,
     onHibernate: (String) -> Unit,
     onShutdown: (String) -> Unit,
     onRestart: (String) -> Unit,
@@ -1924,6 +1927,18 @@ private fun PcCard(
                         )
                         Spacer(Modifier.width(6.dp))
                         ButtonLabel(stringResource(if (ringing) R.string.action_stop_ringing else R.string.action_ring_pc))
+                    }
+                }
+                if (device.has("device.unlock_from_phone") && device.unlockEnabled) {
+                    OutlinedButton(
+                        contentPadding = CardButtonPadding,
+                        enabled = device.online,
+                        colors = outlined,
+                        border = outline,
+                        onClick = { onUnlock(device.id) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        ButtonLabel(stringResource(R.string.action_unlock_pc))
                     }
                 }
                 if (device.has("device.pc_actions")) {

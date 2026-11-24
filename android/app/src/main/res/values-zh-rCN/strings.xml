@@ -294,6 +294,8 @@
     <string name="update_current_version">你当前使用的是 NectarLink %1$s。</string>
     <string name="update_check_failed">无法检查更新。请检查网络连接。</string>
     <string name="action_lock_pc">锁定电脑</string>
+    <string name="action_unlock_pc">解锁电脑</string>
+    <string name="pc_unlock_unavailable">请锁定电脑，确保两台设备连接到同一网络，然后重试。</string>
     <string name="action_sleep_pc">睡眠</string>
     <string name="action_hibernate_pc">休眠</string>
     <string name="action_phone_sound_on_pc">在电脑上播放手机声音</string>
