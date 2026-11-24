@@ -357,9 +357,20 @@ static NEXT_SESSION: AtomicU32 = AtomicU32::new(1);
 /// Monotonic token for auto-clearing window notices.
 static NOTICE_SEQ: AtomicU64 = AtomicU64::new(1);
 
-type FrameMap = HashMap<Window, (u32, u32, Arc<Vec<u8>>)>;
+#[derive(Clone)]
+enum LatestFrame {
+    Cpu {
+        width: u32,
+        height: u32,
+        bgrx: Arc<Vec<u8>>,
+    },
+    #[cfg(windows)]
+    Gpu(crate::win::gpu_video::GpuScreenshotTarget),
+}
 
-/// Latest displayed BGRX frame per window, for instant screenshots.
+type FrameMap = HashMap<Window, LatestFrame>;
+
+/// Latest displayed frame per window, for instant screenshots.
 static FRAMES: Mutex<Option<FrameMap>> = Mutex::new(None);
 /// Active MP4 recorders per window.
 static RECORDERS: Mutex<Option<HashMap<Window, MirrorRecorder>>> = Mutex::new(None);
@@ -556,7 +567,16 @@ fn save_latest_frame(window: Window, width: u32, height: u32, bgrx: Vec<u8>) {
         .lock()
         .unwrap_or_else(|e| e.into_inner())
         .get_or_insert_with(HashMap::new)
-        .insert(window, (width, height, Arc::new(bgrx)));
+        .insert(window, LatestFrame::Cpu { width, height, bgrx: Arc::new(bgrx) });
+}
+
+#[cfg(windows)]
+fn save_latest_gpu_frame(window: Window, target: crate::win::gpu_video::GpuScreenshotTarget) {
+    FRAMES
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .get_or_insert_with(HashMap::new)
+        .insert(window, LatestFrame::Gpu(target));
 }
 
 fn clear_window_buffers(window: &Window) {
@@ -575,20 +595,33 @@ fn clear_window_buffers(window: &Window) {
 }
 
 fn latest_bitmap(window: &Window) -> Option<Bitmap> {
-    let (width, height, raw) = FRAMES
-        .lock()
-        .unwrap_or_else(|e| e.into_inner())
-        .as_ref()
-        .and_then(|m| m.get(window))
-        .map(|(w, h, b)| (*w, *h, b.clone()))?;
-    if width == 0 || height == 0 {
-        return None;
+    let frame =
+        FRAMES.lock().unwrap_or_else(|e| e.into_inner()).as_ref().and_then(|m| m.get(window).cloned())?;
+    match frame {
+        LatestFrame::Cpu { width, height, bgrx } => {
+            if width == 0 || height == 0 {
+                return None;
+            }
+            let mut bgra = (*bgrx).clone();
+            for px in bgra.as_chunks_mut::<4>().0 {
+                px[3] = 0xFF;
+            }
+            Some(Bitmap { width, height, bgra })
+        }
+        #[cfg(windows)]
+        LatestFrame::Gpu(target) => {
+            if target.width == 0 || target.height == 0 {
+                return None;
+            }
+            match target.read_bgra() {
+                Ok(bgra) => Some(Bitmap { width: target.width, height: target.height, bgra }),
+                Err(error) => {
+                    tracing::debug!(%error, "GPU screenshot readback failed");
+                    None
+                }
+            }
+        }
     }
-    let mut bgra = (*raw).clone();
-    for px in bgra.as_chunks_mut::<4>().0 {
-        px[3] = 0xFF;
-    }
-    Some(Bitmap { width, height, bgra })
 }
 
 /// Copies the current mirror frame for `window` to the PC clipboard as PNG.
@@ -2714,6 +2747,12 @@ fn decode(window: Window, items: &Receiver<Item>, waiting: &AtomicUsize) {
     tracing::info!(gpu = decoder.on_gpu(), codec = decoder.codec(), "mirror decoder ready");
     let keyframe_please = || ask_keyframe(window);
     let mut size = (0, 0);
+    #[cfg(windows)]
+    let mut gpu_publisher = crate::win::gpu_video::GpuVideoPublisher::new();
+    #[cfg(windows)]
+    let mut gpu_disabled = false;
+    #[cfg(windows)]
+    let mut last_saved_epoch = 0u64;
     // After a gap, pictures are garbage until the next keyframe.
     let mut gate = DecodeGate::new();
     let mut stats = Stats::new();
@@ -2725,6 +2764,10 @@ fn decode(window: Window, items: &Receiver<Item>, waiting: &AtomicUsize) {
                     match Decoder::new_gpu(&config.codec) {
                         Ok(next) => {
                             decoder = next;
+                            #[cfg(windows)]
+                            {
+                                gpu_disabled = false;
+                            }
                             tracing::info!(
                                 gpu = decoder.on_gpu(),
                                 codec = decoder.codec(),
@@ -2764,8 +2807,12 @@ fn decode(window: Window, items: &Receiver<Item>, waiting: &AtomicUsize) {
                     continue;
                 }
                 let started = Instant::now();
-                let pictures = match decoder.decode(&data, time_us) {
-                    Ok(pictures) => pictures,
+                #[cfg(windows)]
+                let decoded_frames = decoder.decode_frames(&data, time_us);
+                #[cfg(not(windows))]
+                let decoded_frames = decoder.decode(&data, time_us);
+                let frames = match decoded_frames {
+                    Ok(frames) => frames,
                     Err(e) => {
                         tracing::debug!(error = %e, "a video packet didn't decode");
                         decoder.flush();
@@ -2781,21 +2828,105 @@ fn decode(window: Window, items: &Receiver<Item>, waiting: &AtomicUsize) {
                 // if it is old: a static screen may not send another one.
                 // Recheck after decoding: more packets may have arrived.
                 let show = should_show_frame(waiting.load(Ordering::Acquire), last_shown.elapsed());
-                if let (Some(picture), true) = (pictures.last(), show) {
+                if let (Some(frame), true) = (frames.last(), show) {
                     last_shown = Instant::now();
                     let converted = Instant::now();
-                    let (w, h) = if size.0 > 0 { size } else { (picture.width, picture.height) };
-                    let (src_w, src_h) = (w.min(picture.width), h.min(picture.height));
-                    let bgrx = to_bgrx(picture, w, h);
-                    if (src_w, src_h) == (w, h) || src_w == 0 || src_h == 0 {
-                        ffi::video_frame(&stream, src_w, src_h, &bgrx);
-                        save_latest_frame(window, src_w, src_h, bgrx);
+                    let (w, h) = if size.0 > 0 { size } else { (frame.width, frame.height) };
+                    let (src_w, src_h) = (w.min(frame.width), h.min(frame.height));
+                    #[cfg(windows)]
+                    let gpu_published = if !gpu_disabled && decoder.on_gpu() && src_w > 0 && src_h > 0 {
+                        match frame.gpu_surface() {
+                            Ok(Some((texture, index))) => {
+                                let (dst_w, dst_h) = if w > 0 && h > 0 { (w, h) } else { (src_w, src_h) };
+                                match gpu_publisher.publish(
+                                    &texture,
+                                    index,
+                                    src_w,
+                                    src_h,
+                                    dst_w,
+                                    dst_h,
+                                    frame.colors.bt601,
+                                    frame.colors.full_range,
+                                ) {
+                                    Ok(Some(published)) => {
+                                        if ffi::video_gpu_frame(
+                                            &stream,
+                                            published.width,
+                                            published.height,
+                                            published.epoch,
+                                            published.handle,
+                                        ) {
+                                            if published.epoch != last_saved_epoch {
+                                                if let Some(target) = gpu_publisher.screenshot_target() {
+                                                    save_latest_gpu_frame(window, target);
+                                                }
+                                                last_saved_epoch = published.epoch;
+                                            }
+                                            true
+                                        } else {
+                                            tracing::info!(
+                                                "GPU video presentation unavailable; falling back to CPU frames"
+                                            );
+                                            gpu_disabled = true;
+                                            false
+                                        }
+                                    }
+                                    Ok(None) => true,
+                                    Err(error) => {
+                                        tracing::warn!(
+                                            %error,
+                                            "GPU video conversion unavailable; falling back to CPU frames"
+                                        );
+                                        gpu_disabled = true;
+                                        false
+                                    }
+                                }
+                            }
+                            Ok(None) => false,
+                            Err(error) => {
+                                tracing::warn!(%error, "GPU surface unavailable; falling back to CPU frames");
+                                false
+                            }
+                        }
                     } else {
-                        let scaled = scale_bgrx(&bgrx, src_w, src_h, w, h);
-                        ffi::video_frame(&stream, w, h, &scaled);
-                        save_latest_frame(window, w, h, scaled);
+                        false
+                    };
+                    #[cfg(not(windows))]
+                    let gpu_published = false;
+
+                    if gpu_published {
+                        stats.shown(window, decoded, converted.elapsed());
+                    } else {
+                        #[cfg(windows)]
+                        let cpu_picture = match decoder.read_frame(frame) {
+                            Ok(picture) => picture,
+                            Err(error) => {
+                                tracing::warn!(%error, "mirror frame readback failed");
+                                decoder.flush();
+                                gate.reset();
+                                keyframe_please();
+                                continue;
+                            }
+                        };
+                        #[cfg(windows)]
+                        let picture = &cpu_picture;
+                        #[cfg(not(windows))]
+                        let picture = frame;
+                        let bgrx = to_bgrx(picture, w, h);
+                        if (src_w, src_h) == (w, h) || src_w == 0 || src_h == 0 {
+                            ffi::video_frame(&stream, src_w, src_h, &bgrx);
+                            save_latest_frame(window, src_w, src_h, bgrx);
+                        } else {
+                            let scaled = scale_bgrx(&bgrx, src_w, src_h, w, h);
+                            ffi::video_frame(&stream, w, h, &scaled);
+                            save_latest_frame(window, w, h, scaled);
+                        }
+                        #[cfg(windows)]
+                        {
+                            last_saved_epoch = 0;
+                        }
+                        stats.shown(window, decoded, converted.elapsed());
                     }
-                    stats.shown(window, decoded, converted.elapsed());
                 } else {
                     stats.skipped(window);
                 }

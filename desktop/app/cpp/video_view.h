@@ -11,6 +11,7 @@
 #include <rust/cxx.h>
 
 #include <atomic>
+#include <cstddef>
 #include <cstdint>
 
 // Shows the latest picture of a video stream (a phone's screen), scaled to
@@ -121,6 +122,7 @@ private:
     quint64 m_frames = 0;
     // The serial of the picture on screen.
     quint64 m_shown = 0;
+    quint64 m_lastFrozenCheckSerial = 0;
     QString m_windowIcon;
     QString m_windowAppId;
     QString m_windowRelaunch;
@@ -141,6 +143,11 @@ private:
 // The latest picture of `stream`: `width` x `height`, 32-bit BGRX rows.
 // Any thread.
 void video_frame(rust::Str stream, uint32_t width, uint32_t height, rust::Slice<const uint8_t> bgrx);
+
+// The latest GPU-shared picture of `stream`: `width` x `height`, D3D11
+// RGBA8 shared NT handle (`epoch` identifies the resource).
+// Returns false if GPU presentation is unavailable. Any thread.
+bool video_gpu_frame(rust::Str stream, uint32_t width, uint32_t height, uint64_t epoch, size_t handle);
 
 // The stream ended: views of it go blank. Any thread.
 void video_clear(rust::Str stream);

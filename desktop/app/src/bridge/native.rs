@@ -17,6 +17,11 @@ pub mod ffi {
         /// The latest picture of a video stream (32-bit BGRX rows), for
         /// `VideoView`s showing it. Any thread.
         fn video_frame(stream: &str, width: u32, height: u32, bgrx: &[u8]);
+        /// The latest GPU-shared picture of a video stream (Windows D3D11
+        /// RGBA8 NT handle + keyed mutex). Returns `false` if GPU presentation
+        /// is unavailable so the caller can fall back to `video_frame`.
+        #[allow(dead_code)]
+        fn video_gpu_frame(stream: &str, width: u32, height: u32, epoch: u64, handle: usize) -> bool;
         /// The stream ended: its views go blank. Any thread.
         fn video_clear(stream: &str);
 
