@@ -189,6 +189,18 @@ impl State {
 /// Whether reading a text conversation here marks it read on the phone too.
 static MARK_READ_ON_PHONE: AtomicBool = AtomicBool::new(false);
 
+/// Whether Messages is on screen: a conversation left open in a window that's
+/// closed to the tray or minimized isn't being read.
+static ON_SCREEN: AtomicBool = AtomicBool::new(false);
+
+/// Messages came on screen or went off it; on, the open conversation counts as read.
+pub fn set_on_screen(on: bool) {
+    ON_SCREEN.store(on, Ordering::Relaxed);
+    if on {
+        mark_open_read();
+    }
+}
+
 /// Conversations the phone was asked to mark read, as of their latest message:
 /// asked once until something newer arrives, unless the ask failed for a reason
 /// that may pass (the link was down).
@@ -207,7 +219,7 @@ pub fn set_mark_read_on_phone(on: bool) {
 /// on and it has texts the phone calls unread. The phone says no unless it
 /// offers it (Elevated), which is fine: it's asked once per latest message.
 fn mark_open_read() {
-    if !MARK_READ_ON_PHONE.load(Ordering::Relaxed) {
+    if !MARK_READ_ON_PHONE.load(Ordering::Relaxed) || !ON_SCREEN.load(Ordering::Relaxed) {
         return;
     }
     let Some((device, thread, date)) = state(|s| {

@@ -427,8 +427,11 @@ internal class PhonePlatform(
     private fun markReadInApp(thread: Long): Boolean {
         val listener = NotificationListener.instance ?: return false
         val people = sms().peopleOf(thread).ifEmpty { return false }
+        // Only the texting app's own: a chat app's conversation with the same person isn't this one.
+        val smsApp = android.provider.Telephony.Sms.getDefaultSmsPackage(context) ?: return false
         var done = false
         for (sbn in listener.active()) {
+            if (sbn.packageName != smsApp) continue
             val n = sbn.notification
             if (n.category != Notification.CATEGORY_MESSAGE) continue
             val title = n.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: continue
