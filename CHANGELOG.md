@@ -523,6 +523,10 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **The Linux app starts on Wayland with PipeWire capture installed.** Checking for the screen
+  capture portal stopped the app's background service at start, so it stayed on the loading
+  screen. Thanks to [@krakotay](https://github.com/krakotay)
+  ([#598](https://github.com/thtbee/nectarlink/issues/598), [#595](https://github.com/thtbee/nectarlink/pull/595)).
 - **Photos loads more than the first page.** Dragging the scrollbar to the bottom stopped short
   of it, and a first page that didn't fill the window never asked for more, so some galleries
   showed only their first 80 photos. Thanks to [@aihehye](https://github.com/aihehye)
