@@ -2443,6 +2443,8 @@ async fn phones_lock_pcs_and_links_open_on_either_side() {
     assert!(matches!(refused, Err(Error::Unsupported)), "{refused:?}");
     let refused = phone.node.pc_power(pc_id, PowerAction::Shutdown).await;
     assert!(matches!(refused, Err(Error::Unsupported)), "{refused:?}");
+    let refused = phone.node.pc_power(pc_id, PowerAction::Restart).await;
+    assert!(matches!(refused, Err(Error::Unsupported)), "{refused:?}");
     pc.node
         .update_power(
             PowerLevel::Basic,
@@ -2450,10 +2452,11 @@ async fn phones_lock_pcs_and_links_open_on_either_side() {
                 "pc.power".into(),
                 nectarlink_core::PC_HIBERNATE.into(),
                 nectarlink_core::PC_SHUTDOWN.into(),
+                nectarlink_core::PC_RESTART.into(),
             ],
         )
         .await;
-    for action in [PowerAction::Hibernate, PowerAction::Shutdown] {
+    for action in [PowerAction::Hibernate, PowerAction::Shutdown, PowerAction::Restart] {
         let deadline = tokio::time::Instant::now() + WAIT;
         loop {
             match phone.node.pc_power(pc_id, action).await {
@@ -2465,12 +2468,11 @@ async fn phones_lock_pcs_and_links_open_on_either_side() {
             }
         }
     }
-    // The PC answers first and acts a moment later: sleep, hibernate and
-    // shutdown after the same pause, so in any order.
+    // The PC answers first and acts a moment later, so test the actions in any order.
     tokio::time::sleep(Duration::from_millis(800)).await;
     let mut done: Vec<_> = pc.platform.power.lock().unwrap().iter().map(|a| a.as_str()).collect();
     done.sort_unstable();
-    assert_eq!(done, ["hibernate", "lock", "shutdown", "sleep"]);
+    assert_eq!(done, ["hibernate", "lock", "restart", "shutdown", "sleep"]);
 
     // A phone doesn't lock or sleep on request.
     let phone_power = pc.node.pc_power(phone_id, PowerAction::Lock).await;
@@ -4218,9 +4220,9 @@ async fn a_phone_unlocks_its_pc_only_as_enrolled_and_with_its_biometric() {
         tokio::time::sleep(Duration::from_millis(50)).await;
     }
 
-    // On at the PC only: the phone still refuses.
+    // On at the PC only: the phone still refuses, as off there (not declined).
     pc.node.set_device_toggle(phone_id, "unlock", true).unwrap();
-    assert!(matches!(pc.node.unlock_enroll(phone_id, sid, "bee", password()).await, Err(Error::Denied)));
+    assert!(matches!(pc.node.unlock_enroll(phone_id, sid, "bee", password()).await, Err(Error::Unsupported)));
     assert!(phone.platform.unlock_asks.lock().unwrap().is_empty(), "the phone's owner was never asked");
 
     // On at both: the phone's owner agrees, and only sealed data stays on the PC.

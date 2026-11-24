@@ -1928,6 +1928,7 @@ Item {
                                             declined: qsTr("Not confirmed on the phone."),
                                             phone_away: qsTr("The phone isn't connected on this network."),
                                             phone_cant: qsTr("Turn on Unlock this PC with your fingerprint for this PC on the phone too."),
+                                            no_biometric: qsTr("The phone can't do this: it needs Android 11 or later and a fingerprint that Android counts as strong."),
                                             failed: qsTr("Couldn't set it up. Try again."),
                                             registered: "",
                                             register_failed: qsTr("Windows didn't allow it. Turn it off and on to try again.")

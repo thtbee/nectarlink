@@ -307,6 +307,10 @@
     <string name="action_phone_sound_back">音声をスマートフォンに戻す</string>
     <string name="phone_sound_on_pc_off">%1$s はこのスマートフォンの音声を再生しません。PCの「設定」›「デバイス」で、このスマートフォンの「画面ミラーリング」をオンにしてください。</string>
     <string name="action_shutdown_pc">シャットダウン</string>
+    <string name="action_restart_pc">再起動</string>
+    <string name="restart_pc_title">%1$s を再起動しますか？</string>
+    <string name="restart_pc_text">Windows は開いているアプリを閉じて再起動します。未保存のデータがある場合は中止されることがあります。</string>
+    <string name="pc_restart_requested">%1$s に再起動を要求しました。</string>
     <string name="shutdown_pc_title">%1$s をシャットダウンしますか？</string>
     <string name="shutdown_pc_text">開いているアプリが閉じます。未保存のデータがある場合は中止されることがあります。</string>
     <string name="action_wake_pc">起動</string>

@@ -8,6 +8,10 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Restart the PC from the phone.** A Windows PC's card on the phone's Home has **Restart**
+  next to **Shut down**, with the same confirmation; an app with unsaved work can still stop
+  it. Thanks to [@w-rakeeb](https://github.com/w-rakeeb)
+  ([#574](https://github.com/thtbee/nectarlink/issues/574)).
 - **USB only (phone).** **Settings › Devices › USB only**, or a **USB only** Quick Settings
   tile, makes the phone reach PCs only through a USB cable: no dialing or accepting over
   Wi-Fi, mobile data or relays, no local discovery or LocalSend, and the multicast lock is
@@ -491,6 +495,16 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **Setting up unlock with phone says what's wrong.** With it off on the phone, the PC said
+  "Not confirmed on the phone" although the phone never asked; it now says to turn it on there.
+  A phone without a fingerprint that Android counts as strong now gets its own message instead
+  of being told to turn it on, and a phone off the PC's network gets that one
+  ([#578](https://github.com/thtbee/nectarlink/issues/578),
+  [#579](https://github.com/thtbee/nectarlink/issues/579)).
+- **The virtual camera rests on Linux.** With the phone's camera off, NectarLink Webcam kept
+  redrawing its placeholder, using about a third of a CPU core; it now draws it once. Thanks
+  to [@vladikchi](https://github.com/vladikchi)
+  ([#566](https://github.com/thtbee/nectarlink/pull/566)).
 - **HEIC photos show in the Photos viewer.** The PC can't read HEIC itself, so the viewer
   stayed empty; it now shows the photo's preview and says that Open in Photos shows it in full
   ([#559](https://github.com/thtbee/nectarlink/issues/559)).

@@ -441,7 +441,7 @@ pub mod qobject {
         #[qsignal]
         fn toast(self: Pin<&mut AppController>, message: QString);
         /// How setting up unlock with phone ended: `done`, `wrong_password`,
-        /// `declined`, `phone_away`, `phone_cant`, `failed`, or `registered` /
+        /// `declined`, `phone_away`, `phone_cant`, `no_biometric`, `failed`, or `registered` /
         /// `register_failed` for the administrator step.
         #[qsignal]
         #[cxx_name = "unlockResult"]
@@ -1877,6 +1877,7 @@ impl qobject::AppController {
                     crate::win::unlock::Enrolled::Declined => "declined",
                     crate::win::unlock::Enrolled::PhoneAway => "phone_away",
                     crate::win::unlock::Enrolled::PhoneCant => "phone_cant",
+                    crate::win::unlock::Enrolled::NoBiometric => "no_biometric",
                     crate::win::unlock::Enrolled::Failed => "failed",
                 };
                 let _ = qt.queue(move |object| object.unlock_result(device, QString::from(result)));
@@ -1908,8 +1909,14 @@ impl qobject::AppController {
             (false, true) if !others_on => unlock::UNREGISTER_ARG,
             _ => return,
         };
+        let _ = unlock::take_failure();
         crate::win::vcam::run_elevated(arg, move |ok| {
             core_host::refresh_capabilities();
+            if !ok {
+                let reason = unlock::take_failure();
+                let reason = reason.as_deref().unwrap_or("declined, or no reason given");
+                tracing::warn!(arg, reason, "unlock with phone: the administrator step failed");
+            }
             if on {
                 let result = if ok { "registered" } else { "register_failed" };
                 let _ = qt.queue(move |object| object.unlock_result(device, QString::from(result)));

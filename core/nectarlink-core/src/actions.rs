@@ -172,6 +172,8 @@ pub enum PowerAction {
     Hibernate,
     /// Shuts the PC down the normal way: apps with unsaved work can still stop it.
     Shutdown,
+    /// Restarts the PC and lets apps with unsaved work stop it.
+    Restart,
 }
 
 impl PowerAction {
@@ -181,6 +183,7 @@ impl PowerAction {
             PowerAction::Sleep => "sleep",
             PowerAction::Hibernate => "hibernate",
             PowerAction::Shutdown => "shutdown",
+            PowerAction::Restart => "restart",
         }
     }
 
@@ -190,6 +193,7 @@ impl PowerAction {
             "sleep" => Some(PowerAction::Sleep),
             "hibernate" => Some(PowerAction::Hibernate),
             "shutdown" => Some(PowerAction::Shutdown),
+            "restart" => Some(PowerAction::Restart),
             _ => None,
         }
     }
@@ -225,6 +229,7 @@ pub(crate) async fn pc_power(shared: &Arc<Shared>, session: &Session, action: Po
     let needs = match action {
         PowerAction::Hibernate => Some(nectarlink_protocol::messages::pc_power::HIBERNATE),
         PowerAction::Shutdown => Some(nectarlink_protocol::messages::pc_power::SHUTDOWN),
+        PowerAction::Restart => Some(crate::PC_RESTART),
         PowerAction::Lock | PowerAction::Sleep => None,
     };
     if let Some(capability) = needs
@@ -441,6 +446,9 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
             } else {
                 match PowerAction::parse(&action) {
                     None => Envelope::error(ErrorCode::Unsupported, "unknown action"),
+                    Some(PowerAction::Restart) if !shared.we_offer(crate::PC_RESTART) => {
+                        Envelope::error(ErrorCode::Unsupported, "this device doesn't restart on request")
+                    }
                     Some(action) => {
                         let platform = shared.platform.clone();
                         // Sleeping cuts the connection: answer first.
@@ -450,7 +458,10 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
                             // Give the answer time to leave before sleep cuts the network.
                             if matches!(
                                 action,
-                                PowerAction::Sleep | PowerAction::Hibernate | PowerAction::Shutdown
+                                PowerAction::Sleep
+                                    | PowerAction::Hibernate
+                                    | PowerAction::Shutdown
+                                    | PowerAction::Restart
                             ) {
                                 tokio::time::sleep(std::time::Duration::from_millis(300)).await;
                             }
@@ -559,9 +570,15 @@ mod tests {
 
     #[test]
     fn power_actions_round_trip() {
-        for action in [PowerAction::Lock, PowerAction::Sleep, PowerAction::Hibernate, PowerAction::Shutdown] {
+        for action in [
+            PowerAction::Lock,
+            PowerAction::Sleep,
+            PowerAction::Hibernate,
+            PowerAction::Shutdown,
+            PowerAction::Restart,
+        ] {
             assert_eq!(PowerAction::parse(action.as_str()), Some(action));
         }
-        assert_eq!(PowerAction::parse("restart"), None);
+        assert_eq!(PowerAction::parse("reboot"), None);
     }
 }

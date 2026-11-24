@@ -307,6 +307,10 @@
 <string name="action_phone_sound_back">Phát lại âm thanh trên điện thoại</string>
 <string name="phone_sound_on_pc_off">%1$s không phát âm thanh của điện thoại này. Trên PC, hãy bật Phản chiếu màn hình cho điện thoại này trong Cài đặt › Thiết bị.</string>
 <string name="action_shutdown_pc">Tắt máy</string>
+<string name="action_restart_pc">Khởi động lại</string>
+<string name="restart_pc_title">Khởi động lại %1$s?</string>
+<string name="restart_pc_text">Windows sẽ đóng các ứng dụng đang mở và khởi động lại. Ứng dụng có dữ liệu chưa lưu vẫn có thể ngăn việc khởi động lại.</string>
+<string name="pc_restart_requested">Đã yêu cầu khởi động lại %1$s.</string>
 <string name="shutdown_pc_title">Tắt %1$s?</string>
 <string name="shutdown_pc_text">Các ứng dụng đang mở sẽ đóng. Ứng dụng có dữ liệu chưa lưu vẫn có thể chặn việc này.</string>
 <string name="action_wake_pc">Đánh thức</string>

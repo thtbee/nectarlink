@@ -300,6 +300,10 @@
     <string name="action_phone_sound_back">在手机上重新播放声音</string>
     <string name="phone_sound_on_pc_off">%1$s 不播放此手机的声音。请在电脑的 设置 › 设备 中为此手机开启屏幕镜像。</string>
     <string name="action_shutdown_pc">关机</string>
+    <string name="action_restart_pc">重启</string>
+    <string name="restart_pc_title">重启 %1$s？</string>
+    <string name="restart_pc_text">Windows 将关闭打开的应用并重启。有未保存内容的应用仍可能阻止重启。</string>
+    <string name="pc_restart_requested">已请求重启 %1$s。</string>
     <string name="shutdown_pc_title">要关闭 %1$s 吗？</string>
     <string name="shutdown_pc_text">打开的应用会关闭。有未保存内容的应用仍可阻止关机。</string>
     <string name="action_wake_pc">唤醒</string>

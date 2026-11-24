@@ -16,7 +16,9 @@ use std::{
     time::Duration,
 };
 
-use nectarlink_vcam::{DEFAULT_MAPPING_NAME, LOCAL_MAPPING_NAME, SharedFrameMapping};
+use nectarlink_vcam::{
+    DEFAULT_MAPPING_NAME, LOCAL_MAPPING_NAME, SharedFrameMapping, render_placeholder_bgrx,
+};
 
 pub const CLSID_STR: &str = "{8E6C3B74-5D4A-4B9E-9A12-7C8F1E2D3A40}";
 pub const FRIENDLY_NAME: &str = "NectarLink Webcam";
@@ -350,16 +352,36 @@ fn configure_v4l2_yuyv(fd: i32, width: u32, height: u32) -> bool {
     unsafe { libc::ioctl(fd, VIDIOC_S_FMT, &raw mut fmt) == 0 }
 }
 
-fn v4l2_worker_loop(stop: &AtomicBool) {
-    const OUT_W: u32 = 1280;
-    const OUT_H: u32 = 720;
+const OUT_W: u32 = 1280;
+const OUT_H: u32 = 720;
 
+#[derive(Default)]
+struct IdleFrame {
+    label: String,
+    yuyv: Vec<u8>,
+}
+
+impl IdleFrame {
+    fn yuyv(&mut self, phone_name: Option<&str>, scratch_bgrx: &mut [u8]) -> &[u8] {
+        // If the name is being updated, keep the last complete label.
+        let label = phone_name.map(str::trim).unwrap_or(&self.label);
+        if self.yuyv.is_empty() || label != self.label {
+            render_placeholder_bgrx(scratch_bgrx, OUT_W, OUT_H, label);
+            bgrx_to_yuyv(scratch_bgrx, OUT_W, OUT_H, &mut self.yuyv);
+            self.label = label.to_owned();
+        }
+        &self.yuyv
+    }
+}
+
+fn v4l2_worker_loop(stop: &AtomicBool) {
     let mut mapping: Option<SharedFrameMapping> = None;
     let mut v4l2_file: Option<fs::File> = None;
     let mut configured_dims: Option<(u32, u32)> = None;
     let mut bgrx = Vec::new();
-    let mut yuyv = Vec::new();
-    let mut last_ts: Option<(bool, u64)> = None;
+    let mut live_yuyv = Vec::new();
+    let mut idle_frame = IdleFrame::default();
+    let mut last_live_ts = None;
 
     while !stop.load(Ordering::Acquire) {
         if mapping.is_none() {
@@ -374,7 +396,7 @@ fn v4l2_worker_loop(stop: &AtomicBool) {
         {
             v4l2_file = Some(file);
             configured_dims = None;
-            last_ts = None;
+            last_live_ts = None;
         }
 
         let (Some(map), Some(dev)) = (mapping.as_ref(), v4l2_file.as_mut()) else {
@@ -382,28 +404,31 @@ fn v4l2_worker_loop(stop: &AtomicBool) {
             continue;
         };
 
-        if bgrx.len() != (OUT_W * OUT_H * 4) as usize {
-            bgrx.resize((OUT_W * OUT_H * 4) as usize, 0);
-        }
-
-        let state = map.read_bgrx(OUT_W, OUT_H, &mut bgrx);
-        if state.0 && last_ts == Some(state) {
+        bgrx.resize((OUT_W * OUT_H * 4) as usize, 0);
+        let live_ts = map.read_live_bgrx(OUT_W, OUT_H, &mut bgrx);
+        let live = live_ts.is_some();
+        if live && live_ts == last_live_ts {
             thread::sleep(Duration::from_millis(8));
             continue;
         }
-        last_ts = Some(state);
+        last_live_ts = live_ts;
 
         if configured_dims != Some((OUT_W, OUT_H)) {
             let _ = configure_v4l2_yuyv(dev.as_raw_fd(), OUT_W, OUT_H);
             configured_dims = Some((OUT_W, OUT_H));
         }
 
-        bgrx_to_yuyv(&bgrx, OUT_W, OUT_H, &mut yuyv);
-        if dev.write_all(&yuyv).is_err() {
+        let yuyv = if live {
+            bgrx_to_yuyv(&bgrx, OUT_W, OUT_H, &mut live_yuyv);
+            live_yuyv.as_slice()
+        } else {
+            idle_frame.yuyv(map.try_load_phone_name().as_deref(), &mut bgrx)
+        };
+        if dev.write_all(yuyv).is_err() {
             v4l2_file = None;
             configured_dims = None;
             thread::sleep(Duration::from_millis(50));
-        } else if !state.0 {
+        } else if !live {
             thread::sleep(Duration::from_millis(33));
         }
     }
@@ -437,6 +462,42 @@ mod tests {
         let odd_bgrx = vec![0x80u8; 3 * 2 * 4];
         bgrx_to_yuyv(&odd_bgrx, 3, 2, &mut yuyv);
         assert_eq!(yuyv.len(), 4 * 2 * 2);
+    }
+
+    #[test]
+    fn idle_frame_reuses_yuyv_until_the_label_changes() {
+        let mut idle = IdleFrame::default();
+        let mut bgrx = vec![0; (OUT_W * OUT_H * 4) as usize];
+        let first = idle.yuyv(Some("Phone A"), &mut bgrx).to_vec();
+        // Overwrite scratch data to catch accidental rendering or conversion.
+        bgrx.fill(0);
+        assert_eq!(idle.yuyv(Some(" Phone A "), &mut bgrx), first);
+        assert_eq!(idle.yuyv(None, &mut bgrx), first);
+        assert!(bgrx.iter().all(|&byte| byte == 0));
+        assert_ne!(idle.yuyv(Some("Phone B"), &mut bgrx), first);
+    }
+
+    #[test]
+    fn cached_idle_frame_survives_live_video() {
+        let dir = tempfile::tempdir().unwrap();
+        let map = SharedFrameMapping::open_or_create_at(&dir.path().join("frames")).unwrap();
+        let mut idle = IdleFrame::default();
+        let mut bgrx = vec![0; (OUT_W * OUT_H * 4) as usize];
+        map.set_idle("Phone A");
+        let placeholder = idle.yuyv(map.try_load_phone_name().as_deref(), &mut bgrx).to_vec();
+
+        // The live path can overwrite scratch data without invalidating the cache.
+        let live_bgrx = vec![0x80; bgrx.len()];
+        map.write_frame("Phone A", OUT_W, OUT_H, 0, &live_bgrx, false);
+        assert_eq!(map.read_live_bgrx(OUT_W, OUT_H, &mut bgrx), Some(0));
+        let mut live_yuyv = Vec::new();
+        bgrx_to_yuyv(&bgrx, OUT_W, OUT_H, &mut live_yuyv);
+        assert_ne!(live_yuyv, placeholder);
+
+        map.set_idle("Phone A");
+        assert_eq!(map.read_live_bgrx(OUT_W, OUT_H, &mut bgrx), None);
+        assert_eq!(idle.yuyv(map.try_load_phone_name().as_deref(), &mut bgrx), placeholder);
+        assert_eq!(bgrx, live_bgrx);
     }
 
     #[test]
