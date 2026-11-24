@@ -2982,100 +2982,101 @@ mod imp {
             }
 
             #[cfg(windows)]
-            let gpu_encode_result: Option<(u64, windows::core::Result<Vec<(bool, Vec<u8>)>>)> =
-                if !gpu_pipeline_disabled && encoder.as_ref().is_some_and(ScreenEncoder::on_gpu) {
-                    let mut rebuild_for_cpu = false;
-                    let mut wait_for_frame = false;
-                    let mut encoded: Option<(u64, windows::core::Result<Vec<(bool, Vec<u8>)>>)> = None;
+            let gpu_encode_result = if !gpu_pipeline_disabled
+                && encoder.as_ref().is_some_and(ScreenEncoder::on_gpu)
+            {
+                let mut rebuild_for_cpu = false;
+                let mut wait_for_frame = false;
+                let mut encoded = None;
 
-                    if let Some(place) = place {
-                        if let Some(capture) = window_capture.as_mut() {
-                            if let Some((dev, src_tex)) = capture.latest_texture(place.in_window) {
-                                match convert_to_gpu_nv12(&mut gpu_nv12, dev, src_tex, dst_w, dst_h) {
-                                    Ok(nv12_tex) => {
-                                        let time_us = started.elapsed().as_micros() as u64;
-                                        let hns = (time_us * 10) as i64;
-                                        if let Some(enc) = encoder.as_mut() {
-                                            encoded = Some((
-                                                time_us,
-                                                enc.encode_surface(nv12_tex, hns, dur_hns, &stop),
-                                            ));
-                                        }
-                                    }
-                                    Err(error) => {
-                                        tracing::info!(%error, "GPU BGRA-to-NV12 unavailable; falling back to CPU pipeline");
-                                        gpu_pipeline_disabled = true;
-                                        gpu_nv12 = None;
-                                        rebuild_for_cpu = true;
+                if let Some(place) = place {
+                    if let Some(capture) = window_capture.as_mut() {
+                        if let Some((dev, src_tex)) = capture.latest_texture(place.in_window) {
+                            match convert_to_gpu_nv12(&mut gpu_nv12, dev, src_tex, dst_w, dst_h) {
+                                Ok(nv12_tex) => {
+                                    let time_us = started.elapsed().as_micros() as u64;
+                                    let hns = (time_us * 10) as i64;
+                                    if let Some(enc) = encoder.as_mut() {
+                                        encoded = Some((
+                                            time_us,
+                                            enc.encode_surface(nv12_tex, hns, dur_hns, &stop),
+                                        ));
                                     }
                                 }
+                                Err(error) => {
+                                    tracing::info!(%error, "GPU BGRA-to-NV12 unavailable; falling back to CPU pipeline");
+                                    gpu_pipeline_disabled = true;
+                                    gpu_nv12 = None;
+                                    rebuild_for_cpu = true;
+                                }
+                            }
+                        } else {
+                            wait_for_frame = true;
+                        }
+                    }
+                } else if let Some(dxgi) = dxgi_capture.as_mut() {
+                    let dev = dxgi.device().clone();
+                    match dxgi.acquire_texture() {
+                        Ok(Some(src_tex)) => {
+                            dxgi_wait_started = None;
+                            match convert_to_gpu_nv12(&mut gpu_nv12, &dev, src_tex, dst_w, dst_h) {
+                                Ok(nv12_tex) => {
+                                    let time_us = started.elapsed().as_micros() as u64;
+                                    let hns = (time_us * 10) as i64;
+                                    if let Some(enc) = encoder.as_mut() {
+                                        encoded = Some((
+                                            time_us,
+                                            enc.encode_surface(nv12_tex, hns, dur_hns, &stop),
+                                        ));
+                                    }
+                                }
+                                Err(error) => {
+                                    tracing::info!(%error, "GPU BGRA-to-NV12 unavailable; falling back to CPU pipeline");
+                                    gpu_pipeline_disabled = true;
+                                    gpu_nv12 = None;
+                                    rebuild_for_cpu = true;
+                                }
+                            }
+                        }
+                        Ok(None) => {
+                            if dxgi_wait_started.get_or_insert_with(Instant::now).elapsed()
+                                >= Duration::from_millis(500)
+                            {
+                                dxgi_capture = None;
+                                dxgi_wait_started = None;
+                                dxgi_retry_after = Some(Instant::now() + Duration::from_secs(3));
+                                gpu_nv12 = None;
+                                rebuild_for_cpu = true;
                             } else {
                                 wait_for_frame = true;
                             }
                         }
-                    } else if let Some(dxgi) = dxgi_capture.as_mut() {
-                        let dev = dxgi.device().clone();
-                        match dxgi.acquire_texture() {
-                            Ok(Some(src_tex)) => {
-                                dxgi_wait_started = None;
-                                match convert_to_gpu_nv12(&mut gpu_nv12, &dev, src_tex, dst_w, dst_h) {
-                                    Ok(nv12_tex) => {
-                                        let time_us = started.elapsed().as_micros() as u64;
-                                        let hns = (time_us * 10) as i64;
-                                        if let Some(enc) = encoder.as_mut() {
-                                            encoded = Some((
-                                                time_us,
-                                                enc.encode_surface(nv12_tex, hns, dur_hns, &stop),
-                                            ));
-                                        }
-                                    }
-                                    Err(error) => {
-                                        tracing::info!(%error, "GPU BGRA-to-NV12 unavailable; falling back to CPU pipeline");
-                                        gpu_pipeline_disabled = true;
-                                        gpu_nv12 = None;
-                                        rebuild_for_cpu = true;
-                                    }
-                                }
-                            }
-                            Ok(None) => {
-                                if dxgi_wait_started.get_or_insert_with(Instant::now).elapsed()
-                                    >= Duration::from_millis(500)
-                                {
-                                    dxgi_capture = None;
-                                    dxgi_wait_started = None;
-                                    dxgi_retry_after = Some(Instant::now() + Duration::from_secs(3));
-                                    gpu_nv12 = None;
-                                    rebuild_for_cpu = true;
-                                } else {
-                                    wait_for_frame = true;
-                                }
-                            }
-                            Err(error) => {
-                                tracing::info!(%error, "DXGI desktop duplication lost; falling back to GDI");
-                                dxgi_capture = None;
-                                dxgi_wait_started = None;
-                                dxgi_retry_after = Some(Instant::now() + Duration::from_secs(2));
-                                gpu_nv12 = None;
-                                rebuild_for_cpu = true;
-                            }
+                        Err(error) => {
+                            tracing::info!(%error, "DXGI desktop duplication lost; falling back to GDI");
+                            dxgi_capture = None;
+                            dxgi_wait_started = None;
+                            dxgi_retry_after = Some(Instant::now() + Duration::from_secs(2));
+                            gpu_nv12 = None;
+                            rebuild_for_cpu = true;
                         }
                     }
+                }
 
-                    if rebuild_for_cpu {
-                        encoder = None;
-                        continue;
+                if rebuild_for_cpu {
+                    encoder = None;
+                    continue;
+                }
+                if wait_for_frame {
+                    let elapsed = tick_start.elapsed();
+                    if let Some(rem) = frame_interval.checked_sub(elapsed) {
+                        std::thread::sleep(rem);
                     }
-                    if wait_for_frame {
-                        let elapsed = tick_start.elapsed();
-                        if let Some(rem) = frame_interval.checked_sub(elapsed) {
-                            std::thread::sleep(rem);
-                        }
-                        continue;
-                    }
-                    encoded
-                } else {
-                    None
-                };
+                    continue;
+                }
+                encoded
+            } else {
+                None
+            };
 
             #[cfg(windows)]
             let encode_attempt = if let Some(gpu_result) = gpu_encode_result {

@@ -58,6 +58,15 @@ pub struct WindowCapture {
     columns: Vec<(usize, u32)>,
 }
 
+/// Latest cropped frame surface and bounds returned by `WindowCapture::next_cropped_frame`.
+struct CroppedFrame {
+    _frame: Direct3D11CaptureFrame,
+    texture: ID3D11Texture2D,
+    area: D3D11_BOX,
+    width: u32,
+    height: u32,
+}
+
 impl WindowCapture {
     /// Starts capturing `hwnd`, without the pointer and, where Windows
     /// allows it, without the yellow capture border.
@@ -177,7 +186,9 @@ impl WindowCapture {
     /// arrived; returns `None` before the first frame.
     pub fn latest_texture(&mut self, crop: RECT) -> Option<(&ID3D11Device, &ID3D11Texture2D)> {
         let update = (|| -> windows::core::Result<()> {
-            let Some((_frame, texture, area, w, h)) = self.next_cropped_frame(crop)? else {
+            let Some(CroppedFrame { _frame, texture, area, width: w, height: h }) =
+                self.next_cropped_frame(crop)?
+            else {
                 return Ok(());
             };
             let dst = ensure_texture(&self.device, &mut self.gpu_texture, w, h, false)?;
@@ -209,10 +220,7 @@ impl WindowCapture {
         true
     }
 
-    fn next_cropped_frame(
-        &mut self,
-        crop: RECT,
-    ) -> windows::core::Result<Option<(Direct3D11CaptureFrame, ID3D11Texture2D, D3D11_BOX, u32, u32)>> {
+    fn next_cropped_frame(&mut self, crop: RECT) -> windows::core::Result<Option<CroppedFrame>> {
         // Only the newest matters: older frames are dropped.
         let mut newest = None;
         while let Ok(frame) = self.pool.TryGetNextFrame() {
@@ -245,15 +253,17 @@ impl WindowCapture {
             if right <= left || bottom <= top {
                 return Ok(None);
             }
-            let (w, h) = (right - left, bottom - top);
+            let (width, height) = (right - left, bottom - top);
             let area = D3D11_BOX { left, top, front: 0, right, bottom, back: 1 };
-            Ok(Some((frame, texture, area, w, h)))
+            Ok(Some(CroppedFrame { _frame: frame, texture, area, width, height }))
         }
     }
 
     /// Reads the newest frame, if one came, into `last`.
     fn latest(&mut self, crop: RECT) -> windows::core::Result<()> {
-        let Some((_frame, texture, area, w, h)) = self.next_cropped_frame(crop)? else {
+        let Some(CroppedFrame { _frame, texture, area, width: w, height: h }) =
+            self.next_cropped_frame(crop)?
+        else {
             return Ok(());
         };
         // SAFETY: COM calls on live interfaces; the staging texture is
