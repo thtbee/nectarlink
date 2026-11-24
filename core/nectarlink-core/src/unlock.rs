@@ -339,8 +339,12 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
         // Phone side: wrap a key for this PC.
         types::UNLOCK_ENROLL => match env.body::<UnlockEnroll>() {
             Ok(enroll) if enroll.is_valid() => {
-                if !allowed(shared, session) {
-                    Envelope::error(ErrorCode::Denied, "unlocking is off")
+                // Unsupported, not Denied: the PC then says to turn it on here,
+                // rather than that the phone's owner said no (#579).
+                if !shared.toggle_on(&session.peer, TOGGLE) {
+                    Envelope::error(ErrorCode::Unsupported, "unlocking is off")
+                } else if !on_local_network(shared, session) {
+                    Envelope::error(ErrorCode::Denied, "not on this network")
                 } else {
                     let ask = Ask {
                         pc_name: shown_name(&shared.peer_name(&session.peer)),
@@ -456,8 +460,11 @@ pub(crate) async fn enroll(
     if !shared.offers(&session.peer, KEY)? || !shared.we_offer(PC) {
         return Err(Error::Unsupported);
     }
-    if !allowed(shared, session) {
+    if !shared.toggle_on(&session.peer, TOGGLE) {
         return Err(Error::Denied);
+    }
+    if !on_local_network(shared, session) {
+        return Err(Error::Offline);
     }
     let key = new_key().map_err(|e| Error::Internal(e.to_string()))?;
     let enroll = UnlockEnroll {

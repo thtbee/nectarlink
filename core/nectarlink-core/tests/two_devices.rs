@@ -4175,9 +4175,9 @@ async fn a_phone_unlocks_its_pc_only_as_enrolled_and_with_its_biometric() {
         tokio::time::sleep(Duration::from_millis(50)).await;
     }
 
-    // On at the PC only: the phone still refuses.
+    // On at the PC only: the phone still refuses, as off there (not declined).
     pc.node.set_device_toggle(phone_id, "unlock", true).unwrap();
-    assert!(matches!(pc.node.unlock_enroll(phone_id, sid, "bee", password()).await, Err(Error::Denied)));
+    assert!(matches!(pc.node.unlock_enroll(phone_id, sid, "bee", password()).await, Err(Error::Unsupported)));
     assert!(phone.platform.unlock_asks.lock().unwrap().is_empty(), "the phone's owner was never asked");
 
     // On at both: the phone's owner agrees, and only sealed data stays on the PC.
