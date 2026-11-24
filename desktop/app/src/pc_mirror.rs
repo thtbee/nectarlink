@@ -22,26 +22,31 @@ mod imp {
     use nectarlink_core::{MirrorConfig, MirrorSend, PacketKind};
     #[cfg(windows)]
     use windows::Win32::{
-        Foundation::{E_INVALIDARG, E_NOTIMPL, ERROR_TIMEOUT, POINT, RECT},
-        Graphics::Gdi::{
-            BI_RGB, BITMAPINFO, BITMAPINFOHEADER, CreateCompatibleBitmap, CreateCompatibleDC, DESKTOPHORZRES,
-            DESKTOPVERTRES, DeleteDC, DeleteObject, GetDC, GetDIBits, GetDeviceCaps, HALFTONE, ReleaseDC,
-            SRCCOPY, SelectObject, SetStretchBltMode, StretchBlt,
+        Foundation::{E_FAIL, E_INVALIDARG, E_NOTIMPL, ERROR_TIMEOUT, POINT, RECT},
+        Graphics::{
+            Direct3D11::{D3D11_TEXTURE2D_DESC, ID3D11Device, ID3D11Texture2D},
+            Gdi::{
+                BI_RGB, BITMAPINFO, BITMAPINFOHEADER, CreateCompatibleBitmap, CreateCompatibleDC,
+                DESKTOPHORZRES, DESKTOPVERTRES, DeleteDC, DeleteObject, GetDC, GetDIBits, GetDeviceCaps,
+                HALFTONE, ReleaseDC, SRCCOPY, SelectObject, SetStretchBltMode, StretchBlt,
+            },
         },
         Media::MediaFoundation::{
             CODECAPI_AVEncCommonMeanBitRate, CODECAPI_AVEncMPVGOPSize, CODECAPI_AVEncVideoForceKeyFrame,
-            CODECAPI_AVLowLatencyMode, ICodecAPI, IMFActivate, IMFAsyncCallback, IMFAsyncCallback_Impl,
-            IMFAsyncResult, IMFAttributes, IMFMediaBuffer, IMFMediaEventGenerator, IMFMediaType, IMFSample,
-            IMFTransform, MEError, METransformHaveOutput, METransformNeedInput, MF_E_NOTACCEPTING,
-            MF_E_OPERATION_CANCELLED, MF_E_TRANSFORM_NEED_MORE_INPUT, MF_E_TRANSFORM_STREAM_CHANGE,
-            MF_LOW_LATENCY, MF_MT_AVG_BITRATE, MF_MT_FRAME_RATE, MF_MT_FRAME_SIZE, MF_MT_INTERLACE_MODE,
-            MF_MT_MAJOR_TYPE, MF_MT_MPEG_SEQUENCE_HEADER, MF_MT_PIXEL_ASPECT_RATIO, MF_MT_SUBTYPE,
-            MF_TRANSFORM_ASYNC, MF_TRANSFORM_ASYNC_UNLOCK, MFCreateAttributes, MFCreateMediaType,
-            MFCreateMemoryBuffer, MFCreateSample, MFMediaType_Video, MFSampleExtension_CleanPoint,
-            MFT_CATEGORY_VIDEO_ENCODER, MFT_ENUM_ADAPTER_LUID, MFT_ENUM_FLAG_ASYNCMFT,
-            MFT_ENUM_FLAG_HARDWARE, MFT_ENUM_FLAG_LOCALMFT, MFT_ENUM_FLAG_SORTANDFILTER,
-            MFT_ENUM_FLAG_SYNCMFT, MFT_MESSAGE_COMMAND_FLUSH, MFT_MESSAGE_NOTIFY_BEGIN_STREAMING,
-            MFT_MESSAGE_NOTIFY_END_STREAMING, MFT_MESSAGE_NOTIFY_START_OF_STREAM, MFT_OUTPUT_DATA_BUFFER,
+            CODECAPI_AVLowLatencyMode, ICodecAPI, IMF2DBuffer, IMFActivate, IMFAsyncCallback,
+            IMFAsyncCallback_Impl, IMFAsyncResult, IMFAttributes, IMFDXGIDeviceManager, IMFMediaBuffer,
+            IMFMediaEventGenerator, IMFMediaType, IMFSample, IMFTransform, MEError, METransformHaveOutput,
+            METransformNeedInput, MF_E_NOTACCEPTING, MF_E_OPERATION_CANCELLED,
+            MF_E_TRANSFORM_NEED_MORE_INPUT, MF_E_TRANSFORM_STREAM_CHANGE, MF_LOW_LATENCY, MF_MT_AVG_BITRATE,
+            MF_MT_FRAME_RATE, MF_MT_FRAME_SIZE, MF_MT_INTERLACE_MODE, MF_MT_MAJOR_TYPE,
+            MF_MT_MPEG_SEQUENCE_HEADER, MF_MT_PIXEL_ASPECT_RATIO, MF_MT_SUBTYPE, MF_SA_D3D11_AWARE,
+            MF_TRANSFORM_ASYNC, MF_TRANSFORM_ASYNC_UNLOCK, MFCreateAttributes, MFCreateDXGIDeviceManager,
+            MFCreateDXGISurfaceBuffer, MFCreateMediaType, MFCreateMemoryBuffer, MFCreateSample,
+            MFMediaType_Video, MFSampleExtension_CleanPoint, MFT_CATEGORY_VIDEO_ENCODER,
+            MFT_ENUM_ADAPTER_LUID, MFT_ENUM_FLAG_ASYNCMFT, MFT_ENUM_FLAG_HARDWARE, MFT_ENUM_FLAG_LOCALMFT,
+            MFT_ENUM_FLAG_SORTANDFILTER, MFT_ENUM_FLAG_SYNCMFT, MFT_MESSAGE_COMMAND_FLUSH,
+            MFT_MESSAGE_NOTIFY_BEGIN_STREAMING, MFT_MESSAGE_NOTIFY_END_STREAMING,
+            MFT_MESSAGE_NOTIFY_START_OF_STREAM, MFT_MESSAGE_SET_D3D_MANAGER, MFT_OUTPUT_DATA_BUFFER,
             MFT_OUTPUT_STREAM_PROVIDES_SAMPLES, MFT_REGISTER_TYPE_INFO, MFTEnum2, MFVideoFormat_H264,
             MFVideoFormat_HEVC, MFVideoFormat_NV12, MFVideoInterlace_Progressive,
         },
@@ -51,9 +56,14 @@ mod imp {
             SM_CYSCREEN,
         },
     };
+    #[cfg(windows)]
+    use windows::core::Interface;
 
     #[cfg(windows)]
-    use crate::win::h264::{ensure_mf_started, video_adapters};
+    use crate::win::{
+        h264::{ensure_mf_started, video_adapters},
+        screen_capture::{DxgiScreenCapture, GpuBgraToNv12},
+    };
     use crate::{core_host, win};
 
     struct ActiveSession {
@@ -457,9 +467,22 @@ mod imp {
     #[cfg(windows)]
     fn create_video_encoder(
         subtype: windows::core::GUID,
+        preferred_adapter: Option<u64>,
         configure: impl FnMut(IMFTransform) -> windows::core::Result<ScreenEncoder>,
     ) -> windows::core::Result<ScreenEncoder> {
         let mut candidates = Vec::new();
+        if let Some(luid) = preferred_adapter {
+            match video_encoder_activations(subtype, Some(luid)) {
+                Ok(found) => candidates.extend(found),
+                Err(error) => {
+                    tracing::debug!(%error, adapter = luid, "GPU encoder enumeration failed")
+                }
+            }
+            if candidates.is_empty() {
+                return Err(windows::core::Error::from(E_FAIL));
+            }
+            return try_video_encoders(candidates, configure);
+        }
         if let Ok(adapters) = video_adapters() {
             for adapter in adapters {
                 match video_encoder_activations(subtype, Some(adapter.luid)) {
@@ -606,6 +629,8 @@ mod imp {
     pub(crate) struct ScreenEncoder {
         codec: String,
         transform: IMFTransform,
+        /// Kept after `transform` so the MFT finishes flushing while the DXGI device manager is valid.
+        d3d_manager: Option<(ID3D11Device, IMFDXGIDeviceManager)>,
         async_events: Option<EncoderEvents>,
         pending_input: u32,
         pending_output: u32,
@@ -616,6 +641,7 @@ mod imp {
         height: u32,
         provides_samples: bool,
         output_size: u32,
+        output_sample: Option<IMFSample>,
         seq_header: Vec<u8>,
         sent_first_frame: bool,
         alternatives: Vec<IMFActivate>,
@@ -647,9 +673,47 @@ mod imp {
                 "h265" => MFVideoFormat_HEVC,
                 _ => return Err(windows::core::Error::from(E_INVALIDARG)),
             };
-            create_video_encoder(subtype, |transform| {
-                Self::from_transform(codec, transform, width, height, fps, bitrate)
+            create_video_encoder(subtype, None, |transform| {
+                Self::from_transform(codec, transform, width, height, fps, bitrate, None)
             })
+        }
+
+        pub(crate) fn new_gpu(
+            codec: &str,
+            width: u32,
+            height: u32,
+            fps: u32,
+            bitrate: u32,
+            device: &ID3D11Device,
+            adapter_luid: u64,
+        ) -> windows::core::Result<Self> {
+            ensure_mf_started()?;
+            let subtype = match codec {
+                "h264" => MFVideoFormat_H264,
+                "h265" => MFVideoFormat_HEVC,
+                _ => return Err(windows::core::Error::from(E_INVALIDARG)),
+            };
+            let mut token = 0u32;
+            let mut manager: Option<IMFDXGIDeviceManager> = None;
+            // SAFETY: creates a DXGI device manager bound to the caller's D3D11 device.
+            unsafe {
+                MFCreateDXGIDeviceManager(&mut token, &mut manager)?;
+            }
+            let manager = manager.ok_or_else(|| windows::core::Error::from(E_FAIL))?;
+            // SAFETY: `device` is a live multithread-protected `ID3D11Device` and `token` came from `MFCreateDXGIDeviceManager`.
+            unsafe { manager.ResetDevice(device, token)? };
+            let gpu = (device.clone(), manager);
+            create_video_encoder(subtype, Some(adapter_luid), |transform| {
+                Self::from_transform(codec, transform, width, height, fps, bitrate, Some(gpu.clone()))
+            })
+        }
+
+        pub(crate) fn on_gpu(&self) -> bool {
+            self.d3d_manager.is_some()
+        }
+
+        pub(crate) fn matches_gpu_device(&self, device: &ID3D11Device) -> bool {
+            self.d3d_manager.as_ref().is_some_and(|(d, _)| d.as_raw() == device.as_raw())
         }
 
         fn from_transform(
@@ -659,6 +723,7 @@ mod imp {
             height: u32,
             fps: u32,
             bitrate: u32,
+            d3d_manager: Option<(ID3D11Device, IMFDXGIDeviceManager)>,
         ) -> windows::core::Result<Self> {
             // SAFETY: Media Foundation COM calls with valid parameters.
             unsafe {
@@ -679,6 +744,15 @@ mod imp {
                 }
                 if let Some(attrs) = attributes.as_ref() {
                     let _ = attrs.SetUINT32(&MF_LOW_LATENCY, 1);
+                }
+                if let Some((_, manager)) = d3d_manager.as_ref() {
+                    let aware = attributes
+                        .as_ref()
+                        .is_some_and(|a| a.GetUINT32(&MF_SA_D3D11_AWARE).is_ok_and(|v| v != 0));
+                    if !aware {
+                        return Err(windows::core::Error::from(E_FAIL));
+                    }
+                    transform.ProcessMessage(MFT_MESSAGE_SET_D3D_MANAGER, manager.as_raw() as usize)?;
                 }
 
                 let out_type: IMFMediaType = MFCreateMediaType()?;
@@ -725,6 +799,8 @@ mod imp {
                 let info = transform.GetOutputStreamInfo(0)?;
                 let provides_samples = (info.dwFlags & (MFT_OUTPUT_STREAM_PROVIDES_SAMPLES.0 as u32)) != 0;
                 let output_size = info.cbSize.max(256 * 1024);
+                let output_sample =
+                    if provides_samples { None } else { Some(allocate_output_sample(output_size)?) };
 
                 // Periodic keyframes allow recovery after packet loss without restarting the encoder.
                 let codec_api: Option<ICodecAPI> = windows::core::Interface::cast(&transform).ok();
@@ -744,6 +820,7 @@ mod imp {
                 Ok(Self {
                     codec: codec.to_owned(),
                     transform,
+                    d3d_manager,
                     async_events,
                     pending_input: 0,
                     pending_output: 0,
@@ -752,6 +829,7 @@ mod imp {
                     height,
                     provides_samples,
                     output_size,
+                    output_sample,
                     seq_header,
                     sent_first_frame: false,
                     alternatives: Vec::new(),
@@ -761,8 +839,9 @@ mod imp {
 
         fn next_encoder(&mut self, codec: &str, width: u32, height: u32, fps: u32, bitrate: u32) -> bool {
             let candidates = std::mem::take(&mut self.alternatives);
+            let d3d_manager = self.d3d_manager.clone();
             match try_video_encoders(candidates, |transform| {
-                Self::from_transform(codec, transform, width, height, fps, bitrate)
+                Self::from_transform(codec, transform, width, height, fps, bitrate, d3d_manager.clone())
             }) {
                 Ok(encoder) => {
                     *self = encoder;
@@ -802,12 +881,39 @@ mod imp {
             if nv12.len() < expected {
                 return Ok(Vec::new());
             }
-            self.wait_for_async_event(METransformNeedInput.0 as u32, stop)?;
             // SAFETY: Media Foundation sample creation and MFT ProcessInput/ProcessOutput.
             unsafe {
                 let sample = make_sample(&nv12[..expected], hns, dur_hns)?;
+                self.encode_sample(&sample, stop)
+            }
+        }
+
+        /// Feeds one GPU NV12 `ID3D11Texture2D` surface without CPU readback and
+        /// drains encoded Annex-B H.264 or H.265 access units `(is_keyframe, bytes)`.
+        pub(crate) fn encode_surface(
+            &mut self,
+            tex: &ID3D11Texture2D,
+            hns: i64,
+            dur_hns: i64,
+            stop: &AtomicBool,
+        ) -> windows::core::Result<Vec<(bool, Vec<u8>)>> {
+            // SAFETY: wraps `tex` in a DXGI surface buffer and submits it to the MFT.
+            unsafe {
+                let sample = make_dxgi_sample(tex, hns, dur_hns)?;
+                self.encode_sample(&sample, stop)
+            }
+        }
+
+        unsafe fn encode_sample(
+            &mut self,
+            sample: &IMFSample,
+            stop: &AtomicBool,
+        ) -> windows::core::Result<Vec<(bool, Vec<u8>)>> {
+            self.wait_for_async_event(METransformNeedInput.0 as u32, stop)?;
+            // SAFETY: Media Foundation MFT ProcessInput/ProcessOutput on live COM interfaces.
+            unsafe {
                 let mut out = Vec::new();
-                match self.transform.ProcessInput(0, &sample, 0) {
+                match self.transform.ProcessInput(0, sample, 0) {
                     Ok(()) => {
                         self.wait_for_async_event(METransformHaveOutput.0 as u32, stop)?;
                         self.drain(&mut out)?;
@@ -816,7 +922,7 @@ mod imp {
                         self.wait_for_async_event(METransformHaveOutput.0 as u32, stop)?;
                         self.drain(&mut out)?;
                         self.wait_for_async_event(METransformNeedInput.0 as u32, stop)?;
-                        self.transform.ProcessInput(0, &sample, 0)?;
+                        self.transform.ProcessInput(0, sample, 0)?;
                         self.wait_for_async_event(METransformHaveOutput.0 as u32, stop)?;
                         self.drain(&mut out)?;
                     }
@@ -861,14 +967,18 @@ mod imp {
 
         unsafe fn drain(&mut self, out: &mut Vec<(bool, Vec<u8>)>) -> windows::core::Result<()> {
             loop {
-                // SAFETY: MFT output draining with allocated or MFT-provided sample.
+                // SAFETY: MFT output draining with reused pre-allocated or MFT-provided sample.
                 unsafe {
                     let allocated = if self.provides_samples {
                         None
                     } else {
-                        let s: IMFSample = MFCreateSample()?;
-                        let b: IMFMediaBuffer = MFCreateMemoryBuffer(self.output_size)?;
-                        s.AddBuffer(&b)?;
+                        let s = match self.output_sample.take() {
+                            Some(s) => s,
+                            None => allocate_output_sample(self.output_size)?,
+                        };
+                        if let Ok(b) = s.GetBufferByIndex(0) {
+                            let _ = b.SetCurrentLength(0);
+                        }
                         Some(s)
                     };
                     let mut data = MFT_OUTPUT_DATA_BUFFER {
@@ -885,58 +995,74 @@ mod imp {
                     match res {
                         Ok(()) => {
                             if let Some(sample) = sample {
-                                let clean = sample
-                                    .GetUINT32(&MFSampleExtension_CleanPoint)
-                                    .map(|v| v != 0)
-                                    .unwrap_or(false);
-                                let buf: IMFMediaBuffer = sample.ConvertToContiguousBuffer()?;
-                                let mut ptr = std::ptr::null_mut();
-                                let mut len = 0u32;
-                                buf.Lock(&mut ptr, None, Some(&mut len))?;
-                                let slice = std::slice::from_raw_parts(ptr, len as usize);
-                                let is_idr = !self.sent_first_frame
-                                    || clean
-                                    || match self.codec.as_str() {
-                                        "h265" => has_h265_irap(slice),
-                                        _ => has_h264_idr(slice),
+                                let extract_result = (|| -> windows::core::Result<()> {
+                                    let clean = sample
+                                        .GetUINT32(&MFSampleExtension_CleanPoint)
+                                        .map(|v| v != 0)
+                                        .unwrap_or(false);
+                                    let buf: IMFMediaBuffer = sample.ConvertToContiguousBuffer()?;
+                                    let mut ptr = std::ptr::null_mut();
+                                    let mut len = 0u32;
+                                    buf.Lock(&mut ptr, None, Some(&mut len))?;
+                                    let slice = std::slice::from_raw_parts(ptr, len as usize);
+                                    let is_idr = !self.sent_first_frame
+                                        || clean
+                                        || match self.codec.as_str() {
+                                            "h265" => has_h265_irap(slice),
+                                            _ => has_h264_idr(slice),
+                                        };
+                                    let mut bytes = Vec::new();
+                                    let has_parameters = match self.codec.as_str() {
+                                        "h265" => has_h265_parameters(slice),
+                                        _ => has_h264_sps(slice),
                                     };
-                                let mut bytes = Vec::new();
-                                let has_parameters = match self.codec.as_str() {
-                                    "h265" => has_h265_parameters(slice),
-                                    _ => has_h264_sps(slice),
-                                };
-                                if is_idr && !has_parameters {
-                                    if self.seq_header.is_empty()
-                                        && let Ok(cur_out) = self.transform.GetOutputCurrentType(0)
-                                        && let Ok(hdr_len) = cur_out.GetBlobSize(&MF_MT_MPEG_SEQUENCE_HEADER)
-                                        && hdr_len > 0
-                                    {
-                                        let mut hdr = vec![0u8; hdr_len as usize];
-                                        if cur_out
-                                            .GetBlob(&MF_MT_MPEG_SEQUENCE_HEADER, &mut hdr, None)
-                                            .is_ok()
+                                    if is_idr && !has_parameters {
+                                        if self.seq_header.is_empty()
+                                            && let Ok(cur_out) = self.transform.GetOutputCurrentType(0)
+                                            && let Ok(hdr_len) =
+                                                cur_out.GetBlobSize(&MF_MT_MPEG_SEQUENCE_HEADER)
+                                            && hdr_len > 0
                                         {
-                                            self.seq_header = hdr;
+                                            let mut hdr = vec![0u8; hdr_len as usize];
+                                            if cur_out
+                                                .GetBlob(&MF_MT_MPEG_SEQUENCE_HEADER, &mut hdr, None)
+                                                .is_ok()
+                                            {
+                                                self.seq_header = hdr;
+                                            }
+                                        }
+                                        if !self.seq_header.is_empty() {
+                                            bytes.extend_from_slice(&self.seq_header);
                                         }
                                     }
-                                    if !self.seq_header.is_empty() {
-                                        bytes.extend_from_slice(&self.seq_header);
+                                    bytes.extend_from_slice(slice);
+                                    buf.Unlock()?;
+                                    if !bytes.is_empty() {
+                                        self.sent_first_frame = true;
+                                        out.push((is_idr, bytes));
                                     }
+                                    Ok(())
+                                })();
+                                if !self.provides_samples {
+                                    self.output_sample = Some(sample);
                                 }
-                                bytes.extend_from_slice(slice);
-                                buf.Unlock()?;
-                                if !bytes.is_empty() {
-                                    self.sent_first_frame = true;
-                                    out.push((is_idr, bytes));
-                                }
+                                extract_result?;
                             }
                             // Each METransformHaveOutput event permits one ProcessOutput call.
                             if self.async_events.is_some() {
                                 return Ok(());
                             }
                         }
-                        Err(e) if e.code() == MF_E_TRANSFORM_NEED_MORE_INPUT => return Ok(()),
+                        Err(e) if e.code() == MF_E_TRANSFORM_NEED_MORE_INPUT => {
+                            if !self.provides_samples
+                                && let Some(s) = sample
+                            {
+                                self.output_sample = Some(s);
+                            }
+                            return Ok(());
+                        }
                         Err(e) if e.code() == MF_E_TRANSFORM_STREAM_CHANGE => {
+                            self.output_sample = None;
                             if let Ok(cur_out) = self.transform.GetOutputAvailableType(0, 0) {
                                 self.transform.SetOutputType(0, Some(&cur_out), 0)?;
                                 if let Ok(len) = cur_out.GetBlobSize(&MF_MT_MPEG_SEQUENCE_HEADER)
@@ -948,11 +1074,34 @@ mod imp {
                                     }
                                 }
                             }
+                            if let Ok(info) = self.transform.GetOutputStreamInfo(0) {
+                                self.provides_samples =
+                                    (info.dwFlags & (MFT_OUTPUT_STREAM_PROVIDES_SAMPLES.0 as u32)) != 0;
+                                self.output_size = info.cbSize.max(256 * 1024);
+                            }
                         }
-                        Err(e) => return Err(e),
+                        Err(e) => {
+                            if !self.provides_samples
+                                && let Some(s) = sample
+                            {
+                                self.output_sample = Some(s);
+                            }
+                            return Err(e);
+                        }
                     }
                 }
             }
+        }
+    }
+
+    #[cfg(windows)]
+    unsafe fn allocate_output_sample(size: u32) -> windows::core::Result<IMFSample> {
+        // SAFETY: allocates a reusable IMFSample backed by a single IMFMediaBuffer.
+        unsafe {
+            let sample: IMFSample = MFCreateSample()?;
+            let buffer: IMFMediaBuffer = MFCreateMemoryBuffer(size.max(1))?;
+            sample.AddBuffer(&buffer)?;
+            Ok(sample)
         }
     }
 
@@ -966,6 +1115,28 @@ mod imp {
             std::ptr::copy_nonoverlapping(bytes.as_ptr(), dst, bytes.len());
             buf.Unlock()?;
             buf.SetCurrentLength(bytes.len() as u32)?;
+            let sample: IMFSample = MFCreateSample()?;
+            sample.AddBuffer(&buf)?;
+            sample.SetSampleTime(hns)?;
+            sample.SetSampleDuration(dur_hns.max(1))?;
+            Ok(sample)
+        }
+    }
+
+    #[cfg(windows)]
+    unsafe fn make_dxgi_sample(
+        tex: &ID3D11Texture2D,
+        hns: i64,
+        dur_hns: i64,
+    ) -> windows::core::Result<IMFSample> {
+        // SAFETY: wraps `tex` in a DXGI surface buffer and attaches sample timing.
+        unsafe {
+            let buf: IMFMediaBuffer = MFCreateDXGISurfaceBuffer(&ID3D11Texture2D::IID, tex, 0, false)?;
+            if let Ok(two_d) = buf.cast::<IMF2DBuffer>()
+                && let Ok(len) = two_d.GetContiguousLength()
+            {
+                let _ = buf.SetCurrentLength(len);
+            }
             let sample: IMFSample = MFCreateSample()?;
             sample.AddBuffer(&buf)?;
             sample.SetSampleTime(hns)?;
@@ -1539,6 +1710,51 @@ mod imp {
         bitrate: u32,
     ) -> Result<ScreenEncoder, String> {
         ScreenEncoder::new_for_codec(codec, width, height, fps, bitrate)
+    }
+
+    #[cfg(windows)]
+    fn new_pc_gpu_encoder_with_fallback(
+        codec: &mut String,
+        width: u32,
+        height: u32,
+        fps: u32,
+        bitrate: u32,
+        device: &ID3D11Device,
+        adapter_luid: u64,
+    ) -> Result<ScreenEncoder, String> {
+        match ScreenEncoder::new_gpu(codec, width, height, fps, bitrate, device, adapter_luid) {
+            Ok(encoder) => Ok(encoder),
+            Err(error) if codec == "h265" => {
+                tracing::info!(%error, "HEVC GPU screen encoder unavailable; trying H.264 GPU encoder");
+                match ScreenEncoder::new_gpu("h264", width, height, fps, bitrate, device, adapter_luid) {
+                    Ok(encoder) => {
+                        *codec = "h264".into();
+                        Ok(encoder)
+                    }
+                    Err(h264_error) => Err(h264_error.to_string()),
+                }
+            }
+            Err(error) => Err(error.to_string()),
+        }
+    }
+
+    #[cfg(windows)]
+    fn convert_to_gpu_nv12<'a>(
+        gpu_nv12: &'a mut Option<GpuBgraToNv12>,
+        device: &ID3D11Device,
+        src_tex: &ID3D11Texture2D,
+        dst_w: u32,
+        dst_h: u32,
+    ) -> windows::core::Result<&'a ID3D11Texture2D> {
+        let mut desc = D3D11_TEXTURE2D_DESC::default();
+        // SAFETY: valid D3D11 texture interface.
+        unsafe { src_tex.GetDesc(&mut desc) };
+        let src_size = (desc.Width, desc.Height);
+        let dst_size = (dst_w, dst_h);
+        if !gpu_nv12.as_ref().is_some_and(|conv| conv.matches(device, src_size, dst_size)) {
+            *gpu_nv12 = Some(GpuBgraToNv12::new(device, src_size, dst_size)?);
+        }
+        gpu_nv12.as_mut().ok_or_else(|| windows::core::Error::from(E_FAIL))?.convert(src_tex, None)
     }
 
     #[cfg(any(windows, target_os = "linux"))]
@@ -2550,6 +2766,16 @@ mod imp {
             tracing::info!(peer = %peer.short(), fps, bitrate, "sharing this PC's screen");
         }
 
+        #[cfg(windows)]
+        let mut dxgi_capture: Option<DxgiScreenCapture> = None;
+        #[cfg(windows)]
+        let mut dxgi_retry_after: Option<Instant> = None;
+        #[cfg(windows)]
+        let mut dxgi_wait_started: Option<Instant> = None;
+        #[cfg(windows)]
+        let mut gpu_nv12: Option<GpuBgraToNv12> = None;
+        #[cfg(windows)]
+        let mut gpu_pipeline_disabled = false;
         #[cfg(target_os = "linux")]
         let mut capture_failed = None;
         #[cfg(target_os = "linux")]
@@ -2565,6 +2791,10 @@ mod imp {
                     // Moved, resized or gone (then the main screen): a new stream config.
                     screen_area = now;
                     set_area(screen_area);
+                    dxgi_capture = None;
+                    dxgi_retry_after = None;
+                    dxgi_wait_started = None;
+                    gpu_nv12 = None;
                     stream_dims = None;
                     encoder = None;
                 }
@@ -2598,11 +2828,56 @@ mod imp {
                 // The window's own pixels, whatever is in front of it; the
                 // screen there when Windows can't capture the window.
                 if window_capture.as_ref().is_none_or(|c| c.window() != place.window()) {
+                    #[cfg(windows)]
+                    {
+                        gpu_nv12 = None;
+                    }
                     window_capture = win::window_capture::WindowCapture::new(place.window())
                         .inspect_err(
                             |e| tracing::info!(error = %e, "can't capture the window; capturing the screen"),
                         )
                         .ok();
+                }
+            }
+
+            #[cfg(windows)]
+            if watched.is_none()
+                && !gpu_pipeline_disabled
+                && dxgi_capture.is_none()
+                && dxgi_retry_after.is_none_or(|at| Instant::now() >= at)
+            {
+                match DxgiScreenCapture::new(screen_area) {
+                    Ok(capture) => {
+                        dxgi_capture = Some(capture);
+                        dxgi_retry_after = None;
+                        dxgi_wait_started = None;
+                    }
+                    Err(error) => {
+                        tracing::debug!(%error, "DXGI desktop duplication unavailable; using GDI fallback");
+                        dxgi_retry_after = Some(Instant::now() + Duration::from_secs(3));
+                    }
+                }
+            }
+
+            #[cfg(windows)]
+            let gpu_device = if gpu_pipeline_disabled {
+                None
+            } else if watched.is_some() {
+                window_capture.as_ref().and_then(|c| c.adapter_luid().map(|luid| (c.device().clone(), luid)))
+            } else {
+                dxgi_capture.as_ref().map(|c| (c.device().clone(), c.adapter_luid()))
+            };
+
+            #[cfg(windows)]
+            if let Some(enc) = encoder.as_ref() {
+                let mismatch = match (&gpu_device, enc.on_gpu()) {
+                    (Some((dev, _)), true) => !enc.matches_gpu_device(dev),
+                    (Some(_), false) => true,
+                    (None, true) => true,
+                    (None, false) => false,
+                };
+                if mismatch {
+                    encoder = None;
                 }
             }
 
@@ -2657,7 +2932,25 @@ mod imp {
                     && last_reinit.elapsed() >= Duration::from_millis(1400));
 
             if need_reinit {
-                match new_pc_encoder_with_fallback(&mut codec, dst_w, dst_h, fps, bitrate) {
+                #[cfg(windows)]
+                let init_result = if let Some((ref dev, luid)) = gpu_device {
+                    match new_pc_gpu_encoder_with_fallback(&mut codec, dst_w, dst_h, fps, bitrate, dev, luid)
+                    {
+                        Ok(enc) => Ok(enc),
+                        Err(error) => {
+                            tracing::info!(%error, "D3D11-aware hardware encoder unavailable; using CPU fallback");
+                            gpu_pipeline_disabled = true;
+                            gpu_nv12 = None;
+                            new_pc_encoder_with_fallback(&mut codec, dst_w, dst_h, fps, bitrate)
+                        }
+                    }
+                } else {
+                    new_pc_encoder_with_fallback(&mut codec, dst_w, dst_h, fps, bitrate)
+                };
+                #[cfg(target_os = "linux")]
+                let init_result = new_pc_encoder_with_fallback(&mut codec, dst_w, dst_h, fps, bitrate);
+
+                match init_result {
                     Ok(enc) => {
                         let cfg = MirrorConfig {
                             codec: codec.clone(),
@@ -2689,22 +2982,149 @@ mod imp {
             }
 
             #[cfg(windows)]
-            let wayland_captured = false;
-            #[cfg(target_os = "linux")]
-            let wayland_captured = wayland.is_some();
-            let captured = wayland_captured
-                || match (place, window_capture.as_mut()) {
+            let gpu_encode_result: Option<(u64, windows::core::Result<Vec<(bool, Vec<u8>)>>)> =
+                if !gpu_pipeline_disabled && encoder.as_ref().is_some_and(ScreenEncoder::on_gpu) {
+                    let mut rebuild_for_cpu = false;
+                    let mut wait_for_frame = false;
+                    let mut encoded: Option<(u64, windows::core::Result<Vec<(bool, Vec<u8>)>>)> = None;
+
+                    if let Some(place) = place {
+                        if let Some(capture) = window_capture.as_mut() {
+                            if let Some((dev, src_tex)) = capture.latest_texture(place.in_window) {
+                                match convert_to_gpu_nv12(&mut gpu_nv12, dev, src_tex, dst_w, dst_h) {
+                                    Ok(nv12_tex) => {
+                                        let time_us = started.elapsed().as_micros() as u64;
+                                        let hns = (time_us * 10) as i64;
+                                        if let Some(enc) = encoder.as_mut() {
+                                            encoded = Some((
+                                                time_us,
+                                                enc.encode_surface(nv12_tex, hns, dur_hns, &stop),
+                                            ));
+                                        }
+                                    }
+                                    Err(error) => {
+                                        tracing::info!(%error, "GPU BGRA-to-NV12 unavailable; falling back to CPU pipeline");
+                                        gpu_pipeline_disabled = true;
+                                        gpu_nv12 = None;
+                                        rebuild_for_cpu = true;
+                                    }
+                                }
+                            } else {
+                                wait_for_frame = true;
+                            }
+                        }
+                    } else if let Some(dxgi) = dxgi_capture.as_mut() {
+                        let dev = dxgi.device().clone();
+                        match dxgi.acquire_texture() {
+                            Ok(Some(src_tex)) => {
+                                dxgi_wait_started = None;
+                                match convert_to_gpu_nv12(&mut gpu_nv12, &dev, src_tex, dst_w, dst_h) {
+                                    Ok(nv12_tex) => {
+                                        let time_us = started.elapsed().as_micros() as u64;
+                                        let hns = (time_us * 10) as i64;
+                                        if let Some(enc) = encoder.as_mut() {
+                                            encoded = Some((
+                                                time_us,
+                                                enc.encode_surface(nv12_tex, hns, dur_hns, &stop),
+                                            ));
+                                        }
+                                    }
+                                    Err(error) => {
+                                        tracing::info!(%error, "GPU BGRA-to-NV12 unavailable; falling back to CPU pipeline");
+                                        gpu_pipeline_disabled = true;
+                                        gpu_nv12 = None;
+                                        rebuild_for_cpu = true;
+                                    }
+                                }
+                            }
+                            Ok(None) => {
+                                if dxgi_wait_started.get_or_insert_with(Instant::now).elapsed()
+                                    >= Duration::from_millis(500)
+                                {
+                                    dxgi_capture = None;
+                                    dxgi_wait_started = None;
+                                    dxgi_retry_after = Some(Instant::now() + Duration::from_secs(3));
+                                    gpu_nv12 = None;
+                                    rebuild_for_cpu = true;
+                                } else {
+                                    wait_for_frame = true;
+                                }
+                            }
+                            Err(error) => {
+                                tracing::info!(%error, "DXGI desktop duplication lost; falling back to GDI");
+                                dxgi_capture = None;
+                                dxgi_wait_started = None;
+                                dxgi_retry_after = Some(Instant::now() + Duration::from_secs(2));
+                                gpu_nv12 = None;
+                                rebuild_for_cpu = true;
+                            }
+                        }
+                    }
+
+                    if rebuild_for_cpu {
+                        encoder = None;
+                        continue;
+                    }
+                    if wait_for_frame {
+                        let elapsed = tick_start.elapsed();
+                        if let Some(rem) = frame_interval.checked_sub(elapsed) {
+                            std::thread::sleep(rem);
+                        }
+                        continue;
+                    }
+                    encoded
+                } else {
+                    None
+                };
+
+            #[cfg(windows)]
+            let encode_attempt = if let Some(gpu_result) = gpu_encode_result {
+                Some(gpu_result)
+            } else {
+                let captured = match (place, window_capture.as_mut()) {
                     (Some(place), Some(capture)) => capture.capture(place.in_window, dst_w, dst_h, &mut bgra),
                     (Some(place), None) => {
                         capture_screen(Some(place.on_screen), dst_w, dst_h, &mut bgra).is_some()
                     }
                     (None, _) => capture_shown(screen_area, dst_w, dst_h, &mut bgra),
                 };
-            if captured && let Some(enc) = encoder.as_mut() {
-                bgra_to_nv12(&bgra, dst_w as usize, dst_h as usize, &mut nv12);
-                let time_us = started.elapsed().as_micros() as u64;
-                let hns = (time_us * 10) as i64;
-                match enc.encode(&nv12, hns, dur_hns, &stop) {
+                if captured && let Some(enc) = encoder.as_mut() {
+                    bgra_to_nv12(&bgra, dst_w as usize, dst_h as usize, &mut nv12);
+                    let time_us = started.elapsed().as_micros() as u64;
+                    let hns = (time_us * 10) as i64;
+                    Some((time_us, enc.encode(&nv12, hns, dur_hns, &stop)))
+                } else {
+                    None
+                }
+            };
+
+            #[cfg(target_os = "linux")]
+            let encode_attempt = {
+                let wayland_captured = wayland.is_some();
+                let captured = wayland_captured
+                    || match (place, window_capture.as_mut()) {
+                        (Some(place), Some(capture)) => {
+                            capture.capture(place.in_window, dst_w, dst_h, &mut bgra)
+                        }
+                        (Some(place), None) => {
+                            capture_screen(Some(place.on_screen), dst_w, dst_h, &mut bgra).is_some()
+                        }
+                        (None, _) => capture_shown(screen_area, dst_w, dst_h, &mut bgra),
+                    };
+                if captured && let Some(enc) = encoder.as_mut() {
+                    bgra_to_nv12(&bgra, dst_w as usize, dst_h as usize, &mut nv12);
+                    let time_us = started.elapsed().as_micros() as u64;
+                    let hns = (time_us * 10) as i64;
+                    Some((time_us, enc.encode(&nv12, hns, dur_hns, &stop)))
+                } else {
+                    None
+                }
+            };
+
+            if let Some((time_us, result)) = encode_attempt
+                && let Some(enc) = encoder.as_mut()
+            {
+                match result {
                     Ok(packets) => {
                         #[cfg(target_os = "linux")]
                         if !packets.is_empty() {
@@ -2783,6 +3203,14 @@ mod imp {
                         if enc.next_encoder(&codec, dst_w, dst_h, fps, bitrate) {
                             tracing::warn!(error = %e, codec, "Video encoding failed; trying another encoder");
                             stats.rebuilds += 1;
+                            continue;
+                        }
+                        #[cfg(windows)]
+                        if enc.on_gpu() && codec == "h264" {
+                            tracing::warn!(error = %e, "GPU H.264 encoding failed; falling back to CPU pipeline");
+                            gpu_pipeline_disabled = true;
+                            gpu_nv12 = None;
+                            encoder = None;
                             continue;
                         }
                         if codec == "h265" {
@@ -2952,7 +3380,7 @@ mod imp {
                 if attempts == 1 {
                     return Err(windows::core::Error::from(E_INVALIDARG));
                 }
-                ScreenEncoder::from_transform("h264", transform, 320, 240, 30, 2_000_000)
+                ScreenEncoder::from_transform("h264", transform, 320, 240, 30, 2_000_000, None)
             })
             .unwrap();
             assert_eq!(attempts, 2);
@@ -3207,6 +3635,113 @@ mod imp {
             assert!(enc.request_keyframe(), "the H.264 encoder takes keyframe requests");
             assert_eq!(keyframes_after(&mut enc, 6, 2), 1, "a requested keyframe arrives promptly");
             assert!(enc.set_bitrate(1_000_000), "the bitrate changes in place");
+        }
+
+        #[cfg(windows)]
+        #[test]
+        fn gpu_bgra_to_nv12_and_surface_encoder_round_trip_when_available() {
+            use windows::Win32::Graphics::{
+                Direct3D::D3D_DRIVER_TYPE_UNKNOWN,
+                Direct3D11::{
+                    D3D11_BIND_SHADER_RESOURCE, D3D11_CREATE_DEVICE_BGRA_SUPPORT,
+                    D3D11_CREATE_DEVICE_VIDEO_SUPPORT, D3D11_SDK_VERSION, D3D11_SUBRESOURCE_DATA,
+                    D3D11_USAGE_DEFAULT, D3D11CreateDevice, ID3D11Multithread,
+                },
+                Dxgi::Common::{DXGI_FORMAT_B8G8R8A8_UNORM, DXGI_SAMPLE_DESC},
+            };
+
+            let Ok(adapters) = video_adapters() else {
+                return;
+            };
+            let Some(adapter) = adapters.into_iter().next() else {
+                eprintln!("No hardware DXGI adapter available");
+                return;
+            };
+            let mut device = None;
+            // SAFETY: creates a hardware D3D11 device on the first non-software adapter.
+            let created = unsafe {
+                D3D11CreateDevice(
+                    &adapter.adapter,
+                    D3D_DRIVER_TYPE_UNKNOWN,
+                    Default::default(),
+                    D3D11_CREATE_DEVICE_BGRA_SUPPORT | D3D11_CREATE_DEVICE_VIDEO_SUPPORT,
+                    None,
+                    D3D11_SDK_VERSION,
+                    Some(&mut device),
+                    None,
+                    None,
+                )
+            };
+            if created.is_err() {
+                return;
+            }
+            let Some(device) = device else {
+                return;
+            };
+            if let Ok(mt) = device.cast::<ID3D11Multithread>() {
+                // SAFETY: valid D3D11 multithread interface.
+                unsafe {
+                    let _ = mt.SetMultithreadProtected(true);
+                }
+            }
+            let (src_w, src_h) = (640u32, 360u32);
+            let (dst_w, dst_h) = target_dimensions(src_w, src_h, 1280);
+            let Ok(mut converter) = GpuBgraToNv12::new(&device, (src_w, src_h), (dst_w, dst_h)) else {
+                eprintln!("ID3D11VideoProcessor BGRA->NV12 unavailable");
+                return;
+            };
+            let mut bgra = vec![0u8; (src_w as usize) * (src_h as usize) * 4];
+            for px in bgra.as_chunks_mut::<4>().0.iter_mut() {
+                px[0] = 200;
+                px[1] = 100;
+                px[2] = 50;
+                px[3] = 255;
+            }
+            let mut src_tex: Option<ID3D11Texture2D> = None;
+            // SAFETY: creates a BGRA8 texture initialized from `bgra`.
+            unsafe {
+                device
+                    .CreateTexture2D(
+                        &D3D11_TEXTURE2D_DESC {
+                            Width: src_w,
+                            Height: src_h,
+                            MipLevels: 1,
+                            ArraySize: 1,
+                            Format: DXGI_FORMAT_B8G8R8A8_UNORM,
+                            SampleDesc: DXGI_SAMPLE_DESC { Count: 1, Quality: 0 },
+                            Usage: D3D11_USAGE_DEFAULT,
+                            BindFlags: D3D11_BIND_SHADER_RESOURCE.0 as u32,
+                            CPUAccessFlags: 0,
+                            MiscFlags: 0,
+                        },
+                        Some(&D3D11_SUBRESOURCE_DATA {
+                            pSysMem: bgra.as_ptr().cast(),
+                            SysMemPitch: src_w * 4,
+                            SysMemSlicePitch: bgra.len() as u32,
+                        }),
+                        Some(&mut src_tex),
+                    )
+                    .unwrap();
+            }
+            let src_tex = src_tex.unwrap();
+            let nv12_tex = converter.convert(&src_tex, None).unwrap();
+            let mut enc =
+                match ScreenEncoder::new_gpu("h264", dst_w, dst_h, 30, 2_000_000, &device, adapter.luid) {
+                    Ok(enc) => enc,
+                    Err(error) => {
+                        eprintln!("D3D11-aware H.264 encoder unavailable: {error}");
+                        return;
+                    }
+                };
+            let stop = AtomicBool::new(false);
+            let mut packets = 0usize;
+            for i in 0..8 {
+                packets += enc
+                    .encode_surface(nv12_tex, i * 333_333, 333_333, &stop)
+                    .expect("encode GPU surface")
+                    .len();
+            }
+            assert!(packets > 0, "D3D11-aware encoder must emit H.264 access units");
         }
     }
 }
