@@ -293,9 +293,38 @@ pub fn key_action(code: u16, ctrl: bool, alt: bool) -> KeyAction {
     }
 }
 
+/// One wheel event of `delta` (120 a notch) added to what's left over from
+/// the last ones: the whole notches to scroll now. A touchpad sends small
+/// steps that only make a notch together; turning the other way drops the
+/// rest, so it answers at once.
+pub fn wheel_notches(rest: &mut i32, delta: i32) -> i32 {
+    if delta.signum() != 0 && rest.signum() == -delta.signum() {
+        *rest = 0;
+    }
+    *rest += delta;
+    let notches = *rest / 120;
+    *rest -= notches * 120;
+    notches
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn small_wheel_steps_add_up_to_notches() {
+        let mut rest = 0;
+        assert_eq!(wheel_notches(&mut rest, 40), 0);
+        assert_eq!(wheel_notches(&mut rest, 40), 0);
+        assert_eq!(wheel_notches(&mut rest, 40), 1, "three touchpad steps make a notch");
+        assert_eq!(rest, 0);
+        assert_eq!(wheel_notches(&mut rest, 360), 3, "a mouse's notches go through as they are");
+        assert_eq!(wheel_notches(&mut rest, -240), -2);
+        assert_eq!(wheel_notches(&mut rest, 100), 0);
+        assert_eq!(wheel_notches(&mut rest, -100), 0, "turning back drops what was left");
+        assert_eq!(rest, -100);
+        assert_eq!(wheel_notches(&mut rest, -20), -1);
+    }
 
     #[test]
     fn keys_do_on_the_phone_what_they_do_in_a_mirror_window() {

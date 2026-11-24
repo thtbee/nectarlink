@@ -74,6 +74,8 @@ static PARK_Y: AtomicI32 = AtomicI32::new(0);
 /// Where it left the PC's screen, to come back there.
 static EDGE_X: AtomicI32 = AtomicI32::new(0);
 static EDGE_Y: AtomicI32 = AtomicI32::new(0);
+/// Wheel turned on the phone but not yet a whole notch (a touchpad's small steps).
+static WHEEL_REST: AtomicI32 = AtomicI32::new(0);
 static EVENTS: Mutex<Option<mpsc::Sender<Event>>> = Mutex::new(None);
 /// Which phone is beside the PC, and on which side.
 static TARGET: Mutex<Option<(DeviceId, Side)>> = Mutex::new(None);
@@ -197,7 +199,10 @@ unsafe extern "system" fn mouse_proc(code: i32, wparam: WPARAM, lparam: LPARAM) 
                 WM_MBUTTONDOWN => queue(Event::Button(4, true)),
                 WM_MBUTTONUP => queue(Event::Button(4, false)),
                 WM_MOUSEWHEEL => {
-                    let notches = ((info.mouseData >> 16) as i16) / 120;
+                    let delta = i32::from((info.mouseData >> 16) as i16);
+                    let mut rest = WHEEL_REST.load(Ordering::Relaxed);
+                    let notches = pointer_flow::wheel_notches(&mut rest, delta);
+                    WHEEL_REST.store(rest, Ordering::Relaxed);
                     if notches != 0 {
                         queue(Event::Wheel(notches.clamp(-127, 127) as i8));
                     }
