@@ -526,6 +526,10 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **A PC touchpad scrolls the phone smoothly.** With the mouse on the phone beside the PC, a
+  touchpad's small scroll steps were dropped until one was a whole wheel notch, so scrolling
+  felt stuck and jumpy. They now add up
+  ([#107](https://github.com/thtbee/nectarlink/issues/107)).
 - **The Linux app starts on Wayland with PipeWire capture installed.** Checking for the screen
   capture portal stopped the app's background service at start, so it stayed on the loading
   screen. Thanks to [@krakotay](https://github.com/krakotay)
