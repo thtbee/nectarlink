@@ -105,8 +105,9 @@ fun DisclosureHost() {
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = androidx.compose.ui.Modifier.verticalScroll(rememberScrollState()),
             ) {
-                current.kinds.forEach { kind ->
-                    if (current.kinds.size > 1) {
+                current.kinds.forEachIndexed { i, kind ->
+                    // The first one's title is the dialog's.
+                    if (i > 0) {
                         Text(stringResource(kind.title), style = MaterialTheme.typography.titleSmall)
                     }
                     Text(stringResource(kind.text), style = MaterialTheme.typography.bodyMedium)
