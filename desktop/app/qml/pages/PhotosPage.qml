@@ -48,6 +48,7 @@ Item {
             if (page.lastClickedId.length > 0)
                 page.lastClickedIndex = Photos.rowOf(page.lastClickedId)
         }
+        function onMoreChanged() { grid.maybeLoadOlder() }
     }
     onViewerIndexChanged: if (viewerIndex < 0) viewerId = ""
     readonly property var viewedItem: {
@@ -787,10 +788,20 @@ Item {
                 onColumnsChanged: Photos.setColumns(columns)
                 Component.onCompleted: Photos.setColumns(columns)
 
-                onAtYEndChanged: {
-                    if (atYEnd && Photos.more && count > 0)
+                function maybeLoadOlder() {
+                    if (!Photos.more || Photos.loadingOlder || count <= 0 || Photos.status !== "ready" || height <= 0)
+                        return
+                    const nearBottom = atYEnd
+                        || contentHeight <= height
+                        || contentY + height >= originY + contentHeight + bottomMargin - cellHeight * 2
+                    if (nearBottom)
                         Photos.loadOlder()
                 }
+
+                onAtYEndChanged: maybeLoadOlder()
+                onContentYChanged: maybeLoadOlder()
+                onContentHeightChanged: maybeLoadOlder()
+                onHeightChanged: maybeLoadOlder()
 
                 // Current top-visible item's day label, shown in the sticky day banner.
                 readonly property int topVisibleRow: Math.max(

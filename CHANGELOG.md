@@ -519,6 +519,10 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **Photos loads more than the first page.** Dragging the scrollbar to the bottom stopped short
+  of it, and a first page that didn't fill the window never asked for more, so some galleries
+  showed only their first 80 photos. Thanks to [@aihehye](https://github.com/aihehye)
+  ([#533](https://github.com/thtbee/nectarlink/issues/533), [#588](https://github.com/thtbee/nectarlink/pull/588)).
 - **App windows take clicks with the phone locked on more phones.** On some phones (a POCO
   F5 Pro on HyperOS, say) the window's display went to sleep with the phone, so typing still
   worked but clicks didn't. The phone is now woken for it as on phones that don't run windows
