@@ -255,6 +255,8 @@ data class CoreState(
     val localsendEnabled: Boolean = false,
     /** Whether staying connected over mobile data (LTE/5G) or relay when away from Wi-Fi is enabled. */
     val awayMode: Boolean = false,
+    /** Whether PCs are reached only through a USB cable: no Wi-Fi, mobile data, relay or local discovery. */
+    val usbOnly: Boolean = false,
     /** Whether the phone has Wi-Fi, Ethernet, USB or a VPN; without one (and without
      *  [awayMode]) it waits for one rather than trying to reach PCs (#397). */
     val hasNetwork: Boolean = true,

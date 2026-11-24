@@ -360,6 +360,7 @@
         <item quantity="other">Połączono z %1$d komputerami</item>
     </plurals>
     <string name="notification_waiting">Oczekiwanie na komputer</string>
+    <string name="notification_usb_only">Tylko USB: oczekiwanie na kabel</string>
     <string name="notification_waiting_network">Czekam na Wi-Fi, by połączyć się z komputerem</string>
     <string name="reconnect_known_only_title">Tylko w sieciach, w których znaleziono komputer</string>
     <string name="reconnect_known_only_body">Sam szuka komputerów tylko w sieciach Wi-Fi, w których już się z którymś połączył. W innych komputer nadal może połączyć się z telefonem.</string>
@@ -1475,6 +1476,9 @@
     <string name="home_section_system">System i zasilanie</string>
     <string name="settings_category_devices">Urządzenia</string>
     <string name="settings_category_features">Funkcje i dane</string>
+    <string name="settings_usb_only_title">Tylko USB</string>
+    <string name="settings_usb_only_body">Łącz z komputerami tylko przez kabel USB: bez Wi-Fi, danych komórkowych i wykrywania lokalnego</string>
+    <string name="usb_only_tile_label">Tylko USB</string>
     <string name="settings_theme_artwork_color">Kolor okładki multimediów</string>
     <string name="settings_mobile_data_body">Utrzymuj połączenie przez LTE/5G lub serwer pośredniczący poza zasięgiem Wi-Fi</string>
     <string name="settings_background_clipboard_title">Dostęp do schowka w tle</string>

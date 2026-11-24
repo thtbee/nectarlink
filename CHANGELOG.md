@@ -12,6 +12,15 @@ change things that need a step from you, and its notes say so.
   next to **Shut down**, with the same confirmation; an app with unsaved work can still stop
   it. Thanks to [@w-rakeeb](https://github.com/w-rakeeb)
   ([#574](https://github.com/thtbee/nectarlink/issues/574)).
+- **USB only (phone).** **Settings › Devices › USB only**, or a **USB only** Quick Settings
+  tile, makes the phone reach PCs only through a USB cable: no dialing or accepting over
+  Wi-Fi, mobile data or relays, no local discovery or LocalSend, and the multicast lock is
+  released. Other connections close when you turn it on. It's silent while no PC is on the
+  cable: the app stops and shows no notification. Plug the cable in and the PC (with USB
+  debugging allowed) starts the app through adb, even when the PC app was started with the
+  cable already in; the usual notification shows while connected. Asked for in
+  [#481](https://github.com/thtbee/nectarlink/discussions/481). Thanks to
+  [@farfromrefug](https://github.com/farfromrefug) ([#546](https://github.com/thtbee/nectarlink/pull/546)).
 - **Copy part of a notification.** A notification's **...** menu on the PC's Home shows its
   whole text, and any part of it can be selected and copied with Ctrl+C. Thanks to
   [@korry73](https://github.com/korry73) ([#526](https://github.com/thtbee/nectarlink/issues/526)).

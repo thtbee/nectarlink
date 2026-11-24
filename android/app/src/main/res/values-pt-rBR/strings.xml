@@ -354,6 +354,7 @@
         <item quantity="other">Conectado a %1$d PCs</item>
     </plurals>
     <string name="notification_waiting">Aguardando seu PC</string>
+    <string name="notification_usb_only">Somente USB: aguardando um cabo</string>
     <string name="notification_waiting_network">Aguardando Wi-Fi para chegar ao seu PC</string>
     <string name="reconnect_known_only_title">Só em redes onde um PC foi encontrado</string>
     <string name="reconnect_known_only_body">Procura seus PCs sozinho só no Wi-Fi onde já encontrou um. Em outras redes, um PC ainda pode chegar ao celular.</string>
@@ -1459,6 +1460,9 @@
     <string name="home_section_system">Sistema e energia</string>
     <string name="settings_category_devices">Dispositivos</string>
     <string name="settings_category_features">Recursos e dados</string>
+    <string name="settings_usb_only_title">Somente USB</string>
+    <string name="settings_usb_only_body">Conectar a PCs somente por cabo USB: sem Wi-Fi, dados móveis ou descoberta local</string>
+    <string name="usb_only_tile_label">Somente USB</string>
     <string name="settings_theme_artwork_color">Cor da capa da mídia</string>
     <string name="settings_mobile_data_body">Continue conectado por LTE/5G ou retransmissor quando estiver fora do Wi-Fi</string>
     <string name="settings_background_clipboard_title">Acesso à área de transferência em segundo plano</string>
