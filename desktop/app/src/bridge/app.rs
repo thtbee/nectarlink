@@ -134,6 +134,13 @@ pub mod qobject {
         /// Bumped whenever the Home card's summary (unread messages, missed calls,
         /// latest photo) changes for the watched phone.
         #[qproperty(i32, home_summary_revision)]
+        /// What the rail's badges show for the phone shown: texts not read
+        /// here, and missed calls not looked at.
+        #[qproperty(i32, unread_messages_badge)]
+        #[qproperty(i32, missed_calls_badge)]
+        /// What's waiting on each device, texts and missed calls together:
+        /// `{ "<device ID>": count }`, left out when none.
+        #[qproperty(QString, device_badges)]
         /// Continuity Camera state (in-flight request and fallback paste prompt).
         #[qproperty(bool, continuity_camera_busy)]
         #[qproperty(QString, continuity_camera_status)]
@@ -386,6 +393,14 @@ pub mod qobject {
         /// Tells the event-driven Home summary which phone the Home page is showing (`""` when hidden).
         #[qinvokable]
         fn watch_home_summary(self: &AppController, device: &QString);
+        /// Counts the rail's badges for this phone ("" for none).
+        #[qinvokable]
+        #[cxx_name = "watchBadges"]
+        fn watch_badges(self: &AppController, device: &QString);
+        /// The Calls page is showing (or not).
+        #[qinvokable]
+        #[cxx_name = "setCallsOpen"]
+        fn set_calls_open(self: &AppController, open: bool);
         /// Glanceable Home summary for `device` as JSON.
         #[qinvokable]
         fn home_summary(self: &AppController, device: &QString) -> QString;
@@ -527,6 +542,9 @@ pub struct AppControllerRust {
     clipboard_history: QString,
     timeline_preview: QString,
     home_summary_revision: i32,
+    unread_messages_badge: i32,
+    missed_calls_badge: i32,
+    device_badges: QString,
     continuity_camera_busy: bool,
     continuity_camera_status: QString,
     continuity_camera_mode: QString,
@@ -716,6 +734,18 @@ pub(crate) fn show_messages(device: DeviceId) {
             }
             object.as_mut().set_current_page(QString::from("messages"));
             object.activate_requested();
+        });
+    }
+}
+
+/// Sets the rail's badges (from any thread).
+pub(crate) fn show_badges(texts: u32, missed: u32, devices: &str) {
+    let devices = devices.to_owned();
+    if let Some(qt) = controller() {
+        let _ = qt.queue(move |mut object| {
+            object.as_mut().set_device_badges(QString::from(&devices));
+            object.as_mut().set_unread_messages_badge(texts as i32);
+            object.as_mut().set_missed_calls_badge(missed as i32);
         });
     }
 }
@@ -2096,6 +2126,14 @@ impl qobject::AppController {
         if let Err(e) = crate::storage::open_in_explorer(id) {
             show_message(e);
         }
+    }
+
+    pub fn watch_badges(&self, device: &QString) {
+        crate::badges::watch(super::parse_device(device));
+    }
+
+    pub fn set_calls_open(&self, open: bool) {
+        crate::badges::set_calls_open(open);
     }
 
     pub fn watch_home_summary(&self, device: &QString) {
