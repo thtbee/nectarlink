@@ -102,6 +102,73 @@ fn clear_current(session: Session, phase: Option<Phase>) -> bool {
     cleared
 }
 
+// ---- How loud it plays here (#577) ----
+
+/// The gain for `level` (`0..=100`): squared, so the slider's steps sound
+/// even, the way a volume control feels.
+fn gain(level: u8) -> f32 {
+    let x = f32::from(level.min(100)) / 100.0;
+    x * x
+}
+
+/// Scales 16-bit little-endian PCM to the phone sound volume. Untouched at 100.
+pub fn apply_volume(data: &mut [u8]) {
+    scale(data, crate::settings::phone_sound_volume());
+}
+
+fn scale(data: &mut [u8], level: u8) {
+    if level >= 100 {
+        return;
+    }
+    let gain = gain(level);
+    let (samples, _) = data.as_chunks_mut::<2>();
+    for sample in samples {
+        let value = f32::from(i16::from_le_bytes(*sample)) * gain;
+        *sample = (value.round() as i16).to_le_bytes();
+    }
+}
+
+/// The phone whose sound plays here now (on its own, or with its screen).
+fn sounding_phone() -> Option<DeviceId> {
+    active().filter(|s| s.phase == Phase::Playing).map(|s| s.device).or_else(crate::mirror::sound_device)
+}
+
+/// Tells `device` the volume, so its volume keys and panel start from it.
+/// Phones from before #577 don't take it, which is fine.
+pub fn tell_phone(device: DeviceId) {
+    let Some(node) = core_host::node() else { return };
+    let level = crate::settings::phone_sound_volume();
+    core_host::spawn(async move {
+        if let Err(e) = node.mirror_volume(device, level).await
+            && !matches!(e, Error::Unsupported)
+        {
+            tracing::debug!(error = %e, "couldn't tell the phone its sound volume");
+        }
+    });
+}
+
+/// The slider here moved. `done`: let go, so it's saved and the phone told.
+pub fn set_volume(level: u8, done: bool) {
+    if done {
+        crate::settings::remember_phone_sound_volume(level);
+        if let Some(device) = sounding_phone() {
+            tell_phone(device);
+        }
+    } else {
+        crate::settings::set_phone_sound_volume(level);
+    }
+    changed();
+}
+
+/// The phone's volume keys, while its sound plays here.
+pub fn volume_from_phone(device: DeviceId, level: u8) {
+    if sounding_phone() != Some(device) {
+        return;
+    }
+    crate::settings::remember_phone_sound_volume(level);
+    changed();
+}
+
 /// The selected phone, if it is online and can share its sound alone.
 fn phone(device: DeviceId) -> Option<(DeviceId, String)> {
     core_host::host().hub.read(|s| sharing_phone(s, device))
@@ -300,14 +367,16 @@ impl MirrorSink for Sink {
         *self.player.lock().unwrap_or_else(|e| e.into_inner()) = player;
         if playing {
             update_current(self.session, Some(Session { phase: Phase::Playing, ..self.session }));
+            tell_phone(self.session.device);
         }
     }
 
-    fn audio(&self, _time_us: u64, data: Vec<u8>) {
+    fn audio(&self, _time_us: u64, mut data: Vec<u8>) {
         // The mirror window's mute is the phone's sound on this PC.
         if !is_current(self.session) || crate::mirror::muted() {
             return;
         }
+        apply_volume(&mut data);
         if let Some(player) = self.player.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
             player.push(data);
         }
@@ -414,6 +483,22 @@ mod tests {
         state.matrices.remove(&SECOND);
         assert_eq!(sharing_phone(&state, SECOND), None);
         assert_eq!(sharing_phone(&state, FIRST), Some((FIRST, "Pixel 7a".into())));
+    }
+
+    #[test]
+    fn the_volume_scales_the_sound_and_leaves_it_alone_at_full() {
+        let samples: Vec<u8> =
+            [1000i16, -1000, i16::MAX, i16::MIN].iter().flat_map(|s| s.to_le_bytes()).collect();
+        let mut full = samples.clone();
+        scale(&mut full, 100);
+        assert_eq!(full, samples);
+        let mut half = samples.clone();
+        scale(&mut half, 50);
+        let half: Vec<i16> = half.as_chunks::<2>().0.iter().map(|b| i16::from_le_bytes(*b)).collect();
+        assert_eq!(half, [250, -250, 8192, -8192]);
+        let mut silent = samples;
+        scale(&mut silent, 0);
+        assert!(silent.iter().all(|&b| b == 0));
     }
 
     #[test]

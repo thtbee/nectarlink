@@ -14,6 +14,7 @@ either device opens a web link on the other.
 | `pc.power` | PC | Locks or sleeps when a paired phone asks |
 | `pc.power.hibernate` | PC | Can also hibernate now (`pc.power` with `hibernate`) |
 | `pc.power.shutdown` | PC | Can be shut down (`pc.power` with `shutdown`) |
+| `pc.power.restart` | PC | Can be restarted (`pc.power` with `restart`) |
 | `pc.wake` | PC | Shares its network adapter MAC and subnet broadcast addresses (`pc.wake_info`) so a paired phone can wake it |
 | `link.open` | both | Opens web links a paired device sends |
 | `task.notify` | both | Sends or shows watched PC task notifications (`task.notify`) |
@@ -28,7 +29,7 @@ requests answered with `ok` or `error`; `pc.wake_info` is a one-way event (no
 `id`, no reply).
 
 ```
-t = "pc.power"           id = n   b = { action: "lock" | "sleep" | "hibernate" | "shutdown" }
+t = "pc.power"           id = n   b = { action: "lock" | "sleep" | "hibernate" | "shutdown" | "restart" }
 t = "link.open"          id = n   b = { url: text, title?: text }
 t = "task.notify"        id = n   b = { id: text, title: text, active: bool, elapsed_ms: uint, exit_code?: int }
 t = "wake.relay"         id = n   b = { mac: bytes(6), broadcast?: text }
@@ -46,6 +47,9 @@ hibernating so the answer leaves before its network goes down.
 
 `shutdown` goes only to a PC offering `pc.power.shutdown`. It shuts down the
 normal way: an app with unsaved work can still stop it, and nothing is forced.
+
+`restart` goes only to a Windows PC offering `pc.power.restart` and uses
+the same confirmation and normal app-closing behavior as shutting down.
 
 `hibernate` goes only to a PC offering `pc.power.hibernate`, which it does
 only while hibernation works there: Windows can have it turned off

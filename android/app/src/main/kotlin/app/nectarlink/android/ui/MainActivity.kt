@@ -966,6 +966,7 @@ private fun App(
                                     onPower = core::pcPower,
                                     onHibernate = core::pcHibernate,
                                     onShutdown = core::pcShutdown,
+                                    onRestart = core::pcRestart,
                                     onPhoneSoundOnPc = core::askPcForPhoneSound,
                                     onWake = core::wake,
                                     onSetReconnect = core::setReconnect,
@@ -1137,6 +1138,7 @@ private fun App(
                                     onClearEverything = core::clearEverything,
                                     onToggleLocalSend = core::setLocalSendEnabled,
                                     onToggleAwayMode = core::setAwayMode,
+                                    onToggleUsbOnly = core::setUsbOnly,
                                     onOpenRelaySettings = { relaySettingsOpen = true },
                                     onOpenWalkthrough = {
                                         preferences.updateWalkthrough { it.goToStep(WalkthroughStep.Welcome) }

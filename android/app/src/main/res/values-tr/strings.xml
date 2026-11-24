@@ -308,6 +308,10 @@
     <string name="action_phone_sound_back">Sesi yeniden telefonda çal</string>
     <string name="phone_sound_on_pc_off">%1$s bu telefonun sesini çalmıyor. Bilgisayarda Ayarlar › Cihazlar bölümünden bu telefon için Ekran yansıtmayı açın.</string>
     <string name="action_shutdown_pc">Kapat</string>
+    <string name="action_restart_pc">Yeniden başlat</string>
+    <string name="restart_pc_title">%1$s yeniden başlatılsın mı?</string>
+    <string name="restart_pc_text">Windows açık uygulamaları kapatıp yeniden başlayacak. Kaydedilmemiş değişiklikleri olan bir uygulama yeniden başlatmayı durdurabilir.</string>
+    <string name="pc_restart_requested">%1$s için yeniden başlatma istendi.</string>
     <string name="shutdown_pc_title">%1$s kapatılsın mı?</string>
     <string name="shutdown_pc_text">Açık uygulamalar kapanır. Kaydedilmemiş işi olan bir uygulama yine de durdurabilir.</string>
     <string name="action_wake_pc">Uyandır</string>
@@ -350,6 +354,7 @@
         <item quantity="other">%1$d bilgisayara bağlı</item>
     </plurals>
     <string name="notification_waiting">Bilgisayarınız bekleniyor</string>
+    <string name="notification_usb_only">Yalnızca USB: kablo bekleniyor</string>
     <string name="notification_waiting_network">Bilgisayarına ulaşmak için Wi-Fi bekleniyor</string>
     <string name="reconnect_known_only_title">Yalnızca bilgisayar bulunan ağlarda</string>
     <string name="reconnect_known_only_body">Bilgisayarlarını yalnızca daha önce birine ulaştığı Wi-Fi ağlarında kendiliğinden arar. Diğer ağlarda bilgisayar telefona yine ulaşabilir.</string>
@@ -1454,6 +1459,9 @@
     <string name="home_section_system">Sistem ve Güç</string>
     <string name="settings_category_devices">Cihazlar</string>
     <string name="settings_category_features">Özellikler ve Veriler</string>
+    <string name="settings_usb_only_title">Yalnızca USB</string>
+    <string name="settings_usb_only_body">Bilgisayarlara yalnızca USB kablosuyla bağlan: Wi-Fi, mobil veri veya yerel keşif yok</string>
+    <string name="usb_only_tile_label">Yalnızca USB</string>
     <string name="settings_theme_artwork_color">Medya kapak görseli rengi</string>
     <string name="settings_mobile_data_body">Wi-Fi\'dan uzaktayken LTE/5G veya aktarma sunucusu üzerinden bağlı kalın</string>
     <string name="settings_background_clipboard_title">Arka planda pano erişimi</string>

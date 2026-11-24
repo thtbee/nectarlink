@@ -59,6 +59,8 @@ pub mod qobject {
         #[qproperty(bool, suggest_clipboard_actions)]
         /// Copy one-time codes from phone notifications and SMS automatically.
         #[qproperty(bool, auto_copy_otp)]
+        /// Mark a text conversation read on the phone when it's read here.
+        #[qproperty(bool, mark_read_on_phone)]
         /// Pause PC media playback while a phone call is ringing or active.
         #[qproperty(bool, pause_media_on_call)]
         /// Mute this PC while a phone watches its playback (Play on phone).
@@ -407,6 +409,7 @@ pub struct PreferencesRust {
     clipboard_history: bool,
     suggest_clipboard_actions: bool,
     auto_copy_otp: bool,
+    mark_read_on_phone: bool,
     pause_media_on_call: bool,
     mute_while_watched: bool,
     language: QString,
@@ -520,6 +523,8 @@ impl cxx_qt::Initialize for qobject::Preferences {
         crate::clipboard::set_suggest_actions(settings.suggest_clipboard_actions);
         self.as_mut().set_auto_copy_otp(settings.auto_copy_otp);
         crate::notifications::set_auto_copy_otp(settings.auto_copy_otp);
+        self.as_mut().set_mark_read_on_phone(settings.mark_read_on_phone);
+        crate::messages::set_mark_read_on_phone(settings.mark_read_on_phone);
         self.as_mut().set_pause_media_on_call(settings.pause_media_on_call);
         self.as_mut().set_mute_while_watched(settings.mute_while_watched);
         self.as_mut().set_language(QString::from(&settings.language));
@@ -665,6 +670,12 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut()
             .on_auto_copy_otp_changed(|p| {
                 crate::notifications::set_auto_copy_otp(p.auto_copy_otp);
+                p.save();
+            })
+            .release();
+        self.as_mut()
+            .on_mark_read_on_phone_changed(|p| {
+                crate::messages::set_mark_read_on_phone(p.mark_read_on_phone);
                 p.save();
             })
             .release();
@@ -1412,6 +1423,7 @@ impl qobject::Preferences {
             clipboard_history: p.clipboard_history,
             suggest_clipboard_actions: p.suggest_clipboard_actions,
             auto_copy_otp: p.auto_copy_otp,
+            mark_read_on_phone: p.mark_read_on_phone,
             pause_media_on_call: p.pause_media_on_call,
             mute_while_watched: p.mute_while_watched,
             language: String::from(&p.language),
@@ -1431,6 +1443,7 @@ impl qobject::Preferences {
             battery_full_threshold: p.battery_full_threshold.clamp(50, 100) as u8,
             battery_low_threshold: p.battery_low_threshold.clamp(5, 50) as u8,
             phone_sound_buffer_ms: p.phone_sound_buffer_ms.clamp(20, 500) as u16,
+            phone_sound_volume: crate::settings::phone_sound_volume(),
             ui_scale: u16::try_from(p.ui_scale).unwrap_or(100),
             keep_screen_off: crate::settings::keep_screen_off_phones(),
             device_nicknames: crate::settings::device_nicknames(),

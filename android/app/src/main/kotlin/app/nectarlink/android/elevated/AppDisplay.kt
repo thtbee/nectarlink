@@ -82,7 +82,7 @@ class AppDisplay(
                 launch(pkg, displayId)
                 watchActivities(displayId)
                 keepActive(displayId)
-                if (device == null) stayInteractive()
+                stayInteractive(displayId)
             }
             while (running) {
                 val activeCodec = codec ?: break
@@ -455,15 +455,21 @@ class AppDisplay(
     }
 
     /**
-     * A window on a plain display takes input only while the phone is
-     * interactive: Android drops injected input otherwise, and a plain
-     * display has no interactivity of its own the way a virtual device's
-     * does. HyperOS refuses the virtual device (#483), so locking the phone
-     * left its windows view only. When the phone goes to sleep, [wakePhone]
-     * wakes it again (with its own screen kept dark), checked twice a second.
+     * A window takes input only while its display is interactive: Android
+     * drops injected touches otherwise (keys still go through). A plain
+     * display has no interactivity of its own, and HyperOS refuses the
+     * virtual device (#483); on some phones a virtual device's display goes
+     * to sleep with the phone anyway (#528). Either way locking the phone
+     * left its windows view only. When [display] goes to sleep, [wakePhone]
+     * wakes the phone again (with its own screen kept dark), checked twice a
+     * second. A virtual device's display is asked about on its own, so one
+     * that stays awake doesn't wake the phone; where Android can't say, only
+     * a plain display's window does.
      */
-    private fun stayInteractive() {
-        val interactive = UserActivity.interactive() ?: return
+    private fun stayInteractive(display: Int) {
+        val interactive = UserActivity.interactiveDisplay(display)
+            ?: UserActivity.interactive().takeIf { device == null }
+            ?: return
         Thread({
             try {
                 while (running) {
@@ -667,6 +673,18 @@ internal object UserActivity {
     }
 
     /** A call answering whether the phone is interactive (null: it can't say), or null if there is none. */
+    /**
+     * Whether [display] (its power group) is interactive, for Android 14+'s
+     * per-display interactivity; null where there's no such call.
+     */
+    fun interactiveDisplay(display: Int): (() -> Boolean?)? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return null
+        val manager = power ?: return null
+        val method = runCatching { manager.javaClass.getMethod("isDisplayInteractive", Int::class.javaPrimitiveType) }
+            .getOrNull() ?: return null
+        return { runCatching { method.invoke(manager, display) as? Boolean }.getOrNull() }
+    }
+
     fun interactive(): (() -> Boolean?)? {
         val manager = power ?: return null
         val method = runCatching { manager.javaClass.getMethod("isInteractive") }

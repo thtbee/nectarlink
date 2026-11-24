@@ -27,7 +27,7 @@ The **Messages** page on your PC brings together your phone's SMS and MMS text t
 
 ### Sending Texts and Replying to Chat Apps
 
-1. Select any conversation in the list to open its message history on the right. It opens at the latest message. If you scroll up, it keeps your place as new messages arrive. What you've read on the PC stops showing as unread there, though the phone keeps its own count unless NectarLink is its default SMS app.
+1. Select any conversation in the list to open its message history on the right. It always opens at the latest message, and so does a message you send. If you scroll up, it keeps your place as new messages arrive. Clicking the notification for a text opens its conversation here (on the right phone) with that message ringed for a moment. Copy a message's text with the copy button that shows beside it when you point at it. What you've read on the PC stops showing as unread there (and stops counting in the badge on **Messages** in the left rail, which counts texts that came in and aren't read on the PC yet), though the phone keeps its own count unless NectarLink is its default SMS app.
 2. Click the message composer at the bottom, type your message, and press **Enter** to send (or `Shift+Enter` to insert a new line).
    - In an **SMS/MMS thread**, your phone sends the text through your cellular carrier (automatically splitting long messages into multi-part SMS when needed) and writes the sent message to your phone's SMS database.
    - In a **Unified Conversation** (such as WhatsApp or Signal), your phone sends the reply through that app's active `RemoteInput` notification channel.
@@ -59,6 +59,7 @@ When an SMS or chat message contains a verification code, NectarLink displays a 
 
 - **Messages toggle** (`Settings › Devices` on PC, **On** by default): Allows this phone and PC to sync SMS/MMS conversations, Unified Conversations, and outgoing replies.
 - **Contacts toggle** (`Settings › Devices` on PC, **On** by default): Syncs contact names, phone numbers, and avatars so threads display people's names instead of raw numbers.
+- **Mark texts read on the phone** (`Settings › General` on PC, **Off** by default): Marks an SMS conversation read on the phone as well when you read it on the PC, through its messaging app's own **Mark as read** notification button (and, with `Elevated`, in the phone's messages).
 - **Copy one-time codes** (`Settings › General` on PC, **Off** by default): Copies verification codes from incoming SMS messages to the PC clipboard automatically.
 - **Cached messages** (`Settings › Storage & Privacy` on PC and `Settings › Features & Data › Data & storage` on Android): Shows how many chat threads, messages, and MMS attachment bytes are cached locally, with a **Clear** button to wipe the local cache at any time.
 

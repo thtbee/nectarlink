@@ -24,6 +24,7 @@ windows of their own (§6).
 | `mirror.sound` | phone | Shares its sound on its own, without the screen (`sound_only`, §5) |
 | `mirror.virtual_display` | phone | Runs apps on displays of their own, shown in windows on the PC (Elevated, Android 11+) |
 | `mirror.listen` | PC | Plays a mirrored phone's sound |
+| `mirror.volume` | PC or phone | Plays the phone's sound at its own volume, and shares that volume both ways (`mirror.volume`) |
 | `mirror.displays` | PC | Lists its screens and shares the one a phone picks (`display`) |
 
 Both devices must allow it: the `mirroring` device toggle, on by default,
@@ -78,6 +79,12 @@ means 0, so PCs and phones that predate sessions work as before.
 - `mirror.sound` (PC → phone, `on`): stop sending the phone's sound to the PC
   so the phone plays it again, or start again. A phone from before this
   message answers `UNSUPPORTED`.
+- `mirror.volume` (either way, `level` 0 to 100): how loud the PC plays the
+  phone's sound, apart from the PC's own volume (#577). The PC sends it when
+  its slider moves and when the sound starts; the phone sends it when its
+  volume keys are pressed while its sound plays on the PC on its own. Only
+  between devices that both offer `mirror.volume`, with `mirroring` on. Not
+  answered.
 - `mirror.power` (PC → phone): update `stay_awake` and `screen_off` while
   mirroring the phone's screen (`session` 0). Not answered.
 - `mirror.rotate` (PC → phone): turn the mirrored screen to landscape, or back

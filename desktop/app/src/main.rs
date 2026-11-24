@@ -13,6 +13,7 @@ mod agents;
 mod app_links;
 mod app_shortcuts;
 mod automations;
+mod badges;
 mod battery;
 mod bridge;
 mod call_audio;
@@ -210,6 +211,9 @@ impl Platform for DesktopPlatform {
     }
     fn call_audio_stop_requested(&self, peer: &nectarlink_core::DeviceId) {
         call_audio::end(*peer);
+    }
+    fn mirror_volume_changed(&self, peer: &nectarlink_core::DeviceId, level: u8) {
+        phone_sound::volume_from_phone(*peer, level);
     }
     fn phone_sound_asked(&self, peer: &nectarlink_core::DeviceId) {
         tracing::info!(peer = %peer.short(), "the phone asked to play its sound here");
@@ -694,6 +698,7 @@ fn main() -> ExitCode {
             Ok(()) => ExitCode::SUCCESS,
             Err(e) => {
                 eprintln!("nectarlink: unlock with phone: {e}");
+                win::unlock::note_failure(&e);
                 ExitCode::FAILURE
             }
         };
@@ -824,6 +829,7 @@ fn main() -> ExitCode {
     clipboard::set_history_enabled(settings.clipboard_history);
     clipboard::set_suggest_actions(settings.suggest_clipboard_actions);
     notifications::set_auto_copy_otp(settings.auto_copy_otp);
+    messages::set_mark_read_on_phone(settings.mark_read_on_phone);
     // Paused pop-ups stay paused after a restart, if the user chose that (#442).
     notifications::set_paused(settings.keep_popups_paused && settings.popups_paused);
     notifications::set_sync_dnd(settings.sync_dnd);

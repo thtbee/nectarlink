@@ -59,6 +59,8 @@ pub use actions::{PC_WAKE, PowerAction};
 pub const PC_HIBERNATE: &str = nectarlink_protocol::messages::pc_power::HIBERNATE;
 /// Offered by PCs a phone may shut down.
 pub const PC_SHUTDOWN: &str = nectarlink_protocol::messages::pc_power::SHUTDOWN;
+/// A PC can restart on a paired phone's request.
+pub const PC_RESTART: &str = nectarlink_protocol::messages::pc_power::RESTART;
 pub use calls::CallCommand;
 pub use clip_kind::{
     ClipKind, ClipSuggestion, classify_clip, maps_web_url, percent_encode, tracking_search_url,
@@ -136,7 +138,7 @@ pub use nectarlink_protocol::{
             NOTICE_INPUT_BLOCKED as MIRROR_NOTICE_INPUT_BLOCKED,
             NOTICE_PC_CAPTURE_FAILED as MIRROR_NOTICE_PC_CAPTURE_FAILED, PCM as MIRROR_PCM,
             POINTER as MIRROR_POINTER, SCREEN as MIRROR_SCREEN, SOUND as MIRROR_SOUND, VIEW as MIRROR_VIEW,
-            VIRTUAL_DISPLAY as MIRROR_VIRTUAL_DISPLAY,
+            VIRTUAL_DISPLAY as MIRROR_VIRTUAL_DISPLAY, VOLUME as MIRROR_VOLUME,
         },
         mirror_keys, notify_limits, parse_mac,
         photos::{
@@ -146,8 +148,9 @@ pub use nectarlink_protocol::{
         },
         ringer_modes, screen_limits,
         sms::{
-            MAX_ATTACHMENT_BYTES as SMS_MAX_ATTACHMENT_BYTES, MAX_ATTACHMENTS as SMS_MAX_ATTACHMENTS,
-            READ as SMS_READ, SEND as SMS_SEND, SHOW as SMS_SHOW, SIMS as SMS_SIMS,
+            MARK_READ as SMS_MARK_READ, MAX_ATTACHMENT_BYTES as SMS_MAX_ATTACHMENT_BYTES,
+            MAX_ATTACHMENTS as SMS_MAX_ATTACHMENTS, READ as SMS_READ, SEND as SMS_SEND, SHOW as SMS_SHOW,
+            SIMS as SMS_SIMS,
         },
         storage::{MOUNT as STORAGE_MOUNT, READ as STORAGE_READ, WRITE as STORAGE_WRITE},
         task_notify, toggle_ids,

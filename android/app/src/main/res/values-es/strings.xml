@@ -311,6 +311,10 @@
     <string name="action_phone_sound_back">Volver a reproducir el sonido en el teléfono</string>
     <string name="phone_sound_on_pc_off">%1$s no reproduce el sonido de este teléfono. En el PC, activa Duplicación de pantalla para este teléfono en Ajustes › Dispositivos.</string>
     <string name="action_shutdown_pc">Apagar</string>
+    <string name="action_restart_pc">Reiniciar</string>
+    <string name="restart_pc_title">¿Reiniciar %1$s?</string>
+    <string name="restart_pc_text">Windows cerrará las aplicaciones abiertas y se reiniciará. Una aplicación con cambios sin guardar puede impedirlo.</string>
+    <string name="pc_restart_requested">Se solicitó el reinicio de %1$s.</string>
     <string name="shutdown_pc_title">¿Apagar %1$s?</string>
     <string name="shutdown_pc_text">Las aplicaciones abiertas se cierran. Si alguna tiene trabajo sin guardar, aún puede impedirlo.</string>
     <string name="action_wake_pc">Activar</string>
@@ -354,6 +358,7 @@
         <item quantity="other">Conectado a %1$d PC</item>
     </plurals>
     <string name="notification_waiting">Esperando a tu PC</string>
+    <string name="notification_usb_only">Solo USB: esperando un cable</string>
     <string name="notification_waiting_network">Esperando Wi-Fi para conectar con tu PC</string>
     <string name="reconnect_known_only_title">Solo en redes donde se encontró un PC</string>
     <string name="reconnect_known_only_body">Solo busca tus PC por su cuenta en las redes Wi-Fi donde ya conectó con alguno. En las demás, un PC puede seguir conectando con el teléfono.</string>
@@ -1464,6 +1469,9 @@
     <string name="home_section_system">Sistema y energía</string>
     <string name="settings_category_devices">Dispositivos</string>
     <string name="settings_category_features">Funciones y datos</string>
+    <string name="settings_usb_only_title">Solo USB</string>
+    <string name="settings_usb_only_body">Conectar a PCs solo por cable USB: sin Wi-Fi, datos móviles ni detección local</string>
+    <string name="usb_only_tile_label">Solo USB</string>
     <string name="settings_theme_artwork_color">Color de la carátula multimedia</string>
     <string name="settings_mobile_data_body">Mantén la conexión mediante LTE/5G o un servidor de retransmisión cuando estés fuera de la red Wi-Fi</string>
     <string name="settings_background_clipboard_title">Acceso al portapapeles en segundo plano</string>

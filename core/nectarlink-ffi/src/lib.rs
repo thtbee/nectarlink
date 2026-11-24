@@ -2869,6 +2869,8 @@ pub trait Platform: Send + Sync {
     /// The PC wants the phone's sound sent to it, or left on the phone, while
     /// mirroring the screen.
     fn mirror_sound_requested(&self, pc_id: String, on: bool);
+    /// The PC set how loud the phone's sound plays there (`0..=100`, #577).
+    fn mirror_volume_changed(&self, pc_id: String, level: u8);
     /// The PC's mouse or keyboard on the mirrored screen (only while this
     /// phone offers `mirror.input`) or an app window. Return quickly.
     fn mirror_input(&self, pc_id: String, session: u32, input: MirrorInputEvent);
@@ -2935,6 +2937,10 @@ pub trait Platform: Send + Sync {
         attachments: Vec<SmsAttachment>,
         sim: String,
     ) -> bool;
+    /// A PC asked to mark the received texts of the conversation `thread`
+    /// (the phone's number for it) read in the phone's own messages. False
+    /// if the phone couldn't.
+    fn sms_mark_read(&self, thread: String) -> bool;
     /// A PC asked for a message's attachment; null when it's gone.
     fn sms_part(&self, id: String) -> Option<SmsPartData>;
     /// A PC asked to change one of this phone's quick settings (`id`: `"dnd"`,
@@ -3188,6 +3194,9 @@ impl core::Platform for PlatformAdapter {
     fn mirror_sound_requested(&self, peer: &DeviceId, on: bool) {
         self.0.mirror_sound_requested(peer.to_string(), on);
     }
+    fn mirror_volume_changed(&self, peer: &DeviceId, level: u8) {
+        self.0.mirror_volume_changed(peer.to_string(), level);
+    }
     fn mirror_input(&self, peer: &DeviceId, session: u32, input: core::MirrorInput) {
         self.0.mirror_input(peer.to_string(), session, input.into());
     }
@@ -3363,6 +3372,9 @@ impl core::Platform for PlatformAdapter {
         } else {
             Err("not sent".into())
         }
+    }
+    fn sms_mark_read(&self, thread: &str) -> Result<(), String> {
+        if self.0.sms_mark_read(thread.to_owned()) { Ok(()) } else { Err("not marked read".into()) }
     }
     fn sms_part(&self, id: &str) -> Result<(String, Vec<u8>), String> {
         let part = self.0.sms_part(id.to_owned()).ok_or("it's gone")?;
@@ -3623,6 +3635,9 @@ pub struct NodeOptions {
     pub power: PowerLevel,
     /// Allow connections through relays when away from home.
     pub away_mode: bool,
+    /// Connect only through a USB cable.
+    #[uniffi(default = false)]
+    pub usb_only: bool,
     /// Where received files are put once complete (the app then moves them
     /// where the user finds them).
     pub downloads_dir: String,
@@ -3762,6 +3777,7 @@ impl NectarlinkNode {
             NodeConfig::new(PathBuf::from(options.data_dir), options.device.into(), options.app_version);
         config.power = options.power.into();
         config.away_mode = options.away_mode;
+        config.usb_only = options.usb_only;
         config.downloads_dir = Some(PathBuf::from(options.downloads_dir));
         config.usb_port = options.usb_port;
         config.key_protector = Some(Arc::new(KeyProtectorAdapter(key_protector)));
@@ -4423,6 +4439,17 @@ impl NectarlinkNode {
         self.node.set_away_mode(enabled);
     }
 
+    /// Whether only USB connections are allowed.
+    pub fn usb_only(&self) -> bool {
+        self.node.usb_only()
+    }
+
+    /// Allows only connections through a USB cable (no Wi-Fi, mobile data,
+    /// relay or local discovery), or all the others again.
+    pub fn set_usb_only(&self, enabled: bool) {
+        self.node.set_usb_only(enabled);
+    }
+
     pub fn relay_snapshot(&self) -> RelaySnapshot {
         use core::relays::RelayRegion as Region;
         let snapshot = self.node.relay_snapshot();
@@ -4505,6 +4532,13 @@ impl NectarlinkNode {
         let id = parse_id(&id)?;
         let node = self.node.clone();
         self.run(async move { Ok(node.pc_power(id, core::PowerAction::Shutdown).await?) }).await
+    }
+
+    /// Restarts a paired PC (only one that offers `pc.power.restart`).
+    pub async fn pc_restart(&self, id: String) -> Result<()> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.pc_power(id, core::PowerAction::Restart).await?) }).await
     }
 
     /// Hibernates a paired PC (only one that offers `pc.power.hibernate`).
@@ -4774,6 +4808,14 @@ impl NectarlinkNode {
             node.mirror_notice(id, session, core::MIRROR_NOTICE_INPUT_BLOCKED).await.map_err(Into::into)
         })
         .await
+    }
+
+    /// Tells a paired PC how loud to play this phone's sound (`0..=100`, #577):
+    /// the phone's volume keys while its sound plays there.
+    pub async fn mirror_volume(&self, pc_id: String, level: u8) -> Result<()> {
+        let id = parse_id(&pc_id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.mirror_volume(id, level).await?) }).await
     }
 
     /// Tells a paired PC that mirroring or remote keyboard input on `session` has stopped (`mirror.stop`).

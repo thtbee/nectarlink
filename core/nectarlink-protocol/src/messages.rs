@@ -88,11 +88,13 @@ pub mod types {
     pub const SMS_PART: &str = "sms.part";
     pub const SMS_CHANGED: &str = "sms.changed";
     pub const SMS_SIMS: &str = "sms.sims";
+    pub const SMS_MARK_READ: &str = "sms.mark_read";
     pub const MIRROR_START: &str = "mirror.start";
     pub const MIRROR_STOP: &str = "mirror.stop";
     pub const MIRROR_POWER: &str = "mirror.power";
     pub const MIRROR_ROTATE: &str = "mirror.rotate";
     pub const MIRROR_SOUND: &str = "mirror.sound";
+    pub const MIRROR_VOLUME: &str = "mirror.volume";
     /// Phone → PC: play my sound (#398). The PC starts its phone sound as
     /// if its user had turned it on; answered `ok`.
     pub const MIRROR_LISTEN_ASK: &str = "mirror.listen.ask";
@@ -1182,7 +1184,7 @@ impl MediaWatch {
 
 /// Body of `pc.power`: `lock`, `sleep`, `hibernate` (only to a PC that
 /// offers [`pc_power::HIBERNATE`]) or `shutdown` (only to one offering
-/// [`pc_power::SHUTDOWN`]).
+/// [`pc_power::SHUTDOWN`]) or `restart` (only to one offering [`pc_power::RESTART`]).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PcPower {
     pub action: String,
@@ -1194,6 +1196,8 @@ pub mod pc_power {
     pub const HIBERNATE: &str = "pc.power.hibernate";
     /// Offered by PCs a phone may shut down (D372).
     pub const SHUTDOWN: &str = "pc.power.shutdown";
+    /// Offered by PCs a phone may restart.
+    pub const RESTART: &str = "pc.power.restart";
 }
 
 /// The longest link sent, in bytes.
@@ -1422,6 +1426,10 @@ pub mod mirror {
     /// Offered by phones that share their sound on its own, without the
     /// screen (`MirrorStart::sound_only`).
     pub const SOUND: &str = "mirror.sound";
+    /// Offered by devices that keep the phone's sound on the PC at its own
+    /// volume and share it both ways (`mirror.volume`, #577): the PC's slider,
+    /// and the phone's volume keys while its sound plays on the PC.
+    pub const VOLUME: &str = "mirror.volume";
     pub const OP_AUDIO: &str = "audio";
     /// 16-bit little-endian PCM, channels interleaved.
     pub const PCM: &str = "pcm_s16le";
@@ -1557,6 +1565,20 @@ pub struct MirrorRotate {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MirrorSound {
     pub on: bool,
+}
+
+/// Body of `mirror.volume`: how loud the phone's sound plays on the PC,
+/// `0..=100`, set on either side (the PC's slider, the phone's volume keys).
+/// Not answered.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MirrorVolume {
+    pub level: u8,
+}
+
+impl MirrorVolume {
+    pub fn is_valid(&self) -> bool {
+        self.level <= 100
+    }
 }
 
 /// Which mirroring a `mirror.stop`, `mirror.keyframe` or `mirror.input` is
@@ -2285,6 +2307,9 @@ pub mod sms {
     /// Offered by phones that list the SIMs they text from (`sms.sims`) and
     /// send on the one a PC picks (`sms.send`'s `sim`).
     pub const SIMS: &str = "sms.sims";
+    /// Offered by phones that mark a conversation's texts read in the phone's
+    /// own messages when a PC asks (`sms.mark_read`).
+    pub const MARK_READ: &str = "sms.mark_read";
     /// Most conversations or messages in one answer.
     pub const MAX_PAGE: u32 = 100;
     /// A text sent from a PC: at most this many bytes.
@@ -2502,6 +2527,19 @@ pub struct SmsPartData {
 impl std::fmt::Debug for SmsPartData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SmsPartData").field("mime", &self.mime).field("bytes", &self.data.len()).finish()
+    }
+}
+
+/// Body of `sms.mark_read`: mark this conversation's received texts read.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SmsMarkRead {
+    pub thread: String,
+}
+
+impl SmsMarkRead {
+    /// A conversation is the phone's number for it: digits only.
+    pub fn is_valid(&self) -> bool {
+        (1..=18).contains(&self.thread.len()) && self.thread.bytes().all(|b| b.is_ascii_digit())
     }
 }
 
@@ -5271,6 +5309,16 @@ pub enum LinuxUnlockForget {
 #[cfg(test)]
 mod tests {
     #[test]
+    fn marking_read_names_a_conversation_by_its_number_alone() {
+        let mark = |thread: &str| SmsMarkRead { thread: thread.into() };
+        assert!(mark("128").is_valid());
+        assert!(mark("123456789012345678").is_valid());
+        for bad in ["", "12a", "-1", "1 OR 1=1", "1;reboot", "1234567890123456789", "١٢٣"] {
+            assert!(!mark(bad).is_valid(), "{bad:?}");
+        }
+    }
+
+    #[test]
     fn linux_unlock_enrollment_requires_a_non_root_account() {
         let request = LinuxUnlockEnroll {
             pc: DeviceId([1; 32]),
@@ -5331,6 +5379,15 @@ mod tests {
         assert!(hint("stable", "").is_none());
         assert!(hint("stable", "0.1.5; rm -rf /").is_none());
         assert!(hint("stable", &"9".repeat(65)).is_none());
+    }
+
+    #[test]
+    fn the_phones_sound_volume_is_a_percentage() {
+        assert!(MirrorVolume { level: 0 }.is_valid());
+        assert!(MirrorVolume { level: 100 }.is_valid());
+        assert!(!MirrorVolume { level: 101 }.is_valid());
+        let env = crate::Envelope::new(types::MIRROR_VOLUME, &MirrorVolume { level: 40 }).unwrap();
+        assert_eq!(env.body::<MirrorVolume>().unwrap(), MirrorVolume { level: 40 });
     }
 
     #[test]

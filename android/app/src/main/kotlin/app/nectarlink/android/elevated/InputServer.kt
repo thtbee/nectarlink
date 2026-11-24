@@ -136,6 +136,38 @@ object InputServer {
         return false
     }
 
+    private val smsReadLock = Any()
+
+    private val smsWriteMode = arrayOf("appops", "get", "com.android.shell", "WRITE_SMS")
+
+    private val APP_OP_MODES = setOf("allow", "ignore", "deny", "default", "foreground")
+
+    /**
+     * The mode in `appops get` output (`WRITE_SMS: ignore`, or `No operations.`
+     * for an op never changed, which is `default`), or null when it isn't one
+     * of the modes `appops set` takes.
+     */
+    internal fun parseAppOpMode(output: String): String? {
+        if (output.trim().startsWith("No operations")) return "default"
+        val mode = Regex("""^\s*\w+:\s*(\w+)""").find(output)?.groupValues?.get(1)
+        return mode?.takeIf { it in APP_OP_MODES }
+    }
+
+    /**
+     * The commands that mark a conversation's received texts read: allow the
+     * write, make it, put the app-op back to the mode it had (`previousMode`,
+     * from [parseAppOpMode]).
+     */
+    internal fun smsReadCommands(thread: Long, previousMode: String): List<Array<String>> = listOf(
+        arrayOf("appops", "set", "com.android.shell", "WRITE_SMS", "allow"),
+        arrayOf(
+            "content", "update", "--uri", "content://sms/inbox",
+            "--bind", "read:i:1", "--bind", "seen:i:1",
+            "--where", "thread_id=$thread AND read=0",
+        ),
+        arrayOf("appops", "set", "com.android.shell", "WRITE_SMS", previousMode),
+    )
+
     @JvmStatic
     fun main(args: Array<String>) {
         // The app that starts the helper (over adb, USB or Shizuku) passes the
@@ -893,6 +925,7 @@ object InputServer {
                         else -> Runtime.getRuntime().exec(rest.split(' ').toTypedArray()).waitFor()
                     }
                 }
+                "R" -> if (display < 0) rest.trim().toLongOrNull()?.takeIf { it > 0 }?.let { markSmsRead(it) }
                 "P" -> if (display < 0) setDisplayPower(rest.trim() != "0")
                 "B" -> if (display < 0) setClipboard(rest)
                 "X" -> if (display < 0) clearClipboard(rest)
@@ -1111,6 +1144,36 @@ object InputServer {
         }
 
         private fun allowedCommand(cmd: String): Boolean = isAllowedCommand(cmd)
+
+        /**
+         * Marks a conversation's received texts read. The phone's messages only
+         * take writes from the default SMS app, and drop the shell's silently
+         * while its SMS write app-op is `ignore` (the default): allowed for the
+         * one change, then back to the mode it had. One at a time, off this
+         * thread, which carries input.
+         */
+        private fun markSmsRead(thread: Long) {
+            Thread {
+                synchronized(smsReadLock) {
+                    // A mode that can't be read is put back as `default`, as it
+                    // is unless something changed it.
+                    val previous = runCatching {
+                        val proc = Runtime.getRuntime().exec(smsWriteMode)
+                        val out = proc.inputStream.bufferedReader().readText()
+                        proc.waitFor()
+                        parseAppOpMode(out)
+                    }.getOrNull() ?: "default"
+                    val commands = smsReadCommands(thread, previous)
+                    try {
+                        for (cmd in commands.dropLast(1)) {
+                            runCatching { Runtime.getRuntime().exec(cmd).waitFor() }
+                        }
+                    } finally {
+                        runCatching { Runtime.getRuntime().exec(commands.last()).waitFor() }
+                    }
+                }
+            }.start()
+        }
 
     }
 
@@ -1355,12 +1418,15 @@ object InputServer {
             UhidBridge.mouse(100, 100, 0, 0)
             Thread.sleep(150)
             val at = position()
-            if (size == null || at == null || at.first <= 0f) {
+            if (size == null || (at != null && at.first <= 0f)) {
                 stop()
                 return "FI 0 0 0"
             }
             val (width, height) = size
-            val scale = (at.first + at.second) / 200f
+            // Android 13 and older list no mouse position in `dumpsys input`
+            // (#107): there the scale is what the pointer speed setting gives,
+            // and `FW` answers unknown, so the PC trusts its own count.
+            val scale = if (at != null) (at.first + at.second) / 200f else speedScale()
             // Then to where the PC's mouse came in.
             UhidBridge.mouse(if (edge == "left") -127 * 30 else 127 * 30, -127 * 60, 0, 0)
             UhidBridge.mouse(0, (y.coerceIn(0f, 1f) * (height - 1) / scale).toInt(), 0, 0)
@@ -1373,6 +1439,18 @@ object InputServer {
         }
 
         fun where(): String = position()?.let { (x, y) -> "FP $x $y" } ?: "FP -1 -1"
+
+        /**
+         * Pixels per count from `pointer_speed` (-7 to 7), as Android's input
+         * reader scales a mouse: 2^(speed / 4).
+         */
+        private fun speedScale(): Float {
+            val speed = runCatching {
+                val proc = Runtime.getRuntime().exec(arrayOf("settings", "get", "system", "pointer_speed"))
+                proc.inputStream.bufferedReader().use { it.readText().trim() }.also { proc.waitFor() }.toInt()
+            }.getOrDefault(0).coerceIn(-7, 7)
+            return Math.pow(2.0, speed / 4.0).toFloat()
+        }
 
         @Synchronized
         fun stop() {

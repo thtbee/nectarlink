@@ -26,9 +26,9 @@ use nectarlink_protocol::{
     DeviceId, Envelope, ErrorCode, PacketKind,
     messages::{
         MirrorAudioConfig, MirrorConfig, MirrorDisplay, MirrorDisplays, MirrorInput, MirrorNotice,
-        MirrorPower, MirrorResize, MirrorRotate, MirrorSession, MirrorSound, MirrorStart, PhoneApp,
-        PhoneApps, PointerAt, PointerEdge, PointerEnter, PointerMove, PointerScreen, StreamHeader, mirror,
-        types,
+        MirrorPower, MirrorResize, MirrorRotate, MirrorSession, MirrorSound, MirrorStart, MirrorVolume,
+        PhoneApp, PhoneApps, PointerAt, PointerEdge, PointerEnter, PointerMove, PointerScreen, StreamHeader,
+        mirror, types,
     },
     read_video_packet, video_packet_header, write_frame,
 };
@@ -217,6 +217,22 @@ pub(crate) async fn sound(shared: &Shared, session: &Session, on: bool) -> Resul
         return Err(Error::Denied);
     }
     session.send(Envelope::new(types::MIRROR_SOUND, &MirrorSound { on })?).await
+}
+
+/// Tells the other side how loud the phone's sound plays on the PC (#577):
+/// the PC's slider moved, or the phone's volume keys were pressed.
+pub(crate) async fn volume(shared: &Shared, session: &Session, level: u8) -> Result<()> {
+    let msg = MirrorVolume { level };
+    if !msg.is_valid() {
+        return Err(Error::Protocol("volume over 100".into()));
+    }
+    if !shared.toggle_on(&session.peer, TOGGLE) {
+        return Err(Error::Denied);
+    }
+    if !shared.we_offer(mirror::VOLUME) || !shared.offers(&session.peer, mirror::VOLUME)? {
+        return Err(Error::Unsupported);
+    }
+    session.send(Envelope::new(types::MIRROR_VOLUME, &msg)?).await
 }
 
 // ---- The PC's mouse on a phone (`pointer.*`, #107) ----
@@ -619,6 +635,12 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
             let MirrorSound { on } = env.body()?;
             if shared.toggle_on(&peer, TOGGLE) && shared.we_offer(mirror::CAPTURE) {
                 tokio::task::spawn_blocking(move || platform.mirror_sound_requested(&peer, on));
+            }
+        }
+        types::MIRROR_VOLUME => {
+            let volume: MirrorVolume = env.body()?;
+            if volume.is_valid() && shared.toggle_on(&peer, TOGGLE) && shared.we_offer(mirror::VOLUME) {
+                tokio::task::spawn_blocking(move || platform.mirror_volume_changed(&peer, volume.level));
             }
         }
         types::MIRROR_ROTATE => {

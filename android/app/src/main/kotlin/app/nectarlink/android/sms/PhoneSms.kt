@@ -117,6 +117,12 @@ internal class PhoneSms(context: Context, private val onChange: () -> Unit) {
         }.orEmpty()
     }
 
+    /** The names and numbers of the people in a conversation, to find its notification. */
+    fun peopleOf(thread: Long): List<String> {
+        val found = threads(THREAD_LOOKUP).firstOrNull { it.id == thread.toString() } ?: return emptyList()
+        return found.names.filter { it.isNotBlank() } + found.addresses
+    }
+
     private fun unreadIn(thread: Long): UInt =
         resolver.query(
             Telephony.Sms.CONTENT_URI,
@@ -365,6 +371,8 @@ internal class PhoneSms(context: Context, private val onChange: () -> Unit) {
         private const val TAG = "PhoneSms"
         private const val SETTLE_MS = 1000L
         private val WATCHED_URIS = listOf("content://mms-sms/", "content://sms", "content://mms")
+        /** Conversations looked through to find one's people. */
+        private const val THREAD_LOOKUP = 200
         private const val MAX_PART_BYTES = 900 * 1024
         private const val MAX_PHOTO_BYTES = 16 * 1024
         private const val MMS_CACHE_DIR = "mms"

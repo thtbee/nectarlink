@@ -298,6 +298,11 @@ impl Decoder {
         self.gpu.is_some()
     }
 
+    /// Whether a hardware decoder for `codec` can be created on any adapter.
+    pub fn supports_hardware(codec: &str) -> bool {
+        Self::create_hardware(codec, &[]).is_ok()
+    }
+
     fn create_hardware(codec: &str, excluded: &[u64]) -> windows::core::Result<Decoder> {
         ensure_mf_started()?;
         let mut last_error = windows::core::Error::from(E_FAIL);

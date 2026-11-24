@@ -96,7 +96,9 @@ Item {
             const track = rail.height - thumb.height
             const at = track > 0 ? Math.max(0, Math.min(1, (py - grip) / track)) : 0
             const f = rail.flick
-            f.contentY = f.originY + at * Math.max(0, f.contentHeight - f.height)
+            const minY = f.originY - f.topMargin
+            const maxY = Math.max(minY, f.originY + f.contentHeight + f.bottomMargin - f.height)
+            f.contentY = minY + at * (maxY - minY)
         }
 
         onPressed: (mouse) => {

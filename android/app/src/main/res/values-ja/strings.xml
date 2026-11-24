@@ -307,6 +307,10 @@
     <string name="action_phone_sound_back">音声をスマートフォンに戻す</string>
     <string name="phone_sound_on_pc_off">%1$s はこのスマートフォンの音声を再生しません。PCの「設定」›「デバイス」で、このスマートフォンの「画面ミラーリング」をオンにしてください。</string>
     <string name="action_shutdown_pc">シャットダウン</string>
+    <string name="action_restart_pc">再起動</string>
+    <string name="restart_pc_title">%1$s を再起動しますか？</string>
+    <string name="restart_pc_text">Windows は開いているアプリを閉じて再起動します。未保存のデータがある場合は中止されることがあります。</string>
+    <string name="pc_restart_requested">%1$s に再起動を要求しました。</string>
     <string name="shutdown_pc_title">%1$s をシャットダウンしますか？</string>
     <string name="shutdown_pc_text">開いているアプリが閉じます。未保存のデータがある場合は中止されることがあります。</string>
     <string name="action_wake_pc">起動</string>
@@ -348,6 +352,7 @@
         <item quantity="other">%1$d台のPCに接続済み</item>
     </plurals>
     <string name="notification_waiting">PCを待機中</string>
+    <string name="notification_usb_only">USBのみ: ケーブルを待機中</string>
     <string name="notification_waiting_network">PC に接続するため Wi-Fi を待っています</string>
     <string name="reconnect_known_only_title">PC が見つかったネットワークのみ</string>
     <string name="reconnect_known_only_body">以前 PC に接続できた Wi-Fi でのみ、自動で PC を探します。それ以外のネットワークでも、PC からスマートフォンには接続できます。</string>
@@ -1447,6 +1452,9 @@
     <string name="home_section_system">システムと電源</string>
     <string name="settings_category_devices">デバイス</string>
     <string name="settings_category_features">機能とデータ</string>
+    <string name="settings_usb_only_title">USBのみ</string>
+    <string name="settings_usb_only_body">USBケーブルでのみPCに接続します。Wi-Fi、モバイルデータ、ローカル検出は使いません</string>
+    <string name="usb_only_tile_label">USBのみ</string>
     <string name="settings_theme_artwork_color">メディアアートワークの色</string>
     <string name="settings_mobile_data_body">Wi-Fi環境外でもLTE/5Gやリレーで接続を維持</string>
     <string name="settings_background_clipboard_title">バックグラウンドでのクリップボードアクセス</string>

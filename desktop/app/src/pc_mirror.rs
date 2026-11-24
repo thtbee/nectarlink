@@ -1989,17 +1989,13 @@ mod imp {
             if !pipewire_capture_installed() {
                 return false;
             }
-            let Ok(conn) = zbus::blocking::Connection::session() else {
-                return false;
-            };
-            let Ok(dbus) = zbus::blocking::fdo::DBusProxy::new(&conn) else {
-                return false;
-            };
-            "org.freedesktop.portal.Desktop"
-                .try_into()
-                .ok()
-                .and_then(|name| dbus.name_has_owner(name).ok())
-                .unwrap_or(false)
+            // The core probes capture capabilities from a Tokio worker.
+            win::non_tokio(|| {
+                let Ok(conn) = zbus::blocking::Connection::session() else {
+                    return false;
+                };
+                win::dbus_name_has_owner(&conn, "org.freedesktop.portal.Desktop")
+            })
         })
     }
 

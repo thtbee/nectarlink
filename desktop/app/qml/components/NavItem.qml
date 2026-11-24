@@ -8,6 +8,8 @@ FocusScope {
     property string iconPath
     property string text
     property bool selected: false
+    // Something new here (a count): shown as a badge on the icon, 0 for none.
+    property int badge: 0
     readonly property alias hovered: mouse.containsMouse
     property bool activeHover: mouse.containsMouse
     signal clicked
@@ -17,7 +19,7 @@ FocusScope {
     activeFocusOnTab: true
 
     Accessible.role: Accessible.PageTab
-    Accessible.name: text
+    Accessible.name: badge > 0 ? qsTr("%1, %n new", "", badge).arg(text) : text
     Accessible.selected: selected
     Accessible.onPressAction: item.clicked()
     Keys.onPressed: (event) => {
@@ -107,6 +109,12 @@ FocusScope {
                 ColorAnimation { duration: Theme.fadeFast }
             }
         }
+    }
+    Badge {
+        // At the icon's top right corner.
+        x: pill.x + pill.width / 2 + 2
+        y: pill.y - 2
+        count: item.badge
     }
     Txt {
         anchors.horizontalCenter: parent.horizontalCenter

@@ -20,6 +20,9 @@ pub struct NodeConfig {
     /// Allow connections through relay servers ("Reach my phone away from
     /// home"). Off by default: LAN only.
     pub away_mode: bool,
+    /// Connect only through a USB cable: no Wi-Fi, mobile data or relay
+    /// connections, and no local discovery. Off by default.
+    pub usb_only: bool,
     /// Enable relay interface selection on Linux. An empty name uses system routing.
     #[cfg(target_os = "linux")]
     pub network_interface: Option<String>,
@@ -135,6 +138,7 @@ impl NodeConfig {
             app_version: app_version.into(),
             power: PowerLevel::NotApplicable,
             away_mode: false,
+            usb_only: false,
             #[cfg(target_os = "linux")]
             network_interface: None,
             lan_discovery: true,
@@ -159,6 +163,7 @@ impl fmt::Debug for NodeConfig {
             .field("app_version", &self.app_version)
             .field("power", &self.power)
             .field("away_mode", &self.away_mode)
+            .field("usb_only", &self.usb_only)
             .field("lan_discovery", &self.lan_discovery)
             .field("port", &self.port)
             .field("localsend_port", &self.localsend_port)
@@ -396,6 +401,10 @@ pub trait Platform: Send + Sync + 'static {
     /// mirroring its screen.
     fn mirror_sound_requested(&self, _peer: &nectarlink_protocol::DeviceId, _on: bool) {}
 
+    /// The other side set how loud the phone's sound plays on the PC
+    /// (`0..=100`, #577): the PC's slider, or the phone's volume keys.
+    fn mirror_volume_changed(&self, _peer: &nectarlink_protocol::DeviceId, _level: u8) {}
+
     /// The PC wants this phone's mirrored screen in landscape or portrait.
     fn mirror_rotate_requested(&self, _peer: &nectarlink_protocol::DeviceId, _landscape: bool) {}
 
@@ -468,6 +477,12 @@ pub trait Platform: Send + Sync + 'static {
         _sim: &str,
     ) -> Result<(), String> {
         self.send_sms_with_attachments(to, body, attachments)
+    }
+
+    /// Marks the received texts of the conversation `thread` read in the
+    /// phone's own messages (a PC asked; offered as `sms.mark_read`).
+    fn sms_mark_read(&self, _thread: &str) -> Result<(), String> {
+        Err("this device can't mark texts read".into())
     }
 
     /// A picture in a message: its type and bytes.

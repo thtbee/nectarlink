@@ -16,6 +16,7 @@ NativeWindow {
     onPageChanged: {
         if (AppController.currentPage !== page) AppController.currentPage = page
         whatsNewLoader.hide()
+        AppController.setCallsOpen(page === "calls")
     }
     Connections {
         target: AppController
@@ -111,6 +112,17 @@ NativeWindow {
         ? DeviceList.deviceIdAt(currentDeviceIndex) : ""
     readonly property string currentDeviceName: DeviceList.count > 0 && DeviceList.revision >= 0
         ? DeviceList.deviceNameAt(currentDeviceIndex) : ""
+
+    // What's waiting on each device, and on all but the one shown.
+    readonly property var deviceBadges: { try { return JSON.parse(AppController.deviceBadges) } catch (e) { return ({}) } }
+    readonly property int otherDevicesBadge: {
+        let total = 0
+        for (const id in deviceBadges) {
+            if (id !== currentDeviceId)
+                total += deviceBadges[id]
+        }
+        return total
+    }
 
     minimumWidth: Theme.layout.minWindow[0]
     minimumHeight: Theme.layout.minWindow[1]
@@ -406,6 +418,8 @@ NativeWindow {
         }
     }
     Component.onCompleted: {
+        AppController.watchBadges(window.currentDeviceId)
+        AppController.setCallsOpen(window.page === "calls")
         followBackdrop()
         if (!window.activeFocusItem && window.contentItem)
             window.contentItem.forceActiveFocus()
@@ -595,6 +609,7 @@ NativeWindow {
             }
         }
         Column {
+            id: navColumn
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.top: mark.bottom
             anchors.topMargin: 31
@@ -613,6 +628,7 @@ NativeWindow {
             NavItem {
                 iconPath: Icons.messages
                 text: qsTr("Messages")
+                badge: AppController.unreadMessagesBadge
                 selected: window.page === "messages"
                 activeHover: rail.hoveredNav === "messages"
                 onHoveredChanged: {
@@ -624,6 +640,7 @@ NativeWindow {
             NavItem {
                 iconPath: Icons.call
                 text: qsTr("Calls")
+                badge: AppController.missedCallsBadge
                 selected: window.page === "calls"
                 activeHover: rail.hoveredNav === "calls"
                 onHoveredChanged: {
@@ -688,7 +705,90 @@ NativeWindow {
                 onClicked: window.page = "settings"
             }
         }
+        // The device the pages show: click to pick another.
+        FocusScope {
+            id: deviceChip
+            // Only where it fits under the pages: a short window has no room (the
+            // pages switch devices too).
+            visible: DeviceList.count > 0 && navColumn.y + navColumn.height + 8 + height + anchors.bottomMargin <= pairButton.y
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.bottom: pairButton.top
+            anchors.bottomMargin: 14
+            width: Theme.railWidth - 8
+            height: chipIcon.height + chipName.height + 8
+            activeFocusOnTab: true
+            Accessible.role: Accessible.Button
+            Accessible.name: window.otherDevicesBadge > 0
+                ? qsTr("Device: %1. Switch device, %n new on the others", "", window.otherDevicesBadge).arg(window.currentDeviceName)
+                : qsTr("Device: %1. Switch device").arg(window.currentDeviceName)
+            Accessible.onPressAction: deviceMenu.open()
+            Keys.onPressed: (event) => {
+                if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                    deviceMenu.open()
+                    event.accepted = true
+                }
+            }
+            Rectangle {
+                id: chipIcon
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: 40; height: 40
+                radius: width / 2
+                color: chipMouse.containsMouse || deviceMenu.opened ? Theme.secondaryContainer : Theme.surfaceContainerHigh
+                border.width: Theme.focusVisible(deviceChip) ? 2 : 1
+                border.color: Theme.focusVisible(deviceChip) ? Theme.primary : Theme.outlineVariant
+                Behavior on color { enabled: !Theme.reduceMotion; ColorAnimation { duration: Theme.fadeFast } }
+                // The row of the device shown gives its kind and whether it's online.
+                Repeater {
+                    model: DeviceList
+                    delegate: Item {
+                        required property int index
+                        required property string kind
+                        required property bool online
+                        visible: index === window.currentDeviceIndex
+                        anchors.fill: parent
+                        Icon {
+                            anchors.centerIn: parent
+                            path: kind === "tablet" || kind === "phone" ? Icons.phone : Icons.laptop
+                            color: Theme.surfaceContent
+                        }
+                        StatusDot {
+                            anchors.right: parent.right
+                            anchors.bottom: parent.bottom
+                            anchors.rightMargin: -2
+                            anchors.bottomMargin: -2
+                            online: parent.online
+                        }
+                    }
+                }
+            }
+            // What's waiting on the other devices: a reason to click.
+            Badge {
+                x: chipIcon.x + chipIcon.width - width / 2 - 2
+                y: chipIcon.y - 4
+                count: window.otherDevicesBadge
+            }
+            Txt {
+                id: chipName
+                anchors.top: chipIcon.bottom
+                anchors.topMargin: 4
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: parent.width
+                horizontalAlignment: Text.AlignHCenter
+                text: window.currentDeviceName
+                role: "caption"
+                muted: true
+                elide: Text.ElideRight
+            }
+            MouseArea {
+                id: chipMouse
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Theme.controlCursor
+                onClicked: deviceMenu.open()
+            }
+        }
         IconButton {
+            id: pairButton
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.bottom: parent.bottom
             anchors.bottomMargin: 18
@@ -1063,6 +1163,17 @@ NativeWindow {
     }
 
     // ---- Overlays ----
+    DeviceMenu {
+        id: deviceMenu
+        current: window.currentDeviceIndex
+        badges: window.deviceBadges
+        onPicked: (index) => AppController.currentDevice = index
+        onPairRequested: window.openPairing()
+    }
+    // The rail's badges count for the device shown; the Calls page showing
+    // is looking at its missed calls.
+    onCurrentDeviceIdChanged: AppController.watchBadges(window.currentDeviceId)
+    Component.onDestruction: AppController.setCallsOpen(false)
     Connections {
         target: Pairing
         function onStateChanged() {

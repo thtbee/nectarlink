@@ -307,6 +307,10 @@
 <string name="action_phone_sound_back">Phát lại âm thanh trên điện thoại</string>
 <string name="phone_sound_on_pc_off">%1$s không phát âm thanh của điện thoại này. Trên PC, hãy bật Phản chiếu màn hình cho điện thoại này trong Cài đặt › Thiết bị.</string>
 <string name="action_shutdown_pc">Tắt máy</string>
+<string name="action_restart_pc">Khởi động lại</string>
+<string name="restart_pc_title">Khởi động lại %1$s?</string>
+<string name="restart_pc_text">Windows sẽ đóng các ứng dụng đang mở và khởi động lại. Ứng dụng có dữ liệu chưa lưu vẫn có thể ngăn việc khởi động lại.</string>
+<string name="pc_restart_requested">Đã yêu cầu khởi động lại %1$s.</string>
 <string name="shutdown_pc_title">Tắt %1$s?</string>
 <string name="shutdown_pc_text">Các ứng dụng đang mở sẽ đóng. Ứng dụng có dữ liệu chưa lưu vẫn có thể chặn việc này.</string>
 <string name="action_wake_pc">Đánh thức</string>
@@ -348,6 +352,7 @@
         <item quantity="other">Đã kết nối với %1$d PC</item>
     </plurals>
 <string name="notification_waiting">Đang chờ PC của bạn</string>
+<string name="notification_usb_only">Chỉ USB: đang chờ cáp</string>
 <string name="notification_waiting_network">Đang chờ Wi-Fi để kết nối với PC</string>
 <string name="reconnect_known_only_title">Chỉ trên mạng đã từng thấy PC</string>
 <string name="reconnect_known_only_body">Chỉ tự tìm PC trên các mạng Wi-Fi đã từng kết nối được với một PC. Ở mạng khác, PC vẫn có thể kết nối tới điện thoại.</string>
@@ -1385,6 +1390,9 @@
 <string name="home_section_system">Hệ thống &amp; Nguồn</string>
 <string name="settings_category_devices">Thiết bị</string>
 <string name="settings_category_features">Tính năng &amp; Dữ liệu</string>
+<string name="settings_usb_only_title">Chỉ USB</string>
+<string name="settings_usb_only_body">Chỉ kết nối với PC qua cáp USB: không Wi-Fi, dữ liệu di động hay phát hiện cục bộ</string>
+<string name="usb_only_tile_label">Chỉ USB</string>
 <string name="settings_theme_artwork_color">Màu từ ảnh bìa media</string>
 <string name="settings_mobile_data_body">Giữ kết nối qua LTE/5G hoặc chuyển tiếp khi không có Wi-Fi</string>
 <string name="settings_background_clipboard_title">Truy cập bảng nhớ tạm ở chế độ nền</string>

@@ -79,6 +79,25 @@ const PUBLIC_KEY_VALUE: &str = "UnlockKey";
 pub const REGISTER_ARG: &str = "--register-unlock";
 pub const UNREGISTER_ARG: &str = "--unregister-unlock";
 
+/// Where the elevated step leaves why it failed, for the app to log (#567).
+/// The same user's temp folder, unless another account approved the prompt.
+fn failure_note() -> PathBuf {
+    std::env::temp_dir().join("nectarlink-unlock-setup-error.txt")
+}
+
+/// Elevated side: keeps `reason` for the app that asked.
+pub fn note_failure(reason: &str) {
+    let _ = std::fs::write(failure_note(), reason);
+}
+
+/// Why the last elevated step failed, if it said; read once.
+pub fn take_failure() -> Option<String> {
+    let path = failure_note();
+    let reason = std::fs::read_to_string(&path).ok();
+    let _ = std::fs::remove_file(&path);
+    reason.map(|r| r.trim().to_owned()).filter(|r| !r.is_empty())
+}
+
 const CLASSES: &str = r"SOFTWARE\Classes\CLSID";
 const PROVIDERS: &str = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\Credential Providers";
 /// `WTS_SESSIONSTATE_LOCK` in `WTSINFOEX_LEVEL1_W::SessionFlags`.
@@ -756,6 +775,7 @@ fn answer(user: &str) -> (wire::Status, Vec<u8>) {
         });
         match asked {
             Ok(Ok(password)) => return (wire::Status::Ok, password.expose().to_vec()),
+            // Not connected, or only away from this network: the next phone may be here.
             Ok(Err(Error::Offline)) => last = wire::Status::PhoneAway,
             Ok(Err(Error::NotFound)) => last = wire::Status::NotEnrolled,
             Ok(Err(Error::Denied)) if node.unlock_locked_out() => {
@@ -777,8 +797,11 @@ pub enum Enrolled {
     WrongPassword,
     Declined,
     PhoneAway,
-    /// The phone has it off, or can't keep keys behind a fingerprint.
+    /// The phone has it off for this PC.
     PhoneCant,
+    /// The phone can't keep keys behind a strong biometric (Android 11+ and a
+    /// Class 3 fingerprint or face), so it doesn't offer it (#578).
+    NoBiometric,
     Failed,
 }
 
@@ -827,6 +850,10 @@ pub async fn enroll(phone: DeviceId, password: String) -> Enrolled {
         }
         Err(Error::Denied) => Enrolled::Declined,
         Err(Error::Offline | Error::Timeout) => Enrolled::PhoneAway,
+        // Off on the phone, or the phone doesn't offer it at all.
+        Err(Error::Unsupported) if !node.peer_offers(phone, nectarlink_core::unlock::KEY) => {
+            Enrolled::NoBiometric
+        }
         Err(Error::Unsupported) => Enrolled::PhoneCant,
         Err(_) => Enrolled::Failed,
     }

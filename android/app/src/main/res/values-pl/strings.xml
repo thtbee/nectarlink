@@ -312,6 +312,10 @@
     <string name="action_phone_sound_back">Odtwarzaj dźwięk znowu na telefonie</string>
     <string name="phone_sound_on_pc_off">%1$s nie odtwarza dźwięku z tego telefonu. Na komputerze włącz lustro ekranu dla tego telefonu w Ustawienia › Urządzenia.</string>
     <string name="action_shutdown_pc">Wyłącz</string>
+    <string name="action_restart_pc">Uruchom ponownie</string>
+    <string name="restart_pc_title">Uruchomić ponownie %1$s?</string>
+    <string name="restart_pc_text">Windows zamknie otwarte aplikacje i uruchomi się ponownie. Aplikacja z niezapisanymi zmianami może to zablokować.</string>
+    <string name="pc_restart_requested">Wysłano żądanie ponownego uruchomienia %1$s.</string>
     <string name="shutdown_pc_title">Wyłączyć %1$s?</string>
     <string name="shutdown_pc_text">Otwarte aplikacje zostaną zamknięte. Aplikacja z niezapisanymi zmianami może jednak zablokować wyłączenie.</string>
     <string name="action_wake_pc">Wybudź</string>
@@ -356,6 +360,7 @@
         <item quantity="other">Połączono z %1$d komputerami</item>
     </plurals>
     <string name="notification_waiting">Oczekiwanie na komputer</string>
+    <string name="notification_usb_only">Tylko USB: oczekiwanie na kabel</string>
     <string name="notification_waiting_network">Czekam na Wi-Fi, by połączyć się z komputerem</string>
     <string name="reconnect_known_only_title">Tylko w sieciach, w których znaleziono komputer</string>
     <string name="reconnect_known_only_body">Sam szuka komputerów tylko w sieciach Wi-Fi, w których już się z którymś połączył. W innych komputer nadal może połączyć się z telefonem.</string>
@@ -1471,6 +1476,9 @@
     <string name="home_section_system">System i zasilanie</string>
     <string name="settings_category_devices">Urządzenia</string>
     <string name="settings_category_features">Funkcje i dane</string>
+    <string name="settings_usb_only_title">Tylko USB</string>
+    <string name="settings_usb_only_body">Łącz z komputerami tylko przez kabel USB: bez Wi-Fi, danych komórkowych i wykrywania lokalnego</string>
+    <string name="usb_only_tile_label">Tylko USB</string>
     <string name="settings_theme_artwork_color">Kolor okładki multimediów</string>
     <string name="settings_mobile_data_body">Utrzymuj połączenie przez LTE/5G lub serwer pośredniczący poza zasięgiem Wi-Fi</string>
     <string name="settings_background_clipboard_title">Dostęp do schowka w tle</string>

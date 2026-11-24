@@ -5029,13 +5029,13 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="520"/>
-        <location filename="../qml/pages/HomePage.qml" line="3302"/>
+        <location filename="../qml/pages/HomePage.qml" line="3390"/>
         <source>Transfers</source>
         <translation>転送</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="529"/>
-        <location filename="../qml/pages/HomePage.qml" line="3319"/>
+        <location filename="../qml/pages/HomePage.qml" line="3407"/>
         <source>Clear finished</source>
         <translation>完了済みをクリア</translation>
     </message>
@@ -5067,13 +5067,13 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1157"/>
-        <location filename="../qml/pages/HomePage.qml" line="3206"/>
+        <location filename="../qml/pages/HomePage.qml" line="3294"/>
         <source>Away · %1 ms</source>
         <translation>外出先 · %1 ms</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1157"/>
-        <location filename="../qml/pages/HomePage.qml" line="3206"/>
+        <location filename="../qml/pages/HomePage.qml" line="3294"/>
         <source>Away</source>
         <translation>外出先</translation>
     </message>
@@ -5113,19 +5113,19 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1166"/>
-        <location filename="../qml/pages/HomePage.qml" line="3208"/>
+        <location filename="../qml/pages/HomePage.qml" line="3296"/>
         <source>Not reconnecting</source>
         <translation>再接続しない</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1167"/>
-        <location filename="../qml/pages/HomePage.qml" line="3209"/>
+        <location filename="../qml/pages/HomePage.qml" line="3297"/>
         <source>Offline · %1</source>
         <translation>オフライン · %1</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1168"/>
-        <location filename="../qml/pages/HomePage.qml" line="3210"/>
+        <location filename="../qml/pages/HomePage.qml" line="3298"/>
         <source>Offline</source>
         <translation>オフライン</translation>
     </message>
@@ -5171,32 +5171,32 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1324"/>
-        <location filename="../qml/pages/HomePage.qml" line="3232"/>
-        <location filename="../qml/pages/HomePage.qml" line="3838"/>
+        <location filename="../qml/pages/HomePage.qml" line="3320"/>
+        <location filename="../qml/pages/HomePage.qml" line="3926"/>
         <source>Send files</source>
         <translation>ファイルを送信</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1330"/>
-        <location filename="../qml/pages/HomePage.qml" line="3238"/>
+        <location filename="../qml/pages/HomePage.qml" line="3326"/>
         <source>Send a folder</source>
         <translation>フォルダーを送信</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1337"/>
-        <location filename="../qml/pages/HomePage.qml" line="3244"/>
+        <location filename="../qml/pages/HomePage.qml" line="3332"/>
         <source>Send clipboard</source>
         <translation>クリップボードを送信</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1343"/>
-        <location filename="../qml/pages/HomePage.qml" line="2901"/>
+        <location filename="../qml/pages/HomePage.qml" line="2989"/>
         <source>Clipboard history</source>
         <translation>クリップボード履歴</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1353"/>
-        <location filename="../qml/pages/HomePage.qml" line="3253"/>
+        <location filename="../qml/pages/HomePage.qml" line="3341"/>
         <source>Stop ringing</source>
         <translation>鳴り止ませる</translation>
     </message>
@@ -5207,7 +5207,7 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1363"/>
-        <location filename="../qml/pages/HomePage.qml" line="3277"/>
+        <location filename="../qml/pages/HomePage.qml" line="3365"/>
         <source>Send to %1</source>
         <translation>%1 に送信</translation>
     </message>
@@ -5218,7 +5218,7 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1385"/>
-        <location filename="../qml/pages/HomePage.qml" line="3283"/>
+        <location filename="../qml/pages/HomePage.qml" line="3371"/>
         <source>Send a folder to %1</source>
         <translation>%1 にフォルダーを送信</translation>
     </message>
@@ -5284,15 +5284,15 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1569"/>
-        <location filename="../qml/pages/HomePage.qml" line="2129"/>
-        <location filename="../qml/pages/HomePage.qml" line="2221"/>
-        <location filename="../qml/pages/HomePage.qml" line="2744"/>
+        <location filename="../qml/pages/HomePage.qml" line="2185"/>
+        <location filename="../qml/pages/HomePage.qml" line="2277"/>
+        <location filename="../qml/pages/HomePage.qml" line="2832"/>
         <source>Cancel</source>
         <translation>キャンセル</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2520"/>
-        <location filename="../qml/pages/HomePage.qml" line="3311"/>
+        <location filename="../qml/pages/HomePage.qml" line="2576"/>
+        <location filename="../qml/pages/HomePage.qml" line="3399"/>
         <source>Timeline</source>
         <translation>タイムライン</translation>
     </message>
@@ -5378,7 +5378,7 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1864"/>
-        <location filename="../qml/pages/HomePage.qml" line="2355"/>
+        <location filename="../qml/pages/HomePage.qml" line="2411"/>
         <source>Stop</source>
         <translation>停止</translation>
     </message>
@@ -5498,369 +5498,377 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
         <translation>%1 で許可する</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2120"/>
+        <location filename="../qml/pages/HomePage.qml" line="2126"/>
+        <location filename="../qml/pages/HomePage.qml" line="2141"/>
+        <source>Phone sound volume</source>
+        <translation>スマートフォンの音量</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="2176"/>
         <source>Turning off Wi‑Fi may disconnect %1.</source>
         <translation>Wi-Fiをオフにすると、%1の接続が切断される場合があります。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2135"/>
+        <location filename="../qml/pages/HomePage.qml" line="2191"/>
         <source>Turn off</source>
         <translation>オフにする</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2160"/>
+        <location filename="../qml/pages/HomePage.qml" line="2216"/>
         <source>Ring</source>
         <translation>着信音</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2161"/>
+        <location filename="../qml/pages/HomePage.qml" line="2217"/>
         <source>Vibrate</source>
         <translation>バイブレーション</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2162"/>
+        <location filename="../qml/pages/HomePage.qml" line="2218"/>
         <source>Silent</source>
         <translation>サイレント</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2179"/>
+        <location filename="../qml/pages/HomePage.qml" line="2235"/>
         <source>Volume</source>
         <translation>音量</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2190"/>
+        <location filename="../qml/pages/HomePage.qml" line="2246"/>
         <source>Brightness</source>
         <translation>明るさ</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2211"/>
+        <location filename="../qml/pages/HomePage.qml" line="2267"/>
         <source>Continuity Camera</source>
         <translation>連係カメラ</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2222"/>
+        <location filename="../qml/pages/HomePage.qml" line="2278"/>
         <source>Scan document</source>
         <translation>ドキュメントをスキャン</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2235"/>
+        <location filename="../qml/pages/HomePage.qml" line="2291"/>
         <source>Phone as webcam</source>
         <translation>ウェブカメラとして使用</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2238"/>
+        <location filename="../qml/pages/HomePage.qml" line="2294"/>
         <source>Streaming</source>
         <translation>ストリーミング</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2331"/>
-        <location filename="../qml/pages/HomePage.qml" line="2392"/>
+        <location filename="../qml/pages/HomePage.qml" line="2387"/>
+        <location filename="../qml/pages/HomePage.qml" line="2448"/>
         <source>Type on phone</source>
         <translation>スマートフォンで入力</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2342"/>
+        <location filename="../qml/pages/HomePage.qml" line="2398"/>
         <source>Sent: %1</source>
         <translation>送信済み: %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2344"/>
-        <location filename="../qml/pages/HomePage.qml" line="3434"/>
+        <location filename="../qml/pages/HomePage.qml" line="2400"/>
+        <location filename="../qml/pages/HomePage.qml" line="3522"/>
         <source>When connected</source>
         <translation>接続時</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2355"/>
+        <location filename="../qml/pages/HomePage.qml" line="2411"/>
         <source>Start</source>
         <translation>開始</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2407"/>
-        <location filename="../qml/pages/HomePage.qml" line="2487"/>
+        <location filename="../qml/pages/HomePage.qml" line="2463"/>
+        <location filename="../qml/pages/HomePage.qml" line="2543"/>
         <source>Clipboard</source>
         <translation>クリップボード</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2467"/>
+        <location filename="../qml/pages/HomePage.qml" line="2523"/>
         <source>Type here: keys go to %1</source>
         <translation>ここに入力：キーは %1 に送信されます</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2468"/>
+        <location filename="../qml/pages/HomePage.qml" line="2524"/>
         <source>Click to focus keyboard</source>
         <translation>クリックしてキーボードにフォーカス</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2475"/>
+        <location filename="../qml/pages/HomePage.qml" line="2531"/>
         <source>Ctrl+V pastes · Esc stops</source>
         <translation>Ctrl+Vで貼り付け · Escで停止</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2484"/>
+        <location filename="../qml/pages/HomePage.qml" line="2540"/>
         <source>Paste</source>
         <translation>貼り付け</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2529"/>
+        <location filename="../qml/pages/HomePage.qml" line="2585"/>
         <source>View all</source>
         <translation>すべて表示</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2539"/>
+        <location filename="../qml/pages/HomePage.qml" line="2595"/>
         <source>No recent activity</source>
         <translation>最近のアクティビティはありません</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2633"/>
+        <location filename="../qml/pages/HomePage.qml" line="2689"/>
         <source>%1 notifications</source>
         <translation>%1 件の通知</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2643"/>
+        <location filename="../qml/pages/HomePage.qml" line="2731"/>
         <source>Copy text</source>
         <translation>テキストをコピー</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2651"/>
+        <location filename="../qml/pages/HomePage.qml" line="2739"/>
         <source>Copy title and text</source>
         <translation>タイトルとテキストをコピー</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2657"/>
+        <location filename="../qml/pages/HomePage.qml" line="2745"/>
         <source>Show</source>
         <translation>表示</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2658"/>
+        <location filename="../qml/pages/HomePage.qml" line="2746"/>
         <source>No pop-ups</source>
         <translation>ポップアップなし</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2659"/>
+        <location filename="../qml/pages/HomePage.qml" line="2747"/>
         <source>Hide</source>
         <translation>非表示</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2673"/>
+        <location filename="../qml/pages/HomePage.qml" line="2761"/>
         <source>Hidden on this PC.</source>
         <translation>このPCでは非表示になっています。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2675"/>
+        <location filename="../qml/pages/HomePage.qml" line="2763"/>
         <source>Shown in feed without pop-ups.</source>
         <translation>ポップアップなしでフィードに表示されます。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2678"/>
+        <location filename="../qml/pages/HomePage.qml" line="2766"/>
         <source>Shown in feed and as desktop pop-ups.</source>
         <translation>フィードやデスクトップのポップアップに表示されます。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3270"/>
+        <location filename="../qml/pages/HomePage.qml" line="3358"/>
         <source>Sync clipboard is off in Settings, so copies only go over with Send clipboard.</source>
         <translation>設定で「クリップボードを同期」がオフになっているため、コピー内容は「クリップボードを送信」を使ったときのみ送信されます。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2677"/>
+        <location filename="../qml/pages/HomePage.qml" line="2765"/>
         <source>Shown in feed and as Windows pop-ups.</source>
         <translation>フィードやWindowsのポップアップに表示されます。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2682"/>
-        <location filename="../qml/pages/HomePage.qml" line="2878"/>
-        <location filename="../qml/pages/HomePage.qml" line="3121"/>
-        <location filename="../qml/pages/HomePage.qml" line="3915"/>
+        <location filename="../qml/pages/HomePage.qml" line="2770"/>
+        <location filename="../qml/pages/HomePage.qml" line="2966"/>
+        <location filename="../qml/pages/HomePage.qml" line="3209"/>
+        <location filename="../qml/pages/HomePage.qml" line="4003"/>
         <source>Done</source>
         <translation>完了</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2749"/>
+        <location filename="../qml/pages/HomePage.qml" line="2837"/>
         <source>Save</source>
         <translation>保存</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2770"/>
+        <location filename="../qml/pages/HomePage.qml" line="2858"/>
         <source>Notification history</source>
         <translation>通知履歴</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2778"/>
-        <location filename="../qml/pages/HomePage.qml" line="2909"/>
+        <location filename="../qml/pages/HomePage.qml" line="2866"/>
+        <location filename="../qml/pages/HomePage.qml" line="2997"/>
         <source>Clear history</source>
         <translation>履歴をクリア</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2788"/>
+        <location filename="../qml/pages/HomePage.qml" line="2876"/>
         <source>Dismissed notifications from the last 24 hours.</source>
         <translation>過去24時間に消去した通知。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2789"/>
+        <location filename="../qml/pages/HomePage.qml" line="2877"/>
         <source>No recent notifications.</source>
         <translation>最近の通知はありません。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2831"/>
-        <location filename="../qml/pages/HomePage.qml" line="2837"/>
+        <location filename="../qml/pages/HomePage.qml" line="2919"/>
+        <location filename="../qml/pages/HomePage.qml" line="2925"/>
         <source>Search notification history</source>
         <translation>通知履歴を検索</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2874"/>
-        <location filename="../qml/pages/HomePage.qml" line="3117"/>
+        <location filename="../qml/pages/HomePage.qml" line="2962"/>
+        <location filename="../qml/pages/HomePage.qml" line="3205"/>
         <source>Nothing matches “%1”.</source>
         <translation>「%1」に一致するものはありません。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2919"/>
+        <location filename="../qml/pages/HomePage.qml" line="3007"/>
         <source>Last 50 shared clips.</source>
         <translation>直近50件の共有クリップ。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2920"/>
+        <location filename="../qml/pages/HomePage.qml" line="3008"/>
         <source>No shared clips yet.</source>
         <translation>共有クリップはまだありません。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2960"/>
-        <location filename="../qml/pages/HomePage.qml" line="2966"/>
+        <location filename="../qml/pages/HomePage.qml" line="3048"/>
+        <location filename="../qml/pages/HomePage.qml" line="3054"/>
         <source>Search clipboard history</source>
         <translation>クリップボード履歴を検索</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2986"/>
+        <location filename="../qml/pages/HomePage.qml" line="3074"/>
         <source>From %1</source>
         <translation>%1から</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2986"/>
+        <location filename="../qml/pages/HomePage.qml" line="3074"/>
         <source>From phone</source>
         <translation>スマートフォンから</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2987"/>
+        <location filename="../qml/pages/HomePage.qml" line="3075"/>
         <source>Sent to %1</source>
         <translation>%1 に送信済み</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2987"/>
+        <location filename="../qml/pages/HomePage.qml" line="3075"/>
         <source>From this PC</source>
         <translation>このPCから</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2993"/>
+        <location filename="../qml/pages/HomePage.qml" line="3081"/>
         <source>Image</source>
         <translation>画像</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3031"/>
+        <location filename="../qml/pages/HomePage.qml" line="3119"/>
         <source>Pinned</source>
         <translation>ピン留め済み</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3075"/>
+        <location filename="../qml/pages/HomePage.qml" line="3163"/>
         <source>Open on phone</source>
         <translation>スマートフォンで開く</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3084"/>
+        <location filename="../qml/pages/HomePage.qml" line="3172"/>
         <source>Send to phone</source>
         <translation>スマートフォンに送信</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3092"/>
+        <location filename="../qml/pages/HomePage.qml" line="3180"/>
         <source>Copy</source>
         <translation>コピー</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3098"/>
+        <location filename="../qml/pages/HomePage.qml" line="3186"/>
         <source>Unpin</source>
         <translation>ピン留め解除</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3098"/>
+        <location filename="../qml/pages/HomePage.qml" line="3186"/>
         <source>Pin</source>
         <translation>ピン留め</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3103"/>
+        <location filename="../qml/pages/HomePage.qml" line="3191"/>
         <source>Delete</source>
         <translation>削除</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3207"/>
+        <location filename="../qml/pages/HomePage.qml" line="3295"/>
         <source>Connected · %1 ms</source>
         <translation>接続済み · %1 ms</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3207"/>
+        <location filename="../qml/pages/HomePage.qml" line="3295"/>
         <source>Connected</source>
         <translation>接続済み</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3212"/>
+        <location filename="../qml/pages/HomePage.qml" line="3300"/>
         <source>%1% · charging</source>
         <translation>%1% · 充電中</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3213"/>
-        <location filename="../qml/pages/HomePage.qml" line="3607"/>
-        <location filename="../qml/pages/HomePage.qml" line="3618"/>
+        <location filename="../qml/pages/HomePage.qml" line="2134"/>
+        <location filename="../qml/pages/HomePage.qml" line="2142"/>
+        <location filename="../qml/pages/HomePage.qml" line="3301"/>
+        <location filename="../qml/pages/HomePage.qml" line="3695"/>
+        <location filename="../qml/pages/HomePage.qml" line="3706"/>
         <source>%1%</source>
         <translation>%1%</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3253"/>
+        <location filename="../qml/pages/HomePage.qml" line="3341"/>
         <source>Ring PC</source>
         <translation>PCを鳴らす</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3269"/>
+        <location filename="../qml/pages/HomePage.qml" line="3357"/>
         <source>What you copy here also goes to %1, and what you copy there comes here.</source>
         <translation>ここでコピーした内容は %1 にも送られ、相手側でコピーした内容もここに届きます。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3759"/>
+        <location filename="../qml/pages/HomePage.qml" line="3847"/>
         <source>LocalSend nearby · %1</source>
         <translation>近くのLocalSend · %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3760"/>
+        <location filename="../qml/pages/HomePage.qml" line="3848"/>
         <source>LocalSend nearby</source>
         <translation>近くのLocalSend</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3769"/>
+        <location filename="../qml/pages/HomePage.qml" line="3857"/>
         <source>Refresh</source>
         <translation>更新</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3780"/>
+        <location filename="../qml/pages/HomePage.qml" line="3868"/>
         <source>Listening for LocalSend devices on your Wi‑Fi network.</source>
         <translation>Wi-Fiネットワーク上のLocalSendデバイスを検出しています。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3781"/>
+        <location filename="../qml/pages/HomePage.qml" line="3869"/>
         <source>LocalSend port 53317 is busy on this PC (another LocalSend app may be running).</source>
         <translation>このPCではLocalSendポート53317が使用中です（別のLocalSendアプリが動作している可能性があります）。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3820"/>
+        <location filename="../qml/pages/HomePage.qml" line="3908"/>
         <source>Nearby device</source>
         <translation>近くのデバイス</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3876"/>
+        <location filename="../qml/pages/HomePage.qml" line="3964"/>
         <source>Image preview</source>
         <translation>画像プレビュー</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3883"/>
+        <location filename="../qml/pages/HomePage.qml" line="3971"/>
         <source>Close</source>
         <translation>閉じる</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="3911"/>
+        <location filename="../qml/pages/HomePage.qml" line="3999"/>
         <source>Open externally</source>
         <translation>外部で開く</translation>
     </message>
@@ -5875,17 +5883,17 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
         <translation>ニックネーム変更</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2343"/>
+        <location filename="../qml/pages/HomePage.qml" line="2399"/>
         <source>Tap a text box on the phone, then type</source>
         <translation>スマートフォンのテキストボックスをタップし、入力してください</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2711"/>
+        <location filename="../qml/pages/HomePage.qml" line="2799"/>
         <source>Phone nickname</source>
         <translation>スマートフォンのニックネーム</translation>
     </message>
     <message>
-        <location filename="../qml/pages/HomePage.qml" line="2719"/>
+        <location filename="../qml/pages/HomePage.qml" line="2807"/>
         <source>Set a custom name for this phone on your PC. Leave blank to use &quot;%1&quot;.</source>
         <translation>PC上でこのスマートフォンにカスタム名を設定します。空欄のままにすると「%1」が使用されます。</translation>
     </message>
@@ -6474,291 +6482,291 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
     </message>
     <message>
         <location filename="../qml/pages/MessagesPage.qml" line="92"/>
-        <location filename="../qml/pages/MessagesPage.qml" line="219"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="236"/>
         <source>Yesterday</source>
         <translation>昨日</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="242"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="259"/>
         <source>Text from your PC</source>
         <translation>PCからのテキスト</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="243"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="260"/>
         <source>%1 isn&apos;t connected</source>
         <translation>%1 は接続されていません</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="244"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="261"/>
         <source>Messages are off for %1</source>
         <translation>%1 のメッセージはオフになっています</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="245"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="262"/>
         <source>Allow texting on %1</source>
         <translation>%1でテキスト送信を許可する</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="246"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="263"/>
         <source>Couldn&apos;t load messages</source>
         <translation>メッセージを読み込めませんでした</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="254"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="271"/>
         <source>Pair your phone to read and send texts.</source>
         <translation>スマートフォンをペアリングして、テキストの閲覧や送信ができます。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="255"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="272"/>
         <source>Connect %1 to view messages.</source>
         <translation>%1に接続してメッセージを表示します。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="256"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="273"/>
         <source>Enable Messages in Settings.</source>
         <translation>設定でメッセージを有効にしてください。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="257"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="274"/>
         <source>Grant SMS permission on %1.</source>
         <translation>%1 の SMS 権限を許可してください。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="258"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="275"/>
         <source>Unable to load messages.</source>
         <translation>メッセージを読み込めません。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="264"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="281"/>
         <source>Try again</source>
         <translation>もう一度お試しください</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="289"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="306"/>
         <source>Conversations</source>
         <translation>会話</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="298"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="315"/>
         <source>New message (Ctrl+N)</source>
         <translation>新規メッセージ (Ctrl+N)</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="307"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="324"/>
         <source>Refresh</source>
         <translation>更新</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="347"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="364"/>
         <source>Search conversations</source>
         <translation>会話を検索</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="357"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="374"/>
         <source>Search</source>
         <translation>検索</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="368"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="385"/>
         <source>Clear search</source>
         <translation>検索をクリア</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="423"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="441"/>
         <source>No conversations match.</source>
         <translation>該当する会話はありません。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="423"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="441"/>
         <source>No conversations yet.</source>
         <translation>まだ会話はありません。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="474"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="492"/>
         <source>Drop image to attach (MMS)</source>
         <translation>画像をドロップして添付（MMS）</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="480"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="498"/>
         <source>PNG, JPEG, WebP, GIF, or BMP up to 900 KB</source>
         <translation>PNG、JPEG、WebP、GIF、またはBMP（最大900 KB）</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="490"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="508"/>
         <source>Select a conversation</source>
         <translation>会話を選択</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="504"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="522"/>
         <source>Back to conversations (Esc)</source>
         <translation>会話に戻る (Esc)</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="562"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="580"/>
         <source>Call %1</source>
         <translation>%1 に発信</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="562"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="580"/>
         <source>Call</source>
         <translation>通話</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="572"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="590"/>
         <source>Remove conversation from PC</source>
         <translation>PCから会話を削除</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="584"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="602"/>
         <source>To</source>
         <translation>宛先</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="595"/>
-        <location filename="../qml/pages/MessagesPage.qml" line="607"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="613"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="625"/>
         <source>Name or phone number</source>
         <translation>名前または電話番号</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="809"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="856"/>
         <source>No mirrored messages yet</source>
         <translation>ミラーリングされたメッセージはまだありません</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="810"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="857"/>
         <source>No messages</source>
         <translation>メッセージなし</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="860"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="907"/>
         <source>%1 · Sent as MMS</source>
         <translation>%1 · MMSとして送信済み</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="870"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="917"/>
         <source>Remove attachment</source>
         <translation>添付ファイルの削除</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="927"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="976"/>
         <source>Attach image (MMS)</source>
         <translation>画像を添付 (MMS)</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="953"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1002"/>
         <source>Sending from %1. Switch SIM</source>
         <translation>%1 から送信します。SIM を切り替え</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="982"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1031"/>
         <source>Reply in %1</source>
         <translation>%1で返信</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="983"/>
-        <location filename="../qml/pages/MessagesPage.qml" line="1019"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1032"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1068"/>
         <source>Text message</source>
         <translation>テキストメッセージ</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="1012"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1061"/>
         <source>Replies are available while the notification is active on your phone</source>
         <translation>スマートフォンで通知が表示されている間は、返信が可能です。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="1014"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1063"/>
         <source>Reply in %1…</source>
         <translation>%1で返信…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="1016"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1065"/>
         <source>Group texts can&apos;t be sent from the PC yet</source>
         <translation>グループメッセージはまだPCから送信できません</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="1018"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1067"/>
         <source>Add a caption (optional)…</source>
         <translation>キャプションを追加（任意）…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="1030"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1079"/>
         <source>Send</source>
         <translation>送信</translation>
     </message>
     <message numerus="yes">
-        <location filename="../qml/pages/MessagesPage.qml" line="1048"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1097"/>
         <source>%1 characters · %n text(s)</source>
         <translation>
             <numerusform>%1 文字 · テキスト %n 件</numerusform>
         </translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="1296"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1345"/>
         <source>Open image attachment</source>
         <translation>画像添付を開く</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="1362"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1411"/>
         <source>Voice note</source>
         <translation>音声メモ</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="1368"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1417"/>
         <source> · Click to play</source>
         <translation>· クリックして再生</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="1368"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1417"/>
         <source> · Loading…</source>
         <translation>· 読み込み中…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="1391"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1440"/>
         <source>Attachment (open it on the phone)</source>
         <translation>添付ファイル（スマートフォンで開く）</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="1417"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1477"/>
         <source>Not sent</source>
         <translation>未送信</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="1418"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1478"/>
         <source>Sending…</source>
         <translation>送信中…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="1433"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1493"/>
         <source>Copy text</source>
         <translation>テキストをコピー</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="1451"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1511"/>
         <source>Copied</source>
         <translation>コピー済み</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="1451"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1511"/>
         <source>Copy code %1</source>
         <translation>コード %1 をコピー</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="1483"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1543"/>
         <source>Image attachment</source>
         <translation>画像添付</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="1490"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1550"/>
         <source>Close</source>
         <translation>閉じる</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="1518"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1578"/>
         <source>Open externally</source>
         <translation>外部で開く</translation>
     </message>
     <message>
-        <location filename="../qml/pages/MessagesPage.qml" line="1522"/>
+        <location filename="../qml/pages/MessagesPage.qml" line="1582"/>
         <source>Done</source>
         <translation>完了</translation>
     </message>
@@ -8411,7 +8419,7 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
     </message>
     <message>
         <location filename="../qml/pages/PhotosPage.qml" line="995"/>
-        <location filename="../qml/pages/PhotosPage.qml" line="1093"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="1119"/>
         <source>Play video</source>
         <translation>動画を再生</translation>
     </message>
@@ -8421,27 +8429,32 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
         <translation>写真で開く</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="1074"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="1073"/>
+        <source>This photo&apos;s format can&apos;t be shown here at full size. Open in Photos shows it.</source>
+        <translation>この写真の形式はここでは原寸で表示できません。「写真で開く」で表示できます。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/PhotosPage.qml" line="1100"/>
         <source>Loading full resolution…</source>
         <translation>フル解像度を読み込み中…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="1133"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="1159"/>
         <source>Previous photo</source>
         <translation>前の写真</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="1146"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="1172"/>
         <source>Next photo</source>
         <translation>次の写真</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="1233"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="1259"/>
         <source>%1</source>
         <translation>%1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/PhotosPage.qml" line="1420"/>
+        <location filename="../qml/pages/PhotosPage.qml" line="1446"/>
         <source>Select photo</source>
         <translation>写真を選択</translation>
     </message>
@@ -9192,7 +9205,7 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="255"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="2891"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2892"/>
         <source>Voice recordings</source>
         <translation>音声録音</translation>
     </message>
@@ -9426,7 +9439,7 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1179"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4795"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4796"/>
         <source>Language</source>
         <translation>言語</translation>
     </message>
@@ -9591,7 +9604,7 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1815"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4901"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4902"/>
         <source>Unpair</source>
         <translation>ペアリング解除</translation>
     </message>
@@ -9621,55 +9634,55 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
         <translation>ネットワークを選択</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2082"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="2123"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="2985"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3790"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4204"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4274"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4287"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4318"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4332"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4346"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2083"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2124"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2986"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3791"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4205"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4275"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4288"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4319"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4333"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4347"/>
         <source>Open</source>
         <translation>開く</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2230"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="2233"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2231"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2234"/>
         <source>Stream PC audio to phone</source>
         <translation>PCの音声をスマートフォンにストリーミングする</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2231"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2232"/>
         <source>Listen to PC audio through your phone.</source>
         <translation>PCの音声をスマートフォンで聴く。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2262"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="2265"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2263"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2266"/>
         <source>Pause media during calls</source>
         <translation>通話中にメディアを一時停止する</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2263"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2264"/>
         <source>Auto-pause PC media when phone rings.</source>
         <translation>スマートフォンの着信時にPCメディアを自動一時停止。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2277"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="2280"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2278"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2281"/>
         <source>Mute this PC while a phone watches</source>
         <translation>スマートフォンで視聴している間、このPCをミュートにする</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2278"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2279"/>
         <source>With Play on phone, the phone still gets the sound.</source>
         <translation>スマートフォンで再生している場合も、スマートフォン側に音が届きます。</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="263"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="2312"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2313"/>
         <source>Phone as microphone</source>
         <translation>スマートフォンをマイクとして使用</translation>
     </message>
@@ -9693,7 +9706,7 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
         <translation type="vanished">Claude Code、Codex、Cursor など</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4354"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4355"/>
         <source>Support NectarLink</source>
         <translation>NectarLinkを支援</translation>
     </message>
@@ -9771,7 +9784,7 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1833"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="2815"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2816"/>
         <source>Not on macOS yet.</source>
         <translation>macOSではまだ利用できません。</translation>
     </message>
@@ -9814,120 +9827,120 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
         <translation>右</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2166"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2167"/>
         <source>Mirror quality</source>
         <translation>ミラーリング画質</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2168"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2169"/>
         <source>The phone&apos;s full resolution. Uses more of its battery, and needs good Wi-Fi or USB and a GPU on this PC.</source>
         <translation>スマートフォンのフル解像度。バッテリー消費が多く、良好なWi-Fi環境、またはUSB接続とこのPCのGPUが必要です。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2170"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2171"/>
         <source>A softer picture that holds up better on weak Wi-Fi.</source>
         <translation>電波の弱いWi-Fi環境でも安定する、より滑らかな映像。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2173"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="2194"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2174"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2195"/>
         <source>For the phone&apos;s screen and app windows, from the next time you open them.</source>
         <translation>スマートフォンの画面やアプリウィンドウには、次回開いたときから適用されます。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2176"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2177"/>
         <source>Balanced</source>
         <translation>バランス</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2177"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2178"/>
         <source>Sharper</source>
         <translation>より鮮明に</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2178"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2179"/>
         <source>Smoother</source>
         <translation>よりスムーズに</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2314"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2315"/>
         <source>Live from %1, playing into %2.</source>
         <translation>%1からライブ配信中、%2で再生しています。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2316"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2317"/>
         <source>Tap Start on %1.</source>
         <translation>%1の「開始」をタップしてください。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2318"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2319"/>
         <source>Plays into %1, so apps can pick its other end as a microphone.</source>
         <translation>%1に出力されるため、アプリがそのもう一方の端をマイクとして利用できます。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2319"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2320"/>
         <source>Plays into %1. To use it as a microphone in other apps, install a virtual audio cable such as VB-CABLE.</source>
         <translation>%1で再生します。他のアプリでマイクとして使用するには、VB-CABLEなどの仮想オーディオケーブルをインストールしてください。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2325"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2326"/>
         <source>Output</source>
         <translation>出力</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2335"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4387"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2336"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4388"/>
         <source>Start</source>
         <translation>開始</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2335"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2336"/>
         <source>Stop</source>
         <translation>停止</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2344"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="2352"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2345"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2353"/>
         <source>Microphone volume</source>
         <translation>マイク音量</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2345"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="2353"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2346"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2354"/>
         <source>%1%</source>
         <translation>%1%</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2364"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2365"/>
         <source>Virtual camera add-on</source>
         <translation>仮想カメラアドオン</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2366"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2367"/>
         <source>Registered for Zoom, Teams &amp; Meet.</source>
         <translation>Zoom、Teams、Meetに登録済み。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2367"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2368"/>
         <source>One-time setup (admin required) for Zoom, Teams &amp; Meet.</source>
         <translation>Zoom、Teams、Meet用の初回設定（管理者権限が必要）。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2386"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4063"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2387"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4064"/>
         <source>Ready</source>
         <translation>準備完了</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2394"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3093"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3464"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2395"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3094"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3465"/>
         <source>Remove</source>
         <translation>削除</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1985"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="2394"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1986"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2395"/>
         <source>Set up</source>
         <translation>セットアップ</translation>
     </message>
@@ -9948,8 +9961,8 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="108"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4192"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4382"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4193"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4383"/>
         <source>Report a problem</source>
         <translation>問題を報告</translation>
     </message>
@@ -10085,602 +10098,607 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1931"/>
+        <source>The phone can&apos;t do this: it needs Android 11 or later and a fingerprint that Android counts as strong.</source>
+        <translation>このスマートフォンではできません。Android 11 以降と、Android が強力と判定する指紋が必要です。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1932"/>
         <source>Couldn&apos;t set it up. Try again.</source>
         <translation>設定できませんでした。もう一度お試しください。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1933"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1934"/>
         <source>Windows didn&apos;t allow it. Turn it off and on to try again.</source>
         <translation>Windows が許可しませんでした。オフにしてからオンにし直してください。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1945"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1946"/>
         <source>Set up for this Windows account. Type the password again here if you change it.</source>
         <translation>この Windows アカウントで設定済みです。パスワードを変更したら、ここでもう一度入力してください。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1946"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1947"/>
         <source>Type this account&apos;s Windows password once. It&apos;s kept locked with a key only the phone has, and the phone asks for your fingerprint every time.</source>
         <translation>このアカウントの Windows パスワードを一度入力してください。スマートフォンだけが持つ鍵で保護され、スマートフォンは毎回指紋を求めます。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1971"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="1978"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1972"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1979"/>
         <source>Windows password</source>
         <translation>Windows パスワード</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1985"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1986"/>
         <source>Confirm on the phone…</source>
         <translation>スマートフォンで確認してください…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="1985"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="1986"/>
         <source>Update</source>
         <translation>更新</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2172"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2173"/>
         <source>Starts at Balanced and lowers the picture while this PC can&apos;t keep up, then goes back up once it can.</source>
         <translation>バランスで始まり、この PC が追いつけない間は画質を下げ、追いつけるようになると戻します。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2179"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2180"/>
         <source>Adaptive</source>
         <translation>自動調整</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2189"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2190"/>
         <source>Frame rate</source>
         <translation>フレームレート</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2191"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2192"/>
         <source>Smoother motion where the phone&apos;s screen refreshes that fast. Uses more battery, Wi-Fi and PC.</source>
         <translation>スマートフォンの画面がその速さで更新される場合、動きがより滑らかになります。バッテリー、Wi-Fi、PC の負荷が増えます。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2193"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2194"/>
         <source>Half the frames: easier on the phone&apos;s battery and weak Wi-Fi.</source>
         <translation>フレーム数が半分: スマートフォンのバッテリーや弱い Wi-Fi に優しい設定です。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2292"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2293"/>
         <source>Phone sound buffer</source>
         <translation>スマートフォンのサウンドのバッファー</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2293"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2294"/>
         <source>If phone sound on this PC skips on a busy Wi-Fi, a bigger buffer smooths it out, with a little more delay.</source>
         <translation>Wi-Fiが混んでいてこのPCでスマートフォンの音が途切れる場合、バッファーを大きくすると、少し遅れが増える代わりに滑らかになります。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2296"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2297"/>
         <source>Low</source>
         <translation>低</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2297"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2298"/>
         <source>Medium</source>
         <translation>中</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2298"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2299"/>
         <source>High</source>
         <translation>高</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2405"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2406"/>
         <source>Phone</source>
         <translation>スマートフォン</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2440"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2441"/>
         <source>Camera</source>
         <translation>カメラ</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2443"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2444"/>
         <source>Back</source>
         <translation>背面</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2444"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2445"/>
         <source>Front</source>
         <translation>前面</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2474"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="2476"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2475"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2477"/>
         <source>Mirror image</source>
         <translation>鏡像</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2487"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2488"/>
         <source>Resolution</source>
         <translation>解像度</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2503"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="2506"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2504"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2507"/>
         <source>Torch on with the back camera</source>
         <translation>背面カメラ使用時にライトをオンにする</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2504"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2505"/>
         <source>Turns the phone&apos;s torch on when the webcam starts with the back camera.</source>
         <translation>背面カメラでウェブカメラを開始すると、スマートフォンのライトを自動的にオンにします。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2532"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2533"/>
         <source>Preview · %1</source>
         <translation>プレビュー · %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2533"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2534"/>
         <source>Pair a phone to use its camera as a webcam</source>
         <translation>スマートフォンをペアリングして、カメラをウェブカメラとして使用する</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2544"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2545"/>
         <source>Stop webcam</source>
         <translation>ウェブカメラを停止</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2545"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2546"/>
         <source>Start webcam</source>
         <translation>ウェブカメラを起動</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2578"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2579"/>
         <source>Calls through this PC</source>
         <translation>このPCでの通話</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2583"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2584"/>
         <source>Microphone for calls</source>
         <translation>通話用マイク</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2587"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2588"/>
         <source>Windows default</source>
         <translation>Windows の既定</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2589"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2590"/>
         <source>Talking through this PC on a call records %1.</source>
         <translation>このPCでの通話には %1 をマイクとして使用します。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2594"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2595"/>
         <source>Microphone</source>
         <translation>マイク</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2622"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="2625"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2623"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2626"/>
         <source>Quiet while this PC is locked</source>
         <translation>このPCがロックされている間は通知しない</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2623"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2624"/>
         <source>No pop-ups while it&apos;s locked. Notifications still collect on Home.</source>
         <translation>ロック中はポップアップが表示されません。通知は引き続きホームに表示されます。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2634"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="2637"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2635"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2638"/>
         <source>Don&apos;t receive while this PC is locked</source>
         <translation>このPCがロックされている間は受信しない</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2635"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2636"/>
         <source>The phone sends nothing until you unlock. Then Home shows what&apos;s still on the phone.</source>
         <translation>ロックを解除するまで、スマートフォンからは何も送信されません。その後、ホーム画面にスマートフォンに残っている内容が表示されます。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2646"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="2649"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2647"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2650"/>
         <source>Keep pop-ups paused after a restart</source>
         <translation>再起動後もポップアップを一時停止したままにする</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2647"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2648"/>
         <source>Pause pop-ups on Home stays on until you resume them, even when NectarLink or the PC restarts.</source>
         <translation>ホームの「ポップアップを一時停止」が、NectarLink や PC を再起動しても再開するまで続きます。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2672"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="2675"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2673"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2676"/>
         <source>Follow phone Do not disturb</source>
         <translation>スマートフォンのサイレント モードに合わせる</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2673"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2674"/>
         <source>Mute pop-ups while phone is on DND.</source>
         <translation>スマートフォンがサイレント モードのとき、ポップアップをミュートする。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2704"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="2707"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2705"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2708"/>
         <source>Forward PC notifications</source>
         <translation>PCの通知を転送する</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2705"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2706"/>
         <source>Send PC alerts to phone while away.</source>
         <translation>外出先でもPCの通知をスマートフォンに送信します。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2719"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2720"/>
         <source>Quiet hours</source>
         <translation>通知を止める時間</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2720"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2721"/>
         <source>Configure automatic DND schedule in Windows.</source>
         <translation>Windowsで自動応答不可のスケジュールを設定します。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2724"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2725"/>
         <source>Set a schedule</source>
         <translation>スケジュールを設定する</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2768"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2769"/>
         <source>Show</source>
         <translation>表示</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2769"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2770"/>
         <source>No pop-ups</source>
         <translation>ポップアップなし</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2770"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2771"/>
         <source>Hide</source>
         <translation>非表示</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2812"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="2819"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2813"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2820"/>
         <source>File Explorer Send to</source>
         <translation>エクスプローラーの「送信先」</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2813"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="2820"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2814"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2821"/>
         <source>File manager Send to</source>
         <translation>ファイルマネージャーの「送信先」</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2813"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="2820"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2814"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2821"/>
         <source>Finder Send to</source>
         <translation>Finderの「送信先」</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2816"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2817"/>
         <source>Send files from right-click menu.</source>
         <translation>右クリックメニューからファイルを送信します。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2850"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="2853"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2851"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2854"/>
         <source>Your PC in your pocket</source>
         <translation>ポケットの中のPC</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2851"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2852"/>
         <source>Share Downloads, Documents, Desktop &amp; Pictures.</source>
         <translation>ダウンロード、ドキュメント、デスクトップ、写真を共有。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2864"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="2867"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2865"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2868"/>
         <source>LocalSend on local network</source>
         <translation>ローカルネットワーク上のLocalSend</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2865"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2866"/>
         <source>Share with nearby LocalSend devices without pairing.</source>
         <translation>ペアリング不要で、近くにあるLocalSendデバイスと共有できます。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2877"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="2880"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2878"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2881"/>
         <source>Open files shared from the phone</source>
         <translation>スマートフォンから共有されたファイルを開く</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2878"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2879"/>
         <source>Opens a shared photo or document as soon as it arrives.</source>
         <translation>共有された写真やドキュメントが届くとすぐに開きます。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2911"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3149"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3224"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3295"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3370"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2912"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3150"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3225"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3296"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3371"/>
         <source>Reset</source>
         <translation>リセット</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2918"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="2992"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2919"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2993"/>
         <source>Choose folder</source>
         <translation>フォルダーを選択</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2931"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="2934"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2932"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2935"/>
         <source>Sync on Wi-Fi only</source>
         <translation>Wi-Fi接続時のみ同期</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2932"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2933"/>
         <source>Folder sync and photo backup wait while the phone is away, so they don&apos;t use its mobile data.</source>
         <translation>フォルダー同期と写真のバックアップは、スマートフォンが離れている間は待機するため、モバイルデータ通信を使用しません。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2949"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2950"/>
         <source>Photo backup</source>
         <translation>写真のバックアップ</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2950"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2951"/>
         <source>Copies new photos from every album into a folder on this PC, by year and month. Nothing is deleted, here or on the phone. Needs only the phone&apos;s photos permission.</source>
         <translation>すべてのアルバムから新しい写真を、年月別にこのPC上のフォルダーにコピーします。こちらでもスマートフォン上でも、何も削除されません。必要なのはスマートフォンの写真へのアクセス権限のみです。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2968"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2969"/>
         <source>Back up photos from %1</source>
         <translation>%1から写真をバックアップする</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2978"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2979"/>
         <source>Backup folder</source>
         <translation>バックアップフォルダー</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3004"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3019"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3005"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3020"/>
         <source>Include videos</source>
         <translation>動画を含める</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3005"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3006"/>
         <source>Videos can be large. Copied one at a time, so a lost connection costs at most one file.</source>
         <translation>動画は容量が大きくなることがあります。1つずつコピーするため、接続が切れても失われるのは最大で1ファイルだけです。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3013"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3014"/>
         <source>Back up now</source>
         <translation>今すぐバックアップ</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3037"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3038"/>
         <source>Synced folders</source>
         <translation>同期済みフォルダー</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3038"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3039"/>
         <source>One-way or two-way folder sync between phone and PC.</source>
         <translation>スマートフォンとPC間での片方向または双方向のフォルダー同期。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3045"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3046"/>
         <source>Sync now</source>
         <translation>今すぐ同期</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3073"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3074"/>
         <source>Two-way sync · conflict copies kept · deletions go across</source>
         <translation>双方向同期 · 競合コピーを保持 · 削除は双方に反映</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3074"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3075"/>
         <source>Two-way sync · conflict copies kept</source>
         <translation>双方向同期 · 競合コピーを保持</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3075"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3076"/>
         <source>One-way · PC to phone</source>
         <translation>片方向 · PCからスマートフォンへ</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3076"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3077"/>
         <source>One-way · phone to PC · removes files deleted on the phone</source>
         <translation>片方向 · スマートフォンからPCへ · スマートフォンで削除したファイルをPCからも削除</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3077"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3078"/>
         <source>One-way · phone to PC</source>
         <translation>片方向 · スマートフォンからPCへ</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3085"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3086"/>
         <source>Edit</source>
         <translation>編集</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3140"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3141"/>
         <source>Command palette</source>
         <translation>コマンドパレット</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3141"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3142"/>
         <source>Open from any app.</source>
         <translation>任意のアプリから開けます。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3186"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3187"/>
         <source>Command palette shortcut</source>
         <translation>コマンドパレットのショートカット</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3215"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3216"/>
         <source>File shelf</source>
         <translation>ファイルシェルフ</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3216"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3217"/>
         <source>Toggle screen-edge shelf.</source>
         <translation>画面端のシェルフを切り替えます。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3261"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3262"/>
         <source>Shelf shortcut</source>
         <translation>シェルフのショートカット</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3286"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3287"/>
         <source>Take photo</source>
         <translation>写真を撮る</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3287"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3288"/>
         <source>Capture &amp; paste photo.</source>
         <translation>写真を撮影して貼り付けます。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3332"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3333"/>
         <source>Take photo shortcut</source>
         <translation>写真撮影ショートカット</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3361"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3362"/>
         <source>Scan document</source>
         <translation>ドキュメントをスキャン</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3362"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3363"/>
         <source>Scan &amp; paste document.</source>
         <translation>ドキュメントをスキャンして貼り付けます。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3407"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3408"/>
         <source>Scan document shortcut</source>
         <translation>ドキュメントスキャンのショートカット</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3423"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3424"/>
         <source>Trigger-action rules</source>
         <translation>トリガー・アクションルール</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3424"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3425"/>
         <source>Run actions when your phone connects, disconnects, or rings.</source>
         <translation>スマートフォンの接続、切断、または着信時にアクションを実行します。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3431"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3432"/>
         <source>Lock PC on disconnect</source>
         <translation>切断時にPCをロック</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3438"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3439"/>
         <source>Pause media on ring</source>
         <translation>着信時にメディアを一時停止</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3491"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3492"/>
         <source>OBS Studio</source>
         <translation>OBS Studio</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3492"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3493"/>
         <source>For Deck tiles that run obs: commands. Turn on OBS&apos;s WebSocket server in Tools › WebSocket Server Settings.</source>
         <translation>obs: コマンドを実行するデッキタイル用。「ツール」＞「WebSocketサーバー設定」でOBSのWebSocketサーバーを有効にしてください。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3500"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3501"/>
         <source>Port</source>
         <translation>ポート</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3524"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3525"/>
         <source>OBS WebSocket port</source>
         <translation>OBS WebSocketポート</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3531"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3532"/>
         <source>Password</source>
         <translation>パスワード</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3553"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3554"/>
         <source>OBS WebSocket password</source>
         <translation>OBS WebSocketパスワード</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3559"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3560"/>
         <source>Saved</source>
         <translation>保存済み</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3559"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3560"/>
         <source>None</source>
         <translation>なし</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3568"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4655"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3569"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4656"/>
         <source>Save</source>
         <translation>保存</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3579"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3580"/>
         <source>Test connection</source>
         <translation>接続テスト</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3586"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3587"/>
         <source>Remove password</source>
         <translation>パスワードを削除</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3615"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3618"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3616"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3619"/>
         <source>Sync copied passwords</source>
         <translation>コピーしたパスワードを同期する</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3644"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3668"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3645"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3669"/>
         <source>Clipboard history</source>
         <translation>クリップボード履歴</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3648"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3649"/>
         <source>%1 clips · %2 · kept 7 days</source>
         <translation>%1 件のクリップ · %2 · 7日間保持</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3657"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3715"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3777"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3837"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3868"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3905"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4946"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3658"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3716"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3778"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3838"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3869"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3906"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4947"/>
         <source>Clear</source>
         <translation>クリア</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3659"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3660"/>
         <source>Clear clipboard history?</source>
         <translation>クリップボードの履歴をクリアしますか？</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3660"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3661"/>
         <source>Deletes the clips kept on this PC. What&apos;s on the clipboard now stays.</source>
         <translation>このPCに保存されているクリップを削除します。現在クリップボードにあるものはそのまま残ります。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3701"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="3723"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3702"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3724"/>
         <source>Notification history</source>
         <translation>通知履歴</translation>
     </message>
@@ -10689,441 +10707,441 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
         <translation type="vanished">%1 件の通知 · %2 · 24時間保持</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3717"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3718"/>
         <source>Clear notification history?</source>
         <translation>通知履歴をクリアしますか？</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3718"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3719"/>
         <source>Deletes the notifications kept after they went away. Ones still showing stay.</source>
         <translation>消えた後も残っている通知を削除します。まだ表示されているものは残ります。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3763"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3764"/>
         <source>Cross-device timeline</source>
         <translation>デバイス間タイムライン</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3767"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3768"/>
         <source>1 item stored (max 5,000).</source>
         <translation>1件保存済み（最大5,000件）。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3768"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3769"/>
         <source>%1 items stored (max 5,000).</source>
         <translation>%1件保存済み（最大5,000件）。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3779"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3780"/>
         <source>Clear the Timeline?</source>
         <translation>タイムラインをクリアしますか？</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3780"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3781"/>
         <source>Deletes the Timeline&apos;s entries on this PC. Files stay where they were saved.</source>
         <translation>このPC上のタイムラインのエントリを削除します。ファイルは保存されたままになります。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3796"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3797"/>
         <source>30d</source>
         <translation>30日</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3797"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3798"/>
         <source>90d</source>
         <translation>90日</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3798"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3799"/>
         <source>1y</source>
         <translation>1年</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3799"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3800"/>
         <source>All</source>
         <translation>すべて</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3814"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3815"/>
         <source>Cached messages</source>
         <translation>キャッシュ済みメッセージ</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3822"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3823"/>
         <source>1 chat</source>
         <translation>チャット 1件</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3822"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3823"/>
         <source>%1 chats</source>
         <translation>%1 件のチャット</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3823"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3824"/>
         <source>1 message</source>
         <translation>1件のメッセージ</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3823"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3824"/>
         <source>%1 messages</source>
         <translation>%1 件のメッセージ</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3824"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3825"/>
         <source>%1 · %2 · %3 · kept 90 days</source>
         <translation>%1 · %2 · %3 · 90日間保持</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3858"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3859"/>
         <source>Photo thumbnails</source>
         <translation>写真のサムネイル</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3862"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3863"/>
         <source>%1 cached · %2 · kept 30 days</source>
         <translation>%1 キャッシュ済み · %2 · 30日間保持</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3896"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3897"/>
         <source>Transfer history</source>
         <translation>転送履歴</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3899"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3900"/>
         <source>%1 records · kept with timeline</source>
         <translation>%1件のレコード · タイムラインに保存済み</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3907"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3908"/>
         <source>Clear transfer history?</source>
         <translation>転送履歴をクリアしますか？</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3908"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3909"/>
         <source>Deletes the list of past transfers. The files stay where they were saved.</source>
         <translation>過去の転送リストを削除します。ファイルは保存されていた場所にそのまま残ります。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3919"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3920"/>
         <source>Clear all local history &amp; caches</source>
         <translation>ローカルの履歴とキャッシュをすべて消去</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3920"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3921"/>
         <source>Wipes local history and caches; keeps paired devices and settings.</source>
         <translation>ローカルの履歴とキャッシュを消去し、ペアリング済みデバイスと設定を保持します。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3925"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3926"/>
         <source>Clear everything…</source>
         <translation>すべてクリア…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3971"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3972"/>
         <source>Connection Doctor</source>
         <translation>接続診断</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3972"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3973"/>
         <source>Diagnose and fix firewall, network, or VPN issues.</source>
         <translation>ファイアウォール、ネットワーク、またはVPNの問題を診断し、解決します。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3976"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3977"/>
         <source>Check</source>
         <translation>確認</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3984"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3985"/>
         <source>Connect over mobile data</source>
         <translation>モバイルデータ通信で接続</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3985"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3986"/>
         <source>Stay connected over LTE/5G or relay when away from Wi-Fi.</source>
         <translation>Wi-Fi環境外でも、LTE/5Gやリレーで接続を維持できます。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3996"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4003"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3997"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4004"/>
         <source>Use USB debugging</source>
         <translation>USB デバッグを使用</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3998"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3999"/>
         <source>Applies when NectarLink restarts.</source>
         <translation>NectarLink の再起動後に適用されます。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4000"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4001"/>
         <source>Connect, pair, install the app and start Elevated over a USB cable. Your phone asks once to allow USB debugging.</source>
         <translation>USB ケーブルで接続、ペアリング、アプリのインストール、Elevated の起動を行います。スマートフォンでは USB デバッグの許可を一度だけ求められます。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4001"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4002"/>
         <source>Off: NectarLink never asks a phone on a cable for USB debugging. Wi-Fi works as usual.</source>
         <translation>オフ: NectarLink はケーブルでつないだスマートフォンに USB デバッグを求めません。Wi-Fi は通常どおり使えます。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4013"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4686"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4014"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4687"/>
         <source>Network interface</source>
         <translation>ネットワークインターフェース</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4014"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4015"/>
         <source>Local connections switch after a restart. Relays switch right away if the app started with an interface selected.</source>
         <translation>ローカル接続は再起動後に切り替わります。リレーは、インターフェースを選択してアプリを起動した場合はすぐに切り替わります。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="2587"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4018"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4693"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="2588"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4019"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4694"/>
         <source>System default</source>
         <translation>システムデフォルト</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4692"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4693"/>
         <source>%1 · Direct (without a VPN)</source>
         <translation>%1 · 直接（VPNなし）</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4716"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4717"/>
         <source>Could not use this network interface.</source>
         <translation>このネットワークインターフェースは使用できませんでした。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4030"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4031"/>
         <source>Iroh relay servers</source>
         <translation>Irohリレーサーバー</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3705"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3706"/>
         <source>%1 alerts · %2</source>
         <translation>%1 件の通知 · %2</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3740"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3741"/>
         <source>Keep notification history for</source>
         <translation>通知履歴の保持期間</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3741"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3742"/>
         <source>Notifications that went away stay in the feed&apos;s history this long.</source>
         <translation>消えた通知はこの期間、履歴に残ります。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3744"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3745"/>
         <source>1 day</source>
         <translation>1 日</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3745"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3746"/>
         <source>3 days</source>
         <translation>3 日</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3746"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3747"/>
         <source>1 week</source>
         <translation>1 週間</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3747"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3748"/>
         <source>30 days</source>
         <translation>30 日</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4031"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4032"/>
         <source>View active routes, check latency and manage relay servers.</source>
         <translation>アクティブなルートの表示、レイテンシの確認、およびリレーサーバーの管理が可能です。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4035"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4036"/>
         <source>Manage</source>
         <translation>管理</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4043"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4044"/>
         <source>Wake from your phone</source>
         <translation>スマートフォンでスリープを解除する</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4048"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4049"/>
         <source>No active network adapter found.</source>
         <translation>有効なネットワーク アダプターが見つかりませんでした。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4050"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4051"/>
         <source>%1 · Wake on Magic Packet ready.</source>
         <translation>%1 · マジック パケットによるウェイクアップの準備完了。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4051"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4052"/>
         <source>%1 · Enable Wake on Magic Packet in Device Manager.</source>
         <translation>%1 · デバイス マネージャーでマジック パケットによるウェイクアップを有効にします。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4065"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4066"/>
         <source>Off in Windows</source>
         <translation>Windowsでオフ</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4065"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4066"/>
         <source>Off in the adapter&apos;s settings</source>
         <translation>アダプターの設定でオフ</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4066"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4067"/>
         <source>Check settings</source>
         <translation>設定を確認</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4067"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4068"/>
         <source>No adapter</source>
         <translation>アダプターなし</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4075"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4114"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4076"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4115"/>
         <source>Local automation API</source>
         <translation>ローカル自動化API</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4077"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4078"/>
         <source>Listening on 127.0.0.1:%1 · Token in %2</source>
         <translation>127.0.0.1:%1 で待機中 · トークンは %2 に格納されています</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4078"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4079"/>
         <source>Local HTTP/SSE server (127.0.0.1:%1) for scripts and tools.</source>
         <translation>スクリプトやツール用のローカルHTTP/SSEサーバー (127.0.0.1:%1)。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4125"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4129"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4126"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4130"/>
         <source>Notifications and messages</source>
         <translation>通知とメッセージ</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4126"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4127"/>
         <source>Tools using the API can also read your phones&apos; notifications and conversations. Apps you hide stay hidden.</source>
         <translation>API を使うツールが、スマートフォンの通知と会話も読めるようになります。非表示にしたアプリは非表示のままです。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4138"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4139"/>
         <source>NectarLink %1</source>
         <translation>NectarLink %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4141"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4142"/>
         <source>This PC: %1</source>
         <translation>このPC: %1</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4153"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4154"/>
         <source>Update download</source>
         <translation>アップデートのダウンロード</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4174"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4175"/>
         <source>Update to %1</source>
         <translation>%1に更新</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4175"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4215"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4220"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4176"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4216"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4221"/>
         <source>Check for updates</source>
         <translation>アップデートを確認</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4184"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4185"/>
         <source>Open logs</source>
         <translation>ログを開く</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4201"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4202"/>
         <source>What&apos;s new</source>
         <translation>新機能</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4202"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4203"/>
         <source>What changed since your last update.</source>
         <translation>前回のアップデート以降の変更点。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4234"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4235"/>
         <source>It&apos;s the same for everyone who uses NectarLink on this PC.</source>
         <translation>このPCでNectarLinkを使うすべての人に共通です。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4251"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4254"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4252"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4255"/>
         <source>Install updates automatically</source>
         <translation>アップデートを自動的にインストールする</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4252"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4253"/>
         <source>When nobody is using the PC and nothing is in progress.</source>
         <translation>PCを使用しておらず、処理が実行されていないときに適用されます。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4269"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4270"/>
         <source>Setup walkthrough</source>
         <translation>セットアップ手順</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4270"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4271"/>
         <source>Re-open the setup guide.</source>
         <translation>セットアップガイドを再表示します。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4282"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4283"/>
         <source>Features guide</source>
         <translation>機能ガイド</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4283"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4284"/>
         <source>What each feature needs and where to find it.</source>
         <translation>各機能に必要なものと、その場所。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4312"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4313"/>
         <source>Discord</source>
         <translation>Discord</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4313"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4314"/>
         <source>Our server. Ask questions, share ideas and try new builds with others.</source>
         <translation>私たちのサーバーです。質問やアイデアの共有、新しいビルドのお試しをみんなで。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4328"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4329"/>
         <source>Follow me. I post what&apos;s coming to NectarLink and other things I make.</source>
         <translation>フォローしてください。NectarLink の次の機能や、ほかに作っているものを投稿しています。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4341"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4342"/>
         <source>GitHub</source>
         <translation>GitHub</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4342"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4343"/>
         <source>Source code, issues and releases.</source>
         <translation>ソースコード、Issue、リリース。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4355"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4356"/>
         <source>NectarLink is free and open source. If it makes your days a little easier, you can help keep it going. Thank you!</source>
         <translation>NectarLinkは無料かつオープンソースです。もし日々の生活が少しでも便利になったなら、ぜひ活動の継続にご協力ください。ありがとうございます！</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4360"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4361"/>
         <source>Support</source>
         <translation>サポート</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4383"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4384"/>
         <source>Tell us what went wrong. You see the whole report before it goes anywhere.</source>
         <translation>何がうまくいかなかったか教えてください。送る前にレポート全体を確認できます。</translation>
     </message>
@@ -11132,252 +11150,252 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
         <translation type="vanished">フォルダーを同期する</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4513"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4514"/>
         <source>The phone asks once to let this PC in. NectarLink there also needs All files access, or this folder under Selected folders only.</source>
         <translation>スマートフォンから、このPCを許可するよう一度だけ求められます。NectarLink側でも、「すべてのファイルへのアクセス」権、または「選択したフォルダーのみ」のこのフォルダーへのアクセス権が必要です。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4516"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4517"/>
         <source>Folder on the phone</source>
         <translation>スマートフォン上のフォルダー</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4547"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4548"/>
         <source>Another folder on the phone</source>
         <translation>スマートフォンの別のフォルダ</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4559"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4560"/>
         <source>Another folder, like WhatsApp/Media</source>
         <translation>別のフォルダ（例：WhatsApp/Media）</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4564"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4565"/>
         <source>Folder on this PC</source>
         <translation>このPC上のフォルダー</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4571"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4572"/>
         <source>A folder of its own for each, in Pictures, Music, Videos or Documents</source>
         <translation>それぞれ「ピクチャ」「ミュージック」「ビデオ」「ドキュメント」内に専用フォルダ</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4581"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4582"/>
         <source>Choose…</source>
         <translation>選択…</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4588"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4591"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4589"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4592"/>
         <source>Keep each folder&apos;s name</source>
         <translation>各フォルダ名を保持</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4589"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4590"/>
         <source>Each phone folder goes into a folder of its own name in the one you chose, instead of straight into it.</source>
         <translation>スマートフォンの各フォルダは、選んだフォルダの直下ではなく、同じ名前のフォルダに入ります。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4617"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4618"/>
         <source>Phone to PC</source>
         <translation>スマートフォンからPCへ</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4618"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4619"/>
         <source>PC to phone</source>
         <translation>PCからスマートフォンへ</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4619"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4620"/>
         <source>Both ways</source>
         <translation>双方向</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4630"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4631"/>
         <source>New and changed files on the PC are copied to the phone. Nothing on the phone comes to the PC, and nothing is deleted.</source>
         <translation>PC上の新規ファイルや変更されたファイルは、スマートフォンにコピーされます。スマートフォン上のデータがPCに反映されることはなく、削除もされません。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4632"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4633"/>
         <source>Changes on either side are copied to the other. When a file changed on both, both versions are kept.</source>
         <translation>双方の変更内容はもう一方にコピーされます。両方でファイルが変更された場合は、どちらのバージョンも保持されます。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4633"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4634"/>
         <source>New and changed files on the phone are copied to the PC. Nothing on the PC goes to the phone.</source>
         <translation>スマートフォン上の新規・変更ファイルはPCにコピーされます。PC上のデータがスマートフォンに転送されることはありません。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4639"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4644"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4640"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4645"/>
         <source>Also remove from the PC</source>
         <translation>PCからも削除する</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4639"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4644"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4640"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4645"/>
         <source>Also remove deleted files</source>
         <translation>削除済みファイルも削除する</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4641"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4642"/>
         <source>A synced file you delete on one side leaves the other. On the PC it goes to the Recycle Bin. On the phone, photos and videos go to its trash where Android has one, and other files are gone for good.</source>
         <translation>同期済みのファイルを片方で削除すると、もう一方にも反映されます。PCではごみ箱に移動します。スマートフォンでは、写真や動画はAndroidのゴミ箱に移動し、その他のファイルは完全に削除されます。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4642"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4643"/>
         <source>A synced file you delete on the phone goes to the PC&apos;s Recycle Bin.</source>
         <translation>スマートフォンで削除した同期済みファイルは、PCのごみ箱に移動します。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4656"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4657"/>
         <source>Add %1 folders</source>
         <translation>%1 個のフォルダを追加</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4657"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4658"/>
         <source>Add</source>
         <translation>追加</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4733"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4734"/>
         <source>Phone&apos;s hotspot network</source>
         <translation>スマートフォンのテザリングネットワーク</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4741"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4742"/>
         <source>Wi-Fi networks this PC has joined before. Your system keeps their passwords; NectarLink never sees them.</source>
         <translation>このPCが過去に接続したWi-Fiネットワークです。パスワードはシステムに保存されており、NectarLinkが参照することはありません。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4742"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4743"/>
         <source>This PC hasn&apos;t saved any Wi-Fi networks yet. Join the phone&apos;s hotspot once from your system Wi-Fi list first.</source>
         <translation>このPCにはまだWi-Fiネットワークが保存されていません。まず、システムのWi-Fi一覧からスマートフォンのテザリングに一度接続してください。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4744"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4745"/>
         <source>Wi-Fi networks this PC has joined before. Windows keeps their passwords; NectarLink never sees them.</source>
         <translation>このPCが過去に接続したことのあるWi-Fiネットワーク。パスワードはWindowsが保持しており、NectarLinkは一切参照しません。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4745"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4746"/>
         <source>This PC hasn&apos;t saved any Wi-Fi networks yet. Join the phone&apos;s hotspot once from Windows&apos; Wi-Fi list first.</source>
         <translation>このPCにはまだWi-Fiネットワークが保存されていません。まずWindowsのWi-Fi一覧から、スマートフォンのテザリングに一度接続してください。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4775"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4776"/>
         <source>Don&apos;t join</source>
         <translation>接続しない</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4718"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4784"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4812"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4847"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4875"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4719"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4785"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4813"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4848"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4876"/>
         <source>Close</source>
         <translation>閉じる</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4858"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4859"/>
         <source>Play the phone&apos;s microphone into</source>
         <translation>スマートフォンのマイクの出力先</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4888"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4889"/>
         <source>Unpair %1?</source>
         <translation>%1 のペアリングを解除しますか？</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4894"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4895"/>
         <source>Both devices forget each other. You can pair them again any time.</source>
         <translation>両方のデバイスから互いのペアリング情報が削除されます。いつでも再度ペアリングできます。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4653"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4899"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4943"/>
-        <location filename="../qml/pages/SettingsPage.qml" line="4979"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4654"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4900"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4944"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4980"/>
         <source>Cancel</source>
         <translation>キャンセル</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3052"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3053"/>
         <source>Add folder</source>
         <translation>フォルダーを追加</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="3616"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="3617"/>
         <source>Also sends what password managers mark private. It leaves the phone&apos;s clipboard after a minute where Android allows it, and is never kept in history.</source>
         <translation>また、パスワードマネージャーが非公開としてマークしているものも送信します。Androidで許可されている場合は1分後にスマートフォンのクリップボードから消去され、履歴に残ることはありません。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4217"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4218"/>
         <source>Looks for a new build every couple of hours, and tells your phone.</source>
         <translation>数時間おきに新しいビルドがないか確認し、スマートフォンに通知します。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4218"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4219"/>
         <source>Looks for a new release twice a day, and tells your phone.</source>
         <translation>1日2回、新しいリリースがないか確認し、スマートフォンに通知します。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4229"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4230"/>
         <source>Update channel</source>
         <translation>更新チャネル</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4231"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4232"/>
         <source>The newest build from every couple of hours, with the latest fixes and features, and sometimes new bugs. Back on Stable, this PC keeps its build until the next release is newer.</source>
         <translation>2時間おきに更新される最新ビルドで、最新の修正や機能が追加されますが、時には新たなバグが含まれることもあります。「安定版」に戻した場合、このPCは次のリリースがより新しくなるまで、そのビルドを維持します。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4232"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4233"/>
         <source>Releases, tested and less often.</source>
         <translation>リリース版。テスト済みで、更新頻度は低めです。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4238"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4239"/>
         <source>Stable</source>
         <translation>安定版</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4239"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4240"/>
         <source>Nightly</source>
         <translation>Nightly</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4504"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4505"/>
         <source>Edit synced folder</source>
         <translation>同期フォルダを編集</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4504"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4505"/>
         <source>Sync folders</source>
         <translation>フォルダを同期</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4823"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4824"/>
         <source>Talk on calls through</source>
         <translation>通話に使用するマイク</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4842"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4843"/>
         <source>No microphone found on this PC.</source>
         <translation>このPCにマイクが見つかりませんでした。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4965"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4966"/>
         <source>Clear all local history &amp; caches?</source>
         <translation>ローカルの履歴とキャッシュをすべて消去しますか？</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4974"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4975"/>
         <source>Deletes clipboard history, Timeline, notification history, cached messages, photo thumbnails and transfer history on this PC. Paired devices, settings and downloaded files are kept.</source>
         <translation>このPC上のクリップボード履歴、タイムライン、通知履歴、キャッシュ済みメッセージ、写真のサムネイル、および転送履歴を削除します。ペアリング済みデバイス、設定、ダウンロード済みファイルは保持されます。</translation>
     </message>
     <message>
-        <location filename="../qml/pages/SettingsPage.qml" line="4982"/>
+        <location filename="../qml/pages/SettingsPage.qml" line="4983"/>
         <source>Clear everything</source>
         <translation>すべてクリア</translation>
     </message>

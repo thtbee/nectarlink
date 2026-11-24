@@ -48,6 +48,7 @@ Item {
             if (page.lastClickedId.length > 0)
                 page.lastClickedIndex = Photos.rowOf(page.lastClickedId)
         }
+        function onMoreChanged() { grid.maybeLoadOlder() }
     }
     onViewerIndexChanged: if (viewerIndex < 0) viewerId = ""
     readonly property var viewedItem: {
@@ -787,10 +788,20 @@ Item {
                 onColumnsChanged: Photos.setColumns(columns)
                 Component.onCompleted: Photos.setColumns(columns)
 
-                onAtYEndChanged: {
-                    if (atYEnd && Photos.more && count > 0)
+                function maybeLoadOlder() {
+                    if (!Photos.more || Photos.loadingOlder || count <= 0 || Photos.status !== "ready" || height <= 0)
+                        return
+                    const nearBottom = atYEnd
+                        || contentHeight <= height
+                        || contentY + height >= originY + contentHeight + bottomMargin - cellHeight * 2
+                    if (nearBottom)
                         Photos.loadOlder()
                 }
+
+                onAtYEndChanged: maybeLoadOlder()
+                onContentYChanged: maybeLoadOlder()
+                onContentHeightChanged: maybeLoadOlder()
+                onHeightChanged: maybeLoadOlder()
 
                 // Current top-visible item's day label, shown in the sticky day banner.
                 readonly property int topVisibleRow: Math.max(
@@ -1028,12 +1039,82 @@ Item {
 
         // Main photo/video stage.
         Item {
+            id: stage
             anchors.top: viewerBar.bottom
             anchors.bottom: parent.bottom
             width: parent.width
+            clip: true
+            readonly property bool zoomable: page.viewedItem !== null && !page.viewedItem.isVideo
+
+            // Zoom (#587): the wheel zooms around the pointer, a double click
+            // goes between fitting the window and 2.5x, and dragging moves a
+            // zoomed photo. The full photo is the texture, so it stays sharp.
+            WheelHandler {
+                target: null
+                enabled: stage.zoomable
+                acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                onWheel: (event) => {
+                    const steps = event.angleDelta.y / 120
+                    if (steps !== 0)
+                        stageImage.zoomAt(stageImage.zoom * Math.pow(1.25, steps), event.x - stageImage.x, event.y - stageImage.y)
+                }
+            }
+            DragHandler {
+                target: null
+                enabled: stage.zoomable && stageImage.zoom > 1
+                property real fromX: 0
+                property real fromY: 0
+                onActiveChanged: if (active) { fromX = stageImage.panX; fromY = stageImage.panY }
+                onTranslationChanged: {
+                    stageImage.panX = fromX + translation.x
+                    stageImage.panY = fromY + translation.y
+                    stageImage.clampPan()
+                }
+            }
+            TapHandler {
+                enabled: stage.zoomable
+                onDoubleTapped: (eventPoint) => stageImage.zoomAt(stageImage.zoom > 1 ? 1 : 2.5,
+                    eventPoint.position.x - stageImage.x, eventPoint.position.y - stageImage.y)
+            }
 
             Image {
                 id: stageImage
+                property real zoom: 1
+                property real panX: 0
+                property real panY: 0
+                // Each photo opens fitted.
+                readonly property string forId: page.viewerId
+                onForIdChanged: { zoom = 1; panX = 0; panY = 0 }
+                function clampPan() {
+                    const mx = Math.max(0, (paintedWidth * zoom - width) / 2)
+                    const my = Math.max(0, (paintedHeight * zoom - height) / 2)
+                    panX = Math.max(-mx, Math.min(mx, panX))
+                    panY = Math.max(-my, Math.min(my, panY))
+                }
+                // Zooms to `next`, keeping the point at (x, y) where it is.
+                function zoomAt(next, x, y) {
+                    const z = Math.max(1, Math.min(8, next))
+                    const cx = width / 2
+                    const cy = height / 2
+                    panX = x - cx - (x - cx - panX) * (z / zoom)
+                    panY = y - cy - (y - cy - panY) * (z / zoom)
+                    zoom = z
+                    clampPan()
+                }
+                transform: [
+                    Scale {
+                        origin.x: stageImage.width / 2
+                        origin.y: stageImage.height / 2
+                        xScale: stageImage.zoom
+                        yScale: stageImage.zoom
+                    },
+                    Translate { x: stageImage.panX; y: stageImage.panY }
+                ]
+                // The full photo couldn't be shown here (HEIC, which Qt can't
+                // read, #559): the preview stays, and Open in Photos shows it.
+                property bool fullFailed: false
+                readonly property string fullUrl: page.viewedItem && page.viewedItem.fullUrl ? page.viewedItem.fullUrl : ""
+                onFullUrlChanged: fullFailed = false
                 anchors.fill: parent
                 anchors.margins: 32
                 asynchronous: true
@@ -1042,9 +1123,30 @@ Item {
                 mipmap: true
                 source: {
                     if (!page.viewedItem) return ""
-                    if (page.viewedItem.fullUrl && page.viewedItem.fullUrl.length > 0)
-                        return page.viewedItem.fullUrl
+                    if (fullUrl.length > 0 && !fullFailed)
+                        return fullUrl
                     return page.viewedItem.thumb || ""
+                }
+                onStatusChanged: if (status === Image.Error && fullUrl.length > 0 && source == fullUrl) fullFailed = true
+            }
+
+            Rectangle {
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: 20
+                anchors.horizontalCenter: parent.horizontalCenter
+                visible: stageImage.fullFailed
+                width: Math.min(parent.width - 48, cannotShow.implicitWidth + 28)
+                height: cannotShow.implicitHeight + 16
+                radius: Theme.radiusMd
+                color: Theme.surfaceContainerHigh
+                Txt {
+                    id: cannotShow
+                    anchors.centerIn: parent
+                    width: Math.min(implicitWidth, parent.width - 28)
+                    role: "bodySmall"
+                    wrapMode: Text.WordWrap
+                    horizontalAlignment: Text.AlignHCenter
+                    text: qsTr("This photo's format can't be shown here at full size. Open in Photos shows it.")
                 }
             }
 

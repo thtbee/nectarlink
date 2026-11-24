@@ -233,6 +233,7 @@ class Preferences(context: Context) {
         private const val HIDE_FROM_RECENTS = "hide_from_recents"
         internal const val BACKGROUND_SERVICE_ENABLED = "background_service_enabled"
         private const val AWAY_MODE = "away_mode"
+        private const val USB_ONLY = "usb_only"
         private const val WALKTHROUGH_COMPLETED = "walkthrough_completed"
         private const val WALKTHROUGH_STEP = "walkthrough_step"
         private const val WHATS_NEW_GUIDE_DISMISSED = "whats_new_guide_dismissed"
@@ -330,6 +331,17 @@ class Preferences(context: Context) {
             context.applicationContext
                 .getSharedPreferences("appearance", Context.MODE_PRIVATE)
                 .edit { putBoolean(AWAY_MODE, enabled) }
+        }
+
+        fun isUsbOnlyEnabled(context: Context): Boolean =
+            context.applicationContext
+                .getSharedPreferences("appearance", Context.MODE_PRIVATE)
+                .getBoolean(USB_ONLY, false)
+
+        fun setUsbOnlyEnabled(context: Context, enabled: Boolean) {
+            context.applicationContext
+                .getSharedPreferences("appearance", Context.MODE_PRIVATE)
+                .edit { putBoolean(USB_ONLY, enabled) }
         }
 
         fun isBackgroundServiceEnabled(context: Context): Boolean =

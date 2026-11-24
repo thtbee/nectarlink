@@ -302,6 +302,10 @@
     <string name="action_phone_sound_back">Вернуть звук на телефон</string>
     <string name="phone_sound_on_pc_off">%1$s не воспроизводит звук этого телефона. На ПК включите «Экран телефона» для этого телефона в разделе Настройки › Устройства.</string>
     <string name="action_shutdown_pc">Выключить</string>
+    <string name="action_restart_pc">Перезагрузить</string>
+    <string name="restart_pc_title">Перезагрузить %1$s?</string>
+    <string name="restart_pc_text">Windows закроет открытые приложения и перезагрузится. Приложение с несохранёнными данными может остановить перезагрузку.</string>
+    <string name="pc_restart_requested">Запрошена перезагрузка %1$s.</string>
     <string name="shutdown_pc_title">Выключить %1$s?</string>
     <string name="shutdown_pc_text">Открытые приложения закроются. Приложение с несохранёнными данными ещё может это остановить.</string>
     <string name="action_wake_pc">Разбудить</string>
@@ -343,6 +347,7 @@
         <item quantity="other">Подключено к %1$d ПК</item>
     </plurals>
     <string name="notification_waiting">Ожидание ПК</string>
+    <string name="notification_usb_only">Только USB: ожидание кабеля</string>
     <string name="notification_waiting_network">Ждёт Wi-Fi, чтобы подключиться к ПК</string>
     <string name="reconnect_known_only_title">Только в сетях, где был найден ПК</string>
     <string name="reconnect_known_only_body">Сам ищет ваши ПК только в тех сетях Wi-Fi, где уже подключался к одному из них. В других сетях ПК всё равно может подключиться к телефону.</string>
@@ -1330,6 +1335,9 @@
     <string name="home_section_system">Система и питание</string>
     <string name="settings_category_devices">Устройства</string>
     <string name="settings_category_features">Функции и данные</string>
+    <string name="settings_usb_only_title">Только USB</string>
+    <string name="settings_usb_only_body">Подключаться к ПК только по кабелю USB: без Wi-Fi, мобильных данных и локального обнаружения</string>
+    <string name="usb_only_tile_label">Только USB</string>
     <string name="settings_theme_artwork_color">Цвет обложки медиа</string>
     <string name="settings_mobile_data_body">Оставайтесь на связи через LTE/5G или ретранслятор вдали от Wi-Fi</string>
     <string name="settings_background_clipboard_title">Доступ к буферу обмена в фоне</string>

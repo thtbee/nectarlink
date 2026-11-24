@@ -399,6 +399,8 @@ class MirrorService : Service() {
             applyPower()
             // Only the sound, so it's heard on the PC instead of the phone (#94).
             if (soundOnly && sound?.usesPlaybackCapture == true) PhoneQuiet.start(this)
+            // Its volume keys set how loud it plays there (#577).
+            if (soundOnly) PcSoundVolume.start(this, pc)
         }
     }
 
@@ -446,6 +448,7 @@ class MirrorService : Service() {
         sound?.stop()
         sound = null
         PhoneQuiet.end(this)
+        PcSoundVolume.stop()
         projection?.let { runCatching { it.stop() } }
         projection = null
         pcId = null

@@ -7,7 +7,7 @@ use std::pin::Pin;
 use cxx_qt::{CxxQtType, Threading};
 use cxx_qt_lib::QString;
 
-use crate::{messages, state::Changes};
+use crate::{i18n::tr, messages, state::Changes};
 
 #[cxx_qt::bridge]
 pub mod qobject {
@@ -66,6 +66,9 @@ pub mod qobject {
         #[qproperty(QString, sims)]
         /// The SIM the open conversation sends on, or "".
         #[qproperty(QString, sim)]
+        /// A message of the open conversation to bring into view and
+        /// highlight (a clicked notification's), or "".
+        #[qproperty(QString, focus_message, cxx_name = "focusMessage")]
         type Messages = super::MessagesRust;
     }
 
@@ -86,6 +89,11 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "closeThread"]
         fn close_thread(self: &Messages);
+        /// Whether the page is on screen (shown, in a window that isn't hidden
+        /// or minimized), so the open conversation is being read.
+        #[qinvokable]
+        #[cxx_name = "setOnScreen"]
+        fn set_on_screen(self: &Messages, on: bool);
         #[qinvokable]
         #[cxx_name = "loadOlder"]
         fn load_older(self: &Messages);
@@ -163,6 +171,7 @@ pub struct MessagesRust {
     attachment_error: QString,
     sims: QString,
     sim: QString,
+    focus_message: QString,
     /// What was last shown, to skip refreshes that change nothing.
     last: Option<messages::View>,
 }
@@ -221,6 +230,7 @@ impl qobject::Messages {
             self.as_mut().set_sims(QString::from(&view.sims.to_string()));
         }
         self.as_mut().set_sim(QString::from(&view.sim));
+        self.as_mut().set_focus_message(QString::from(&view.focus_message));
         self.as_mut().rust_mut().last = Some(view);
     }
 
@@ -236,6 +246,10 @@ impl qobject::Messages {
 
     pub fn open_thread(&self, thread: &QString) {
         messages::open_thread(String::from(thread));
+    }
+
+    pub fn set_on_screen(&self, on: bool) {
+        messages::set_on_screen(on);
     }
 
     pub fn start_chat(&self, device: &QString, number: &QString, name: &QString) {
@@ -269,8 +283,12 @@ impl qobject::Messages {
     }
 
     pub fn copy(&self, text: &QString) {
-        if let Err(reason) = crate::win::clipboard::write(&String::from(text)) {
-            tracing::warn!(reason, "can't copy");
+        match crate::win::clipboard::write(&String::from(text)) {
+            Ok(()) => crate::bridge::app::show_message(tr!("App", "Copied to clipboard.")),
+            Err(reason) => {
+                tracing::warn!(reason, "can't copy");
+                crate::bridge::app::show_message(tr!("App", "Could not copy to the clipboard."));
+            }
         }
     }
 

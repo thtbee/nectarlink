@@ -471,6 +471,20 @@ impl SharedFrameMapping {
         String::from_utf8_lossy(&bytes).into_owned()
     }
 
+    /// Reads the phone name without caching a partial update. If a writer is
+    /// busy, the Linux feeder can keep its last idle image until the next poll.
+    #[cfg(target_os = "linux")]
+    pub fn try_load_phone_name(&self) -> Option<String> {
+        let h = self.header();
+        let seq = h.seq.load(Ordering::Acquire);
+        if seq & 1 != 0 {
+            return None;
+        }
+        let name = self.load_phone_name();
+        std::sync::atomic::fence(Ordering::Acquire);
+        (seq == h.seq.load(Ordering::Acquire)).then_some(name)
+    }
+
     /// Marks the webcam stream as idle (placeholder shown) and updates the
     /// phone name displayed on the placeholder card.
     pub fn set_idle(&self, phone_name: &str) {
@@ -478,6 +492,8 @@ impl SharedFrameMapping {
         let seq = h.seq.load(Ordering::Relaxed);
         let odd = if seq & 1 == 0 { seq.wrapping_add(1) } else { seq };
         h.seq.store(odd, Ordering::Release);
+        #[cfg(target_os = "linux")]
+        std::sync::atomic::fence(Ordering::AcqRel);
         self.store_phone_name(phone_name);
         h.active.store(0, Ordering::Release);
         h.seq.store(odd.wrapping_add(1), Ordering::Release);
@@ -534,11 +550,22 @@ impl SharedFrameMapping {
     /// `(false, 0)` when idle (in which case `out_bgrx` is filled with the
     /// placeholder frame). While the writer is busy, repeats the last complete
     /// live frame at the same output dimensions instead of flashing the idle card.
-    #[allow(unsafe_code)]
     pub fn read_bgrx(&self, out_width: u32, out_height: u32, out_bgrx: &mut [u8]) -> (bool, u64) {
+        if let Some(timestamp_us) = self.read_live_bgrx(out_width, out_height, out_bgrx) {
+            return (true, timestamp_us);
+        }
+        render_placeholder_bgrx(out_bgrx, out_width, out_height, &self.load_phone_name());
+        (false, 0)
+    }
+
+    /// Returns a live frame's timestamp, including the last complete frame on
+    /// writer contention. On `None`, the caller supplies its own idle frame
+    /// and must not use the contents of `out_bgrx`.
+    #[allow(unsafe_code)]
+    pub fn read_live_bgrx(&self, out_width: u32, out_height: u32, out_bgrx: &mut [u8]) -> Option<u64> {
         let needed = (out_width as usize) * (out_height as usize) * 4;
         if out_bgrx.len() < needed || out_width == 0 || out_height == 0 {
-            return (false, 0);
+            return None;
         }
         let mut last_read = self.last_read.lock().unwrap_or_else(|e| e.into_inner());
         let h = self.header();
@@ -580,7 +607,7 @@ impl SharedFrameMapping {
                         cached.timestamp_us = ts;
                         cached.bgrx.resize(needed, 0);
                         cached.bgrx.copy_from_slice(&out_bgrx[..needed]);
-                        return (true, ts);
+                        return Some(ts);
                     }
                     contended = true;
                 }
@@ -592,13 +619,11 @@ impl SharedFrameMapping {
                 && cached.height == out_height
             {
                 out_bgrx[..needed].copy_from_slice(&cached.bgrx);
-                return (true, cached.timestamp_us);
+                return Some(cached.timestamp_us);
             }
         }
         *last_read = None;
-        let phone = self.load_phone_name();
-        render_placeholder_bgrx(&mut out_bgrx[..needed], out_width, out_height, &phone);
-        (false, 0)
+        None
     }
 }
 
@@ -1152,6 +1177,33 @@ mod tests {
         let seq = mapping.header().seq.load(Ordering::Acquire);
         mapping.header().seq.store(seq + 1, Ordering::Release);
         assert_eq!(mapping.read_bgrx(120, 160, &mut output), (false, 0));
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn linux_reader_skips_idle_rendering_and_waits_for_a_complete_name() {
+        let name = format!("nectarlink_vcam_linux_idle_test_{}", std::process::id());
+        let mapping = SharedFrameMapping::open_or_create(&name).unwrap();
+        let (width, height) = (160, 120);
+        let live = vec![42; (width * height * 4) as usize];
+        let mut output = vec![0; live.len()];
+        mapping.write_frame("Phone A", width, height, 123, &live, false);
+        assert_eq!(mapping.read_live_bgrx(width, height, &mut output), Some(123));
+
+        let h = mapping.header();
+        let seq = h.seq.load(Ordering::Acquire);
+        h.seq.store(seq + 1, Ordering::Release);
+        mapping.store_phone_name("Unfinished");
+        assert_eq!(mapping.try_load_phone_name(), None);
+        output.fill(0);
+        assert_eq!(mapping.read_live_bgrx(width, height, &mut output), Some(123));
+        assert_eq!(output, live, "writer contention must keep the last complete live frame");
+
+        mapping.set_idle("Phone B");
+        assert_eq!(mapping.try_load_phone_name().as_deref(), Some("Phone B"));
+        assert_eq!(mapping.read_live_bgrx(width, height, &mut output), None);
+        assert_eq!(output, live, "the caller handles idle frames without rendering BGRX");
+        std::fs::remove_file(unix_shm_path(&name)).unwrap();
     }
 
     #[test]

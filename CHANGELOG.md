@@ -8,6 +8,31 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Ukrainian.** NectarLink speaks Українська on the phone and the PC. Language (Settings ›
+  Appearance on the phone, Settings › General on the PC) picks it, or the system language does. Thanks to
+  [@Lik1ch](https://github.com/Lik1ch).
+- **Zoom into a photo on the PC.** In the Photos viewer the mouse wheel zooms around the
+  pointer, a double click goes between fitting the window and a close look, and a zoomed photo
+  can be dragged around. It shows the full photo, so screenshots stay sharp up close
+  ([#587](https://github.com/thtbee/nectarlink/issues/587)).
+- **The phone's sound has its own volume on the PC.** **Phone sound on this PC** on the PC's
+  Home has a slider for how loud it plays there, apart from the PC's own volume, and it applies
+  to a mirrored phone's sound too. While the phone's sound plays on the PC, the phone's volume
+  keys move that slider instead of turning the phone's speaker back up, and the phone's volume
+  panel shows it ([#577](https://github.com/thtbee/nectarlink/issues/577)).
+- **Restart the PC from the phone.** A Windows PC's card on the phone's Home has **Restart**
+  next to **Shut down**, with the same confirmation; an app with unsaved work can still stop
+  it. Thanks to [@w-rakeeb](https://github.com/w-rakeeb)
+  ([#574](https://github.com/thtbee/nectarlink/issues/574)).
+- **USB only (phone).** **Settings › Devices › USB only**, or a **USB only** Quick Settings
+  tile, makes the phone reach PCs only through a USB cable: no dialing or accepting over
+  Wi-Fi, mobile data or relays, no local discovery or LocalSend, and the multicast lock is
+  released. Other connections close when you turn it on. It's silent while no PC is on the
+  cable: the app stops and shows no notification. Plug the cable in and the PC (with USB
+  debugging allowed) starts the app through adb, even when the PC app was started with the
+  cable already in; the usual notification shows while connected. Asked for in
+  [#481](https://github.com/thtbee/nectarlink/discussions/481). Thanks to
+  [@farfromrefug](https://github.com/farfromrefug) ([#546](https://github.com/thtbee/nectarlink/pull/546)).
 - **Touchpad gestures from the phone.** The phone's touchpad does what a laptop's does: pinch
   to zoom, three fingers up for Task View and down for the desktop, three fingers sideways
   through the app switcher, four fingers sideways between virtual desktops, and three- and
@@ -15,6 +40,24 @@ change things that need a step from you, and its notes say so.
 - **Copy part of a notification.** A notification's **...** menu on the PC's Home shows its
   whole text, and any part of it can be selected and copied with Ctrl+C. Thanks to
   [@korry73](https://github.com/korry73) ([#526](https://github.com/thtbee/nectarlink/issues/526)).
+- **Mark texts read on the phone.** **Settings › General › Mark texts read on the phone** (off
+  by default) marks an SMS conversation read on the phone too when you read it on the PC, so
+  the phone's unread count and notification match instead of keeping texts you've already read
+  as unread. It presses the messaging app's own **Mark as read** button on the conversation's
+  notification (so the app's own state and notification follow), and dismisses the notification
+  when the app has no such button. With **Elevated** it also marks the texts read in the phone's
+  messages directly: its helper allows itself the SMS write app-op for that one change and puts
+  it back to the mode it had. Thanks to [@farfromrefug](https://github.com/farfromrefug)
+  ([#553](https://github.com/thtbee/nectarlink/pull/553)).
+- **The device you're on, and badges, on the PC's left rail.** The device the pages show sits
+  at the bottom of the rail, with a dot for whether it's connected; click it to pick another
+  (or pair a new one). **Messages** shows how many texts came in that you haven't read on the
+  PC, and **Calls** how many calls were missed. A conversation's texts stop counting when you
+  open it, and missed calls when you open **Calls**. When other devices have something waiting,
+  the device button shows their total, and the list that opens shows each device's own
+  number. Only what arrives after a phone first shows here counts, so a phone's older unread
+  texts, which only its own messaging app can clear, don't leave a number up. Thanks to
+  [@farfromrefug](https://github.com/farfromrefug) ([#552](https://github.com/thtbee/nectarlink/pull/552)).
 - **Report a problem.** **Settings › Connection & About › Report a problem** on the PC (and at
   the bottom of the Connection Doctor) puts what you say went wrong together with what helps
   find the cause: versions, the Doctor's checks, how features have been doing, recent crashes
@@ -487,9 +530,52 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **The Linux app starts on Wayland with PipeWire capture installed.** Checking for the screen
+  capture portal stopped the app's background service at start, so it stayed on the loading
+  screen. Thanks to [@krakotay](https://github.com/krakotay)
+  ([#598](https://github.com/thtbee/nectarlink/issues/598), [#595](https://github.com/thtbee/nectarlink/pull/595)).
+- **Photos loads more than the first page.** Dragging the scrollbar to the bottom stopped short
+  of it, and a first page that didn't fill the window never asked for more, so some galleries
+  showed only their first 80 photos. Thanks to [@aihehye](https://github.com/aihehye)
+  ([#533](https://github.com/thtbee/nectarlink/issues/533), [#588](https://github.com/thtbee/nectarlink/pull/588)).
+- **App windows take clicks with the phone locked on more phones.** On some phones (a POCO
+  F5 Pro on HyperOS, say) the window's display went to sleep with the phone, so typing still
+  worked but clicks didn't. The phone is now woken for it as on phones that don't run windows
+  on a display of their own, with its screen kept dark
+  ([#528](https://github.com/thtbee/nectarlink/issues/528)).
+- **Setting up unlock with phone says what's wrong.** With it off on the phone, the PC said
+  "Not confirmed on the phone" although the phone never asked; it now says to turn it on there.
+  A phone without a fingerprint that Android counts as strong now gets its own message instead
+  of being told to turn it on, and a phone off the PC's network gets that one
+  ([#578](https://github.com/thtbee/nectarlink/issues/578),
+  [#579](https://github.com/thtbee/nectarlink/issues/579)).
+- **The virtual camera rests on Linux.** With the phone's camera off, NectarLink Webcam kept
+  redrawing its placeholder, using about a third of a CPU core; it now draws it once. Thanks
+  to [@vladikchi](https://github.com/vladikchi)
+  ([#566](https://github.com/thtbee/nectarlink/pull/566)).
+- **HEIC photos show in the Photos viewer.** The PC can't read HEIC itself, so the viewer
+  stayed empty; it now shows the photo's preview and says that Open in Photos shows it in full
+  ([#559](https://github.com/thtbee/nectarlink/issues/559)).
+- **Unlock with phone asks the next phone.** With several phones set up, one that's
+  connected but away from the PC's network said "Not confirmed on the phone" and stopped
+  there; the PC now goes on to the next phone that's on the network
+  ([#535](https://github.com/thtbee/nectarlink/issues/535)).
+- **The PC's mouse goes over to phones on Android 13 and older.** The phone measured its
+  pointer from a status line only newer Android versions have, so the mouse came over for a
+  moment and went straight back ([#107](https://github.com/thtbee/nectarlink/issues/107)).
 - **Folder sync is quicker with many files.** Comparing a big folder no longer slows down
   with the square of its file count. Thanks to [@aihehye](https://github.com/aihehye)
   ([#537](https://github.com/thtbee/nectarlink/pull/537)).
+- **Less work in the tray.** Storage sizes for Settings are only counted while Settings is
+  open, not on every new clipboard item, text or photo. Thanks to
+  [@aihehye](https://github.com/aihehye) ([#538](https://github.com/thtbee/nectarlink/pull/538)).
+- **Photos load faster.** The phone makes thumbnails several at a time and only reads one page
+  of its gallery per request, and the PC asks for more than one batch at once, visible photos
+  before album covers. Going back to Photos no longer reloads everything. Thanks to
+  [@aihehye](https://github.com/aihehye) ([#583](https://github.com/thtbee/nectarlink/pull/583)).
+- **The Windows app connects sooner after it starts.** Checking whether the graphics card
+  decodes H.265 no longer holds up the start; it's offered to phones once the check is done.
+  Thanks to [@aihehye](https://github.com/aihehye) ([#539](https://github.com/thtbee/nectarlink/pull/539)).
 - **Sleep from the phone works on more laptops.** Laptops that sleep the Modern Standby way
   ignored it; the screen now goes off as with the power button, and Windows takes them into
   standby ([#542](https://github.com/thtbee/nectarlink/issues/542)).
@@ -511,6 +597,18 @@ change things that need a step from you, and its notes say so.
   cleanup, and when the OpenGL capture stalls or comes out black it tries the plain PipeWire
   path again on a fresh connection. Thanks to [@krakotay](https://github.com/krakotay)
   ([#540](https://github.com/thtbee/nectarlink/pull/540)).
+- **A text's notification opens the conversation.** Clicking a text message's notification on
+  the PC brings up NectarLink on that phone's Messages page, with the conversation open at the
+  message, ringed for a moment. This works wherever a notification reports its click: Windows
+  and Linux now, and macOS once its notifications do. Thanks to
+  [@farfromrefug](https://github.com/farfromrefug) ([#551](https://github.com/thtbee/nectarlink/pull/551)).
+- **Conversations open at the latest message**, every time: on the first sync, when you open
+  one again, and after you send a message, which no longer jumps somewhere else.
+- **Scrolling Messages follows the system's scroll speed on macOS**, for a mouse wheel as for a
+  trackpad. Qt dropped the speed and acceleration set in System Settings for a wheel, so
+  scrolling felt slow beside other apps.
+- **Copying a message or a phone number** from Messages or Calls says **Copied to clipboard.**
+
 - **A phone app's shortcut can be taken away again.** Once an app has a shortcut, its menu
   on the PC's Apps page says **Remove from app menu** (Linux, where app menus have no way to
   delete an entry) or **Remove from desktop** (Windows). Thanks to

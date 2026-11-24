@@ -187,6 +187,7 @@ fun HomeScreen(
     onPower: (pcId: String, sleep: Boolean) -> Unit,
     onHibernate: (pcId: String) -> Unit,
     onShutdown: (pcId: String) -> Unit = {},
+    onRestart: (pcId: String) -> Unit,
     onPhoneSoundOnPc: (pcId: String) -> Unit = {},
     onWake: (pcId: String) -> Unit,
     onSetReconnect: (pcId: String, on: Boolean) -> Unit,
@@ -708,6 +709,7 @@ fun HomeScreen(
                     onPower = onPower,
                     onHibernate = onHibernate,
                     onShutdown = onShutdown,
+                    onRestart = onRestart,
                     onPhoneSoundOnPc = onPhoneSoundOnPc,
                     soundOnPcNow = mirrorSession.active && mirrorSession.soundOnly && mirrorSession.pcId == device.id,
                     onStopSound = onStopMirror,
@@ -1511,6 +1513,7 @@ private fun PcCard(
     onPower: (String, Boolean) -> Unit,
     onHibernate: (String) -> Unit,
     onShutdown: (String) -> Unit,
+    onRestart: (String) -> Unit,
     onPhoneSoundOnPc: (String) -> Unit,
     soundOnPcNow: Boolean,
     onStopSound: () -> Unit,
@@ -1924,14 +1927,17 @@ private fun PcCard(
                     }
                 }
                 if (device.has("device.pc_actions")) {
-                    // Lock and Sleep, then Hibernate and Shut down where the PC offers them:
-                    // three to a row, or two and two (D372).
-                    var confirmShutdown by remember { mutableStateOf(false) }
+                    var confirmPowerAction by remember { mutableStateOf<Int?>(null) }
                     val actions = buildList<Pair<Int, () -> Unit>> {
                         add(R.string.action_lock_pc to { onPower(device.id, false) })
                         add(R.string.action_sleep_pc to { onPower(device.id, true) })
                         if (device.has("device.pc_hibernate")) add(R.string.action_hibernate_pc to { onHibernate(device.id) })
-                        if (device.has("device.pc_shutdown")) add(R.string.action_shutdown_pc to { confirmShutdown = true })
+                        if (device.has("device.pc_shutdown")) {
+                            add(R.string.action_shutdown_pc to { confirmPowerAction = R.string.action_shutdown_pc })
+                        }
+                        if (device.has("device.pc_restart")) {
+                            add(R.string.action_restart_pc to { confirmPowerAction = R.string.action_restart_pc })
+                        }
                     }
                     actions.chunked(if (actions.size == 4) 2 else 3).forEach { row ->
                         Row(
@@ -1952,20 +1958,23 @@ private fun PcCard(
                             }
                         }
                     }
-                    if (confirmShutdown) {
+                    confirmPowerAction?.let { label ->
+                        val restart = label == R.string.action_restart_pc
                         AlertDialog(
-                            onDismissRequest = { confirmShutdown = false },
+                            onDismissRequest = { confirmPowerAction = null },
                             containerColor = glassModalContainerColor(),
-                            title = { Text(stringResource(R.string.shutdown_pc_title, device.name)) },
-                            text = { Text(stringResource(R.string.shutdown_pc_text)) },
+                            title = {
+                                Text(stringResource(if (restart) R.string.restart_pc_title else R.string.shutdown_pc_title, device.name))
+                            },
+                            text = { Text(stringResource(if (restart) R.string.restart_pc_text else R.string.shutdown_pc_text)) },
                             confirmButton = {
                                 TextButton(onClick = {
-                                    confirmShutdown = false
-                                    onShutdown(device.id)
-                                }) { Text(stringResource(R.string.action_shutdown_pc)) }
+                                    confirmPowerAction = null
+                                    if (restart) onRestart(device.id) else onShutdown(device.id)
+                                }) { Text(stringResource(label)) }
                             },
                             dismissButton = {
-                                TextButton(onClick = { confirmShutdown = false }) {
+                                TextButton(onClick = { confirmPowerAction = null }) {
                                     Text(stringResource(R.string.action_cancel))
                                 }
                             },
