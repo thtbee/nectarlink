@@ -2092,6 +2092,62 @@ Item {
                         onToggled: (on) => MediaList.setPhoneSound(home.deviceId, on)
                     }
 
+                    // How loud it plays here, apart from the PC's own volume (#577).
+                    // The phone's volume keys move it too.
+                    Column {
+                        id: phoneSoundVolume
+                        readonly property int level: MediaList.revision >= 0 ? MediaList.phoneSoundVolume() : 100
+                        width: parent.width
+                        spacing: 4
+                        visible: (MediaList.revision >= 0 ? MediaList.phoneSoundState(home.deviceId) : "off") === "playing"
+
+                        Timer {
+                            id: phoneSoundVolumeSave
+                            interval: 600
+                            property int pending: 0
+                            onTriggered: MediaList.setPhoneSoundVolume(pending, true)
+                        }
+
+                        Item {
+                            width: parent.width
+                            height: 20
+                            Row {
+                                anchors.verticalCenter: parent.verticalCenter
+                                spacing: 6
+                                Icon {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: 15; height: 15
+                                    path: phoneSoundVolume.level === 0 ? Icons.soundOff : Icons.speaker
+                                    color: Theme.surfaceContent
+                                }
+                                Txt {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    role: "bodySmall"
+                                    text: qsTr("Phone sound volume")
+                                }
+                            }
+                            Txt {
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                role: "caption"
+                                muted: true
+                                text: qsTr("%1%").arg(phoneSoundVolume.level)
+                            }
+                        }
+
+                        ValueSlider {
+                            width: parent.width
+                            value: phoneSoundVolume.level
+                            label: qsTr("Phone sound volume")
+                            valueText: qsTr("%1%").arg(phoneSoundVolume.level)
+                            onMoved: (next) => {
+                                MediaList.setPhoneSoundVolume(next, false)
+                                phoneSoundVolumeSave.pending = next
+                                phoneSoundVolumeSave.restart()
+                            }
+                        }
+                    }
+
                     LockChip {
                         visible: label.length > 0
                         feature: phoneControls.activeLockFeature

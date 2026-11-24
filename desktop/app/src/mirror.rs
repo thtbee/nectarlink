@@ -411,6 +411,11 @@ pub fn has_sound(device: &DeviceId) -> bool {
     state(|s| s.sound.contains(device))
 }
 
+/// A phone whose sound is coming in with its screen, if any.
+pub fn sound_device() -> Option<DeviceId> {
+    state(|s| s.sound.iter().next().copied())
+}
+
 fn set_sound(device: DeviceId, on: bool) {
     state(|s| if on { s.sound.insert(device) } else { s.sound.remove(&device) });
     core_host::host().hub.changed(Changes::MIRROR);
@@ -2659,9 +2664,12 @@ impl MirrorSink for Sink {
             }
         };
         set_sound(self.window.device, sound.is_some());
+        if sound.is_some() {
+            crate::phone_sound::tell_phone(self.window.device);
+        }
     }
 
-    fn audio(&self, time_us: u64, data: Vec<u8>) {
+    fn audio(&self, time_us: u64, mut data: Vec<u8>) {
         if self.window.session == MIRROR_SCREEN
             && ACTIVE_RECORDERS.load(Ordering::Relaxed) > 0
             && let Some(rec) = RECORDERS
@@ -2676,6 +2684,8 @@ impl MirrorSink for Sink {
         if muted() {
             return;
         }
+        // After the recording, which keeps the phone's own level.
+        crate::phone_sound::apply_volume(&mut data);
         if let Some(player) = self.sound.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
             player.push(data);
         }

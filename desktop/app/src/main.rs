@@ -212,6 +212,9 @@ impl Platform for DesktopPlatform {
     fn call_audio_stop_requested(&self, peer: &nectarlink_core::DeviceId) {
         call_audio::end(*peer);
     }
+    fn mirror_volume_changed(&self, peer: &nectarlink_core::DeviceId, level: u8) {
+        phone_sound::volume_from_phone(*peer, level);
+    }
     fn phone_sound_asked(&self, peer: &nectarlink_core::DeviceId) {
         tracing::info!(peer = %peer.short(), "the phone asked to play its sound here");
         phone_sound::set_on(*peer, true);

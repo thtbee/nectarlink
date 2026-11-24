@@ -55,5 +55,8 @@ object PhoneQuiet {
         }
     }
 
+    /** Whether [start] turned the media volume down and it's still to give back. */
+    fun quiet(context: Context): Boolean = prefs(context).contains(KEY_VOLUME)
+
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 }

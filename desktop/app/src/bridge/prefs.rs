@@ -1443,6 +1443,7 @@ impl qobject::Preferences {
             battery_full_threshold: p.battery_full_threshold.clamp(50, 100) as u8,
             battery_low_threshold: p.battery_low_threshold.clamp(5, 50) as u8,
             phone_sound_buffer_ms: p.phone_sound_buffer_ms.clamp(20, 500) as u16,
+            phone_sound_volume: crate::settings::phone_sound_volume(),
             ui_scale: u16::try_from(p.ui_scale).unwrap_or(100),
             keep_screen_off: crate::settings::keep_screen_off_phones(),
             device_nicknames: crate::settings::device_nicknames(),

@@ -242,6 +242,9 @@ impl Platform for RecordingPlatform {
     fn mirror_sound_requested(&self, _peer: &nectarlink_core::DeviceId, on: bool) {
         self.mirror_asks.lock().unwrap().push(format!("sound on={on}"));
     }
+    fn mirror_volume_changed(&self, _peer: &nectarlink_core::DeviceId, level: u8) {
+        self.mirror_asks.lock().unwrap().push(format!("volume {level}"));
+    }
     fn mirror_power_requested(&self, _peer: &nectarlink_core::DeviceId, stay_awake: bool, screen_off: bool) {
         self.mirror_asks.lock().unwrap().push(format!("power awake={stay_awake} off={screen_off}"));
     }
@@ -2614,6 +2617,49 @@ async fn folders_arrive_with_their_layout() {
         std::fs::read_dir(downloads.join("Trip")).unwrap().next().is_none(),
         "the old folder is untouched"
     );
+}
+
+/// The phone's sound volume on the PC (#577) goes both ways: the PC's slider
+/// to the phone, the phone's volume keys to the PC. Only between devices that
+/// both offer it.
+#[tokio::test(flavor = "multi_thread")]
+async fn the_phone_sound_volume_is_shared_both_ways() {
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[nectarlink_core::MIRROR_VOLUME]).await;
+    let mut old_phone = device_with("Old phone", DeviceKind::Phone, &[nectarlink_core::MIRROR_SOUND]).await;
+    pair_qr(&mut pc, &mut old_phone).await;
+    let old_id = old_phone.node.device_id();
+    let refused = pc.node.mirror_volume(old_id, 50).await;
+    assert!(matches!(refused, Err(Error::Unsupported)), "{refused:?}");
+
+    let mut phone = device_with(
+        "Pixel",
+        DeviceKind::Phone,
+        &[nectarlink_core::MIRROR_SOUND, nectarlink_core::MIRROR_VOLUME],
+    )
+    .await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+    // Until each side has the other's capabilities.
+    let deadline = tokio::time::Instant::now() + WAIT;
+    while pc.node.mirror_volume(phone_id, 70).await.is_err()
+        || phone.node.mirror_volume(pc_id, 40).await.is_err()
+    {
+        assert!(tokio::time::Instant::now() < deadline, "capabilities never arrived");
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    assert!(phone.node.mirror_volume(pc_id, 101).await.is_err(), "over 100 is never sent");
+    let deadline = tokio::time::Instant::now() + WAIT;
+    while !(pc.platform.mirror_asks.lock().unwrap().iter().any(|a| a == "volume 40")
+        && phone.platform.mirror_asks.lock().unwrap().iter().any(|a| a == "volume 70"))
+    {
+        assert!(tokio::time::Instant::now() < deadline, "the volume never arrived");
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    assert!(!pc.platform.mirror_asks.lock().unwrap().iter().any(|a| a == "volume 101"));
+
+    // Mirroring off for the PC: the phone keeps its keys to itself.
+    phone.node.set_device_toggle(pc_id, "mirroring", false).unwrap();
+    assert!(matches!(phone.node.mirror_volume(pc_id, 30).await, Err(Error::Denied)));
 }
 
 /// The phone's sound on its own (#94): the PC asks for the sound alone, the

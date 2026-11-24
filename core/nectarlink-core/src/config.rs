@@ -401,6 +401,10 @@ pub trait Platform: Send + Sync + 'static {
     /// mirroring its screen.
     fn mirror_sound_requested(&self, _peer: &nectarlink_protocol::DeviceId, _on: bool) {}
 
+    /// The other side set how loud the phone's sound plays on the PC
+    /// (`0..=100`, #577): the PC's slider, or the phone's volume keys.
+    fn mirror_volume_changed(&self, _peer: &nectarlink_protocol::DeviceId, _level: u8) {}
+
     /// The PC wants this phone's mirrored screen in landscape or portrait.
     fn mirror_rotate_requested(&self, _peer: &nectarlink_protocol::DeviceId, _landscape: bool) {}
 
