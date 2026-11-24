@@ -749,18 +749,19 @@ fn mirror_bgrx_in_place(bgrx: &mut [u8], width: u32, height: u32) {
 }
 
 #[cfg(windows)]
+static HEVC_SUPPORTED: OnceLock<bool> = OnceLock::new();
+
+#[cfg(windows)]
 pub fn supports_hevc() -> bool {
-    static SUPPORTED: OnceLock<bool> = OnceLock::new();
-    *SUPPORTED.get_or_init(|| match Decoder::new_gpu("h265") {
-        Ok(decoder) => {
-            let supported = decoder.on_gpu();
-            tracing::info!(supported, "HEVC decoder probe");
-            supported
-        }
-        Err(error) => {
-            tracing::info!(%error, "HEVC decoder unavailable");
-            false
-        }
+    HEVC_SUPPORTED.get().copied().unwrap_or(false)
+}
+
+#[cfg(windows)]
+pub fn probe_hevc() -> bool {
+    *HEVC_SUPPORTED.get_or_init(|| {
+        let supported = crate::win::h264::Decoder::supports_hardware("h265");
+        tracing::info!(supported, "HEVC decoder probe");
+        supported
     })
 }
 

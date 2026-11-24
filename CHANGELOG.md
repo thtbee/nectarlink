@@ -549,6 +549,9 @@ change things that need a step from you, and its notes say so.
   of its gallery per request, and the PC asks for more than one batch at once, visible photos
   before album covers. Going back to Photos no longer reloads everything. Thanks to
   [@aihehye](https://github.com/aihehye) ([#583](https://github.com/thtbee/nectarlink/pull/583)).
+- **The Windows app connects sooner after it starts.** Checking whether the graphics card
+  decodes H.265 no longer holds up the start; it's offered to phones once the check is done.
+  Thanks to [@aihehye](https://github.com/aihehye) ([#539](https://github.com/thtbee/nectarlink/pull/539)).
 - **Sleep from the phone works on more laptops.** Laptops that sleep the Modern Standby way
   ignored it; the screen now goes off as with the power button, and Windows takes them into
   standby ([#542](https://github.com/thtbee/nectarlink/issues/542)).
