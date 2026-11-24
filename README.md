@@ -311,6 +311,21 @@ cd android && ./gradlew assembleDebug                                     # Andr
 Releases are built by CI from a `v*` tag; see
 [docs/technical/releasing.md](docs/technical/releasing.md).
 
+### Building the macOS app
+
+Checked on Intel Macs (a 2019 MacBook Pro) with Qt 6.12.1 from the Qt online installer.
+Run the exports in the same Terminal tab as the build: a new tab forgets them, and
+`build-dmg.sh` then fails with "macdeployqt not found".
+
+```sh
+export PATH="$HOME/Qt/6.12.1/macos/bin:$PATH"
+export QT_ROOT_DIR="$HOME/Qt/6.12.1/macos"
+git clone https://github.com/thtbee/nectarlink.git
+cd nectarlink
+cargo run -p nectarlink-desktop                # run it
+./desktop/packaging/macos/build-dmg.sh         # dist/Nectarlink-<version>-macos-<arch>.dmg
+```
+
 ### With Nix
 
 Run or develop NectarLink using Nix flakes:
