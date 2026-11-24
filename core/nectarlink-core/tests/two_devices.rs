@@ -61,6 +61,7 @@ struct RecordingPlatform {
     dialed: Mutex<Vec<String>>,
     texts: Mutex<Vec<(Vec<String>, String)>>,
     mms_sent: Mutex<Vec<MmsRecord>>,
+    marked_read: Mutex<Vec<String>>,
     mirror_asks: Mutex<Vec<String>>,
     mirror_reject: std::sync::atomic::AtomicBool,
     /// Says no computer can be reaching it through adb.
@@ -400,6 +401,10 @@ impl Platform for RecordingPlatform {
         sim: &str,
     ) -> Result<(), String> {
         self.texts.lock().unwrap().push((to.to_vec(), format!("{body} on {sim}")));
+        Ok(())
+    }
+    fn sms_mark_read(&self, thread: &str) -> Result<(), String> {
+        self.marked_read.lock().unwrap().push(thread.to_owned());
         Ok(())
     }
     fn sms_part(&self, id: &str) -> Result<(String, Vec<u8>), String> {
@@ -3060,6 +3065,33 @@ async fn the_pc_reads_and_sends_texts_through_the_phone() {
     assert_eq!((sims.sims.len(), sims.default.as_deref()), (2, Some("1")));
     with_timeout("text on sim 2", on_sim("2")).await.unwrap();
     assert_eq!(phone.platform.texts.lock().unwrap().last().map(|t| t.1.as_str()), Some("Hi on 2"));
+
+    // Marking a conversation read is only for a phone that offers it.
+    assert!(matches!(pc.node.sms_mark_read(phone_id, "3".into()).await, Err(Error::Unsupported)));
+    assert!(phone.platform.marked_read.lock().unwrap().is_empty());
+    phone
+        .node
+        .update_power(
+            PowerLevel::NotApplicable,
+            vec![
+                nectarlink_core::SMS_READ.into(),
+                nectarlink_core::SMS_SEND.into(),
+                nectarlink_core::SMS_SIMS.into(),
+                nectarlink_core::SMS_MARK_READ.into(),
+            ],
+        )
+        .await;
+    loop {
+        match with_timeout("mark read", pc.node.sms_mark_read(phone_id, "3".into())).await {
+            Ok(()) => break,
+            Err(Error::Unsupported) => tokio::time::sleep(std::time::Duration::from_millis(50)).await,
+            Err(e) => panic!("can't mark read: {e:?}"),
+        }
+    }
+    assert_eq!(*phone.platform.marked_read.lock().unwrap(), ["3"]);
+    // A conversation is a number: nothing else goes to the phone.
+    assert!(matches!(pc.node.sms_mark_read(phone_id, "3 OR 1=1".into()).await, Err(Error::Protocol(_))));
+    assert_eq!(phone.platform.marked_read.lock().unwrap().len(), 1);
 
     // The phone says what changed.
     phone.node.sms_changed(Some("1".into())).await;

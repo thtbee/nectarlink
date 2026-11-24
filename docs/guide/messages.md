@@ -59,6 +59,7 @@ When an SMS or chat message contains a verification code, NectarLink displays a 
 
 - **Messages toggle** (`Settings › Devices` on PC, **On** by default): Allows this phone and PC to sync SMS/MMS conversations, Unified Conversations, and outgoing replies.
 - **Contacts toggle** (`Settings › Devices` on PC, **On** by default): Syncs contact names, phone numbers, and avatars so threads display people's names instead of raw numbers.
+- **Mark texts read on the phone** (`Settings › General` on PC, **Off** by default): Marks an SMS conversation read on the phone as well when you read it on the PC, through its messaging app's own **Mark as read** notification button (and, with `Elevated`, in the phone's messages).
 - **Copy one-time codes** (`Settings › General` on PC, **Off** by default): Copies verification codes from incoming SMS messages to the PC clipboard automatically.
 - **Cached messages** (`Settings › Storage & Privacy` on PC and `Settings › Features & Data › Data & storage` on Android): Shows how many chat threads, messages, and MMS attachment bytes are cached locally, with a **Clear** button to wipe the local cache at any time.
 

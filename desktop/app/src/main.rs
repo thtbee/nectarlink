@@ -825,6 +825,7 @@ fn main() -> ExitCode {
     clipboard::set_history_enabled(settings.clipboard_history);
     clipboard::set_suggest_actions(settings.suggest_clipboard_actions);
     notifications::set_auto_copy_otp(settings.auto_copy_otp);
+    messages::set_mark_read_on_phone(settings.mark_read_on_phone);
     // Paused pop-ups stay paused after a restart, if the user chose that (#442).
     notifications::set_paused(settings.keep_popups_paused && settings.popups_paused);
     notifications::set_sync_dnd(settings.sync_dnd);

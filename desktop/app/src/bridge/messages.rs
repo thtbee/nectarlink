@@ -89,6 +89,11 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "closeThread"]
         fn close_thread(self: &Messages);
+        /// Whether the page is on screen (shown, in a window that isn't hidden
+        /// or minimized), so the open conversation is being read.
+        #[qinvokable]
+        #[cxx_name = "setOnScreen"]
+        fn set_on_screen(self: &Messages, on: bool);
         #[qinvokable]
         #[cxx_name = "loadOlder"]
         fn load_older(self: &Messages);
@@ -241,6 +246,10 @@ impl qobject::Messages {
 
     pub fn open_thread(&self, thread: &QString) {
         messages::open_thread(String::from(thread));
+    }
+
+    pub fn set_on_screen(&self, on: bool) {
+        messages::set_on_screen(on);
     }
 
     pub fn start_chat(&self, device: &QString, number: &QString, name: &QString) {

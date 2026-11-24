@@ -16,6 +16,7 @@ only in memory. New-message alerts come from the phone's own notifications
 | `sms.send` | phone | Sends texts when a PC asks |
 | `sms.show` | PC | Shows messages, and wants `sms.changed` |
 | `sms.sims` | phone | Lists the SIMs it texts from, and sends on the one a PC picks |
+| `sms.mark_read` | phone | Marks a conversation's received texts read in the phone's messages when a PC asks (Elevated only) |
 
 Both devices must allow it: the `messages` device toggle, on by default,
 on each side.
@@ -40,6 +41,9 @@ t = "sms.part"      re = n   b = { mime: text, data: bytes }
 
 t = "sms.sims"      id = n   b = { sims: [] }
 t = "sms.sims"      re = n   b = { sims: [ { id: text, label: text } ], ? default: text }
+
+t = "sms.mark_read" id = n   b = { thread: text }
+t = "ok"            re = n
 
 t = "sms.changed"            b = { ? thread: text }                       // phone → PC
 
@@ -106,7 +110,24 @@ doesn't mean anything to the other. A PC shows a choice only with two or
 more, and by default sends on the SIM the conversation's newest message used.
 Phones that don't offer `sms.sims` answer `UNSUPPORTED`.
 
-### 2.4 Changes
+### 2.4 Marking read
+
+`sms.mark_read` asks the phone to mark the received texts of a conversation
+read in its own messages, so the phone's unread count and notification match
+what was read on the PC. `thread` is the phone's number for the conversation:
+1 to 18 digits, nothing else (anything else is `BAD_MESSAGE`).
+Android lets only the default SMS app change the messages store, and a
+messaging app keeps its own state besides, so a phone presses the app's own
+**Mark as read** button on the conversation's notification (found by its
+title, a contact name or a number of the conversation; an app without one has
+the notification dismissed). With its Elevated helper running it also marks
+the texts read in the phone's messages (the shell may write once it allows
+itself the SMS write app-op for the one change, then restores the mode it read first). A phone offers
+`sms.mark_read` with notification access or a running helper; one that
+doesn't answers `UNSUPPORTED`. The PC sends it only if the user turned on
+**Mark texts read on the phone**, which is off by default.
+
+### 2.5 Changes
 
 The phone sends `sms.changed` to PCs that offer `sms.show` when its
 messages change (a text arrived or was sent), with the conversation when

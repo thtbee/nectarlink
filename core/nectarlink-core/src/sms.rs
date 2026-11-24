@@ -8,8 +8,8 @@ use std::sync::Arc;
 use nectarlink_protocol::{
     DeviceId, Envelope, ErrorCode, MAX_FRAME_LEN,
     messages::{
-        CallSims, SmsAttachment, SmsChanged, SmsMessage, SmsMessages, SmsMessagesGet, SmsPartData,
-        SmsPartGet, SmsSend, SmsThread, SmsThreads, SmsThreadsGet, calls, sms, types,
+        CallSims, SmsAttachment, SmsChanged, SmsMarkRead, SmsMessage, SmsMessages, SmsMessagesGet,
+        SmsPartData, SmsPartGet, SmsSend, SmsThread, SmsThreads, SmsThreadsGet, calls, sms, types,
     },
 };
 
@@ -92,6 +92,22 @@ pub(crate) async fn sims(shared: &Shared, session: &Session) -> Result<CallSims>
     Ok(sims)
 }
 
+/// Asks a phone to mark a conversation's texts read in its own messages.
+/// `Unsupported` from a phone that doesn't offer it.
+pub(crate) async fn mark_read(shared: &Shared, session: &Session, thread: String) -> Result<()> {
+    allowed(shared, &session.peer)?;
+    if !peer_offers(shared, session, sms::MARK_READ) {
+        return Err(Error::Unsupported);
+    }
+    let body = SmsMarkRead { thread };
+    if !body.is_valid() {
+        return Err(Error::Protocol("invalid conversation".into()));
+    }
+    let env = Envelope::new(types::SMS_MARK_READ, &body)?;
+    session.request(env, crate::session::REQUEST_TIMEOUT).await?.expect(types::OK)?;
+    Ok(())
+}
+
 fn peer_offers(shared: &Shared, session: &Session, cap: &str) -> bool {
     shared.store.get_peer(&session.peer).ok().flatten().is_some_and(|record| record.caps.contains(cap))
 }
@@ -153,8 +169,15 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
         }
         return Ok(true);
     }
-    if ![types::SMS_THREADS, types::SMS_MESSAGES, types::SMS_SEND, types::SMS_PART, types::SMS_SIMS]
-        .contains(&env.t.as_str())
+    if ![
+        types::SMS_THREADS,
+        types::SMS_MESSAGES,
+        types::SMS_SEND,
+        types::SMS_PART,
+        types::SMS_SIMS,
+        types::SMS_MARK_READ,
+    ]
+    .contains(&env.t.as_str())
     {
         return Ok(false);
     }
@@ -177,6 +200,7 @@ async fn answer(shared: &Arc<Shared>, session: &Session, env: &Envelope) -> Resu
     let needs = match env.t.as_str() {
         types::SMS_SEND => sms::SEND,
         types::SMS_SIMS => sms::SIMS,
+        types::SMS_MARK_READ => sms::MARK_READ,
         _ => sms::READ,
     };
     if !shared.offers_locally(needs) {
@@ -221,6 +245,16 @@ async fn answer(shared: &Arc<Shared>, session: &Session, env: &Envelope) -> Resu
                     None => platform.send_sms_with_attachments(&send.to, &send.body, &send.attachments),
                 }
                 .map(|()| Envelope::empty(types::OK))
+            }))
+            .await
+        }
+        types::SMS_MARK_READ => {
+            let request: SmsMarkRead = env.body()?;
+            if !request.is_valid() {
+                return Ok(Envelope::error(ErrorCode::BadMessage, "invalid conversation"));
+            }
+            blocking(Box::new(move || {
+                platform.sms_mark_read(&request.thread).map(|()| Envelope::empty(types::OK))
             }))
             .await
         }

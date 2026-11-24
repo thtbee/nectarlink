@@ -9,7 +9,10 @@ use crate::i18n::tr;
 use std::{
     collections::{HashMap, HashSet},
     path::{Path, PathBuf},
-    sync::Mutex,
+    sync::{
+        Mutex,
+        atomic::{AtomicBool, Ordering},
+    },
 };
 
 use nectarlink_core::{
@@ -187,6 +190,92 @@ impl State {
             .or(sims.first().map(|s| s.id.as_str()))
             .map(str::to_owned)
     }
+}
+
+/// Whether reading a text conversation here marks it read on the phone too.
+static MARK_READ_ON_PHONE: AtomicBool = AtomicBool::new(false);
+
+/// Whether Messages is on screen: a conversation left open in a window that's
+/// closed to the tray or minimized isn't being read.
+static ON_SCREEN: AtomicBool = AtomicBool::new(false);
+
+/// Messages came on screen or went off it; on, the open conversation counts as read.
+pub fn set_on_screen(on: bool) {
+    ON_SCREEN.store(on, Ordering::Relaxed);
+    if on {
+        mark_open_read();
+    }
+}
+
+/// Conversations the phone was asked to mark read, as of their latest message:
+/// asked once until something newer arrives, unless the ask failed for a reason
+/// that may pass (the link was down).
+static MARKED: Mutex<Option<HashSet<(DeviceId, String, i64)>>> = Mutex::new(None);
+
+pub fn set_mark_read_on_phone(on: bool) {
+    MARK_READ_ON_PHONE.store(on, Ordering::Relaxed);
+    // Turned on: conversations open or unread now are worth asking about again.
+    MARKED.lock().unwrap_or_else(|e| e.into_inner()).take();
+    if on {
+        mark_open_read();
+    }
+}
+
+/// Asks the phone to mark the open text conversation read, if the setting is
+/// on and it has texts the phone calls unread. The phone says no unless it
+/// offers it (Elevated), which is fine: it's asked once per latest message.
+fn mark_open_read() {
+    if !MARK_READ_ON_PHONE.load(Ordering::Relaxed) || !ON_SCREEN.load(Ordering::Relaxed) {
+        return;
+    }
+    let Some((device, thread, date)) = state(|s| {
+        let thread = s.thread.clone().filter(|t| !t.starts_with("chat:"))?;
+        let t = s.threads.iter().find(|t| t.id == thread && t.unread > 0)?;
+        Some((s.device?, thread, t.date))
+    }) else {
+        return;
+    };
+    let asked = MARKED.lock().unwrap_or_else(|e| e.into_inner()).get_or_insert_default().insert((
+        device,
+        thread.clone(),
+        date,
+    ));
+    let Some(node) = core_host::node().filter(|_| asked) else {
+        MARKED
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .get_or_insert_default()
+            .remove(&(device, thread, date));
+        return;
+    };
+    tracing::info!(device = %device.short(), "asking the phone to mark a conversation read");
+    core_host::spawn(async move {
+        match node.sms_mark_read(device, thread.clone()).await {
+            Ok(()) => {
+                // Shown read here at once; the phone's own list follows.
+                state(|s| {
+                    if s.device == Some(device)
+                        && let Some(t) = s.threads.iter_mut().find(|t| t.id == thread)
+                    {
+                        t.unread = 0;
+                    }
+                });
+                changed();
+            }
+            Err(e) => {
+                tracing::info!(device = %device.short(), error = %e, "the phone didn't mark a conversation read");
+                // A phone that doesn't offer it won't later; any other failure (the link
+                // was down, a timeout) is worth asking again at the next chance.
+                if !matches!(e, nectarlink_core::Error::Unsupported) {
+                    MARKED
+                        .lock()
+                        .unwrap_or_else(|e| e.into_inner())
+                        .get_or_insert_default()
+                        .remove(&(device, thread, date));
+                }
+            }
+        }
+    });
 }
 
 /// How many conversations [`State::recent`] keeps.
@@ -772,6 +861,7 @@ pub fn load_threads() {
         });
         changed();
         open_pending();
+        mark_open_read();
     });
 }
 
@@ -883,6 +973,7 @@ pub fn open_thread(thread: String) {
     } else {
         changed();
         load_messages(None);
+        mark_open_read();
     }
 }
 

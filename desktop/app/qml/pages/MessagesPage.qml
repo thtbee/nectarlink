@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import QtQuick
 import QtQuick.Dialogs
+import QtQuick.Window
 import app.nectarlink
 
 // Messages: the phone's SMS and mirrored MessagingStyle chat conversations on
@@ -171,9 +172,14 @@ Item {
     }
     // Leaving the page closes the open conversation.
     onActiveChanged: active ? load() : closeChat()
-    Component.onCompleted: { load(); switchDraft() }
+    // Read only while it can be seen: not with the window closed to the tray or minimized.
+    readonly property bool onScreen: active && Window.window !== null && Window.window.visible
+        && Window.window.visibility !== Window.Minimized
+    onOnScreenChanged: Messages.setOnScreen(onScreen)
+    Component.onCompleted: { load(); switchDraft(); Messages.setOnScreen(onScreen) }
     // What's typed stays for when you come back, even from another page.
     Component.onDestruction: {
+        Messages.setOnScreen(false)
         if (draftKey.length > 0)
             Messages.saveDraft(draftKey, input.text)
         Messages.closeThread()

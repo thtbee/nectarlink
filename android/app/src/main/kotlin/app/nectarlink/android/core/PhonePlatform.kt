@@ -6,12 +6,14 @@ import app.nectarlink.android.unlock.UnlockKeys
 import app.nectarlink.android.unlock.UnlockPrompts
 import app.nectarlink.core.LinuxUnlockAttempt
 import app.nectarlink.core.UnlockRefusal
+import android.app.Notification
 import android.app.PendingIntent
 import android.app.RemoteInput
 import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import app.nectarlink.android.calls.PhoneCalls
 import app.nectarlink.android.camera.ContinuityCameraRequests
 import app.nectarlink.android.clipboard.PhoneClipboard
@@ -26,6 +28,7 @@ import app.nectarlink.android.mirror.MirrorRequest
 import app.nectarlink.android.mirror.MirrorRequests
 import app.nectarlink.android.mirror.MirrorService
 import app.nectarlink.android.sms.PhoneSms
+import app.nectarlink.android.sms.SmsNotificationMatch
 import app.nectarlink.android.storage.PhoneStorage
 import app.nectarlink.android.toggles.PhoneToggles
 import app.nectarlink.android.webcam.WebcamRequest
@@ -407,6 +410,52 @@ internal class PhonePlatform(
     override fun smsSendOn(to: List<String>, body: String, attachments: List<SmsAttachment>, sim: String): Boolean =
         sms().send(to, body, attachments, sim)
 
+    /**
+     * Marks a conversation read the way its messaging app does: by its notification's
+     * "Mark as read" button, which updates the app's own state (writing the phone's messages
+     * alone doesn't, and the notification stays) and takes the notification away. A notification
+     * without one is dismissed. With Elevated, the messages are also marked in the phone's
+     * database. True when any of it was done.
+     */
+    override fun smsMarkRead(thread: String): Boolean {
+        val id = thread.toLongOrNull() ?: return false
+        val inApp = markReadInApp(id)
+        val inMessages = Elevated.markSmsRead(id)
+        return inApp || inMessages
+    }
+
+    private fun markReadInApp(thread: Long): Boolean {
+        val listener = NotificationListener.instance ?: return false
+        val people = sms().peopleOf(thread).ifEmpty { return false }
+        // Only the texting app's own: a chat app's conversation with the same person isn't this one.
+        val smsApp = android.provider.Telephony.Sms.getDefaultSmsPackage(context) ?: return false
+        var done = false
+        for (sbn in listener.active()) {
+            if (sbn.packageName != smsApp) continue
+            val n = sbn.notification
+            if (n.category != Notification.CATEGORY_MESSAGE) continue
+            val title = n.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: continue
+            if (!SmsNotificationMatch.titleMatches(title, people)) continue
+            val button = n.actions.orEmpty().firstOrNull { action ->
+                action.actionIntent != null &&
+                    SmsNotificationMatch.marksRead(
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) action.semanticAction else 0,
+                        action.title,
+                        MARK_AS_READ,
+                    )
+            }
+            Log.i(TAG, "marking ${sbn.packageName}'s conversation read ${if (button != null) "with its button" else "by dismissing it"}")
+            done = runCatching {
+                if (button != null) {
+                    button.actionIntent.send(context, 0, Intent(), null, null, null, app.nectarlink.android.notifications.ActionStarts.options())
+                } else {
+                    listener.dismiss(sbn.key)
+                }
+            }.isSuccess || done
+        }
+        return done
+    }
+
     override fun smsPart(id: String): SmsPartData? = sms().part(id)
 
     override fun setPhoneToggle(id: String, value: PhoneToggleValue): Boolean =
@@ -459,6 +508,11 @@ internal class PhonePlatform(
     companion object {
         /** Which PC and mirroring sent the last taps and keys, for telling it they were refused. */
         @Volatile var lastMirrorInput: Pair<String, UInt>? = null
+
+        private const val TAG = "PhonePlatform"
+
+        /** Android's own kind for a "Mark as read" button (API 28). */
+        private const val MARK_AS_READ = 2
 
         /** The phone's own screen's mirroring session. */
         private const val SCREEN = 0u

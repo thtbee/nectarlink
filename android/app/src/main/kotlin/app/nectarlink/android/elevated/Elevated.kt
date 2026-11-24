@@ -1394,6 +1394,17 @@ object Elevated {
         return runCommand("appops set ${context.packageName} GET_USAGE_STATS allow")
     }
 
+    /**
+     * Marks the received texts of a conversation read in the phone's messages,
+     * through the helper (the shell may change them once allowed; see
+     * [InputServer]). False when the helper isn't running.
+     */
+    fun markSmsRead(thread: Long): Boolean {
+        if (thread <= 0) return false
+        val writer = input ?: return false
+        return send(writer, "R $thread")
+    }
+
     /** Runs an allowed shell command through the Elevated helper or system service. */
     fun runCommand(command: String): Boolean {
         val requiredCap = SystemServiceBridge.requiredCapability(command, context.packageName)

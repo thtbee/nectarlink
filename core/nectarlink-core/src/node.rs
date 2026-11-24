@@ -3723,6 +3723,13 @@ impl Node {
         crate::sms::sims(&self.shared, &session).await
     }
 
+    /// Asks a paired phone to mark a conversation's texts read in its own
+    /// messages. `Unsupported` from a phone that doesn't offer it.
+    pub async fn sms_mark_read(&self, peer: DeviceId, thread: String) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::sms::mark_read(&self.shared, &session, thread).await
+    }
+
     /// Sends a text or MMS through a paired phone on the SIM `sim` (an id
     /// from [`sms_sims`](Self::sms_sims)), or on its default when `None`.
     pub async fn send_sms_on(

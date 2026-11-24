@@ -2935,6 +2935,10 @@ pub trait Platform: Send + Sync {
         attachments: Vec<SmsAttachment>,
         sim: String,
     ) -> bool;
+    /// A PC asked to mark the received texts of the conversation `thread`
+    /// (the phone's number for it) read in the phone's own messages. False
+    /// if the phone couldn't.
+    fn sms_mark_read(&self, thread: String) -> bool;
     /// A PC asked for a message's attachment; null when it's gone.
     fn sms_part(&self, id: String) -> Option<SmsPartData>;
     /// A PC asked to change one of this phone's quick settings (`id`: `"dnd"`,
@@ -3363,6 +3367,9 @@ impl core::Platform for PlatformAdapter {
         } else {
             Err("not sent".into())
         }
+    }
+    fn sms_mark_read(&self, thread: &str) -> Result<(), String> {
+        if self.0.sms_mark_read(thread.to_owned()) { Ok(()) } else { Err("not marked read".into()) }
     }
     fn sms_part(&self, id: &str) -> Result<(String, Vec<u8>), String> {
         let part = self.0.sms_part(id.to_owned()).ok_or("it's gone")?;

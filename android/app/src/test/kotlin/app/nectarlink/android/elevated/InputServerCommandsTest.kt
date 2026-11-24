@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 package app.nectarlink.android.elevated
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -31,6 +33,32 @@ class InputServerCommandsTest {
         assertFalse(InputServer.isAllowedCommand("pm uninstall --user 0 com.example.app"))
         assertFalse(InputServer.isAllowedCommand("pm uninstall com"))
         assertFalse(InputServer.isAllowedCommand("pm uninstall "))
+    }
+
+    @Test
+    fun markingTextsReadAllowsTheWriteOnlyForTheChange() {
+        val commands = InputServer.smsReadCommands(42, "ignore").map { it.toList() }
+        assertEquals(
+            listOf(
+                listOf("appops", "set", "com.android.shell", "WRITE_SMS", "allow"),
+                listOf(
+                    "content", "update", "--uri", "content://sms/inbox",
+                    "--bind", "read:i:1", "--bind", "seen:i:1",
+                    "--where", "thread_id=42 AND read=0",
+                ),
+                listOf("appops", "set", "com.android.shell", "WRITE_SMS", "ignore"),
+            ),
+            commands,
+        )
+    }
+
+    @Test
+    fun theWriteModeIsPutBackToWhatItWas() {
+        assertEquals("ignore", InputServer.parseAppOpMode("WRITE_SMS: ignore\n"))
+        assertEquals("allow", InputServer.parseAppOpMode("WRITE_SMS: allow; time=+3d2h ago\n"))
+        assertEquals("default", InputServer.parseAppOpMode("No operations.\n"))
+        assertNull(InputServer.parseAppOpMode(""))
+        assertNull(InputServer.parseAppOpMode("WRITE_SMS: reboot"))
     }
 
     @Test
