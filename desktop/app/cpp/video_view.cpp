@@ -165,7 +165,9 @@ public:
     ~VideoNode() override
     {
         setTexture(nullptr);
+#ifdef _WIN32
         m_sgTexture.reset();
+#endif
         delete m_cpuTexture;
         m_cpuTexture = nullptr;
     }
@@ -173,7 +175,9 @@ public:
     void replaceCpuTexture(QSGTexture *next, bool keepGpu = false)
     {
         setTexture(next);
+#ifdef _WIN32
         m_sgTexture.reset();
+#endif
         delete m_cpuTexture;
         m_cpuTexture = next;
 #ifdef _WIN32

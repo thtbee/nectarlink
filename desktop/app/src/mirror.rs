@@ -368,6 +368,16 @@ enum LatestFrame {
     Gpu(crate::win::gpu_video::GpuScreenshotTarget),
 }
 
+impl LatestFrame {
+    fn dimensions(&self) -> (u32, u32) {
+        match self {
+            LatestFrame::Cpu { width, height, .. } => (*width, *height),
+            #[cfg(windows)]
+            LatestFrame::Gpu(target) => (target.width, target.height),
+        }
+    }
+}
+
 type FrameMap = HashMap<Window, LatestFrame>;
 
 /// Latest displayed frame per window, for instant screenshots.
@@ -777,7 +787,7 @@ pub fn toggle_recording(window: Window) {
                 .lock()
                 .unwrap_or_else(|e| e.into_inner())
                 .as_ref()
-                .and_then(|m| m.get(&window).map(|(w, h, _)| (*w, *h)))
+                .and_then(|m| m.get(&window).map(LatestFrame::dimensions))
         })
         .unwrap_or((0, 0));
 
