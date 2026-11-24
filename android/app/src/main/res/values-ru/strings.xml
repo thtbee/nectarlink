@@ -302,6 +302,10 @@
     <string name="action_phone_sound_back">Вернуть звук на телефон</string>
     <string name="phone_sound_on_pc_off">%1$s не воспроизводит звук этого телефона. На ПК включите «Экран телефона» для этого телефона в разделе Настройки › Устройства.</string>
     <string name="action_shutdown_pc">Выключить</string>
+    <string name="action_restart_pc">Перезагрузить</string>
+    <string name="restart_pc_title">Перезагрузить %1$s?</string>
+    <string name="restart_pc_text">Windows закроет открытые приложения и перезагрузится. Приложение с несохранёнными данными может остановить перезагрузку.</string>
+    <string name="pc_restart_requested">Запрошена перезагрузка %1$s.</string>
     <string name="shutdown_pc_title">Выключить %1$s?</string>
     <string name="shutdown_pc_text">Открытые приложения закроются. Приложение с несохранёнными данными ещё может это остановить.</string>
     <string name="action_wake_pc">Разбудить</string>

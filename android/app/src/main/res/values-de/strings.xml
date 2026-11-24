@@ -308,6 +308,10 @@
     <string name="action_phone_sound_back">Ton wieder auf dem Smartphone abspielen</string>
     <string name="phone_sound_on_pc_off">%1$s spielt den Ton dieses Smartphones nicht ab. Schalte am PC unter Einstellungen › Geräte die Bildschirmspiegelung für dieses Smartphone ein.</string>
     <string name="action_shutdown_pc">Herunterfahren</string>
+    <string name="action_restart_pc">Neu starten</string>
+    <string name="restart_pc_title">%1$s neu starten?</string>
+    <string name="restart_pc_text">Windows schließt geöffnete Apps und startet neu. Eine App mit ungespeicherter Arbeit kann den Neustart verhindern.</string>
+    <string name="pc_restart_requested">Neustart für %1$s angefordert.</string>
     <string name="shutdown_pc_title">%1$s herunterfahren?</string>
     <string name="shutdown_pc_text">Geöffnete Apps werden geschlossen. Eine App mit ungespeicherter Arbeit kann es noch aufhalten.</string>
     <string name="action_wake_pc">Aufwecken</string>

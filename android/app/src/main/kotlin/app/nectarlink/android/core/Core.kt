@@ -2550,6 +2550,22 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         }
     }
 
+    /** Asks a supported PC to restart. */
+    fun pcRestart(id: String) {
+        scope.launch {
+            startJob?.join()
+            val node = node ?: return@launch
+            val name = _state.value.nameOf(id).orEmpty()
+            val message = try {
+                node.pcRestart(id)
+                context.getString(R.string.pc_restart_requested, name)
+            } catch (e: NectarlinkException) {
+                if (e is NectarlinkException.Denied) context.getString(R.string.pc_actions_off, name) else describe(e)
+            }
+            _messages.tryEmit(message)
+        }
+    }
+
     /** Hibernates a PC that can (#355); says how it went. */
     fun pcHibernate(id: String) {
         scope.launch {

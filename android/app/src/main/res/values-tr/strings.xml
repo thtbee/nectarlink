@@ -308,6 +308,10 @@
     <string name="action_phone_sound_back">Sesi yeniden telefonda çal</string>
     <string name="phone_sound_on_pc_off">%1$s bu telefonun sesini çalmıyor. Bilgisayarda Ayarlar › Cihazlar bölümünden bu telefon için Ekran yansıtmayı açın.</string>
     <string name="action_shutdown_pc">Kapat</string>
+    <string name="action_restart_pc">Yeniden başlat</string>
+    <string name="restart_pc_title">%1$s yeniden başlatılsın mı?</string>
+    <string name="restart_pc_text">Windows açık uygulamaları kapatıp yeniden başlayacak. Kaydedilmemiş değişiklikleri olan bir uygulama yeniden başlatmayı durdurabilir.</string>
+    <string name="pc_restart_requested">%1$s için yeniden başlatma istendi.</string>
     <string name="shutdown_pc_title">%1$s kapatılsın mı?</string>
     <string name="shutdown_pc_text">Açık uygulamalar kapanır. Kaydedilmemiş işi olan bir uygulama yine de durdurabilir.</string>
     <string name="action_wake_pc">Uyandır</string>

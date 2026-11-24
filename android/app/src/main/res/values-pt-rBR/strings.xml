@@ -308,6 +308,10 @@
     <string name="action_phone_sound_back">Voltar o som para o celular</string>
     <string name="phone_sound_on_pc_off">%1$s não toca o som deste celular. No PC, ative Espelhamento de tela para este celular em Configurações › Dispositivos.</string>
     <string name="action_shutdown_pc">Desligar</string>
+    <string name="action_restart_pc">Reiniciar</string>
+    <string name="restart_pc_title">Reiniciar %1$s?</string>
+    <string name="restart_pc_text">O Windows fechará os aplicativos abertos e será reiniciado. Um aplicativo com alterações não salvas ainda pode impedir a reinicialização.</string>
+    <string name="pc_restart_requested">Reinicialização solicitada para %1$s.</string>
     <string name="shutdown_pc_title">Desligar %1$s?</string>
     <string name="shutdown_pc_text">Os apps abertos são fechados. Um app com trabalho não salvo ainda pode impedir.</string>
     <string name="action_wake_pc">Acordar</string>

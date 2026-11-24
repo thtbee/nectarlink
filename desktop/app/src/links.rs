@@ -42,6 +42,10 @@ pub fn power(action: PowerAction) -> Result<(), String> {
         PowerAction::Sleep => shell::sleep(),
         PowerAction::Hibernate => shell::hibernate(),
         PowerAction::Shutdown => shell::shutdown(),
+        #[cfg(windows)]
+        PowerAction::Restart => shell::restart(),
+        #[cfg(not(windows))]
+        PowerAction::Restart => Err("PC restart is unavailable on this system".into()),
     }
 }
 

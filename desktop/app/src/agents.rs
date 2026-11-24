@@ -439,6 +439,7 @@ impl ActionHost for DesktopHost {
             PowerAction::Sleep => crate::win::shell::sleep(),
             PowerAction::Hibernate => crate::win::shell::hibernate(),
             PowerAction::Shutdown => crate::win::shell::shutdown(),
+            PowerAction::Restart => Err("PC restart is unavailable to agents".into()),
         }
     }
 

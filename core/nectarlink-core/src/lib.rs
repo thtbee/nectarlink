@@ -59,6 +59,8 @@ pub use actions::{PC_WAKE, PowerAction};
 pub const PC_HIBERNATE: &str = nectarlink_protocol::messages::pc_power::HIBERNATE;
 /// Offered by PCs a phone may shut down.
 pub const PC_SHUTDOWN: &str = nectarlink_protocol::messages::pc_power::SHUTDOWN;
+/// A PC can restart on a paired phone's request.
+pub const PC_RESTART: &str = nectarlink_protocol::messages::pc_power::RESTART;
 pub use calls::CallCommand;
 pub use clip_kind::{
     ClipKind, ClipSuggestion, classify_clip, maps_web_url, percent_encode, tracking_search_url,
