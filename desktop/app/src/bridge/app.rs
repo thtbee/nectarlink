@@ -948,6 +948,8 @@ impl cxx_qt::Initialize for qobject::AppController {
         super::subscribe(qt.clone(), Changes::CONTINUITY, Self::refresh_continuity);
         super::subscribe(qt.clone(), Changes::PALETTE, Self::refresh_palette);
         super::subscribe(qt.clone(), Changes::LOCALSEND | Changes::STATUS, Self::refresh_localsend_state);
+        // Listen to retention-affecting changes, but only refresh while Settings is
+        // open (SettingsPage refreshes on demand when opened).
         super::subscribe(
             qt.clone(),
             Changes::DATA_RETENTION
@@ -957,7 +959,9 @@ impl cxx_qt::Initialize for qobject::AppController {
                 | Changes::MESSAGES
                 | Changes::PHOTOS,
             |object| {
-                spawn_data_retention_refresh(object.qt_thread());
+                if String::from(&object.current_page) == "settings" {
+                    spawn_data_retention_refresh(object.qt_thread());
+                }
             },
         );
 
