@@ -545,6 +545,10 @@ change things that need a step from you, and its notes say so.
 - **Less work in the tray.** Storage sizes for Settings are only counted while Settings is
   open, not on every new clipboard item, text or photo. Thanks to
   [@aihehye](https://github.com/aihehye) ([#538](https://github.com/thtbee/nectarlink/pull/538)).
+- **Photos load faster.** The phone makes thumbnails several at a time and only reads one page
+  of its gallery per request, and the PC asks for more than one batch at once, visible photos
+  before album covers. Going back to Photos no longer reloads everything. Thanks to
+  [@aihehye](https://github.com/aihehye) ([#583](https://github.com/thtbee/nectarlink/pull/583)).
 - **Sleep from the phone works on more laptops.** Laptops that sleep the Modern Standby way
   ignored it; the screen now goes off as with the power button, and Windows takes them into
   standby ([#542](https://github.com/thtbee/nectarlink/issues/542)).

@@ -9,7 +9,7 @@
 
 use crate::i18n::tr;
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{HashMap, HashSet, VecDeque},
     path::{Path, PathBuf},
     sync::Mutex,
     time::{Duration, Instant},
@@ -37,6 +37,7 @@ pub const ACTION_COPY: &str = "copy";
 /// Items requested per gallery page, and thumbnails requested per batch.
 const PAGE: u32 = 80;
 const THUMB_BATCH: usize = 24;
+const MAX_THUMB_IN_FLIGHT: usize = 4;
 
 /// What the user wants done with a transfer bringing one or more photos/videos.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -129,7 +130,15 @@ pub fn on_event(event: &NodeEvent) {
                 gallery_state(|g| {
                     let save_folder = g.save_folder.take();
                     let generation = g.generation.wrapping_add(1);
-                    *g = GalleryState { save_folder, generation, ..GalleryState::default() };
+                    let in_flight_thumbs = g.in_flight_thumbs;
+                    let active_thumb_rpcs = g.active_thumb_rpcs;
+                    *g = GalleryState {
+                        save_folder,
+                        generation,
+                        in_flight_thumbs,
+                        active_thumb_rpcs,
+                        ..GalleryState::default()
+                    };
                 });
                 gallery_changed();
             }
@@ -594,8 +603,10 @@ struct GalleryState {
     thumbs: HashMap<String, PathBuf>,
     failed_thumbs: HashSet<String>,
     full_files: HashMap<String, PathBuf>,
-    wanted_thumbs: Vec<String>,
-    fetching_thumbs: bool,
+    wanted_thumbs: VecDeque<String>,
+    wanted_album_thumbs: VecDeque<String>,
+    in_flight_thumbs: usize,
+    active_thumb_rpcs: usize,
     /// The grid's columns, to start each day on a row of its own; 0 or 1
     /// lays photos out without day rows.
     columns: u32,
@@ -625,7 +636,15 @@ pub fn release_idle_resources() {
         if !g.saving && (g.device.is_some() || !g.items.is_empty() || !g.albums.is_empty()) {
             let save_folder = g.save_folder.take();
             let generation = g.generation.wrapping_add(1);
-            *g = GalleryState { save_folder, generation, ..GalleryState::default() };
+            let in_flight_thumbs = g.in_flight_thumbs;
+            let active_thumb_rpcs = g.active_thumb_rpcs;
+            *g = GalleryState {
+                save_folder,
+                generation,
+                in_flight_thumbs,
+                active_thumb_rpcs,
+                ..GalleryState::default()
+            };
             released = true;
         }
     });
@@ -744,6 +763,7 @@ pub fn clear_cache() {
         s.failed_thumbs.clear();
         s.full_files.clear();
         s.wanted_thumbs.clear();
+        s.wanted_album_thumbs.clear();
     });
     gallery_changed();
 }
@@ -1030,26 +1050,43 @@ fn row_differs(s: &GalleryState, item: &PhotoItem, prev_date: i64, row: &ItemRow
             && row.full_url != full_url_of(s, &item.id))
 }
 
-/// Opens the gallery for `device` (reloads albums and items).
+fn should_skip_reload(s: &GalleryState, device: DeviceId) -> bool {
+    s.device == Some(device)
+        && (s.status == Status::Loading || (s.status == Status::Ready && !s.items.is_empty()))
+}
+
+/// Opens the gallery for `device` (reloads albums and items when switching
+/// devices or recovering from an unready state, and reuses loaded state on
+/// tab revisits).
 pub fn open_device(device: DeviceId) {
-    let same = gallery_state(|s| {
+    let (same, already_loaded) = gallery_state(|s| {
         let same = s.device == Some(device);
         if !same {
             let save_folder = s.save_folder.take();
+            let in_flight_thumbs = s.in_flight_thumbs;
+            let active_thumb_rpcs = s.active_thumb_rpcs;
             *s = GalleryState {
                 device: Some(device),
                 save_folder,
                 generation: s.generation + 1,
+                in_flight_thumbs,
+                active_thumb_rpcs,
                 ..GalleryState::default()
             };
+            return (false, false);
         }
-        same
+        (true, should_skip_reload(s, device))
     });
     if !same {
         gallery_changed();
         core_host::spawn(async move {
             let _ = tokio::task::spawn_blocking(prune_cache).await;
         });
+    }
+    if already_loaded {
+        gallery_changed();
+        spawn_thumb_workers();
+        return;
     }
     reload();
 }
@@ -1110,16 +1147,20 @@ fn load_albums() {
         let covers: Vec<String> =
             albums.iter().filter_map(|a| a.cover.clone()).filter(|c| !c.is_empty()).collect();
         populate_disk_thumbs(device, covers.clone());
-        gallery_state(|s| {
+        let applied = gallery_state(|s| {
             if s.device != Some(device) || s.generation != generation {
-                return;
+                return false;
             }
             s.albums = albums;
+            true
         });
+        if !applied {
+            return;
+        }
         gallery_changed();
-        // Queue missing cover thumbnails so album covers appear promptly.
+        // Queue missing cover thumbnails at lower priority than visible grid tiles.
         for cover in covers {
-            need_thumb(cover);
+            need_album_thumb(cover);
         }
     });
 }
@@ -1182,6 +1223,14 @@ fn load_items(before: Option<(i64, String)>) {
 
 /// Requests a thumbnail for `id` (called by visible tiles in `GridView`).
 pub fn need_thumb(id: String) {
+    enqueue_thumb(id, false);
+}
+
+fn need_album_thumb(id: String) {
+    enqueue_thumb(id, true);
+}
+
+fn enqueue_thumb(id: String, album_cover: bool) {
     if id.is_empty() {
         return;
     }
@@ -1203,15 +1252,17 @@ pub fn need_thumb(id: String) {
         if s.device != Some(device) {
             return None;
         }
-        if !s.wanted_thumbs.contains(&id) {
-            s.wanted_thumbs.push(id);
-        }
-        if !s.fetching_thumbs {
-            s.fetching_thumbs = true;
-            Some((device, s.generation))
+        if album_cover {
+            if !s.wanted_thumbs.contains(&id) && !s.wanted_album_thumbs.contains(&id) {
+                s.wanted_album_thumbs.push_back(id);
+            }
         } else {
-            None
+            s.wanted_album_thumbs.retain(|wanted| wanted != &id);
+            if !s.wanted_thumbs.contains(&id) {
+                s.wanted_thumbs.push_back(id);
+            }
         }
+        take_thumb_worker_slot(s)
     });
     if let Some((device, generation)) = start_pump {
         pump_thumbs(device, generation);
@@ -1229,41 +1280,100 @@ pub fn drop_thumb(id: &str) {
     });
 }
 
+fn take_thumb_worker_slot(s: &mut GalleryState) -> Option<(DeviceId, u64)> {
+    let device = s.device?;
+    let total = s.wanted_thumbs.len() + s.wanted_album_thumbs.len();
+    if total == 0 {
+        return None;
+    }
+    let target = (s.active_thumb_rpcs + total.div_ceil(THUMB_BATCH)).min(MAX_THUMB_IN_FLIGHT);
+    if s.in_flight_thumbs < target {
+        s.in_flight_thumbs += 1;
+        Some((device, s.generation))
+    } else {
+        None
+    }
+}
+
+fn spawn_thumb_workers() {
+    while let Some((device, generation)) = gallery_state(take_thumb_worker_slot) {
+        pump_thumbs(device, generation);
+    }
+}
+
+fn drain_thumb_batch(s: &mut GalleryState, max: usize) -> Vec<String> {
+    let mut batch = Vec::with_capacity(max);
+    while batch.len() < max {
+        let Some(id) = s.wanted_thumbs.pop_front().or_else(|| s.wanted_album_thumbs.pop_front()) else {
+            break;
+        };
+        batch.push(id);
+    }
+    batch
+}
+
 fn pump_thumbs(device: DeviceId, generation: u64) {
     let Some(node) = core_host::node() else {
-        gallery_state(|s| s.fetching_thumbs = false);
+        gallery_state(|s| s.in_flight_thumbs = s.in_flight_thumbs.saturating_sub(1));
         return;
     };
     core_host::spawn(async move {
         loop {
-            // Brief coalesce window so all tiles becoming visible in the same
-            // frame are requested in one batch, and tiles scrolled past are
-            // dropped before network I/O.
-            tokio::time::sleep(Duration::from_millis(25)).await;
-            let batch: Vec<String> = gallery_state(|s| {
-                if s.device != Some(device) || s.generation != generation || s.wanted_thumbs.is_empty() {
-                    s.fetching_thumbs = false;
-                    return Vec::new();
+            // Brief coalesce window when fewer than a full batch is queued so
+            // tiles becoming visible in the same frame share one RPC. Skip the
+            // wait when a full batch is already ready to send.
+            let should_sleep = gallery_state(|s| {
+                s.device == Some(device)
+                    && s.generation == generation
+                    && s.wanted_thumbs.len() < THUMB_BATCH
+                    && (s.wanted_thumbs.len() + s.wanted_album_thumbs.len()) < THUMB_BATCH
+            });
+            if should_sleep {
+                tokio::time::sleep(Duration::from_millis(25)).await;
+            }
+            let (batch, spawn_more) = gallery_state(|s| {
+                if s.device != Some(device) || s.generation != generation {
+                    s.in_flight_thumbs = s.in_flight_thumbs.saturating_sub(1);
+                    return (Vec::new(), true);
                 }
-                let take = s.wanted_thumbs.len().min(THUMB_BATCH);
-                s.wanted_thumbs.drain(..take).collect()
+                let batch = drain_thumb_batch(s, THUMB_BATCH);
+                if batch.is_empty() {
+                    s.in_flight_thumbs = s.in_flight_thumbs.saturating_sub(1);
+                    return (Vec::new(), false);
+                }
+                s.active_thumb_rpcs += 1;
+                let more = !(s.wanted_thumbs.is_empty() && s.wanted_album_thumbs.is_empty());
+                (batch, more)
             });
             if batch.is_empty() {
+                if spawn_more {
+                    spawn_thumb_workers();
+                }
                 return;
+            }
+            if spawn_more {
+                spawn_thumb_workers();
             }
             match node.photo_thumbs(device, batch.clone()).await {
                 Ok(thumbs) => {
                     save_thumb_batch(device, generation, &batch, thumbs);
+                    gallery_state(|s| {
+                        s.active_thumb_rpcs = s.active_thumb_rpcs.saturating_sub(1);
+                    });
                     gallery_changed();
                 }
                 Err(e) => {
                     tracing::debug!(error = %e, "can't fetch photo thumbnails");
                     gallery_state(|s| {
-                        for id in &batch {
-                            s.failed_thumbs.insert(id.clone());
+                        if s.device == Some(device) && s.generation == generation {
+                            for id in &batch {
+                                s.failed_thumbs.insert(id.clone());
+                            }
                         }
-                        s.fetching_thumbs = false;
+                        s.active_thumb_rpcs = s.active_thumb_rpcs.saturating_sub(1);
+                        s.in_flight_thumbs = s.in_flight_thumbs.saturating_sub(1);
                     });
+                    spawn_thumb_workers();
                     return;
                 }
             }
@@ -2159,5 +2269,69 @@ mod tests {
 
         // Clean up the static gallery state so tests stay bounded in memory.
         gallery_state(|s| *s = GalleryState::default());
+    }
+
+    #[test]
+    fn grid_thumbs_drain_ahead_of_album_covers_and_pipeline_slots_scale() {
+        let mut s =
+            GalleryState { device: Some(DeviceId([1u8; 32])), generation: 7, ..GalleryState::default() };
+        s.wanted_album_thumbs.push_back("album:1".into());
+        s.wanted_album_thumbs.push_back("album:2".into());
+        for i in 0..30 {
+            s.wanted_thumbs.push_back(format!("media:{i}"));
+        }
+
+        // Total 32 items -> ceil(32/24) = 2 pipeline slots.
+        assert_eq!(take_thumb_worker_slot(&mut s), Some((s.device.unwrap(), 7)));
+        assert_eq!(take_thumb_worker_slot(&mut s), Some((s.device.unwrap(), 7)));
+        assert_eq!(take_thumb_worker_slot(&mut s), None);
+
+        // First batch of 24 comes strictly from visible grid tiles.
+        let batch1 = drain_thumb_batch(&mut s, THUMB_BATCH);
+        assert_eq!(batch1.len(), THUMB_BATCH);
+        assert!(batch1.iter().all(|id| id.starts_with("media:")));
+
+        // Next batch drains the remaining 6 grid tiles first, then the 2 album covers.
+        let batch2 = drain_thumb_batch(&mut s, THUMB_BATCH);
+        assert_eq!(batch2.len(), 8);
+        assert!(batch2[..6].iter().all(|id| id.starts_with("media:")));
+        assert_eq!(&batch2[6..], ["album:1", "album:2"]);
+    }
+
+    #[test]
+    fn open_device_skips_reload_only_when_loaded_or_loading_for_same_device() {
+        let dev = DeviceId([2u8; 32]);
+        let other = DeviceId([3u8; 32]);
+
+        let ready_with_items = GalleryState {
+            device: Some(dev),
+            status: Status::Ready,
+            items: vec![photo(0)],
+            ..Default::default()
+        };
+        assert!(should_skip_reload(&ready_with_items, dev));
+        assert!(!should_skip_reload(&ready_with_items, other));
+
+        let loading = GalleryState { device: Some(dev), status: Status::Loading, ..Default::default() };
+        assert!(should_skip_reload(&loading, dev));
+
+        let failed = GalleryState {
+            device: Some(dev),
+            status: Status::Failed,
+            items: vec![photo(0)],
+            ..Default::default()
+        };
+        assert!(!should_skip_reload(&failed, dev));
+
+        let offline = GalleryState {
+            device: Some(dev),
+            status: Status::Offline,
+            items: vec![photo(0)],
+            ..Default::default()
+        };
+        assert!(!should_skip_reload(&offline, dev));
+
+        let empty_ready = GalleryState { device: Some(dev), status: Status::Ready, ..Default::default() };
+        assert!(!should_skip_reload(&empty_ready, dev));
     }
 }
