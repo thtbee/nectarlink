@@ -109,7 +109,9 @@ fun DeckScreen(
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val scope = rememberCoroutineScope()
 
-    var fullScreen by rememberSaveable { mutableStateOf(false) }
+    // Its own key: by position alone, a value another screen saved there could
+    // come back here after Android restores the app, as another type (eccd0ad7cb0b).
+    var fullScreen by rememberSaveable(key = "deck_full_screen") { mutableStateOf(false) }
     var access by remember(device.id) { mutableStateOf(Core.RemoteAccess.Allowed) }
     var commandsDenied by remember(device.id) { mutableStateOf(false) }
 
