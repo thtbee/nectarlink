@@ -441,7 +441,7 @@ pub mod qobject {
         #[qsignal]
         fn toast(self: Pin<&mut AppController>, message: QString);
         /// How setting up unlock with phone ended: `done`, `wrong_password`,
-        /// `declined`, `phone_away`, `phone_cant`, `failed`, or `registered` /
+        /// `declined`, `phone_away`, `phone_cant`, `no_biometric`, `failed`, or `registered` /
         /// `register_failed` for the administrator step.
         #[qsignal]
         #[cxx_name = "unlockResult"]
@@ -1877,6 +1877,7 @@ impl qobject::AppController {
                     crate::win::unlock::Enrolled::Declined => "declined",
                     crate::win::unlock::Enrolled::PhoneAway => "phone_away",
                     crate::win::unlock::Enrolled::PhoneCant => "phone_cant",
+                    crate::win::unlock::Enrolled::NoBiometric => "no_biometric",
                     crate::win::unlock::Enrolled::Failed => "failed",
                 };
                 let _ = qt.queue(move |object| object.unlock_result(device, QString::from(result)));

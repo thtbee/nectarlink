@@ -797,8 +797,11 @@ pub enum Enrolled {
     WrongPassword,
     Declined,
     PhoneAway,
-    /// The phone has it off, or can't keep keys behind a fingerprint.
+    /// The phone has it off for this PC.
     PhoneCant,
+    /// The phone can't keep keys behind a strong biometric (Android 11+ and a
+    /// Class 3 fingerprint or face), so it doesn't offer it (#578).
+    NoBiometric,
     Failed,
 }
 
@@ -847,6 +850,10 @@ pub async fn enroll(phone: DeviceId, password: String) -> Enrolled {
         }
         Err(Error::Denied) => Enrolled::Declined,
         Err(Error::Offline | Error::Timeout) => Enrolled::PhoneAway,
+        // Off on the phone, or the phone doesn't offer it at all.
+        Err(Error::Unsupported) if !node.peer_offers(phone, nectarlink_core::unlock::KEY) => {
+            Enrolled::NoBiometric
+        }
         Err(Error::Unsupported) => Enrolled::PhoneCant,
         Err(_) => Enrolled::Failed,
     }

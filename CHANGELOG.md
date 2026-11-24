@@ -483,6 +483,12 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **Setting up unlock with phone says what's wrong.** With it off on the phone, the PC said
+  "Not confirmed on the phone" although the phone never asked; it now says to turn it on there.
+  A phone without a fingerprint that Android counts as strong now gets its own message instead
+  of being told to turn it on, and a phone off the PC's network gets that one
+  ([#578](https://github.com/thtbee/nectarlink/issues/578),
+  [#579](https://github.com/thtbee/nectarlink/issues/579)).
 - **The virtual camera rests on Linux.** With the phone's camera off, NectarLink Webcam kept
   redrawing its placeholder, using about a third of a CPU core; it now draws it once. Thanks
   to [@vladikchi](https://github.com/vladikchi)
