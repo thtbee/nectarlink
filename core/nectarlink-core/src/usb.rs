@@ -73,8 +73,11 @@ const WAKE_RECEIVER: &str = "app.nectarlink.android.service.UsbWakeReceiver";
 const WAKE_SERVICE: &str = "app.nectarlink.android.service.ConnectionService";
 /// How often, at most, a phone nobody answers on is woken.
 const WAKE_EVERY: Duration = Duration::from_secs(15);
-/// How long to leave a phone alone after waking it failed (the app isn't installed, say).
+/// How long to leave a phone alone after waking it failed (the app isn't installed, say),
+/// or after [`WAKES_BEFORE_SLOWING`] wakes that nothing answered.
 const WAKE_AFTER_ERROR: Duration = Duration::from_secs(300);
+/// Wakes that go through without the app answering before they slow down.
+const WAKES_BEFORE_SLOWING: u32 = 4;
 
 /// What the PC asks of a phone's app through adb.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -109,6 +112,10 @@ fn wake_went_through(output: &str) -> bool {
 #[derive(Default)]
 struct WakeGate {
     next: Option<Instant>,
+    /// Wakes in a row that went through but nothing answered after. `am
+    /// broadcast` reports success even with no such app on the phone, or one
+    /// that ignores the wake (USB only off), so those slow down too.
+    unanswered: u32,
 }
 
 impl WakeGate {
@@ -117,7 +124,16 @@ impl WakeGate {
     }
 
     fn note(&mut self, now: Instant, went_through: bool) {
-        self.next = Some(now + if went_through { WAKE_EVERY } else { WAKE_AFTER_ERROR });
+        if went_through {
+            self.unanswered += 1;
+        }
+        let quick = went_through && self.unanswered < WAKES_BEFORE_SLOWING;
+        self.next = Some(now + if quick { WAKE_EVERY } else { WAKE_AFTER_ERROR });
+    }
+
+    /// The phone answered: the next time nobody does, wake it at once.
+    fn answered(&mut self) {
+        *self = WakeGate::default();
     }
 }
 
@@ -489,7 +505,9 @@ async fn run_port_worker(
         // Nobody on the usual port: the app may not be running (a phone that only
         // connects through the cable stops while it's idle), or too frozen to answer.
         // Also when this app started with the cable already in.
-        if !answered && phone_port == DEFAULT_USB_PORT && wake_gate.due(Instant::now()) {
+        if answered {
+            wake_gate.answered();
+        } else if phone_port == DEFAULT_USB_PORT && wake_gate.due(Instant::now()) {
             let went_through = wake_phone(adb_addr, &serial, Wake::Process).await;
             wake_gate.note(Instant::now(), went_through);
             if went_through {
@@ -703,6 +721,24 @@ mod tests {
         gate.note(t0 + WAKE_EVERY, false);
         assert!(!gate.due(t0 + WAKE_EVERY + WAKE_EVERY * 2), "after an error, not for a good while");
         assert!(gate.due(t0 + WAKE_EVERY + WAKE_AFTER_ERROR));
+    }
+
+    #[test]
+    fn wakes_nothing_answers_slow_down_until_it_answers() {
+        // No app, or one that ignores the wake: `am` still says it went through.
+        let t0 = Instant::now();
+        let mut gate = WakeGate::default();
+        let mut now = t0;
+        for _ in 1..WAKES_BEFORE_SLOWING {
+            gate.note(now, true);
+            now += WAKE_EVERY;
+            assert!(gate.due(now), "quick at first");
+        }
+        gate.note(now, true);
+        assert!(!gate.due(now + WAKE_EVERY), "then only once in a while");
+        assert!(gate.due(now + WAKE_AFTER_ERROR));
+        gate.answered();
+        assert!(gate.due(now), "an app that answered is woken at once next time");
     }
 
     #[test]
