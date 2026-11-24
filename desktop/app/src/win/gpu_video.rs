@@ -152,6 +152,7 @@ impl GpuVideoPublisher {
     }
 
     /// On-demand CPU readback of the latest published frame as BGRX/BGRA (`[B, G, R, 0xFF]`).
+    #[cfg(test)]
     pub fn read_bgrx(&self) -> windows::core::Result<Option<(u32, u32, Vec<u8>)>> {
         let Some(output) = &self.output else {
             return Ok(None);
