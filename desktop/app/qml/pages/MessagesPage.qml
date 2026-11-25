@@ -406,6 +406,20 @@ Item {
             clip: true
             boundsBehavior: Flickable.StopAtBounds
 
+            // A mouse wheel only turns up and down: let it move the chips
+            // sideways, so the ones past the edge can be reached.
+            WheelHandler {
+                target: null
+                acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                onWheel: (event) => {
+                    const delta = event.pixelDelta.x !== 0 ? -event.pixelDelta.x
+                        : event.pixelDelta.y !== 0 ? -event.pixelDelta.y
+                        : -(event.angleDelta.y !== 0 ? event.angleDelta.y : event.angleDelta.x) / 120 * 60
+                    const max = Math.max(0, appFilterBar.contentWidth - appFilterBar.width)
+                    appFilterBar.contentX = Math.max(0, Math.min(max, appFilterBar.contentX + delta))
+                }
+            }
+
             Row {
                 id: filterRow
                 x: 16

@@ -539,6 +539,11 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **The PC app stays usable in a small tiled window.** Tiling window managers such as Hyprland
+  and Sway can make the window smaller than it's meant to go, and the top bar, Home's cards
+  and Settings' categories overlapped or ran off the edge. Below that size the app now scrolls,
+  and Settings' categories wrap. Thanks to [@Lik1ch](https://github.com/Lik1ch)
+  ([#607](https://github.com/thtbee/nectarlink/pull/607)).
 - **The Linux app no longer crashes a few seconds after it starts.** When the window was busy
   loading, a clipboard check could give up waiting and then still run later, writing over
   memory it no longer owned. Thanks to [@aorizondo](https://github.com/aorizondo) for finding it
