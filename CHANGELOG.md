@@ -8,6 +8,9 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **A one-color tray icon on Linux.** **Settings › General › Tray icon › One color** now works
+  on Linux too. Desktops that recolor tray icons, like KDE Plasma, show it in the panel's
+  colors ([#555](https://github.com/thtbee/nectarlink/issues/555)).
 - **Updates get their own place in PC Settings.** **Settings › Updates** has the version, the
   check and when it last happened, automatic checks and installs, the channel and What's new.
   Connection & About keeps the version, logs and reporting a problem

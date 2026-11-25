@@ -994,6 +994,31 @@ void linux_tray_set_tooltip(rust::Str tooltip)
 #endif
 }
 
+void linux_tray_set_one_colour(bool one_colour, rust::Str icon_name, rust::Str icon_path)
+{
+#if defined(__linux__)
+    const QString name = QString::fromUtf8(icon_name.data(), static_cast<qsizetype>(icon_name.size()));
+    const QString path = QString::fromUtf8(icon_path.data(), static_cast<qsizetype>(icon_path.size()));
+    runOnQtMainThread([one_colour, name, path]() {
+        auto *tray = linuxTray().icon.data();
+        if (!tray)
+            return;
+        // A theme icon goes to the panel by name, so a panel that recolors
+        // icons (KDE Plasma) matches it to its own colors (#555).
+        QIcon icon = one_colour ? QIcon::fromTheme(name) : QIcon();
+        if (icon.isNull())
+            icon = appIcon();
+        if (icon.isNull() && !path.isEmpty())
+            icon = QIcon(path);
+        tray->setIcon(icon);
+    });
+#else
+    (void)one_colour;
+    (void)icon_name;
+    (void)icon_path;
+#endif
+}
+
 void linux_tray_set_find_phone_enabled(bool enabled)
 {
 #if defined(__linux__) || defined(__APPLE__)

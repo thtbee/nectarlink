@@ -10053,6 +10053,11 @@ Neler gerekir
         <translation>Tek renk, görev çubuğuna uyup beyaz ya da siyah olur.</translation>
     </message>
     <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>One color takes the panel&apos;s colors where the desktop recolors tray icons, as KDE Plasma does.</source>
+        <translation>Tek renk, masaüstünün tepsi simgelerini yeniden renklendirdiği yerlerde, KDE Plasma gibi, panelin renklerini alır.</translation>
+    </message>
+    <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1273"/>
         <source>One color</source>
         <translation>Tek renk</translation>

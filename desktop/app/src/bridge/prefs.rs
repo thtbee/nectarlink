@@ -648,7 +648,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().on_close_to_tray_changed(|p| p.save()).release();
         self.as_mut()
             .on_tray_one_colour_changed(|p| {
-                #[cfg(windows)]
+                #[cfg(any(windows, target_os = "linux"))]
                 crate::win::tray::set_one_colour(p.tray_one_colour);
                 p.save();
             })

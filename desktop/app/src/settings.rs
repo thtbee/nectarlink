@@ -1113,7 +1113,7 @@ impl Settings {
     }
 
     pub fn apply_runtime(&self) {
-        #[cfg(windows)]
+        #[cfg(any(windows, target_os = "linux"))]
         crate::win::tray::set_one_colour(self.tray_one_colour);
         set_clipboard_auto_copy_received_files(self.clipboard_auto_copy_received_files);
         set_open_shared_files(self.open_shared_files);

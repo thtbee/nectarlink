@@ -90,6 +90,7 @@ void linux_tray_setup(
     rust::Str pause_notifications_label,
     rust::Str quit_label);
 void linux_tray_set_tooltip(rust::Str tooltip);
+void linux_tray_set_one_colour(bool one_colour, rust::Str icon_name, rust::Str icon_path);
 void linux_tray_set_pause_label(rust::Str label);
 void linux_tray_set_find_phone_enabled(bool enabled);
 void linux_tray_teardown();
