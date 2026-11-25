@@ -565,6 +565,10 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **The phone app no longer crashes on start with battery saver on.** On some phones (Xiaomi
+  with battery saver, say) Android stopped the background service before it could show its
+  notification, and closed the app for it. Thanks to [@aihehye](https://github.com/aihehye)
+  ([#628](https://github.com/thtbee/nectarlink/issues/628), [#638](https://github.com/thtbee/nectarlink/pull/638)).
 - **The phone on PC Home has a round camera.** Phones that report their camera hole as a box
   from the top edge showed a square tab there. It's now drawn round, and the signal and Wi-Fi
   icons line up with it ([#618](https://github.com/thtbee/nectarlink/issues/618)).
