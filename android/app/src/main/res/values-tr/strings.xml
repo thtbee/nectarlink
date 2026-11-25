@@ -1644,6 +1644,8 @@
     <string name="community_invite_text">NectarLink’i yapan ve kullananlarla sorular, fikirler ve erken sürümler.</string>
     <string name="community_invite_join">Discord’a katıl</string>
     <string name="community_invite_later">Şimdi değil</string>
+    <string name="settings_daily_count_title">Anonim günlük sayım gönder</string>
+    <string name="settings_daily_count_body">Günde bir kez: uygulama sürümü, platform ve model ile her özelliğin kaç kez çalıştığı ya da başarısız olduğu. Kimlik yok, kişisel bir şey yok.</string>
 </resources>
 
 

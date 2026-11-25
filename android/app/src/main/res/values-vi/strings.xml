@@ -1573,4 +1573,6 @@
     <string name="community_invite_text">Câu hỏi, ý tưởng và bản dựng sớm, cùng những người làm và dùng NectarLink.</string>
     <string name="community_invite_join">Tham gia Discord</string>
     <string name="community_invite_later">Để sau</string>
+    <string name="settings_daily_count_title">Gửi số đếm hằng ngày ẩn danh</string>
+    <string name="settings_daily_count_body">Mỗi ngày một lần: phiên bản ứng dụng, nền tảng và mẫu máy, và số lần mỗi tính năng hoạt động hoặc lỗi. Không có ID, không có gì cá nhân.</string>
 </resources>

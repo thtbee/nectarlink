@@ -165,6 +165,7 @@ Displays live item counts and disk usage for every local history store and cache
 
 | Setting | Retention / Default | What It Does |
 | :--- | :--- | :--- |
+| **Send an anonymous daily count** | **On** | Once a day sends the app's version, the platform and how often each feature worked or failed, with no ID. Off, nothing goes. See [Privacy and Security](privacy-and-security.md). |
 | **Clipboard history** | **On** (default) / up to 50 clips / 128 MB / kept 7 days | Toggles the Windows DPAPI encrypted local clipboard history (`clipboard_history.enc` and `clipboard_images/<id>.enc`) and provides a **Clear** button. |
 | **Notification history** | **On** (default) / up to 300 alerts / kept 24 hours | Toggles 24-hour retention of dismissed phone notifications (`notification-history.json`) and cached notification images on this PC, with a **Clear** button. |
 | **Cross-device timeline** | `30d`, `90d` (default), `1y`, `All` (max 5,000 items) | Sets how long `Timeline` activity entries are kept before auto-purging, with **Open** and **Clear** buttons. |
@@ -177,7 +178,7 @@ Displays live item counts and disk usage for every local history store and cache
 
 ### 9. Connection & About
 
-Provides network diagnostics, **Connect over mobile data**, Wake-on-LAN readiness, the local HTTP automation API, version info, logs, and updates.
+Provides network diagnostics, **Connect over mobile data**, Wake-on-LAN readiness, the local HTTP automation API, version info and logs. Updates have a section of their own.
 
 <p align="center">
   <img src="images/settings-connection.png" alt="Connection and About settings on Windows" width="760">
@@ -190,12 +191,22 @@ Provides network diagnostics, **Connect over mobile data**, Wake-on-LAN readines
 | **Use USB debugging** | **On** | Connects, pairs, installs the app and starts Elevated over a USB cable. Off, NectarLink never asks a phone on a cable for USB debugging. Applies when NectarLink restarts. |
 | **Wake from your phone** | Read-only status indicator (`Ready`, `Off in Windows`, `Check settings`, `No adapter`) | Inspects your active Windows network adapter and tells you whether Wake on LAN is enabled in Device Manager so your phone can wake this PC from sleep. |
 | **Local automation API** | **Off** (default port `53320`) | Starts the loopback-only HTTP/JSON server (`127.0.0.1:<port>`) for PowerToys, AutoHotkey, and scripts, and writes the 256-bit Bearer token to `%LOCALAPPDATA%\Nectarlink\api-token.json`. |
-| **NectarLink `<version>`** | **Check for updates** and **Open logs** buttons | Shows the app version and this PC's device name, checks GitHub Releases for SHA-256 verified updates, or opens the local diagnostic logs folder. |
+| **NectarLink `<version>`** | **Open logs** and **Report a problem** buttons | Shows the app version and this PC's device name, opens the local diagnostic logs folder, or starts a problem report. |
+| **Setup walkthrough & Features guide** | Action buttons / Command Palette entries | Reopens the first-run setup walkthrough or the interactive in-app Features Guide at any time. |
+
+---
+
+### 10. Updates
+
+The version and everything about updates, with when the PC last checked.
+
+| Setting | Default | What It Does |
+| :--- | :--- | :--- |
+| **NectarLink `<version>`** | **Check for updates** button | Says when the PC last heard from the update feed, checks it now, or shows **Update to …** when a newer build is waiting. A copy run from its folder, and the Mac app for now, say they don't update themselves. |
 | **What's new** | **Open** button | Opens the same panel as the sparkle button at the top of the window: what changed since you last looked, in short points by category, and a link to the full release notes. After an update that brought something new, the button shows a dot until you open it (on Nightly too). |
 | **Check for updates** | **On** (shown on installed copies) | Checks the update channel's feed over HTTPS (`https://raw.githubusercontent.com/thtbee/nectarlink/channels/<channel>.json`) 30 seconds after startup, then every 12 hours on **Stable** and every 2 hours on **Nightly** (twice as long on battery), and tells your phone when there's a new build. A check of an unchanged feed is a few hundred bytes. |
 | **Update channel** | **Stable** (**Nightly** on a nightly build) | **Stable** gets releases. **Nightly** gets a build from the latest code every couple of hours when it changes, with the newest fixes and features and sometimes new bugs, and releases too. Switching back to **Stable** keeps the nightly installed until the next release is newer. An install stays on its channel when it takes a release, until you change it. |
 | **Install updates automatically** | **On** | Installs a newer release by itself when nobody has used the PC for 10 minutes and nothing is in progress (no mirroring, app window, transfer, call, screen sharing or webcam). No administrator prompt: the installer sets up a task that does it. Turn it off to install from the notification or **Check for updates** when you choose. |
-| **Setup walkthrough & Features guide** | Action buttons / Command Palette entries | Reopens the first-run setup walkthrough or the interactive in-app Features Guide at any time. |
 
 ---
 
@@ -267,6 +278,7 @@ Each permission row shows its live state (**On** / **Allowed** vs **Off**) and a
 | **About › NectarLink `<version>` & Check for updates** | **Check for updates** button | Shows the installed version and checks GitHub Releases (`https://api.github.com/repos/thtbee/nectarlink/releases/latest`) for SHA-256 verified APK updates. |
 | **About › Update channel** | **Stable** (**Nightly** on a nightly build) | As on the PC. A paired PC tells the phone about new builds, so the phone rarely checks on its own: once a day on **Stable**, every six hours on **Nightly**, and when the app opens. |
 | **About › Install updates automatically** | **On** | Installs a newer build by itself. Android 12 and later install it without asking once NectarLink has installed an update before; otherwise a notification asks for one tap. Needs **Install unknown apps** allowed for NectarLink. |
+| **About › Send an anonymous daily count** | **On** | As on the PC. |
 
 <p align="center">
   <img src="images/android-update.png" alt="About in the Android app with Install updates automatically" width="360">

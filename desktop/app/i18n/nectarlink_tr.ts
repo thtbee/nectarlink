@@ -10717,6 +10717,16 @@ Neler gerekir
         <translation>Kopyalanan parolaları eşitle</translation>
     </message>
     <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3655"/>
+        <source>Send an anonymous daily count</source>
+        <translation>Anonim günlük sayım gönder</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3655"/>
+        <source>Once a day: the app&apos;s version, the platform and model, and how often each feature worked or failed. No ID and nothing personal.</source>
+        <translation>Günde bir kez: uygulama sürümü, platform ve model ile her özelliğin kaç kez çalıştığı ya da başarısız olduğu. Kimlik yok, kişisel bir şey yok.</translation>
+    </message>
+    <message>
         <source>Also sends what password managers mark private. It stays on the phone&apos;s clipboard until something replaces it, and is never kept in history.</source>
         <translation type="vanished">Parola yöneticilerinin özel olarak işaretlediklerini de gönderir. Başka bir şey yerine geçene kadar telefonun panosunda kalır ve geçmişte hiç tutulmaz.</translation>
     </message>
@@ -11124,6 +11134,31 @@ Neler gerekir
         <location filename="../qml/pages/SettingsPage.qml" line="4255"/>
         <source>Install updates automatically</source>
         <translation>Güncellemeleri otomatik yükle</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Updates</source>
+        <translation>Güncellemeler</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Checks, channel &amp; what&apos;s new</source>
+        <translation>Denetim, kanal ve yenilikler</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>This copy doesn&apos;t update itself: it runs from its folder, or it&apos;s the Mac app, which doesn&apos;t yet.</source>
+        <translation>Bu kopya kendini güncellemez: kendi klasöründen çalışıyor ya da henüz bunu yapmayan Mac uygulaması.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Last checked %1</source>
+        <translation>Son denetim: %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Not checked yet.</source>
+        <translation>Henüz denetlenmedi.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="4253"/>

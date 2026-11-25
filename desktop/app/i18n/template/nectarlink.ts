@@ -10329,6 +10329,16 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3655"/>
+        <source>Send an anonymous daily count</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/SettingsPage.qml" line="3655"/>
+        <source>Once a day: the app&apos;s version, the platform and model, and how often each feature worked or failed. No ID and nothing personal.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <location filename="../../qml/pages/SettingsPage.qml" line="3645"/>
         <location filename="../../qml/pages/SettingsPage.qml" line="3669"/>
         <source>Clipboard history</source>
@@ -10738,6 +10748,31 @@ What it needs
         <location filename="../../qml/pages/SettingsPage.qml" line="4252"/>
         <location filename="../../qml/pages/SettingsPage.qml" line="4255"/>
         <source>Install updates automatically</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Updates</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Checks, channel &amp; what&apos;s new</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1"/>
+        <source>This copy doesn&apos;t update itself: it runs from its folder, or it&apos;s the Mac app, which doesn&apos;t yet.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Last checked %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Not checked yet.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

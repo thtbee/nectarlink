@@ -104,6 +104,7 @@ Item {
         { id: "agents", title: qsTr("AI agents"), icon: Icons.terminal, subtitle: qsTr("Assistants that use your devices") },
         { id: "storage", title: qsTr("Storage & Privacy"), icon: Icons.clipboardList, subtitle: qsTr("History, caches & retention") },
         { id: "connection", title: qsTr("Connection & About"), icon: Icons.wifi, subtitle: qsTr("Doctor, Wake-on-LAN, API & version") },
+        { id: "updates", title: qsTr("Updates"), icon: Icons.download, subtitle: qsTr("Checks, channel & what's new") },
         { id: "support", title: qsTr("Community"), icon: Icons.heart, subtitle: qsTr("Discord, news and support") },
         { id: "report", title: qsTr("Report a problem"), icon: Icons.warning, subtitle: qsTr("Tell us what went wrong") }
     ]
@@ -3654,6 +3655,19 @@ Item {
                             width: parent.width
                             visible: Qt.platform.os !== "osx"
                         }
+                        // The one call home that isn't asked for each time (#534).
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.shield
+                            title: qsTr("Send an anonymous daily count")
+                            description: qsTr("Once a day: the app's version, the platform and model, and how often each feature worked or failed. No ID and nothing personal.")
+                            Toggle {
+                                label: qsTr("Send an anonymous daily count")
+                                checked: Preferences.dailyCount
+                                onToggled: (on) => Preferences.dailyCount = on
+                            }
+                        }
+                        Divider { width: parent.width }
 
                         // Row 1: Clipboard history | Notification history
                         Item {
@@ -4166,9 +4180,87 @@ Item {
                             width: parent.width
                             iconPath: Icons.desktop
                             title: qsTr("NectarLink %1").arg(AppController.version)
+                            description: qsTr("This PC: %1").arg(AppController.deviceName)
+                            Row {
+                                spacing: 8
+                                Button {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    variant: "outline"
+                                    size: "sm"
+                                    iconPath: Icons.folder
+                                    text: qsTr("Open logs")
+                                    onClicked: Qt.openUrlExternally(AppController.logsUrl())
+                                }
+                                Button {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    variant: "outline"
+                                    size: "sm"
+                                    iconPath: Icons.warning
+                                    text: qsTr("Report a problem")
+                                    onClicked: Report.open()
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Card {
+                    width: parent.width
+                    Column {
+                        width: parent.width
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.compass
+                            title: qsTr("Setup walkthrough")
+                            description: qsTr("Re-open the setup guide.")
+                            Button {
+                                variant: "tonal"
+                                size: "sm"
+                                text: qsTr("Open")
+                                onClicked: Preferences.restartWalkthrough()
+                            }
+                        }
+                        Divider { width: parent.width }
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.book
+                            title: qsTr("Features guide")
+                            description: qsTr("What each feature needs and where to find it.")
+                            Button {
+                                variant: "tonal"
+                                size: "sm"
+                                text: qsTr("Open")
+                                onClicked: AppController.currentPage = "guide"
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ================================================================
+            // 10. UPDATES (#558)
+            // ================================================================
+            Column {
+                readonly property string settingsSection: "updates"
+                visible: page.currentSection === "updates"
+                width: visible ? parent.width : 0
+                spacing: Theme.gutter
+
+                Card {
+                    width: parent.width
+                    Column {
+                        width: parent.width
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.download
+                            title: qsTr("NectarLink %1").arg(AppController.version)
                             description: AppController.updateStatus.length > 0
                                          ? AppController.updateStatus
-                                         : qsTr("This PC: %1").arg(AppController.deviceName)
+                                         : !AppController.canUpdate
+                                         ? qsTr("This copy doesn't update itself: it runs from its folder, or it's the Mac app, which doesn't yet.")
+                                         : AppController.updateCheckedAt > 0
+                                         ? qsTr("Last checked %1").arg(new Date(AppController.updateCheckedAt * 1000).toLocaleString(Qt.locale(), Locale.ShortFormat))
+                                         : qsTr("Not checked yet.")
                             Row {
                                 spacing: 8
                                 // The download's progress, or a spinner while its size isn't known.
@@ -4205,22 +4297,6 @@ Item {
                                           : qsTr("Check for updates")
                                     onClicked: AppController.updateVersion.length > 0
                                                ? AppController.installUpdate() : AppController.checkForUpdates()
-                                }
-                                Button {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    variant: "outline"
-                                    size: "sm"
-                                    iconPath: Icons.folder
-                                    text: qsTr("Open logs")
-                                    onClicked: Qt.openUrlExternally(AppController.logsUrl())
-                                }
-                                Button {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    variant: "outline"
-                                    size: "sm"
-                                    iconPath: Icons.warning
-                                    text: qsTr("Report a problem")
-                                    onClicked: Report.open()
                                 }
                             }
                         }
@@ -4288,42 +4364,10 @@ Item {
                         }
                     }
                 }
-
-                Card {
-                    width: parent.width
-                    Column {
-                        width: parent.width
-                        ListRow {
-                            width: parent.width
-                            iconPath: Icons.compass
-                            title: qsTr("Setup walkthrough")
-                            description: qsTr("Re-open the setup guide.")
-                            Button {
-                                variant: "tonal"
-                                size: "sm"
-                                text: qsTr("Open")
-                                onClicked: Preferences.restartWalkthrough()
-                            }
-                        }
-                        Divider { width: parent.width }
-                        ListRow {
-                            width: parent.width
-                            iconPath: Icons.book
-                            title: qsTr("Features guide")
-                            description: qsTr("What each feature needs and where to find it.")
-                            Button {
-                                variant: "tonal"
-                                size: "sm"
-                                text: qsTr("Open")
-                                onClicked: AppController.currentPage = "guide"
-                            }
-                        }
-                    }
-                }
             }
 
             // ================================================================
-            // 10. COMMUNITY (id "support", as links to it already say)
+            // 11. COMMUNITY (id "support", as links to it already say)
             // ================================================================
             Column {
                 readonly property string settingsSection: "support"

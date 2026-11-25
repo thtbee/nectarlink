@@ -10670,6 +10670,16 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
         <translation>コピーしたパスワードを同期する</translation>
     </message>
     <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3655"/>
+        <source>Send an anonymous daily count</source>
+        <translation>匿名の1日1回のカウントを送信</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3655"/>
+        <source>Once a day: the app&apos;s version, the platform and model, and how often each feature worked or failed. No ID and nothing personal.</source>
+        <translation>1日1回、アプリのバージョン、プラットフォームと機種、各機能が成功・失敗した回数を送ります。IDや個人的な情報は含みません。</translation>
+    </message>
+    <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3645"/>
         <location filename="../qml/pages/SettingsPage.qml" line="3669"/>
         <source>Clipboard history</source>
@@ -11084,6 +11094,31 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
         <location filename="../qml/pages/SettingsPage.qml" line="4255"/>
         <source>Install updates automatically</source>
         <translation>アップデートを自動的にインストールする</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Updates</source>
+        <translation>アップデート</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Checks, channel &amp; what&apos;s new</source>
+        <translation>確認、チャンネル、新機能</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>This copy doesn&apos;t update itself: it runs from its folder, or it&apos;s the Mac app, which doesn&apos;t yet.</source>
+        <translation>このコピーは自動で更新されません。フォルダーから直接実行しているか、まだ対応していない Mac 版です。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Last checked %1</source>
+        <translation>最終確認: %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Not checked yet.</source>
+        <translation>まだ確認していません。</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="4253"/>
