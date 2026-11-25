@@ -9989,6 +9989,11 @@ What it needs
         <translation>Одноколірний стає білим або чорним під колір панелі завдань.</translation>
     </message>
     <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>One color takes the panel&apos;s colors where the desktop recolors tray icons, as KDE Plasma does.</source>
+        <translation>Одноколірний значок бере кольори панелі там, де стільниця перефарбовує значки в треї, як KDE Plasma.</translation>
+    </message>
+    <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1273"/>
         <source>One color</source>
         <translation>Одноколірний</translation>

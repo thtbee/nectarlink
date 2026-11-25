@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="16" height="16">
+  <style type="text/css" id="current-color-scheme">.ColorScheme-Text { color: #232629; }</style>
+  <g class="ColorScheme-Text" transform="rotate(-25 50 50)">
+    <path d="M 41.5 42.5 C 26 24, 13.5 31, 13.5 50 C 13.5 69, 26 76, 41.5 57.5" fill="none" stroke="currentColor" stroke-width="11.4" stroke-linecap="round"/>
+    <path d="M 58.5 42.5 C 74 24, 86.5 31, 86.5 50 C 86.5 69, 74 76, 58.5 57.5" fill="none" stroke="currentColor" stroke-width="11.4" stroke-linecap="round"/>
+    <circle cx="50" cy="50" r="8.8" fill="currentColor"/>
+  </g>
+</svg>

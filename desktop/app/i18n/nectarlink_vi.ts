@@ -10022,6 +10022,11 @@ Nó cần gì
         <translation>Một màu sẽ thành trắng hoặc đen cho hợp với thanh tác vụ.</translation>
     </message>
     <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>One color takes the panel&apos;s colors where the desktop recolors tray icons, as KDE Plasma does.</source>
+        <translation>Một màu sẽ lấy màu của thanh bảng ở những màn hình nền tô lại màu biểu tượng khay, như KDE Plasma.</translation>
+    </message>
+    <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1273"/>
         <source>One color</source>
         <translation>Một màu</translation>

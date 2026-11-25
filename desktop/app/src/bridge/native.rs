@@ -113,6 +113,11 @@ pub mod ffi {
         #[allow(dead_code)]
         fn linux_tray_set_tooltip(tooltip: &str);
 
+        /// The theme icon `icon_name` when `one_colour` (the color one,
+        /// `icon_path`, if the theme doesn't have it), else the color one.
+        #[allow(dead_code)]
+        fn linux_tray_set_one_colour(one_colour: bool, icon_name: &str, icon_path: &str);
+
         #[allow(dead_code)]
         fn linux_tray_set_pause_label(label: &str);
 

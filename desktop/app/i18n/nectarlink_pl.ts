@@ -10067,6 +10067,11 @@ Wymagania
         <translation>Jeden kolor zmienia się na biały lub czarny, pasując do paska zadań.</translation>
     </message>
     <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>One color takes the panel&apos;s colors where the desktop recolors tray icons, as KDE Plasma does.</source>
+        <translation>Jeden kolor przejmuje kolory panelu tam, gdzie pulpit przebarwia ikony w zasobniku, jak KDE Plasma.</translation>
+    </message>
+    <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1273"/>
         <source>One color</source>
         <translation>Jeden kolor</translation>

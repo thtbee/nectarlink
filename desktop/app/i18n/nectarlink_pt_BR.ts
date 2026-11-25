@@ -10039,6 +10039,11 @@ O que precisa
         <translation>Uma cor fica branca ou preta, combinando com a barra de tarefas.</translation>
     </message>
     <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>One color takes the panel&apos;s colors where the desktop recolors tray icons, as KDE Plasma does.</source>
+        <translation>Uma cor usa as cores do painel onde a área de trabalho recolore os ícones da bandeja, como o KDE Plasma.</translation>
+    </message>
+    <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1273"/>
         <source>One color</source>
         <translation>Uma cor</translation>

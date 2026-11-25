@@ -8,6 +8,9 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **A one-color tray icon on Linux.** **Settings › General › Tray icon › One color** now works
+  on Linux too. Desktops that recolor tray icons, like KDE Plasma, show it in the panel's
+  colors ([#555](https://github.com/thtbee/nectarlink/issues/555)).
 - **Sharing the PC's screen to the phone is lighter on Windows.** The screen is captured,
   converted and encoded on the graphics card, without a copy through the CPU for each frame.
   PCs that can't do that keep the old way. Thanks to [@aihehye](https://github.com/aihehye)
