@@ -15,14 +15,17 @@ import android.net.Uri
 internal enum class Link(val url: String) {
     DISCORD("https://discord.gg/AA2Dp8PYqf"),
     X("https://x.com/thtbee_"),
-    DONATE("https://buymeacoffee.com/thtbee_"),
-    REPO("https://github.com/thtbee/nectarlink"),
-    RELEASES("https://github.com/thtbee/nectarlink/releases"),
+    // Per build (src/github, src/play: StoreLinks): empty in the Google Play build, which
+    // links neither donations (Play's payments policy) nor the code and its APKs. Nothing
+    // opens an empty link.
+    DONATE(StoreLinks.DONATE),
+    REPO(StoreLinks.REPO),
+    RELEASES(StoreLinks.RELEASES),
     ;
 
     companion object {
         /** The hosts these may point at; anything else isn't opened. */
-        val HOSTS = setOf("discord.gg", "x.com", "buymeacoffee.com", "github.com")
+        val HOSTS = setOf("discord.gg", "x.com") + StoreLinks.HOSTS
 
         /** Whether [address] is https on one of [HOSTS]. */
         fun allowed(address: String): Boolean {

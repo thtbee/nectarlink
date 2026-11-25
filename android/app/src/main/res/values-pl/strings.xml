@@ -1662,7 +1662,21 @@
     <string name="community_invite_text">Pytania, pomysły i wczesne wersje, razem z twórcami i użytkownikami NectarLink.</string>
     <string name="community_invite_join">Dołącz do Discorda</string>
     <string name="community_invite_later">Nie teraz</string>
+
+    <string name="disclosure_messages_title">SMS-y na komputerze</string>
+    <string name="disclosure_messages_text">NectarLink odczytuje SMS-y na tym telefonie i wysyła je do sparowanych komputerów, aby można było je tam czytać i na nie odpowiadać. SMS-y napisane na komputerze są wysyłane z tego telefonu.</string>
+    <string name="disclosure_calls_title">Połączenia na komputerze</string>
+    <string name="disclosure_calls_text">NectarLink odczytuje, kto dzwoni, historię połączeń i stan połączenia, i wysyła je do sparowanych komputerów, aby połączenia były tam widoczne i można było je odebrać, zakończyć lub nawiązać z komputera.</string>
+    <string name="disclosure_contacts_title">Kontakty na komputerze</string>
+    <string name="disclosure_contacts_text">NectarLink odczytuje imiona i numery kontaktów i wysyła je do sparowanych komputerów, aby pokazać, kto pisze lub dzwoni, i wybrać, do kogo napisać lub zadzwonić.</string>
+    <string name="disclosure_photos_title">Zdjęcia na komputerze</string>
+    <string name="disclosure_photos_text">NectarLink odczytuje zdjęcia i filmy na tym telefonie i wysyła je do sparowanych komputerów, aby można je tam przeglądać i zapisywać oraz od razu widzieć nowe zrzuty ekranu.</string>
+    <string name="disclosure_notifications_title">Powiadomienia na komputerze</string>
+    <string name="disclosure_notifications_text">NectarLink odczytuje powiadomienia na tym telefonie i wysyła je do sparowanych komputerów, aby były tam widoczne i można było na nie odpowiadać lub je zamykać z komputera.</string>
+    <string name="disclosure_control_title">Sterowanie telefonem z komputera</string>
+    <string name="disclosure_control_text">NectarLink korzysta z usługi ułatwień dostępu Androida, aby sparowany komputer mógł sterować tym telefonem: dotknięcia, przesunięcia, przewijanie i pisanie myszą i klawiaturą komputera oraz odczyt pola tekstowego, w którym piszesz, aby wstawić tam tekst i nacisnąć Wyślij. Działa tylko zgodnie z tym, co robisz na komputerze, i nie zbiera ani nie udostępnia tego, co jest na ekranie.</string>
+    <string name="disclosure_elevated_title">Elevated</string>
+    <string name="disclosure_elevated_text">Elevated daje NectarLink możliwości, których zwykłe aplikacje nie mają, takie jak udostępnianie ekranu bez pytania za każdym razem, wskaźnik komputera na tym telefonie, aplikacje we własnych oknach na komputerze i dźwięk rozmów na komputerze. Korzysta z debugowania bezprzewodowego tego telefonu albo z Shizuku lub roota, jeśli je wybierzesz. Włączasz je sam i możesz je wyłączyć w Ustawieniach w dowolnej chwili. Działa tylko na tym telefonie.</string>
+    <string name="disclosure_private">Trafia tylko do Twoich sparowanych urządzeń, z szyfrowaniem end-to-end, i nigdy do nas.</string>
+    <string name="disclosure_continue">Dalej</string>
 </resources>
-
-
-

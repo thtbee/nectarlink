@@ -210,6 +210,8 @@ class MainActivity : ComponentActivity() {
                         },
                         onActiveRemoteChanged = { activeRemotePcId = it },
                     )
+                    // What's shared, before Android's own prompt for it (Google Play build).
+                    DisclosureHost()
                     pendingPairingLink?.let { link ->
                         val pcName = remember(link) {
                             android.net.Uri.parse(link).getQueryParameter("n")?.trim()?.takeIf { it.isNotEmpty() }

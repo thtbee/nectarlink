@@ -300,7 +300,7 @@ encoding requires hardware; if unavailable, screen sharing falls back to H.264.
 cargo test -p nectarlink-protocol -p nectarlink-core -p nectarlink-ffi   # core and tests
 cargo run -p nectarlink-cli -- --help                                     # command-line client
 cargo run -p nectarlink-desktop                                           # desktop app (Qt's bin on PATH)
-cd android && ./gradlew assembleDebug                                     # Android app
+cd android && ./gradlew assembleGithubDebug                               # Android app
 ```
 
 ```powershell

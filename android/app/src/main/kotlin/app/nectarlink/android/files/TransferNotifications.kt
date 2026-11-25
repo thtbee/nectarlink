@@ -13,6 +13,7 @@ import android.content.pm.PackageManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import app.nectarlink.android.BuildConfig
 import app.nectarlink.android.NectarlinkApplication
 import app.nectarlink.android.R
 import app.nectarlink.core.Transfer
@@ -143,8 +144,9 @@ internal object TransferNotifications {
             runCatching { context.startActivity(directView) }
         }
         if (!allowed(context)) return
-        // An app sent from the PC's Apps page (#442): straight to Android's installer.
-        val isApp = files.size == 1 && first.mime == APK_MIME
+        // An app sent from the PC's Apps page (#442): straight to Android's installer. The
+        // Play build doesn't install apps, so there it opens like any other file.
+        val isApp = !BuildConfig.PLAY && files.size == 1 && first.mime == APK_MIME
         val open = if (isApp) {
             Intent(Intent.ACTION_VIEW).setDataAndType(first.uri, first.mime).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         } else if (transfer.files.toInt() == transfer.names.size) {

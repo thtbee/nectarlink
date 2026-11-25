@@ -27,6 +27,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import app.nectarlink.android.BuildConfig
 import app.nectarlink.android.R
 import app.nectarlink.core.LinuxUnlockAttempt
 import java.security.Signature
@@ -187,9 +188,11 @@ object UnlockPrompts {
             .setContentTitle(title)
             .setContentText(context.getString(R.string.unlock_request_text, request.userName))
             .setContentIntent(tap)
-            .setFullScreenIntent(tap, true)
+            // Not on Play, which allows full-screen intents only to calling and alarm apps.
+            .apply { if (!BuildConfig.PLAY) setFullScreenIntent(tap, true) }
             .setAutoCancel(true)
-            .setCategory(NotificationCompat.CATEGORY_CALL)
+            // Not a call: a request the user answers (calls are the only CATEGORY_CALL).
+            .setCategory(NotificationCompat.CATEGORY_STATUS)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .build()

@@ -11,6 +11,7 @@ import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
 import androidx.core.net.toUri
+import app.nectarlink.android.BuildConfig
 import app.nectarlink.android.R
 import java.util.Locale
 
@@ -48,11 +49,19 @@ object BackgroundAccess {
     fun isUnrestricted(context: Context): Boolean =
         context.getSystemService(PowerManager::class.java)?.isIgnoringBatteryOptimizations(context.packageName) ?: true
 
-    /** Android's prompt to let NectarLink run unrestricted. */
+    /**
+     * Android's prompt to let NectarLink run unrestricted. The Play build can't
+     * ask (Play keeps that for apps whose core function needs it), so it opens
+     * the list of apps' battery settings, where the user picks NectarLink.
+     */
     @SuppressLint("BatteryLife") // A companion that must stay reachable is the case this exists for.
     fun requestIntent(context: Context): Intent =
-        Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, "package:${context.packageName}".toUri())
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        if (BuildConfig.PLAY) {
+            Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        } else {
+            Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, "package:${context.packageName}".toUri())
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
 
     /** Detects the phone's OEM family from `Build.MANUFACTURER` and `Build.BRAND`. */
     fun detectOem(

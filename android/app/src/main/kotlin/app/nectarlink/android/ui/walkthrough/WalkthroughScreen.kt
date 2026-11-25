@@ -104,6 +104,7 @@ import app.nectarlink.android.notifications.NotificationListener
 import app.nectarlink.android.photos.RecentPhotos
 import app.nectarlink.android.sms.PhoneSms
 import app.nectarlink.android.storage.PhoneStorage
+import app.nectarlink.android.ui.launchDisclosed
 import app.nectarlink.services.client.NectarlinkServiceContract
 import app.nectarlink.android.ui.pairing.PairingActions
 import app.nectarlink.android.ui.pairing.QrScanner
@@ -1041,7 +1042,7 @@ private fun PermissionsStepContent(
     ) {
         onAccessChanged()
         if (!NotificationListener.hasAccess(context)) {
-            runCatching { context.startActivity(NotificationListener.settingsIntent(context)) }
+            runCatching { app.nectarlink.android.ui.Disclosures.before(context, app.nectarlink.android.ui.Disclosures.Kind.Notifications) { context.startActivity(NotificationListener.settingsIntent(context)) } }
         }
     }
 
@@ -1077,10 +1078,10 @@ private fun PermissionsStepContent(
                 ) {
                     notifRuntimeLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 } else {
-                    runCatching { context.startActivity(NotificationListener.settingsIntent(context)) }
+                    runCatching { app.nectarlink.android.ui.Disclosures.before(context, app.nectarlink.android.ui.Disclosures.Kind.Notifications) { context.startActivity(NotificationListener.settingsIntent(context)) } }
                 }
             },
-            onManage = { runCatching { context.startActivity(NotificationListener.settingsIntent(context)) } },
+            onManage = { runCatching { app.nectarlink.android.ui.Disclosures.before(context, app.nectarlink.android.ui.Disclosures.Kind.Notifications) { context.startActivity(NotificationListener.settingsIntent(context)) } } },
             restrictable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU,
         ),
         WalkthroughPermissionSpec(
@@ -1103,7 +1104,7 @@ private fun PermissionsStepContent(
             optional = false,
             granted = state.callAccess,
             onGrant = {
-                callsLauncher.launch(PhoneCalls.permissions)
+                callsLauncher.launchDisclosed(context, PhoneCalls.permissions)
             },
             onManage = { appInfo() },
         ),
@@ -1115,7 +1116,7 @@ private fun PermissionsStepContent(
             optional = false,
             granted = state.smsAccess && state.contactsAccess,
             onGrant = {
-                smsContactsLauncher.launch(PhoneSms.permissions + PhoneContacts.permissions)
+                smsContactsLauncher.launchDisclosed(context, PhoneSms.permissions + PhoneContacts.permissions)
             },
             onManage = { appInfo() },
             restrictable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM,
@@ -1128,7 +1129,7 @@ private fun PermissionsStepContent(
             optional = false,
             granted = state.photoAccess,
             onGrant = {
-                photosLauncher.launch(RecentPhotos.permissions)
+                photosLauncher.launchDisclosed(context, RecentPhotos.permissions)
             },
             onManage = { appInfo() },
         ),
@@ -1152,9 +1153,9 @@ private fun PermissionsStepContent(
             optional = true,
             granted = state.inputAccess || state.hasElevatedCapability(NectarlinkServiceContract.CAP_INPUT_INJECTION),
             onGrant = {
-                runCatching { context.startActivity(InputService.settingsIntent()) }
+                runCatching { app.nectarlink.android.ui.Disclosures.before(context, app.nectarlink.android.ui.Disclosures.Kind.Control) { context.startActivity(InputService.settingsIntent()) } }
             },
-            onManage = { runCatching { context.startActivity(InputService.settingsIntent()) } },
+            onManage = { runCatching { app.nectarlink.android.ui.Disclosures.before(context, app.nectarlink.android.ui.Disclosures.Kind.Control) { context.startActivity(InputService.settingsIntent()) } } },
             restrictable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU,
         ),
     )
@@ -1790,7 +1791,7 @@ private fun PowerLevelStepContent(
                     if (state.inputAccess) R.string.walkthrough_power_assist_manage else R.string.walkthrough_power_assist_open,
                 ),
                 onAction = {
-                    runCatching { context.startActivity(InputService.settingsIntent()) }
+                    runCatching { app.nectarlink.android.ui.Disclosures.before(context, app.nectarlink.android.ui.Disclosures.Kind.Control) { context.startActivity(InputService.settingsIntent()) } }
                 },
             )
 
@@ -1833,12 +1834,14 @@ private fun PowerLevelStepContent(
                 ) {
                     FilledTonalButton(
                         onClick = {
-                            scope.launch {
-                                PairingNotification.show(context)
-                                if (!Elevated.start()) {
-                                    openDeveloperOptionsFromWalkthrough(context)
+                            app.nectarlink.android.ui.Disclosures.before(context, app.nectarlink.android.ui.Disclosures.Kind.Elevated) {
+                                scope.launch {
+                                    PairingNotification.show(context)
+                                    if (!Elevated.start()) {
+                                        openDeveloperOptionsFromWalkthrough(context)
+                                    }
+                                    onAccessChanged()
                                 }
-                                onAccessChanged()
                             }
                         },
                         modifier = Modifier.weight(1f),

@@ -49,6 +49,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.rememberCoroutineScope
+import app.nectarlink.android.ui.launchDisclosed
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -677,7 +678,8 @@ fun SettingsScreen(
                                         promptsDirectly = Settings.canDrawOverlays(context)
                                         onPauseOrDispose { }
                                     }
-                                    if (device.unlockEnabled && !promptsDirectly) {
+                                    // Not on Play, which doesn't let it show over other apps.
+                                    if (device.unlockEnabled && !promptsDirectly && !BuildConfig.PLAY) {
                                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                                             Text(
                                                 stringResource(R.string.unlock_prompt_directly_hint),
@@ -1333,18 +1335,21 @@ fun SettingsScreen(
                         body = stringResource(R.string.community_x_body),
                         action = stringResource(R.string.clip_action_open),
                     ) { app.nectarlink.android.ui.Link.open(context, app.nectarlink.android.ui.Link.X) }
-                    SettingRowDivider()
-                    CommunityRow(
-                        title = stringResource(R.string.community_github_title),
-                        body = stringResource(R.string.community_github_body),
-                        action = stringResource(R.string.clip_action_open),
-                    ) { app.nectarlink.android.ui.Link.open(context, app.nectarlink.android.ui.Link.REPO) }
-                    SettingRowDivider()
-                    CommunityRow(
-                        title = stringResource(R.string.support_title),
-                        body = stringResource(R.string.support_body),
-                        action = stringResource(R.string.support_action),
-                    ) { app.nectarlink.android.ui.Link.open(context, app.nectarlink.android.ui.Link.DONATE) }
+                    // The code (with its APKs) and donations aren't linked from the Play build.
+                    if (!BuildConfig.PLAY) {
+                        SettingRowDivider()
+                        CommunityRow(
+                            title = stringResource(R.string.community_github_title),
+                            body = stringResource(R.string.community_github_body),
+                            action = stringResource(R.string.clip_action_open),
+                        ) { app.nectarlink.android.ui.Link.open(context, app.nectarlink.android.ui.Link.REPO) }
+                        SettingRowDivider()
+                        CommunityRow(
+                            title = stringResource(R.string.support_title),
+                            body = stringResource(R.string.support_body),
+                            action = stringResource(R.string.support_action),
+                        ) { app.nectarlink.android.ui.Link.open(context, app.nectarlink.android.ui.Link.DONATE) }
+                    }
                     SettingRowDivider()
                     CommunityRow(
                         title = stringResource(R.string.report_title),
@@ -1478,7 +1483,7 @@ private fun NotificationAccess(granted: Boolean) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        val open = { runCatching { context.startActivity(NotificationListener.settingsIntent(context)) }.let {} }
+        val open = { runCatching { app.nectarlink.android.ui.Disclosures.before(context, app.nectarlink.android.ui.Disclosures.Kind.Notifications) { context.startActivity(NotificationListener.settingsIntent(context)) } }.let {} }
         if (granted) {
             OutlinedButton(onClick = open) { Text(stringResource(R.string.action_manage)) }
         } else {
@@ -1655,7 +1660,7 @@ private fun ControlAccess(on: Boolean) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        val open = { runCatching { context.startActivity(InputService.settingsIntent()) }.let {} }
+        val open = { runCatching { app.nectarlink.android.ui.Disclosures.before(context, app.nectarlink.android.ui.Disclosures.Kind.Control) { context.startActivity(InputService.settingsIntent()) } }.let {} }
         if (on) {
             OutlinedButton(onClick = open) { Text(stringResource(R.string.action_manage)) }
         } else {
@@ -1764,7 +1769,9 @@ private fun ElevatedAccess() {
                 )
             }
             when (state) {
-                Elevated.State.NotSetUp, is Elevated.State.Failed -> Button(onClick = { setUp() }) {
+                Elevated.State.NotSetUp, is Elevated.State.Failed -> Button(onClick = {
+                    app.nectarlink.android.ui.Disclosures.before(context, app.nectarlink.android.ui.Disclosures.Kind.Elevated) { setUp() }
+                }) {
                     Text(stringResource(R.string.elevated_set_up))
                 }
                 Elevated.State.Waiting -> Button(onClick = {
@@ -1916,7 +1923,7 @@ private fun RuntimePermissionAccess(
                 Text(stringResource(R.string.action_manage))
             }
         } else {
-            Button(onClick = { ask.launch(permissions) }) { Text(stringResource(R.string.action_allow)) }
+            Button(onClick = { ask.launchDisclosed(context, permissions) }) { Text(stringResource(R.string.action_allow)) }
         }
     }
 }
@@ -1950,13 +1957,13 @@ private fun PhotosAccess(
             )
         }
         when {
-            partial -> OutlinedButton(onClick = { ask.launch(RecentPhotos.permissions) }) {
+            partial -> OutlinedButton(onClick = { ask.launchDisclosed(context, RecentPhotos.permissions) }) {
                 Text(stringResource(R.string.action_select_photos))
             }
             granted -> OutlinedButton(onClick = { openAppInfoSettings(context) }) {
                 Text(stringResource(R.string.action_manage))
             }
-            else -> Button(onClick = { ask.launch(RecentPhotos.permissions) }) {
+            else -> Button(onClick = { ask.launchDisclosed(context, RecentPhotos.permissions) }) {
                 Text(stringResource(R.string.action_allow))
             }
         }
@@ -1974,7 +1981,9 @@ private fun StorageAccess(
     val pickFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         if (uri != null) onAddSafFolder(uri)
     }
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+    // The Play build has no All files access on Android 11 and later: only picked folders.
+    val allFilesOffered = !BuildConfig.PLAY || Build.VERSION.SDK_INT < Build.VERSION_CODES.R
+    if (allFilesOffered) Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.weight(1f).padding(end = 12.dp)) {
             Text(stringResource(R.string.storage_all_files_title), style = MaterialTheme.typography.titleSmall)
             Text(
@@ -2215,7 +2224,7 @@ private fun ScreenshotClipboardSetting(onAccessChanged: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (enabled && !hasAccess) {
-                TextButton(onClick = { ask.launch(RecentPhotos.imagePermissions) }) {
+                TextButton(onClick = { ask.launchDisclosed(context, RecentPhotos.imagePermissions) }) {
                     Text(stringResource(R.string.action_allow))
                 }
             }
@@ -2225,7 +2234,7 @@ private fun ScreenshotClipboardSetting(onAccessChanged: () -> Unit) {
             onCheckedChange = {
                 enabled = it
                 PhoneClipboard.setScreenshotSync(context, it)
-                if (it && !hasAccess) ask.launch(RecentPhotos.imagePermissions)
+                if (it && !hasAccess) ask.launchDisclosed(context, RecentPhotos.imagePermissions)
             },
             colors = app.nectarlink.android.ui.theme.nectarSwitchColors(),
             modifier = Modifier.semantics { contentDescription = title },

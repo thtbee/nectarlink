@@ -1660,7 +1660,21 @@
     <string name="community_invite_text">Запитання, ідеї й ранні збірки — разом з тими, хто створює NectarLink і користується ним.</string>
     <string name="community_invite_join">Приєднатися до Discord</string>
     <string name="community_invite_later">Не зараз</string>
+
+    <string name="disclosure_messages_title">SMS на комп\'ютері</string>
+    <string name="disclosure_messages_text">NectarLink читає SMS на цьому телефоні й надсилає їх на ваші спарені комп\'ютери, щоб ви могли читати їх і відповідати там. Повідомлення, написані на комп\'ютері, надсилаються з цього телефона.</string>
+    <string name="disclosure_calls_title">Дзвінки на комп\'ютері</string>
+    <string name="disclosure_calls_text">NectarLink читає, хто телефонує, журнал дзвінків і стан дзвінка та надсилає їх на ваші спарені комп\'ютери, щоб дзвінки показувалися там і ви могли відповідати, завершувати або здійснювати їх з комп\'ютера.</string>
+    <string name="disclosure_contacts_title">Контакти на комп\'ютері</string>
+    <string name="disclosure_contacts_text">NectarLink читає імена й номери ваших контактів і надсилає їх на ваші спарені комп\'ютери, щоб показувати, хто пише чи телефонує, і вибирати, кому написати чи зателефонувати.</string>
+    <string name="disclosure_photos_title">Фото на комп\'ютері</string>
+    <string name="disclosure_photos_text">NectarLink читає фото й відео на цьому телефоні та надсилає їх на ваші спарені комп\'ютери, щоб ви могли переглядати й зберігати їх там і одразу бачити нові знімки екрана.</string>
+    <string name="disclosure_notifications_title">Сповіщення на комп\'ютері</string>
+    <string name="disclosure_notifications_text">NectarLink читає сповіщення на цьому телефоні й надсилає їх на ваші спарені комп\'ютери, щоб вони показувалися там і ви могли відповідати на них або закривати їх з комп\'ютера.</string>
+    <string name="disclosure_control_title">Керування телефоном з комп\'ютера</string>
+    <string name="disclosure_control_text">NectarLink використовує службу спеціальних можливостей Android, щоб спарений комп\'ютер міг керувати цим телефоном: дотики, свайпи, прокручування й введення тексту мишею та клавіатурою комп\'ютера, а також читання поля, у якому ви друкуєте, щоб вставити туди текст і натиснути «Надіслати». Вона діє лише за вашими діями на комп\'ютері й не збирає та не передає те, що на екрані.</string>
+    <string name="disclosure_elevated_title">Elevated</string>
+    <string name="disclosure_elevated_text">Elevated дає NectarLink можливості, яких немає у звичайних застосунків: показ екрана без запиту щоразу, вказівник комп\'ютера на цьому телефоні, застосунки в окремих вікнах на комп\'ютері та звук дзвінків на комп\'ютері. Він використовує бездротове налагодження цього телефона або Shizuku чи root, якщо ви їх виберете. Ви вмикаєте його самі й можете будь-коли вимкнути в налаштуваннях. Він працює лише на цьому телефоні.</string>
+    <string name="disclosure_private">Дані йдуть лише на ваші власні спарені пристрої, з наскрізним шифруванням, і ніколи до нас.</string>
+    <string name="disclosure_continue">Продовжити</string>
 </resources>
-
-
-

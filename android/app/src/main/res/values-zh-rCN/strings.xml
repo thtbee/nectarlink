@@ -1503,4 +1503,21 @@
     <string name="community_invite_text">提问、想法和抢先版本，和制作及使用 NectarLink 的人一起。</string>
     <string name="community_invite_join">加入 Discord</string>
     <string name="community_invite_later">以后再说</string>
+
+    <string name="disclosure_messages_title">在电脑上收发短信</string>
+    <string name="disclosure_messages_text">NectarLink 会读取这部手机上的短信并发送到你配对的电脑，方便你在电脑上阅读和回复。你在电脑上写的短信会从这部手机发出。</string>
+    <string name="disclosure_calls_title">在电脑上接打电话</string>
+    <string name="disclosure_calls_text">NectarLink 会读取来电者、通话记录和通话状态并发送到你配对的电脑，让来电显示在电脑上，你可以在电脑上接听、挂断或拨打电话。</string>
+    <string name="disclosure_contacts_title">在电脑上查看联系人</string>
+    <string name="disclosure_contacts_text">NectarLink 会读取联系人的姓名和号码并发送到你配对的电脑，用来显示是谁发来短信或来电，以及选择要发短信或打电话的人。</string>
+    <string name="disclosure_photos_title">在电脑上查看照片</string>
+    <string name="disclosure_photos_text">NectarLink 会读取这部手机上的照片和视频并发送到你配对的电脑，方便你在电脑上浏览和保存，并立即看到新的截图。</string>
+    <string name="disclosure_notifications_title">在电脑上查看通知</string>
+    <string name="disclosure_notifications_text">NectarLink 会读取这部手机上的通知并发送到你配对的电脑，让通知显示在电脑上，你可以在电脑上回复或关闭它们。</string>
+    <string name="disclosure_control_title">用电脑控制这部手机</string>
+    <string name="disclosure_control_text">NectarLink 使用 Android 的无障碍服务，让配对的电脑可以控制这部手机：用电脑的鼠标和键盘点按、滑动、滚动和输入，以及读取你正在输入的文本框，以便在其中填入文字并点按发送。它只按照你在电脑上的操作行事，不会收集或分享你屏幕上的内容。</string>
+    <string name="disclosure_elevated_title">Elevated</string>
+    <string name="disclosure_elevated_text">Elevated 让 NectarLink 拥有普通应用没有的能力，比如无需每次询问即可共享屏幕、在这部手机上使用电脑的指针、在电脑上以独立窗口打开应用，以及在电脑上听到通话声音。它使用这部手机自带的无线调试，或者你选择的 Shizuku 或 root。由你自己开启，并可随时在设置中关闭。它只在这部手机上运行。</string>
+    <string name="disclosure_private">这些数据只会发送到你自己配对的设备，经过端到端加密，绝不会发给我们。</string>
+    <string name="disclosure_continue">继续</string>
 </resources>

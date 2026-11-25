@@ -76,12 +76,40 @@ android {
         }
     }
 
+    // Two builds of the same app (same ID, same key, so either installs over the other):
+    // `github`, everything, updated from GitHub releases; and `play`, for Google Play,
+    // without what Play doesn't allow (src/play/AndroidManifest.xml, BuildConfig.PLAY):
+    // no self-update, no installing APKs, no donation links (.private Play plan).
+    flavorDimensions += "store"
+    productFlavors {
+        create("github") {
+            dimension = "store"
+            isDefault = true
+            buildConfigField("boolean", "PLAY", "false")
+        }
+        create("play") {
+            dimension = "store"
+            buildConfigField("boolean", "PLAY", "true")
+        }
+    }
+
+    // Play's bundle: every language stays in the base (the in-app language picker
+    // switches to any of them), and the native symbols go with it for Play's crash reports.
+    bundle {
+        language {
+            enableSplit = false
+        }
+    }
+
     buildTypes {
         release {
             signingConfig = if (keystore != null) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            ndk {
+                debugSymbolLevel = "SYMBOL_TABLE"
+            }
         }
     }
 

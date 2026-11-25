@@ -243,7 +243,8 @@ private fun WhatsNewSheet(summary: WhatsNew.Summary?, onDismiss: () -> Unit) {
                 }
             }
             item(key = "link") {
-                TextButton(
+                // The release notes are on GitHub, with its APKs: not linked from the Play build.
+                if (!BuildConfig.PLAY) TextButton(
                     onClick = {
                         Link.open(context, Link.RELEASES)
                         scope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
