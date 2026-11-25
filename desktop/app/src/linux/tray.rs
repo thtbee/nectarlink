@@ -1398,6 +1398,49 @@ impl SharedHandler {
     }
 }
 
+/// The tray icon is one color, which panels that recolor icons (KDE Plasma's)
+/// match to their own (#555). Settings › General › Tray icon.
+static ONE_COLOUR: AtomicBool = AtomicBool::new(false);
+/// Its name in the icon theme, as the panel looks it up.
+const ONE_COLOUR_ICON: &str = "nectarlink-symbolic";
+const ONE_COLOUR_SVG: &str = include_str!("../../../packaging/linux/nectarlink-symbolic.svg");
+
+/// Switches the tray between the color icon and the one-color one.
+pub fn set_one_colour(on: bool) {
+    ONE_COLOUR.store(on, Ordering::Release);
+    if cfg!(test) {
+        return;
+    }
+    if on && let Err(e) = install_one_colour_icon() {
+        tracing::debug!(error = %e, "couldn't add the one-color tray icon to the icon theme");
+    }
+    crate::bridge::native::ffi::linux_tray_set_one_colour(
+        on,
+        ONE_COLOUR_ICON,
+        &tray_icon_cache_path().to_string_lossy(),
+    );
+}
+
+/// Puts the icon in the user's hicolor theme, where the panel finds it by
+/// name, whatever way NectarLink was installed.
+fn install_one_colour_icon() -> Result<()> {
+    let Some(data) = dirs::data_dir().filter(|p| p.is_absolute()) else {
+        return Err(std::io::Error::other("no data folder"));
+    };
+    let path = one_colour_icon_path(&data);
+    if std::fs::read_to_string(&path).is_ok_and(|now| now == ONE_COLOUR_SVG) {
+        return Ok(());
+    }
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir)?;
+    }
+    std::fs::write(&path, ONE_COLOUR_SVG)
+}
+
+fn one_colour_icon_path(data_dir: &std::path::Path) -> PathBuf {
+    data_dir.join("icons/hicolor/scalable/apps").join(format!("{ONE_COLOUR_ICON}.svg"))
+}
+
 fn tray_icon_cache_path() -> PathBuf {
     if let Some(dir) = dirs::runtime_dir().or_else(dirs::cache_dir).filter(|p| p.is_absolute()) {
         dir.join("nectarlink").join("tray-icon.png")
@@ -1540,6 +1583,9 @@ impl Tray {
                 &labels.pause_notifications,
                 &labels.quit,
             );
+            if ONE_COLOUR.load(Ordering::Acquire) {
+                set_one_colour(true);
+            }
             let stop_clone = Arc::clone(&stop);
             let handler_clone = Arc::clone(&shared_handler);
             if let Ok(handle) = std::thread::Builder::new().name("tray-qt-actions".into()).spawn(move || {
@@ -1627,6 +1673,23 @@ impl Drop for Tray {
                 let _ = handle.join();
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod one_colour_tests {
+    use super::*;
+
+    #[test]
+    fn the_one_colour_icon_follows_the_panel_colour() {
+        // Plasma recolors what uses its color scheme's text color.
+        assert!(ONE_COLOUR_SVG.contains("ColorScheme-Text"));
+        assert!(ONE_COLOUR_SVG.contains("currentColor"));
+        assert!(!ONE_COLOUR_SVG.contains("#FFFFFF"));
+        assert_eq!(
+            one_colour_icon_path(std::path::Path::new("/home/a/.local/share")),
+            PathBuf::from("/home/a/.local/share/icons/hicolor/scalable/apps/nectarlink-symbolic.svg")
+        );
     }
 }
 

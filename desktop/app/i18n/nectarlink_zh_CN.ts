@@ -10052,6 +10052,11 @@ What it needs
         <translation>单色会随任务栏变成白色或黑色。</translation>
     </message>
     <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>One color takes the panel&apos;s colors where the desktop recolors tray icons, as KDE Plasma does.</source>
+        <translation>单色图标会在会给托盘图标重新着色的桌面上（如 KDE Plasma）跟随面板的颜色。</translation>
+    </message>
+    <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1273"/>
         <source>One color</source>
         <translation>单色</translation>
