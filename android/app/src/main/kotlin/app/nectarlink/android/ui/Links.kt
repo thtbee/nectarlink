@@ -15,8 +15,8 @@ import android.net.Uri
 internal enum class Link(val url: String) {
     DISCORD("https://discord.gg/AA2Dp8PYqf"),
     X("https://x.com/thtbee_"),
-    // Per build (src/github, src/play: StoreLinks): empty in the Google Play build, which
-    // links neither donations (Play's payments policy) nor the code and its APKs. Nothing
+    // Per build (src/github, src/play, src/fdroid: StoreLinks): empty in the Google Play build,
+    // which links neither donations (Play's payments policy) nor the code and its APKs. Nothing
     // opens an empty link.
     DONATE(StoreLinks.DONATE),
     REPO(StoreLinks.REPO),

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<!-- The F-Droid build: all features and permissions of the GitHub build,
+     without the built-in self-updater (F-Droid handles updates). CI checks
+     the release APK with scripts/check-fdroid-build.py. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Installing an APK received from a PC when it's tapped. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+</manifest>

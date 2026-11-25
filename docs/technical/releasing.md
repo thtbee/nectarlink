@@ -102,6 +102,11 @@ update signed with the same key as the installed app, so:
   `NECTARLINK_KEYSTORE`) can't update to or from official releases.
 - To sign locally: set `NECTARLINK_KEYSTORE` to the `.jks` path and
   `NECTARLINK_KEYSTORE_PASSWORD`, then `./gradlew assembleGithubRelease`.
+- **F-Droid:** F-Droid builds the `fdroid` flavor from source using the tagged
+  commit (`android/fdroid/app.nectarlink.yml`) and signs it with F-Droid's
+  signing key (or verifies reproducible builds if configured). It keeps all
+  features and permissions of the GitHub build, omitting only the built-in
+  self-updater (`scripts/check-fdroid-build.py`).
 
 **Windows.** The installer and the app aren't Authenticode-signed yet, so
 SmartScreen warns on first download until the files build reputation. Options
