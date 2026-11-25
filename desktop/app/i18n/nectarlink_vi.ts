@@ -4115,7 +4115,7 @@
     <message>
         <location filename="rust_strings.h" line="309"/>
         <source>Local by default
-Your phone and PC talk directly over your local network or USB cable. When Connect over mobile data is on, encrypted traffic can use a relay when away from home. Automatic update checks contact GitHub Releases and can be turned off in Settings › Connection &amp; About › Check for updates.
+Your phone and PC talk directly over your local network or USB cable. When Connect over mobile data is on, encrypted traffic can use a relay when away from home. Automatic update checks contact GitHub Releases and can be turned off in Settings › Updates › Check for updates.
 
 End-to-end encrypted
 Every connection uses QUIC with TLS 1.3 and Ed25519 device certificates verified during pairing. Device keys are protected by Windows DPAPI and the Android Keystore.
@@ -4123,7 +4123,7 @@ Every connection uses QUIC with TLS 1.3 and Ed25519 device certificates verified
 Per-device sharing controls
 Sensitive capabilities such as Share PC folders, Remote input, and Reverse PC screen mirroring are turned off by default for each paired device until you turn them on.</source>
         <translation>Cục bộ theo mặc định
-Điện thoại và PC của bạn giao tiếp trực tiếp qua mạng cục bộ hoặc cáp USB. Khi bật Kết nối qua dữ liệu di động, lưu lượng được mã hóa có thể dùng máy chủ trung chuyển khi vắng nhà. Kiểm tra cập nhật tự động liên hệ với GitHub Releases và có thể tắt trong Cài đặt › Kết nối &amp; Giới thiệu › Kiểm tra cập nhật.
+Điện thoại và PC của bạn giao tiếp trực tiếp qua mạng cục bộ hoặc cáp USB. Khi bật Kết nối qua dữ liệu di động, lưu lượng được mã hóa có thể dùng máy chủ trung chuyển khi vắng nhà. Kiểm tra cập nhật tự động liên hệ với GitHub Releases và có thể tắt trong Cài đặt › Cập nhật › Kiểm tra cập nhật.
 
 Mã hóa đầu cuối
 Mọi kết nối đều dùng QUIC với TLS 1.3 và chứng chỉ thiết bị Ed25519 được xác minh trong quá trình ghép nối. Khóa thiết bị được bảo vệ bởi Windows DPAPI và Android Keystore.

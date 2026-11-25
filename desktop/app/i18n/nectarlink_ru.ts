@@ -4115,7 +4115,7 @@
     <message>
         <location filename="rust_strings.h" line="309"/>
         <source>Local by default
-Your phone and PC talk directly over your local network or USB cable. When Connect over mobile data is on, encrypted traffic can use a relay when away from home. Automatic update checks contact GitHub Releases and can be turned off in Settings › Connection &amp; About › Check for updates.
+Your phone and PC talk directly over your local network or USB cable. When Connect over mobile data is on, encrypted traffic can use a relay when away from home. Automatic update checks contact GitHub Releases and can be turned off in Settings › Updates › Check for updates.
 
 End-to-end encrypted
 Every connection uses QUIC with TLS 1.3 and Ed25519 device certificates verified during pairing. Device keys are protected by Windows DPAPI and the Android Keystore.
@@ -4123,7 +4123,7 @@ Every connection uses QUIC with TLS 1.3 and Ed25519 device certificates verified
 Per-device sharing controls
 Sensitive capabilities such as Share PC folders, Remote input, and Reverse PC screen mirroring are turned off by default for each paired device until you turn them on.</source>
         <translation>Локально по умолчанию
-Телефон и ПК общаются напрямую по локальной сети или USB-кабелю. Когда включено «Подключаться через мобильные данные», зашифрованный трафик может идти через ретранслятор, пока вы не дома. Автоматическая проверка обновлений обращается к GitHub Releases, её можно выключить в Настройки › Подключение и о программе › Проверять обновления.
+Телефон и ПК общаются напрямую по локальной сети или USB-кабелю. Когда включено «Подключаться через мобильные данные», зашифрованный трафик может идти через ретранслятор, пока вы не дома. Автоматическая проверка обновлений обращается к GitHub Releases, её можно выключить в Настройки › Обновления › Проверять обновления.
 
 Сквозное шифрование
 Каждое подключение использует QUIC с TLS 1.3 и сертификаты устройств Ed25519, проверенные при связывании. Ключи устройств защищены Windows DPAPI и Android Keystore.

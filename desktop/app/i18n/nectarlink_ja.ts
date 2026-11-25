@@ -4114,7 +4114,7 @@
     <message>
         <location filename="rust_strings.h" line="309"/>
         <source>Local by default
-Your phone and PC talk directly over your local network or USB cable. When Connect over mobile data is on, encrypted traffic can use a relay when away from home. Automatic update checks contact GitHub Releases and can be turned off in Settings › Connection &amp; About › Check for updates.
+Your phone and PC talk directly over your local network or USB cable. When Connect over mobile data is on, encrypted traffic can use a relay when away from home. Automatic update checks contact GitHub Releases and can be turned off in Settings › Updates › Check for updates.
 
 End-to-end encrypted
 Every connection uses QUIC with TLS 1.3 and Ed25519 device certificates verified during pairing. Device keys are protected by Windows DPAPI and the Android Keystore.
@@ -4122,7 +4122,7 @@ Every connection uses QUIC with TLS 1.3 and Ed25519 device certificates verified
 Per-device sharing controls
 Sensitive capabilities such as Share PC folders, Remote input, and Reverse PC screen mirroring are turned off by default for each paired device until you turn them on.</source>
         <translation>デフォルトではローカル接続
-スマートフォンとPCは、ローカルネットワークまたはUSBケーブル経由で直接通信します。「モバイルデータ通信で接続」がオンの場合、外出先では暗号化されたトラフィックにリレーを利用できます。自動アップデート確認はGitHub Releasesに接続しますが、「設定」 › 「接続と情報」 › 「アップデートの確認」でオフにできます。
+スマートフォンとPCは、ローカルネットワークまたはUSBケーブル経由で直接通信します。「モバイルデータ通信で接続」がオンの場合、外出先では暗号化されたトラフィックにリレーを利用できます。自動アップデート確認はGitHub Releasesに接続しますが、「設定」 › 「アップデート」 › 「アップデートの確認」でオフにできます。
 
 エンドツーエンド暗号化
 すべての接続でTLS 1.3を用いたQUICが使用され、ペアリング時にEd25519デバイス証明書の検証が行われます。デバイスキーは、Windows DPAPIおよびAndroid Keystoreによって保護されています。
