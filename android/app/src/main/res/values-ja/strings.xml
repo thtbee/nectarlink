@@ -1598,7 +1598,6 @@
     <string name="channel_report_replies">レポートへの返信</string>
     <string name="report_reply_title">レポートに返信があります</string>
     <string name="report_closed_title">レポートがクローズされました</string>
-    <string name="report_notice_text">レポート #%1$d。タップして GitHub で読む。</string>
     <string name="crash_card_sent">ありがとうございます。クラッシュレポートを送信しました</string>
     <string name="crash_card_title">NectarLink が予期せず終了しました</string>
     <string name="crash_card_failed">クラッシュレポートを送信できませんでした。「先に確認」から別の方法で送ってください。</string>
@@ -1645,6 +1644,31 @@
     <string name="deck_default_restart">再起動</string>
     <string name="deck_default_shut_down">シャットダウン</string>
     <string name="deck_default_macro">マクロ</string>
+    <string name="report_answer_line">%1$s: %2$s</string>
+    <string name="report_notice_open_text">レポート #%1$d。タップして読む。</string>
+    <string name="report_reply_action">返信</string>
+    <string name="report_reply_hint">返信内容</string>
+    <string name="report_who_you">あなた</string>
+    <string name="report_who_other">同じ問題がある人</string>
+    <string name="report_reply_not_sent">返信は送信されませんでした</string>
+    <string name="report_reply_limited">今日の返信の上限に達しました。明日もう一度お試しください。</string>
+    <string name="report_reply_refused">このレポートにはもう返信できません。</string>
+    <string name="report_reply_later">送信できませんでした。接続を確認して、もう一度お試しください。</string>
+    <string name="your_reports_title">送信したレポート</string>
+    <string name="your_reports_check">返信を確認</string>
+    <string name="your_reports_intro">NectarLink から送信したレポートは、返信と一緒に 30 日間ここに残ります。GitHub アカウントがなくてもここから返信できます。返信はレポートと同じく GitHub で公開されます。</string>
+    <string name="your_reports_none">このスマホからはまだレポートを送信していません。</string>
+    <string name="your_reports_waiting">登録待ち</string>
+    <string name="your_reports_closed">レポート #%1$d · クローズ済み</string>
+    <string name="your_reports_number">レポート #%1$d</string>
+    <string name="your_reports_sent">%1$s に送信</string>
+    <string name="your_reports_on_github">GitHub で見る</string>
+    <string name="your_reports_load_failed">返信を読み込めませんでした。接続を確認して、もう一度お試しください。</string>
+    <string name="your_reports_no_answers">まだ返信はありません。返信があると通知が届きます。</string>
+    <string name="your_reports_reply_on_github">このレポートは NectarLink から返信できるようになる前に送信されたため、GitHub で返信してください。</string>
+    <string name="your_reports_reply_sent">送信しました。レポートに追加されました。</string>
+    <string name="your_reports_sending">送信中</string>
+    <string name="your_reports_send">送信</string>
 </resources>
 
 

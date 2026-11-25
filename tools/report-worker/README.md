@@ -9,6 +9,7 @@ runs as a Cloudflare Worker with a D1 database, and files issues as the
 |---|---|
 | `POST /v1/report` | `200 { issue, url }`, or `202 { queued: true }` when it has to wait |
 | `GET /v1/report/<rid>` | `200 { issue, url }`, `202` while queued, `404` when unknown |
+| `POST /v1/report/<rid>/reply` | `200 { comment }`: the reporter's answer, posted on the issue |
 | `POST /v1/ping` | `204`: the daily count |
 | `GET /stats?key=<key>` | The owner's page of daily totals; `404` without the key |
 
@@ -27,6 +28,20 @@ what failed most in the last week. Without an ID a device can't be told
 apart from day to day, so a week's figure is a daily average, not unique
 devices.
 
+## Replies from the app
+
+A report can carry `reply_hash`, the SHA-256 (hex) of a random key only the
+sending device keeps. With that key the reporter can answer on the issue
+from the app, without a GitHub account: `POST /v1/report/<rid>/reply` with
+`{ key, text }` (text up to 2000 characters) and the same proof of work as a
+report. The service checks the key against the hash and posts the text as a
+comment from **NectarLink Reports**, quoted, with mentions and issue links
+defused so it can't ping anyone. A wrong key and an unknown report get the
+same `404`. Ten replies a day per report. The report ID alone isn't enough:
+it's printed in the issue.
+
+The apps read the replies themselves from GitHub's public API.
+
 ## Crashes already fixed
 
 `.github/known-crashes.json` on `main` lists crashes a release fixed:
@@ -41,7 +56,9 @@ Nothing about the sender. Reports per sender per day are counted by a hash
 of the address with that day's random salt, and both are deleted the next
 day. Report text is stored only while a report waits in the queue (at most
 7 days); after that it lives only in the issue. Which report went to which
-issue is kept for 90 days, so a resend isn't filed twice.
+issue is kept for 90 days, so a resend isn't filed twice, with the hash
+of its reply key. Replies a report had today are counted, and the count is
+deleted the next day.
 
 ## Abuse limits
 

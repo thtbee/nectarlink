@@ -5725,17 +5725,25 @@ pub struct OutgoingReport {
     /// Sent as `X-Proof`.
     pub proof: String,
     pub at: u64,
+    /// Kept on the phone to reply from the app; never sent.
+    pub reply_key: String,
 }
 
 impl From<core::diag::send::Outgoing> for OutgoingReport {
     fn from(o: core::diag::send::Outgoing) -> Self {
-        OutgoingReport { rid: o.rid, body: o.body, proof: o.proof, at: o.at }
+        OutgoingReport { rid: o.rid, body: o.body, proof: o.proof, at: o.at, reply_key: o.reply_key }
     }
 }
 
 impl From<OutgoingReport> for core::diag::send::Outgoing {
     fn from(o: OutgoingReport) -> Self {
-        core::diag::send::Outgoing { rid: o.rid, body: o.body, proof: o.proof, at: o.at }
+        core::diag::send::Outgoing {
+            rid: o.rid,
+            body: o.body,
+            proof: o.proof,
+            at: o.at,
+            reply_key: o.reply_key,
+        }
     }
 }
 
@@ -5784,11 +5792,7 @@ pub fn report_answer(outgoing: OutgoingReport, status: u16, body: Vec<u8>, follo
         if !follow {
             return;
         }
-        send::remember(
-            &dir,
-            Sent { rid: outgoing.rid.clone(), issue, at: outgoing.at, comments: 0, closed: false },
-            now_secs(),
-        );
+        send::remember(&dir, Sent::from_outgoing(&outgoing, issue), now_secs());
     };
     match answer {
         Answer::Filed { issue } => {
@@ -5972,6 +5976,140 @@ pub fn report_queued_answer(rid: String, status: u16, body: Vec<u8>) {
         Answer::Refused => send::forget(&dir, &rid),
         _ => {}
     }
+}
+
+/// A sent report in "Your reports": the answers on it are read with
+/// [`report_thread`] from `comments_url`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct ReportConversation {
+    pub rid: String,
+    /// Its issue; none while it waits in the service's queue.
+    pub issue: Option<u64>,
+    /// When it was sent, in seconds since 1970.
+    pub at: u64,
+    pub closed: bool,
+    /// Whether the person can reply from the app (sent with a reply key, and filed).
+    pub can_reply: bool,
+    /// GitHub's public API address for its comments.
+    pub comments_url: Option<String>,
+}
+
+/// The reports this phone sent and still follows, newest first.
+#[uniffi::export]
+pub fn report_conversations() -> Vec<ReportConversation> {
+    let mut all: Vec<ReportConversation> = core::diag::send::sent(&diag_dir(), now_secs())
+        .into_iter()
+        .map(|s| ReportConversation {
+            can_reply: s.can_reply(),
+            comments_url: s.issue.map(core::diag::send::comments_api_url),
+            rid: s.rid,
+            issue: s.issue,
+            at: s.at,
+            closed: s.closed,
+        })
+        .collect();
+    all.reverse();
+    all
+}
+
+/// One answer on a report's issue.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct ReportAnswer {
+    /// `team`, `you`, `other` (someone else who sent the same crash) or `someone`.
+    pub who: String,
+    /// The GitHub login, for `someone`.
+    pub login: String,
+    pub text: String,
+    /// When, as GitHub gives it (`2026-11-25T17:14:26Z`).
+    pub at: String,
+}
+
+fn answers(entries: Vec<core::diag::send::ThreadEntry>) -> Vec<ReportAnswer> {
+    use core::diag::send::Who;
+    entries
+        .into_iter()
+        .map(|e| {
+            let (who, login) = match e.who {
+                Who::Team => ("team", String::new()),
+                Who::You => ("you", String::new()),
+                Who::OtherReporter => ("other", String::new()),
+                Who::Someone(login) => ("someone", login),
+            };
+            ReportAnswer { who: who.into(), login, text: e.text, at: e.at }
+        })
+        .collect()
+}
+
+/// The answers on report `rid`'s issue, from GitHub's answer (`status`,
+/// `body`) for its `comments_url`; none when GitHub didn't answer.
+#[uniffi::export]
+pub fn report_thread(rid: String, status: u16, body: Vec<u8>) -> Option<Vec<ReportAnswer>> {
+    core::diag::send::read_thread(&rid, status, &body).map(answers)
+}
+
+/// The newest answer from anyone but the person, for a notification.
+#[uniffi::export]
+pub fn report_latest_answer(rid: String, status: u16, body: Vec<u8>) -> Option<ReportAnswer> {
+    let entries = core::diag::send::read_thread(&rid, status, &body)?;
+    let latest = core::diag::send::latest_answer(&entries)?.clone();
+    answers(vec![latest]).pop()
+}
+
+/// A reply ready to POST to `url` as `application/json`, with `X-Proof`.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct ReportReplyRequest {
+    pub url: String,
+    pub body: String,
+    pub proof: String,
+}
+
+/// Builds a reply to report `rid` (about a second: off the main thread);
+/// none when it can't take one or `text` is empty or too long.
+#[uniffi::export]
+pub fn report_reply_request(rid: String, text: String) -> Option<ReportReplyRequest> {
+    let sent = core::diag::send::sent(&diag_dir(), now_secs()).into_iter().find(|s| s.rid == rid)?;
+    core::diag::send::reply_request(&sent, &text, now_secs()).map(|r| ReportReplyRequest {
+        url: r.url,
+        body: r.body,
+        proof: r.proof,
+    })
+}
+
+/// What the service said to a reply.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
+pub enum ReportReplyOutcome {
+    Sent,
+    Limited,
+    Later,
+    Refused,
+}
+
+/// Reads the service's answer to a reply (`0` when it couldn't be reached).
+#[uniffi::export]
+pub fn report_reply_answer(status: u16) -> ReportReplyOutcome {
+    use core::diag::send::ReplyAnswer;
+    match ReplyAnswer::read(status) {
+        ReplyAnswer::Sent => ReportReplyOutcome::Sent,
+        ReplyAnswer::Limited => ReportReplyOutcome::Limited,
+        ReplyAnswer::Later => ReportReplyOutcome::Later,
+        ReplyAnswer::Refused => ReportReplyOutcome::Refused,
+    }
+}
+
+/// The person's reply to `rid` went: it isn't news at the next check.
+#[uniffi::export]
+pub fn report_reply_sent(rid: String) {
+    let dir = diag_dir();
+    if let Some(sent) = core::diag::send::sent(&dir, now_secs()).into_iter().find(|s| s.rid == rid) {
+        let comments = sent.comments + 1;
+        core::diag::send::remember(&dir, core::diag::send::Sent { comments, ..sent }, now_secs());
+    }
+}
+
+/// Longest reply, in characters.
+#[uniffi::export]
+pub fn report_reply_max_chars() -> u32 {
+    core::diag::send::MAX_REPLY_CHARS as u32
 }
 
 #[cfg(test)]

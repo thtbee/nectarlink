@@ -31,6 +31,15 @@ import app.nectarlink.core.reportPrepare
 import app.nectarlink.core.reportQueued
 import app.nectarlink.core.reportQueuedAnswer
 import app.nectarlink.core.reportService
+import app.nectarlink.core.ReportAnswer
+import app.nectarlink.core.ReportConversation
+import app.nectarlink.core.ReportReplyOutcome
+import app.nectarlink.core.reportConversations
+import app.nectarlink.core.reportLatestAnswer
+import app.nectarlink.core.reportReplyAnswer
+import app.nectarlink.core.reportReplyRequest
+import app.nectarlink.core.reportReplySent
+import app.nectarlink.core.reportThread
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.net.HttpURLConnection
@@ -43,6 +52,8 @@ import java.net.URL
  */
 object Reports {
     private const val MAX_ANSWER = 16 * 1024
+    /** A report's answers on GitHub can be long. */
+    private const val MAX_THREAD = 1024 * 1024
 
     /** This phone, with the checks that explain most connection trouble. */
     fun phone(context: Context): ReportDevice {
@@ -98,7 +109,7 @@ object Reports {
     fun sendCrash(context: Context, card: CrashCard, devices: List<Device>): Boolean {
         reportPrepare(card.area, "", "", false, 15, phone(context), devices.map(::other))
         val outgoing = reportOutgoing(card.sig) ?: return false
-        return when (deliver(outgoing, follow = false)) {
+        return when (deliver(outgoing, follow = true)) {
             is ReportOutcome.Filed, ReportOutcome.Queued, ReportOutcome.Later -> true
             ReportOutcome.Limited, ReportOutcome.Failed -> false
         }
@@ -127,11 +138,23 @@ object Reports {
     fun followUp(context: Context) {
         dailyCount(context)
         reportPending()?.let { deliver(it) }
-        // Replies and closed reports: one GET per followed report, numbers only.
+        // Replies and closed reports: one GET per followed report, then the
+        // answers on one that has news, so the notification can say what.
+        val conversations = reportConversations()
         for (followed in reportFollowed()) {
             runCatching {
                 val (status, body) = request(followed.url, null)
-                reportIssueAnswer(followed.rid, status, body)?.let { ReportNotices.show(context, it) }
+                val notice = reportIssueAnswer(followed.rid, status, body) ?: return@runCatching
+                val conversation = conversations.firstOrNull { it.rid == followed.rid }
+                val answers = conversation?.commentsUrl?.let { url ->
+                    runCatching { request(url, null, null, MAX_THREAD) }.getOrNull()
+                }
+                // A reply the person sent from another device of theirs isn't news.
+                val ownReply = answers != null && notice is app.nectarlink.core.ReportNotice.Replied &&
+                    reportThread(followed.rid, answers.first, answers.second)?.lastOrNull()?.who == "you"
+                if (ownReply) return@runCatching
+                val latest = answers?.let { (s, b) -> reportLatestAnswer(followed.rid, s, b) }
+                ReportNotices.show(context, notice, followed.rid, latest, conversation?.canReply == true)
             }
         }
         for (rid in reportQueued()) {
@@ -185,7 +208,7 @@ object Reports {
     private fun request(url: String, outgoing: OutgoingReport?): Pair<UShort, ByteArray> =
         request(url, outgoing?.body, outgoing?.proof)
 
-    private fun request(url: String, body: String?, proof: String?): Pair<UShort, ByteArray> {
+    private fun request(url: String, body: String?, proof: String?, maxBytes: Int = MAX_ANSWER): Pair<UShort, ByteArray> {
         if (!url.startsWith("https://")) throw IOException("only https")
         val connection = (URL(url).openConnection() as HttpURLConnection).apply {
             connectTimeout = 15_000
@@ -209,7 +232,7 @@ object Reports {
             val body = stream?.use { input ->
                 val out = ByteArrayOutputStream()
                 val buffer = ByteArray(4096)
-                while (out.size() <= MAX_ANSWER) {
+                while (out.size() <= maxBytes) {
                     val read = input.read(buffer)
                     if (read < 0) break
                     out.write(buffer, 0, read)
@@ -220,6 +243,33 @@ object Reports {
         } finally {
             connection.disconnect()
         }
+    }
+
+    /** The reports this phone sent and still follows, newest first. */
+    fun conversations(): List<ReportConversation> = reportConversations()
+
+    /** The answers on [conversation], or null when GitHub couldn't be reached. Blocking. */
+    fun thread(conversation: ReportConversation): List<ReportAnswer>? {
+        val url = conversation.commentsUrl ?: return null
+        return try {
+            val (status, body) = request(url, null, null, MAX_THREAD)
+            reportThread(conversation.rid, status, body)
+        } catch (_: IOException) {
+            null
+        }
+    }
+
+    /** Sends the person's reply to report [rid]. Blocking: proving it takes about a second. */
+    fun reply(rid: String, text: String): ReportReplyOutcome {
+        val request = reportReplyRequest(rid, text) ?: return ReportReplyOutcome.REFUSED
+        val status = try {
+            request(request.url, request.body, request.proof).first
+        } catch (_: IOException) {
+            0.toUShort()
+        }
+        val outcome = reportReplyAnswer(status)
+        if (outcome == ReportReplyOutcome.SENT) reportReplySent(rid)
+        return outcome
     }
 
     private fun pair(name: String, value: String) = ReportPair(name, value)

@@ -4,6 +4,8 @@
 //
 //   POST /v1/report        -> 200 { issue, url } or 202 { queued: true }
 //   GET  /v1/report/<rid>  -> 200 { issue, url }, 202 while queued, 404
+//   POST /v1/report/<rid>/reply -> 200 { comment }: the reporter answers on
+//        the issue from the app, with the key whose hash came with the report
 //   POST /v1/ping          -> 204: the daily count (usage.ts)
 //   GET  /stats?key=...    -> the owner's page of daily totals
 //
@@ -12,7 +14,18 @@
 
 import { AppClient, type GitHub } from "./github";
 import { hex, sha256, verify } from "./pow";
-import { MAX_REQUEST, type Report, issueBody, labels, merge, parse, tally, title } from "./report";
+import {
+  MAX_REPLY,
+  MAX_REQUEST,
+  type Report,
+  issueBody,
+  labels,
+  merge,
+  parse,
+  replyBody,
+  tally,
+  title,
+} from "./report";
 import { isStatsKey, receivePing, statsPage, sweepUsage } from "./usage";
 
 export interface Env {
@@ -35,6 +48,8 @@ const DAY = 86_400;
 const QUEUE_MAX = 500;
 const QUEUE_DAYS = 7;
 const KEEP_DAYS = 90;
+/** Replies a day on one report. */
+const REPLIES_DAILY = 10;
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -65,6 +80,11 @@ export async function handle(request: Request, env: Env, github: GitHub, now: nu
     if (request.method !== "GET") return reply(405, { error: "method" });
     if (!(await isStatsKey(env, url.searchParams.get("key")))) return reply(404, { error: "not found" });
     return statsPage(env, now);
+  }
+  const answer = url.pathname.match(/^\/v1\/report\/([0-9a-z]{16,32})\/reply$/);
+  if (answer) {
+    if (request.method !== "POST") return reply(405, { error: "method" });
+    return receiveReply(answer[1], request, env, github, now);
   }
   const status = url.pathname.match(/^\/v1\/report\/([0-9a-z]{16,32})$/);
   if (status) {
@@ -151,7 +171,7 @@ async function file(
         await env.DB.prepare("DELETE FROM sigs WHERE sig = ?1").bind(sig.sig).run();
       } else if (report.kind === "crash") {
         await count(sig, report, env, github, now);
-        await remember(env, report.rid, bodyHash, sig.issue, now);
+        await remember(env, report.rid, bodyHash, sig.issue, now, report.reply_hash);
         return sig.issue;
       }
     }
@@ -165,12 +185,9 @@ async function file(
       env.DB.prepare(
         "INSERT INTO days (day, issues) VALUES (?1, 1) ON CONFLICT (day) DO UPDATE SET issues = issues + 1",
       ).bind(day),
-      env.DB.prepare("INSERT OR REPLACE INTO reports (rid, body_hash, issue, at) VALUES (?1, ?2, ?3, ?4)").bind(
-        report.rid,
-        bodyHash,
-        issue,
-        now,
-      ),
+      env.DB.prepare(
+        "INSERT OR REPLACE INTO reports (rid, body_hash, issue, at, reply_hash) VALUES (?1, ?2, ?3, ?4, ?5)",
+      ).bind(report.rid, bodyHash, issue, now, report.reply_hash ?? null),
       ...(report.sig
         ? [
             env.DB.prepare(
@@ -211,10 +228,69 @@ async function count(sig: SigRow, report: Report, env: Env, github: GitHub, now:
     .run();
 }
 
-async function remember(env: Env, rid: string, bodyHash: string, issue: number, now: number): Promise<void> {
-  await env.DB.prepare("INSERT OR REPLACE INTO reports (rid, body_hash, issue, at) VALUES (?1, ?2, ?3, ?4)")
-    .bind(rid, bodyHash, issue, now)
+async function remember(
+  env: Env,
+  rid: string,
+  bodyHash: string,
+  issue: number,
+  now: number,
+  replyHash?: string,
+): Promise<void> {
+  await env.DB.prepare(
+    "INSERT OR REPLACE INTO reports (rid, body_hash, issue, at, reply_hash) VALUES (?1, ?2, ?3, ?4, ?5)",
+  )
+    .bind(rid, bodyHash, issue, now, replyHash ?? null)
     .run();
+}
+
+/**
+ * A reply from the app on the report's issue. The proof of work covers the
+ * body as for a report; the key must hash to what came with the report.
+ * Nothing about the sender is kept, only how many replies the report had
+ * today.
+ */
+async function receiveReply(rid: string, request: Request, env: Env, github: GitHub, now: number): Promise<Response> {
+  if (!request.headers.get("content-type")?.startsWith("application/json")) return reply(415, { error: "json" });
+  if (Number(request.headers.get("content-length") ?? "0") > 16 * 1024) return reply(413, { error: "size" });
+  const raw = new Uint8Array(await request.arrayBuffer());
+  if (raw.length > 16 * 1024) return reply(413, { error: "size" });
+  if (!(await verify(request.headers.get("x-proof"), hex(await sha256(raw)), Number(env.POW_BITS), now))) {
+    return reply(403, { error: "proof" });
+  }
+  let json: { key?: unknown; text?: unknown };
+  try {
+    json = JSON.parse(new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(raw)) as typeof json;
+  } catch {
+    return reply(400, { error: "json" });
+  }
+  if (typeof json.key !== "string" || !/^[0-9a-f]{64}$/.test(json.key)) return reply(400, { error: "key" });
+  if (typeof json.text !== "string") return reply(400, { error: "text" });
+  const text = json.text.trim();
+  if (text.length === 0 || Array.from(text).length > MAX_REPLY) return reply(400, { error: "text" });
+
+  const row = await env.DB.prepare("SELECT issue, reply_hash FROM reports WHERE rid = ?1")
+    .bind(rid)
+    .first<{ issue: number; reply_hash: string | null }>();
+  // The same answer for an unknown report and a wrong key: no telling which reports exist.
+  if (!row?.reply_hash || row.reply_hash !== hex(await sha256(json.key))) return reply(404, { error: "unknown" });
+
+  const day = dayOf(now);
+  const today = await env.DB.prepare("SELECT count FROM replies WHERE rid = ?1 AND day = ?2")
+    .bind(rid, day)
+    .first<{ count: number }>();
+  if ((today?.count ?? 0) >= REPLIES_DAILY) return reply(429, { error: "limit" });
+  try {
+    const comment = await github.createComment(row.issue, replyBody(rid, text));
+    await env.DB.prepare(
+      "INSERT INTO replies (rid, day, count) VALUES (?1, ?2, 1) ON CONFLICT (rid, day) DO UPDATE SET count = count + 1",
+    )
+      .bind(rid, day)
+      .run();
+    return reply(200, { comment });
+  } catch (e) {
+    console.error("reply failed", e instanceof Error ? e.message : "unknown");
+    return reply(503, { error: "busy" });
+  }
 }
 
 async function lookup(rid: string, env: Env): Promise<Response> {
@@ -255,6 +331,7 @@ export async function sweep(env: Env, github: GitHub, now: number): Promise<void
     env.DB.prepare("DELETE FROM sigs WHERE at < ?1").bind(now - KEEP_DAYS * DAY),
     env.DB.prepare("DELETE FROM salts WHERE day <> ?1").bind(today),
     env.DB.prepare("DELETE FROM senders WHERE day <> ?1").bind(today),
+    env.DB.prepare("DELETE FROM replies WHERE day <> ?1").bind(today),
     env.DB.prepare("DELETE FROM days WHERE day < ?1").bind(dayOf(now - 30 * DAY)),
     ...sweepUsage(env, now),
   ]);

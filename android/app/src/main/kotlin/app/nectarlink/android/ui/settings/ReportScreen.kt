@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -109,6 +110,7 @@ fun ReportScreen(
     onAsk: suspend (id: String, log: Boolean, justNow: Boolean) -> ReportPeer?,
     reportLogs: Flow<String>,
     onBack: () -> Unit,
+    onYourReports: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -174,8 +176,13 @@ fun ReportScreen(
             TextButton(
                 onClick = { if (step == 1) step = 0 else onBack() },
                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                modifier = Modifier.weight(1f, fill = false),
             ) {
                 Text(stringResource(R.string.report_back))
+            }
+            Spacer(Modifier.weight(1f))
+            if (step == 0) {
+                TextButton(onClick = onYourReports) { Text(stringResource(R.string.your_reports_title)) }
             }
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {

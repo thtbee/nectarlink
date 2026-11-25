@@ -1608,7 +1608,6 @@
     <string name="channel_report_replies">Respostas aos seus relatórios</string>
     <string name="report_reply_title">Há uma resposta ao seu relatório</string>
     <string name="report_closed_title">Seu relatório foi fechado</string>
-    <string name="report_notice_text">Relatório #%1$d. Toque para ler no GitHub.</string>
     <string name="crash_card_sent">Obrigado, o relatório de falha foi enviado</string>
     <string name="crash_card_title">O NectarLink fechou inesperadamente</string>
     <string name="crash_card_failed">Não foi possível enviar o relatório de falha. Use Ver antes para enviar de outro jeito.</string>
@@ -1655,6 +1654,31 @@
     <string name="deck_default_restart">Reiniciar</string>
     <string name="deck_default_shut_down">Desligar</string>
     <string name="deck_default_macro">Macro</string>
+    <string name="report_answer_line">%1$s: %2$s</string>
+    <string name="report_notice_open_text">Relatório #%1$d. Toque para ler.</string>
+    <string name="report_reply_action">Responder</string>
+    <string name="report_reply_hint">Sua resposta</string>
+    <string name="report_who_you">Você</string>
+    <string name="report_who_other">Alguém com o mesmo problema</string>
+    <string name="report_reply_not_sent">Sua resposta não foi enviada</string>
+    <string name="report_reply_limited">Esse é o máximo de respostas por hoje. Tente amanhã.</string>
+    <string name="report_reply_refused">Este relatório não aceita mais respostas.</string>
+    <string name="report_reply_later">Não foi possível enviar. Verifique a conexão e tente de novo.</string>
+    <string name="your_reports_title">Seus relatórios</string>
+    <string name="your_reports_check">Verificar respostas</string>
+    <string name="your_reports_intro">Relatórios enviados pelo NectarLink ficam aqui por 30 dias, com as respostas. Você pode responder daqui sem uma conta no GitHub. As respostas são públicas no GitHub, como o relatório.</string>
+    <string name="your_reports_none">Nenhum relatório enviado deste celular ainda.</string>
+    <string name="your_reports_waiting">Aguardando registro</string>
+    <string name="your_reports_closed">Relatório #%1$d · fechado</string>
+    <string name="your_reports_number">Relatório #%1$d</string>
+    <string name="your_reports_sent">Enviado em %1$s</string>
+    <string name="your_reports_on_github">No GitHub</string>
+    <string name="your_reports_load_failed">Não foi possível carregar as respostas. Verifique a conexão e tente de novo.</string>
+    <string name="your_reports_no_answers">Ainda sem respostas. Você receberá uma notificação quando houver.</string>
+    <string name="your_reports_reply_on_github">Este relatório foi enviado antes das respostas pelo NectarLink, então responda no GitHub.</string>
+    <string name="your_reports_reply_sent">Enviado. Já está no relatório.</string>
+    <string name="your_reports_sending">Enviando</string>
+    <string name="your_reports_send">Enviar</string>
 </resources>
 
 

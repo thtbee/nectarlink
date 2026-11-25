@@ -1608,7 +1608,6 @@
     <string name="channel_report_replies">Antworten auf deine Berichte</string>
     <string name="report_reply_title">Es gibt eine Antwort auf deinen Bericht</string>
     <string name="report_closed_title">Dein Bericht wurde geschlossen</string>
-    <string name="report_notice_text">Bericht #%1$d. Tippe, um ihn auf GitHub zu lesen.</string>
     <string name="crash_card_sent">Danke, der Absturzbericht ist gesendet</string>
     <string name="crash_card_title">NectarLink wurde unerwartet beendet</string>
     <string name="crash_card_failed">Der Absturzbericht konnte nicht gesendet werden. Nutze „Erst ansehen“, um ihn anders zu senden.</string>
@@ -1655,4 +1654,29 @@
     <string name="deck_default_restart">Neu starten</string>
     <string name="deck_default_shut_down">Herunterfahren</string>
     <string name="deck_default_macro">Makro</string>
+    <string name="report_answer_line">%1$s: %2$s</string>
+    <string name="report_notice_open_text">Bericht #%1$d. Tippe, um ihn zu lesen.</string>
+    <string name="report_reply_action">Antworten</string>
+    <string name="report_reply_hint">Deine Antwort</string>
+    <string name="report_who_you">Du</string>
+    <string name="report_who_other">Jemand mit demselben Problem</string>
+    <string name="report_reply_not_sent">Deine Antwort wurde nicht gesendet</string>
+    <string name="report_reply_limited">Das sind die meisten Antworten für heute. Versuche es morgen wieder.</string>
+    <string name="report_reply_refused">Dieser Bericht nimmt keine Antworten mehr an.</string>
+    <string name="report_reply_later">Es konnte nicht gesendet werden. Prüfe die Verbindung und versuche es erneut.</string>
+    <string name="your_reports_title">Deine Berichte</string>
+    <string name="your_reports_check">Nach Antworten sehen</string>
+    <string name="your_reports_intro">Aus NectarLink gesendete Berichte bleiben 30 Tage hier, mit den Antworten darauf. Du kannst hier ohne GitHub-Konto antworten. Antworten sind auf GitHub öffentlich, wie der Bericht.</string>
+    <string name="your_reports_none">Von diesem Telefon wurden noch keine Berichte gesendet.</string>
+    <string name="your_reports_waiting">Wartet auf Ablage</string>
+    <string name="your_reports_closed">Bericht #%1$d · geschlossen</string>
+    <string name="your_reports_number">Bericht #%1$d</string>
+    <string name="your_reports_sent">Gesendet am %1$s</string>
+    <string name="your_reports_on_github">Auf GitHub</string>
+    <string name="your_reports_load_failed">Die Antworten konnten nicht geladen werden. Prüfe die Verbindung und versuche es erneut.</string>
+    <string name="your_reports_no_answers">Noch keine Antworten. Du bekommst eine Benachrichtigung, sobald es eine gibt.</string>
+    <string name="your_reports_reply_on_github">Dieser Bericht wurde vor den Antworten aus NectarLink gesendet, antworte also auf GitHub.</string>
+    <string name="your_reports_reply_sent">Gesendet. Es steht jetzt beim Bericht.</string>
+    <string name="your_reports_sending">Wird gesendet</string>
+    <string name="your_reports_send">Senden</string>
 </resources>

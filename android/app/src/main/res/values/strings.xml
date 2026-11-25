@@ -1609,7 +1609,6 @@
     <string name="channel_report_replies">Replies to your reports</string>
     <string name="report_reply_title">There\'s a reply to your report</string>
     <string name="report_closed_title">Your report was closed</string>
-    <string name="report_notice_text">Report #%1$d. Tap to read it on GitHub.</string>
     <string name="crash_card_sent">Thanks, the crash report is sent</string>
     <string name="crash_card_title">NectarLink closed unexpectedly</string>
     <string name="crash_card_failed">The crash report couldn\'t be sent. Use Look first to send it another way.</string>
@@ -1656,6 +1655,31 @@
     <string name="deck_default_restart">Restart</string>
     <string name="deck_default_shut_down">Shut down</string>
     <string name="deck_default_macro">Macro</string>
+    <string name="report_answer_line">%1$s: %2$s</string>
+    <string name="report_notice_open_text">Report #%1$d. Tap to read it.</string>
+    <string name="report_reply_action">Reply</string>
+    <string name="report_reply_hint">Your reply</string>
+    <string name="report_who_you">You</string>
+    <string name="report_who_other">Someone with the same problem</string>
+    <string name="report_reply_not_sent">Your reply wasn\'t sent</string>
+    <string name="report_reply_limited">That\'s the most replies for today. Try again tomorrow.</string>
+    <string name="report_reply_refused">This report can\'t take replies any more.</string>
+    <string name="report_reply_later">It couldn\'t be sent. Check the connection and try again.</string>
+    <string name="your_reports_title">Your reports</string>
+    <string name="your_reports_check">Check for answers</string>
+    <string name="your_reports_intro">Reports sent from NectarLink stay here for 30 days, with the answers to them. You can reply from here without a GitHub account. Replies are public on GitHub, like the report.</string>
+    <string name="your_reports_none">No reports sent from this phone yet.</string>
+    <string name="your_reports_waiting">Waiting to be filed</string>
+    <string name="your_reports_closed">Report #%1$d · closed</string>
+    <string name="your_reports_number">Report #%1$d</string>
+    <string name="your_reports_sent">Sent %1$s</string>
+    <string name="your_reports_on_github">On GitHub</string>
+    <string name="your_reports_load_failed">The answers couldn\'t be loaded. Check the connection and try again.</string>
+    <string name="your_reports_no_answers">No answers yet. You\'ll get a notification when there is one.</string>
+    <string name="your_reports_reply_on_github">This report was sent before replies from NectarLink, so answer it on GitHub.</string>
+    <string name="your_reports_reply_sent">Sent. It\'s on the report now.</string>
+    <string name="your_reports_sending">Sending</string>
+    <string name="your_reports_send">Send</string>
 </resources>
 
 

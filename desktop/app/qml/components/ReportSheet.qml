@@ -175,6 +175,11 @@ Sheet {
                 spacing: 10
                 Button {
                     variant: "text"
+                    text: qsTr("Your reports")
+                    onClicked: Report.openConversations("")
+                }
+                Button {
+                    variant: "text"
                     text: qsTr("Check the connection first")
                     onClicked: {
                         sheet.close()

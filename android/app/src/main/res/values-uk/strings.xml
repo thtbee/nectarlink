@@ -1623,7 +1623,6 @@
     <string name="channel_report_replies">Відповіді на ваші звіти</string>
     <string name="report_reply_title">На ваш звіт відповіли</string>
     <string name="report_closed_title">Ваш звіт закрито</string>
-    <string name="report_notice_text">Звіт №%1$d. Натисніть, щоб прочитати на GitHub.</string>
     <string name="crash_card_sent">Дякуємо, звіт про збій надіслано</string>
     <string name="crash_card_title">NectarLink несподівано закрився</string>
     <string name="crash_card_failed">Не вдалося надіслати звіт про збій. Натисніть «Спершу переглянути», щоб надіслати його іншим способом.</string>
@@ -1670,6 +1669,31 @@
     <string name="deck_default_restart">Перезавантаження</string>
     <string name="deck_default_shut_down">Вимкнення</string>
     <string name="deck_default_macro">Макрос</string>
+    <string name="report_answer_line">%1$s: %2$s</string>
+    <string name="report_notice_open_text">Звіт #%1$d. Торкніться, щоб прочитати.</string>
+    <string name="report_reply_action">Відповісти</string>
+    <string name="report_reply_hint">Ваша відповідь</string>
+    <string name="report_who_you">Ви</string>
+    <string name="report_who_other">Хтось із тією ж проблемою</string>
+    <string name="report_reply_not_sent">Відповідь не надіслано</string>
+    <string name="report_reply_limited">Це межа відповідей на сьогодні. Спробуйте завтра.</string>
+    <string name="report_reply_refused">Цей звіт більше не приймає відповіді.</string>
+    <string name="report_reply_later">Не вдалося надіслати. Перевірте з\'єднання й спробуйте знову.</string>
+    <string name="your_reports_title">Ваші звіти</string>
+    <string name="your_reports_check">Перевірити відповіді</string>
+    <string name="your_reports_intro">Звіти, надіслані з NectarLink, лишаються тут 30 днів разом із відповідями. Відповідати можна звідси без облікового запису GitHub. Відповіді публічні на GitHub, як і звіт.</string>
+    <string name="your_reports_none">З цього телефона ще не надсилали звітів.</string>
+    <string name="your_reports_waiting">Чекає на реєстрацію</string>
+    <string name="your_reports_closed">Звіт #%1$d · закрито</string>
+    <string name="your_reports_number">Звіт #%1$d</string>
+    <string name="your_reports_sent">Надіслано %1$s</string>
+    <string name="your_reports_on_github">На GitHub</string>
+    <string name="your_reports_load_failed">Не вдалося завантажити відповіді. Перевірте з\'єднання й спробуйте знову.</string>
+    <string name="your_reports_no_answers">Відповідей поки немає. Коли з\'явиться відповідь, прийде сповіщення.</string>
+    <string name="your_reports_reply_on_github">Цей звіт надіслано до появи відповідей із NectarLink, тож відповідайте на GitHub.</string>
+    <string name="your_reports_reply_sent">Надіслано. Відповідь тепер у звіті.</string>
+    <string name="your_reports_sending">Надсилання</string>
+    <string name="your_reports_send">Надіслати</string>
 </resources>
 
 

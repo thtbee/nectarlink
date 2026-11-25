@@ -50,6 +50,7 @@ const QML: &[&str] = &[
     "qml/components/QrCode.qml",
     "qml/components/RelaySheet.qml",
     "qml/components/ReportSheet.qml",
+    "qml/components/YourReportsSheet.qml",
     "qml/components/CrashCard.qml",
     "qml/components/DeviceMenu.qml",
     "qml/components/RoundedImage.qml",

@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { GitHubError, type GitHub, appJwt, pkcs8 } from "../src/github";
 import { handle, sweep } from "../src/index";
 import { hex, leadingZeros, sha256, solve, verify } from "../src/pow";
-import { issueBody, merge, parse, title, titleText } from "../src/report";
+import { issueBody, merge, parse, replyBody, title, titleText } from "../src/report";
 
 const NOW = 1_795_000_000;
 const BITS = Number(env.POW_BITS);
@@ -77,7 +77,7 @@ async function get(github: GitHub, rid: string): Promise<Response> {
 }
 
 beforeEach(async () => {
-  for (const t of ["reports", "sigs", "queue", "salts", "senders", "days"]) {
+  for (const t of ["reports", "sigs", "queue", "salts", "senders", "days", "replies"]) {
     await env.DB.prepare(`DELETE FROM ${t}`).run();
   }
 });
@@ -331,5 +331,105 @@ describe("the GitHub app key", () => {
       new TextEncoder().encode(`${head}.${claims}`),
     );
     expect(ok).toBe(true);
+  });
+});
+
+const KEY = "a".repeat(64);
+
+async function sendReply(
+  github: GitHub,
+  rid: string,
+  value: unknown,
+  opts: { proof?: string | null; now?: number } = {},
+): Promise<Response> {
+  const text = JSON.stringify(value);
+  const now = opts.now ?? NOW;
+  const proof =
+    opts.proof === undefined ? await solve(hex(await sha256(text)), BITS, now) : opts.proof;
+  const headers: Record<string, string> = { "content-type": "application/json" };
+  if (proof !== null) headers["x-proof"] = proof;
+  return handle(
+    new Request(`https://r.example/v1/report/${rid}/reply`, { method: "POST", headers, body: text }),
+    env,
+    github,
+    now,
+  );
+}
+
+describe("replies from the app", () => {
+  it("posts the reporter's answer on the issue with the key that came with the report", async () => {
+    const github = new FakeGitHub();
+    const value = report({ reply_hash: hex(await sha256(KEY)) });
+    expect((await post(github, value)).status).toBe(200);
+    const res = await sendReply(github, value.rid as string, { key: KEY, text: "Yes, every time I lock the phone." });
+    expect(res.status).toBe(200);
+    const [comment] = Array.from(github.comments.values());
+    expect(comment.issue).toBe(100);
+    expect(comment.body).toContain("> Yes, every time I lock the phone.");
+    expect(comment.body).toContain(`<!-- nectarlink-reply rid=${value.rid} -->`);
+  });
+
+  it("refuses a wrong key, an unknown report, or one sent without a key, all alike", async () => {
+    const github = new FakeGitHub();
+    const withKey = report({ reply_hash: hex(await sha256(KEY)) });
+    const withoutKey = report();
+    await post(github, withKey);
+    await post(github, withoutKey);
+    for (const [rid, key] of [
+      [withKey.rid, "b".repeat(64)],
+      ["unknownrid000000000", KEY],
+      [withoutKey.rid, KEY],
+    ]) {
+      expect((await sendReply(github, rid as string, { key, text: "hi" })).status).toBe(404);
+    }
+    expect(github.comments.size).toBe(0);
+  });
+
+  it("checks the proof, the key's shape and the text before anything else", async () => {
+    const github = new FakeGitHub();
+    const value = report({ reply_hash: hex(await sha256(KEY)) });
+    await post(github, value);
+    const rid = value.rid as string;
+    expect((await sendReply(github, rid, { key: KEY, text: "hi" }, { proof: null })).status).toBe(403);
+    expect((await sendReply(github, rid, { key: "short", text: "hi" })).status).toBe(400);
+    expect((await sendReply(github, rid, { key: KEY, text: "   " })).status).toBe(400);
+    expect((await sendReply(github, rid, { key: KEY, text: "x".repeat(2001) })).status).toBe(400);
+    expect(github.comments.size).toBe(0);
+  });
+
+  it("takes ten replies a day on one report", async () => {
+    const github = new FakeGitHub();
+    const value = report({ reply_hash: hex(await sha256(KEY)) });
+    await post(github, value);
+    for (let i = 0; i < 10; i++) {
+      expect((await sendReply(github, value.rid as string, { key: KEY, text: `reply ${i}` })).status).toBe(200);
+    }
+    expect((await sendReply(github, value.rid as string, { key: KEY, text: "one more" })).status).toBe(429);
+  });
+
+  it("works on a crash counted on an issue already open for it", async () => {
+    const github = new FakeGitHub();
+    const first = report({ kind: "crash", sig: "abcdef012345" });
+    await post(github, first);
+    const again = report({ kind: "crash", sig: "abcdef012345", reply_hash: hex(await sha256(KEY)) });
+    expect((await post(github, again)).status).toBe(200);
+    expect((await sendReply(github, again.rid as string, { key: KEY, text: "It happens at start." })).status).toBe(
+      200,
+    );
+    const replyComment = Array.from(github.comments.values()).find((c) => c.body.includes("nectarlink-reply"));
+    expect(replyComment?.issue).toBe(100);
+  });
+
+  it("rejects a malformed reply_hash on the report", async () => {
+    const github = new FakeGitHub();
+    expect((await post(github, report({ reply_hash: "nothex" }))).status).toBe(400);
+  });
+
+  it("quotes the reply so it can't mention anyone or link issues", () => {
+    const body = replyBody("r1", "@thtbee see #12\n\n<b>bold</b>");
+    expect(body).not.toMatch(/@thtbee/);
+    expect(body).not.toMatch(/#12/);
+    expect(body).toContain("&lt;b>");
+    expect(body.split("\n").slice(2, 5)).toEqual(["> @​thtbee see #​12", ">", "> &lt;b>bold&lt;/b>"]);
   });
 });

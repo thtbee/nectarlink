@@ -54,10 +54,20 @@ pub mod qobject {
         #[qproperty(QString, crash_state, cxx_name = "crashState")]
         /// The version that fixes the card's crash, when a newer one does.
         #[qproperty(QString, crash_fixed_in, cxx_name = "crashFixedIn")]
+        /// The reports this PC sent and still follows, with the answers on
+        /// them, as JSON: `[{ rid, issue, at, closed, canReply, loaded,
+        /// answers: [{ who, login, text, at }] }]`, newest first.
+        #[qproperty(QString, conversations)]
+        #[qproperty(bool, conversations_busy, cxx_name = "conversationsBusy")]
+        /// The last reply: "", "sending", "sent", "limited", "later", "refused".
+        #[qproperty(QString, reply_state, cxx_name = "replyState")]
+        /// The report to show first in Your reports ("" for none).
+        #[qproperty(QString, focus_rid, cxx_name = "focusRid")]
         type Report = super::ReportRust;
     }
 
     impl cxx_qt::Threading for Report {}
+    impl cxx_qt::Initialize for Report {}
 
     unsafe extern "RustQt" {
         /// Opens Report a problem.
@@ -65,6 +75,24 @@ pub mod qobject {
         fn open(self: Pin<&mut Report>);
         #[qsignal]
         fn requested(self: Pin<&mut Report>);
+
+        /// Opens Your reports, at `rid` when it's set.
+        #[qinvokable]
+        #[cxx_name = "openConversations"]
+        fn open_conversations(self: Pin<&mut Report>, rid: &QString);
+        #[qsignal]
+        #[cxx_name = "conversationsRequested"]
+        fn conversations_requested(self: Pin<&mut Report>);
+
+        /// Reads the answers on the followed reports from GitHub.
+        #[qinvokable]
+        #[cxx_name = "loadConversations"]
+        fn load_conversations(self: Pin<&mut Report>);
+
+        /// Sends the person's reply to report `rid` through the report service.
+        #[qinvokable]
+        #[cxx_name = "sendReply"]
+        fn send_reply(self: Pin<&mut Report>, rid: &QString, text: &QString);
 
         /// The area a recent crash or failure points to: an `Area` id.
         #[qinvokable]
@@ -140,6 +168,29 @@ pub struct ReportRust {
     crash: QString,
     crash_state: QString,
     crash_fixed_in: QString,
+    conversations: QString,
+    conversations_busy: bool,
+    reply_state: QString,
+    focus_rid: QString,
+}
+
+impl cxx_qt::Initialize for qobject::Report {
+    fn initialize(self: Pin<&mut Self>) {
+        // For a notification about a report, which opens Your reports.
+        *OBJECT.lock().unwrap_or_else(|e| e.into_inner()) = Some(self.qt_thread());
+    }
+}
+
+/// The Report object, for opening Your reports from a notification.
+static OBJECT: Mutex<Option<cxx_qt::CxxQtThread<qobject::Report>>> = Mutex::new(None);
+
+/// Opens Your reports at `rid` (a notification about it was clicked).
+pub fn show_conversations(rid: &str) {
+    let rid = rid.to_owned();
+    if let Some(qt) = OBJECT.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
+        let _ = qt.queue(move |object| object.open_conversations(&QString::from(&rid)));
+    }
+    crate::bridge::app::request_activation();
 }
 
 /// The crash on the crash card.
@@ -236,6 +287,133 @@ impl qobject::Report {
 }
 
 impl qobject::Report {
+    pub fn open_conversations(mut self: Pin<&mut Self>, rid: &QString) {
+        self.as_mut().set_focus_rid(rid.clone());
+        self.as_mut().set_reply_state(QString::default());
+        self.as_mut().conversations_requested();
+        self.load_conversations();
+    }
+
+    pub fn load_conversations(mut self: Pin<&mut Self>) {
+        if *self.conversations_busy() {
+            return;
+        }
+        // What's known without the network first, then the answers.
+        let known = conversations_json(&send::sent(&diag_dir(), now()), &[]);
+        self.as_mut().set_conversations(QString::from(&known));
+        self.as_mut().set_conversations_busy(true);
+        let qt = self.qt_thread();
+        let spawned = std::thread::Builder::new().name("report-replies".into()).spawn(move || {
+            let followed = send::sent(&diag_dir(), now());
+            let threads: Vec<(String, Option<Vec<send::ThreadEntry>>)> = followed
+                .iter()
+                .filter_map(|s| s.issue.map(|issue| (s.rid.clone(), issue)))
+                .map(|(rid, issue)| {
+                    let thread = crate::win::http::get_status(&send::comments_api_url(issue), 1024 * 1024)
+                        .ok()
+                        .and_then(|(status, body)| send::read_thread(&rid, status, &body));
+                    (rid, thread)
+                })
+                .collect();
+            let json = conversations_json(&followed, &threads);
+            let _ = qt.queue(move |mut object| {
+                object.as_mut().set_conversations(QString::from(&json));
+                object.set_conversations_busy(false);
+            });
+        });
+        if spawned.is_err() {
+            self.set_conversations_busy(false);
+        }
+    }
+
+    pub fn send_reply(mut self: Pin<&mut Self>, rid: &QString, text: &QString) {
+        let (rid, text) = (String::from(rid), String::from(text));
+        self.as_mut().set_reply_state(QString::from("sending"));
+        let qt = self.qt_thread();
+        let spawned = std::thread::Builder::new().name("report-reply".into()).spawn(move || {
+            let state = reply(&rid, &text);
+            let _ = qt.queue(move |mut object| {
+                object.as_mut().set_reply_state(QString::from(state));
+                if state == "sent" {
+                    object.load_conversations();
+                }
+            });
+        });
+        if spawned.is_err() {
+            self.set_reply_state(QString::from("later"));
+        }
+    }
+}
+
+/// Sends the person's reply to report `rid`; what happened, for the UI:
+/// "sent", "limited", "later" or "refused". Blocking.
+pub fn reply(rid: &str, text: &str) -> &'static str {
+    let dir = diag_dir();
+    let Some(sent) = send::sent(&dir, now()).into_iter().find(|s| s.rid == rid) else { return "refused" };
+    let Some(request) = send::reply_request(&sent, text, now()) else { return "refused" };
+    let answer = match crate::win::http::post_json(
+        &request.url,
+        &[("X-Proof", &request.proof)],
+        request.body.as_bytes(),
+        4096,
+    ) {
+        Ok((status, _)) => send::ReplyAnswer::read(status),
+        Err(e) => {
+            tracing::info!(error = e, "the reply couldn't be sent");
+            send::ReplyAnswer::Later
+        }
+    };
+    match answer {
+        send::ReplyAnswer::Sent => {
+            // Their own reply isn't news at the next check.
+            send::remember(&dir, Sent { comments: sent.comments + 1, ..sent }, now());
+            "sent"
+        }
+        send::ReplyAnswer::Limited => "limited",
+        send::ReplyAnswer::Later => "later",
+        send::ReplyAnswer::Refused => "refused",
+    }
+}
+
+/// Your reports as the sheet shows them, newest first; `threads` has the
+/// answers that could be read.
+fn conversations_json(followed: &[Sent], threads: &[(String, Option<Vec<send::ThreadEntry>>)]) -> String {
+    let list: Vec<serde_json::Value> = followed
+        .iter()
+        .rev()
+        .map(|s| {
+            let thread = threads.iter().find(|(rid, _)| *rid == s.rid).and_then(|(_, t)| t.as_ref());
+            let answers: Vec<serde_json::Value> = thread
+                .map(|entries| {
+                    entries
+                        .iter()
+                        .map(|e| {
+                            let (who, login) = match &e.who {
+                                send::Who::Team => ("team", ""),
+                                send::Who::You => ("you", ""),
+                                send::Who::OtherReporter => ("other", ""),
+                                send::Who::Someone(login) => ("someone", login.as_str()),
+                            };
+                            serde_json::json!({ "who": who, "login": login, "text": e.text, "at": e.at })
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
+            serde_json::json!({
+                "rid": s.rid,
+                "issue": s.issue.unwrap_or(0),
+                "at": s.at,
+                "closed": s.closed,
+                "canReply": s.can_reply(),
+                "loaded": thread.is_some(),
+                "answers": answers,
+            })
+        })
+        .collect();
+    serde_json::Value::Array(list).to_string()
+}
+
+impl qobject::Report {
     pub fn send(mut self: Pin<&mut Self>) {
         let Some(made) = LAST.lock().unwrap_or_else(|e| e.into_inner()).clone() else { return };
         self.as_mut().set_send_state(QString::from("sending"));
@@ -298,7 +476,7 @@ impl qobject::Report {
             let state = std::panic::catch_unwind(|| build(area, "", "", false, parts, false))
                 .ok()
                 .map(|made| Outgoing::new(&made, Kind::Crash, Some(&record.sig), now()))
-                .map_or("failed", |outgoing| match deliver(&outgoing, false) {
+                .map_or("failed", |outgoing| match deliver(&outgoing, true) {
                     Some(Answer::Filed { .. } | Answer::Queued) => "sent",
                     Some(Answer::Later) | None => {
                         send::keep_pending(&diag_dir(), &outgoing);
@@ -359,11 +537,7 @@ fn deliver(outgoing: &Outgoing, follow: bool) -> Option<Answer> {
     if !follow {
         return Some(answer);
     }
-    send::remember(
-        &diag_dir(),
-        Sent { rid: outgoing.rid.clone(), issue, at: outgoing.at, comments: 0, closed: false },
-        now(),
-    );
+    send::remember(&diag_dir(), Sent::from_outgoing(outgoing, issue), now());
     Some(answer)
 }
 
@@ -384,7 +558,17 @@ pub fn follow_up() {
         if let Ok((status, body)) = crate::win::http::get_status(&send::issue_api_url(issue), 64 * 1024)
             && let Some(notice) = send::check_issue(&dir, &followed.rid, status, &body, now())
         {
-            crate::report_requests::notice(notice);
+            let thread = crate::win::http::get_status(&send::comments_api_url(issue), 1024 * 1024)
+                .ok()
+                .and_then(|(status, body)| send::read_thread(&followed.rid, status, &body));
+            // A reply the person sent from another device of theirs isn't news to them.
+            if matches!(notice, send::Notice::Replied { .. })
+                && thread.as_ref().and_then(|t| t.last()).is_some_and(|e| e.who == send::Who::You)
+            {
+                continue;
+            }
+            let latest = thread.as_deref().and_then(send::latest_answer).cloned();
+            crate::report_requests::notice(notice, &followed.rid, latest, followed.can_reply());
         }
     }
     for queued in send::sent(&dir, now()).into_iter().filter(|s| s.issue.is_none()) {

@@ -1607,7 +1607,6 @@
     <string name="channel_report_replies">Raporlarına gelen yanıtlar</string>
     <string name="report_reply_title">Raporuna bir yanıt var</string>
     <string name="report_closed_title">Raporun kapatıldı</string>
-    <string name="report_notice_text">Rapor #%1$d. GitHub\'da okumak için dokun.</string>
     <string name="crash_card_sent">Teşekkürler, çökme raporu gönderildi</string>
     <string name="crash_card_title">NectarLink beklenmedik şekilde kapandı</string>
     <string name="crash_card_failed">Çökme raporu gönderilemedi. Başka bir yolla göndermek için Önce bak\'ı kullan.</string>
@@ -1654,6 +1653,31 @@
     <string name="deck_default_restart">Yeniden başlat</string>
     <string name="deck_default_shut_down">Kapat</string>
     <string name="deck_default_macro">Makro</string>
+    <string name="report_answer_line">%1$s: %2$s</string>
+    <string name="report_notice_open_text">Rapor #%1$d. Okumak için dokunun.</string>
+    <string name="report_reply_action">Yanıtla</string>
+    <string name="report_reply_hint">Yanıtınız</string>
+    <string name="report_who_you">Siz</string>
+    <string name="report_who_other">Aynı sorunu yaşayan biri</string>
+    <string name="report_reply_not_sent">Yanıtınız gönderilmedi</string>
+    <string name="report_reply_limited">Bugünkü yanıt sınırına ulaşıldı. Yarın yeniden deneyin.</string>
+    <string name="report_reply_refused">Bu rapor artık yanıt kabul etmiyor.</string>
+    <string name="report_reply_later">Gönderilemedi. Bağlantıyı denetleyip yeniden deneyin.</string>
+    <string name="your_reports_title">Raporlarınız</string>
+    <string name="your_reports_check">Yanıtları denetle</string>
+    <string name="your_reports_intro">NectarLink\'ten gönderilen raporlar, yanıtlarıyla birlikte 30 gün burada kalır. Buradan GitHub hesabı olmadan yanıt verebilirsiniz. Yanıtlar, rapor gibi GitHub\'da herkese açıktır.</string>
+    <string name="your_reports_none">Bu telefondan henüz rapor gönderilmedi.</string>
+    <string name="your_reports_waiting">Kaydedilmeyi bekliyor</string>
+    <string name="your_reports_closed">Rapor #%1$d · kapatıldı</string>
+    <string name="your_reports_number">Rapor #%1$d</string>
+    <string name="your_reports_sent">%1$s tarihinde gönderildi</string>
+    <string name="your_reports_on_github">GitHub\'da</string>
+    <string name="your_reports_load_failed">Yanıtlar yüklenemedi. Bağlantıyı denetleyip yeniden deneyin.</string>
+    <string name="your_reports_no_answers">Henüz yanıt yok. Bir yanıt geldiğinde bildirim alacaksınız.</string>
+    <string name="your_reports_reply_on_github">Bu rapor NectarLink\'ten yanıt verme özelliğinden önce gönderildi, bu yüzden GitHub\'da yanıtlayın.</string>
+    <string name="your_reports_reply_sent">Gönderildi. Artık raporda.</string>
+    <string name="your_reports_sending">Gönderiliyor</string>
+    <string name="your_reports_send">Gönder</string>
 </resources>
 
 

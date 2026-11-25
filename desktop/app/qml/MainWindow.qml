@@ -1516,6 +1516,13 @@ NativeWindow {
         source: active ? "qrc:/qt/qml/app/nectarlink/qml/components/ReportSheet.qml" : ""
         onLoaded: item.open()
     }
+    Loader {
+        id: yourReportsLoader
+        anchors.fill: parent
+        active: false
+        source: active ? "qrc:/qt/qml/app/nectarlink/qml/components/YourReportsSheet.qml" : ""
+        onLoaded: item.open()
+    }
     Connections {
         target: Report
         function onRequested() {
@@ -1523,6 +1530,14 @@ NativeWindow {
                 reportLoader.item.open()
             else
                 reportLoader.active = true
+        }
+        function onConversationsRequested() {
+            if (reportLoader.active && reportLoader.item && reportLoader.item.opened)
+                reportLoader.item.close()
+            if (yourReportsLoader.active && yourReportsLoader.item)
+                yourReportsLoader.item.open()
+            else
+                yourReportsLoader.active = true
         }
     }
     Connections {
