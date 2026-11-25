@@ -1164,6 +1164,7 @@ Item {
 
             Image {
                 id: stageImage
+                autoTransform: true
                 property real zoom: 1
                 property real panX: 0
                 property real panY: 0
@@ -1388,6 +1389,7 @@ Item {
                     }
                     Image {
                         id: coverImg
+                        autoTransform: true
                         anchors.fill: parent
                         asynchronous: true
                         fillMode: Image.PreserveAspectCrop
@@ -1508,6 +1510,7 @@ Item {
 
             Image {
                 id: thumbImg
+                autoTransform: true
                 anchors.fill: parent
                 anchors.margins: tile.selected ? 3 : 0
                 asynchronous: true
