@@ -10330,6 +10330,11 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
         <translation>外出先でもPCの通知をスマートフォンに送信します。</translation>
     </message>
     <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="2734"/>
+        <source>Send your automations&apos; alerts to the phone. Other apps&apos; alerts are Linux only for now.</source>
+        <translation>オートメーションの通知をスマホに送ります。ほかのアプリの通知は今のところ Linux のみです。</translation>
+    </message>
+    <message>
         <location filename="../qml/pages/SettingsPage.qml" line="2720"/>
         <source>Quiet hours</source>
         <translation>通知を止める時間</translation>

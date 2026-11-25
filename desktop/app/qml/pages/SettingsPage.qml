@@ -2729,7 +2729,10 @@ Item {
                                 width: notifPairRow.colWidth
                                 iconPath: Icons.bell
                                 title: qsTr("Forward PC notifications")
-                                description: qsTr("Send PC alerts to phone while away.")
+                                // Other apps' notifications are only read on Linux (#604).
+                                description: Qt.platform.os === "linux"
+                                    ? qsTr("Send PC alerts to phone while away.")
+                                    : qsTr("Send your automations' alerts to the phone. Other apps' alerts are Linux only for now.")
                                 Toggle {
                                     label: qsTr("Forward PC notifications")
                                     checked: Preferences.forwardPcNotificationsToPhone

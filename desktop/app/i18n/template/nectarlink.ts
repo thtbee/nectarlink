@@ -9989,6 +9989,11 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <location filename="../../qml/pages/SettingsPage.qml" line="2734"/>
+        <source>Send your automations&apos; alerts to the phone. Other apps&apos; alerts are Linux only for now.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <location filename="../../qml/pages/SettingsPage.qml" line="2720"/>
         <source>Quiet hours</source>
         <translation type="unfinished"></translation>

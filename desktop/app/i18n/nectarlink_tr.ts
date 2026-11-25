@@ -10378,6 +10378,11 @@ Neler gerekir
         <translation>Uzaktayken bilgisayar uyarılarını telefona gönder.</translation>
     </message>
     <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="2734"/>
+        <source>Send your automations&apos; alerts to the phone. Other apps&apos; alerts are Linux only for now.</source>
+        <translation>Otomasyonlarınızın uyarılarını telefona gönderin. Diğer uygulamaların uyarıları şimdilik yalnızca Linux&apos;ta.</translation>
+    </message>
+    <message>
         <location filename="../qml/pages/SettingsPage.qml" line="2720"/>
         <source>Quiet hours</source>
         <translation>Sessiz saatler</translation>

@@ -10387,6 +10387,11 @@ Voraussetzungen
         <translation>PC-Hinweise bei Abwesenheit an das Gerät senden.</translation>
     </message>
     <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="2734"/>
+        <source>Send your automations&apos; alerts to the phone. Other apps&apos; alerts are Linux only for now.</source>
+        <translation>Hinweise deiner Automationen an das Telefon senden. Hinweise anderer Apps vorerst nur unter Linux.</translation>
+    </message>
+    <message>
         <location filename="../qml/pages/SettingsPage.qml" line="2720"/>
         <source>Quiet hours</source>
         <translation>Ruhezeiten</translation>

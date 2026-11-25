@@ -10377,6 +10377,11 @@ What it needs
         <translation>离开时把电脑提醒发送到手机。</translation>
     </message>
     <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="2734"/>
+        <source>Send your automations&apos; alerts to the phone. Other apps&apos; alerts are Linux only for now.</source>
+        <translation>将你的自动化提醒发送到手机。其他应用的提醒目前仅支持 Linux。</translation>
+    </message>
+    <message>
         <location filename="../qml/pages/SettingsPage.qml" line="2720"/>
         <source>Quiet hours</source>
         <translation>免打扰时段</translation>

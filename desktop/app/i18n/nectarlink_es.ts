@@ -10352,6 +10352,11 @@ Qué necesitas
         <translation>Envía las alertas del PC al teléfono cuando estés fuera.</translation>
     </message>
     <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="2734"/>
+        <source>Send your automations&apos; alerts to the phone. Other apps&apos; alerts are Linux only for now.</source>
+        <translation>Envía al teléfono los avisos de tus automatizaciones. Los de otras apps, por ahora solo en Linux.</translation>
+    </message>
+    <message>
         <location filename="../qml/pages/SettingsPage.qml" line="2720"/>
         <source>Quiet hours</source>
         <translation>Horas de silencio</translation>

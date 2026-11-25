@@ -10357,6 +10357,11 @@ What it needs
         <translation>Отправлять оповещения ПК на телефон, пока вас нет.</translation>
     </message>
     <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="2734"/>
+        <source>Send your automations&apos; alerts to the phone. Other apps&apos; alerts are Linux only for now.</source>
+        <translation>Отправлять на телефон уведомления ваших автоматизаций. Уведомления других приложений пока только в Linux.</translation>
+    </message>
+    <message>
         <location filename="../qml/pages/SettingsPage.qml" line="2720"/>
         <source>Quiet hours</source>
         <translation>Тихие часы</translation>

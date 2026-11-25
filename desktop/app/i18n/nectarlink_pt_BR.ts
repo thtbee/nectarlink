@@ -10364,6 +10364,11 @@ O que precisa
         <translation>Enviar alertas do PC ao celular quando você estiver longe.</translation>
     </message>
     <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="2734"/>
+        <source>Send your automations&apos; alerts to the phone. Other apps&apos; alerts are Linux only for now.</source>
+        <translation>Envia os alertas das suas automações para o celular. Os de outros apps, por enquanto, só no Linux.</translation>
+    </message>
+    <message>
         <location filename="../qml/pages/SettingsPage.qml" line="2720"/>
         <source>Quiet hours</source>
         <translation>Horários de silêncio</translation>
