@@ -4130,7 +4130,7 @@
     <message>
         <location filename="rust_strings.h" line="309"/>
         <source>Local by default
-Your phone and PC talk directly over your local network or USB cable. When Connect over mobile data is on, encrypted traffic can use a relay when away from home. Automatic update checks contact GitHub Releases and can be turned off in Settings › Connection &amp; About › Check for updates.
+Your phone and PC talk directly over your local network or USB cable. When Connect over mobile data is on, encrypted traffic can use a relay when away from home. Automatic update checks contact GitHub Releases and can be turned off in Settings › Updates › Check for updates.
 
 End-to-end encrypted
 Every connection uses QUIC with TLS 1.3 and Ed25519 device certificates verified during pairing. Device keys are protected by Windows DPAPI and the Android Keystore.
@@ -4138,7 +4138,7 @@ Every connection uses QUIC with TLS 1.3 and Ed25519 device certificates verified
 Per-device sharing controls
 Sensitive capabilities such as Share PC folders, Remote input, and Reverse PC screen mirroring are turned off by default for each paired device until you turn them on.</source>
         <translation>Standardmäßig lokal
-Dein Gerät und dein PC kommunizieren direkt über dein lokales Netzwerk oder ein USB-Kabel. Wenn „Über mobile Daten verbinden“ aktiviert ist, kann der verschlüsselte Datenverkehr unterwegs über ein Relay geleitet werden. Automatische Update-Prüfungen fragen GitHub Releases ab und können unter Einstellungen › Verbindung &amp; Info › Nach Updates suchen deaktiviert werden.
+Dein Gerät und dein PC kommunizieren direkt über dein lokales Netzwerk oder ein USB-Kabel. Wenn „Über mobile Daten verbinden“ aktiviert ist, kann der verschlüsselte Datenverkehr unterwegs über ein Relay geleitet werden. Automatische Update-Prüfungen fragen GitHub Releases ab und können unter Einstellungen › Updates › Nach Updates suchen deaktiviert werden.
 
 Ende-zu-Ende-verschlüsselt
 Jede Verbindung nutzt QUIC mit TLS 1.3 und Ed25519-Gerätezertifikaten, die bei der Kopplung überprüft werden. Geräteschlüssel werden durch die Windows-DPAPI und den Android Keystore geschützt.

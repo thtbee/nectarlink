@@ -4130,7 +4130,7 @@
     <message>
         <location filename="rust_strings.h" line="309"/>
         <source>Local by default
-Your phone and PC talk directly over your local network or USB cable. When Connect over mobile data is on, encrypted traffic can use a relay when away from home. Automatic update checks contact GitHub Releases and can be turned off in Settings › Connection &amp; About › Check for updates.
+Your phone and PC talk directly over your local network or USB cable. When Connect over mobile data is on, encrypted traffic can use a relay when away from home. Automatic update checks contact GitHub Releases and can be turned off in Settings › Updates › Check for updates.
 
 End-to-end encrypted
 Every connection uses QUIC with TLS 1.3 and Ed25519 device certificates verified during pairing. Device keys are protected by Windows DPAPI and the Android Keystore.
@@ -4138,7 +4138,7 @@ Every connection uses QUIC with TLS 1.3 and Ed25519 device certificates verified
 Per-device sharing controls
 Sensitive capabilities such as Share PC folders, Remote input, and Reverse PC screen mirroring are turned off by default for each paired device until you turn them on.</source>
         <translation>默认在本地
-手机和电脑通过本地网络或 USB 数据线直接通信。开启“通过移动数据连接”后，离开家时加密流量可以经由中继传输。自动检查更新会访问 GitHub Releases，可在 设置 › 连接与关于 › 检查更新 中关闭。
+手机和电脑通过本地网络或 USB 数据线直接通信。开启“通过移动数据连接”后，离开家时加密流量可以经由中继传输。自动检查更新会访问 GitHub Releases，可在 设置 › 更新 › 检查更新 中关闭。
 
 端到端加密
 每个连接都使用 QUIC 与 TLS 1.3，以及在配对时验证的 Ed25519 设备证书。设备密钥由 Windows DPAPI 和 Android Keystore 保护。
