@@ -539,6 +539,14 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **The Linux app no longer crashes a few seconds after it starts.** When the window was busy
+  loading, a clipboard check could give up waiting and then still run later, writing over
+  memory it no longer owned. Thanks to [@aorizondo](https://github.com/aorizondo) for finding it
+  and the fix ([#612](https://github.com/thtbee/nectarlink/issues/612)).
+- **Photos taken sideways show upright.** Photos that store their rotation as a flag, as many
+  phones do, showed on their side in Photos on the PC. Thanks to
+  [@svenvdmeer](https://github.com/svenvdmeer)
+  ([#559](https://github.com/thtbee/nectarlink/issues/559)).
 - **A PC touchpad scrolls the phone smoothly.** With the mouse on the phone beside the PC, a
   touchpad's small scroll steps were dropped until one was a whole wheel notch, so scrolling
   felt stuck and jumpy. They now add up

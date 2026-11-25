@@ -719,13 +719,23 @@ bool runOnQtMainThreadSync(F &&fn, uint32_t timeout_ms = 500)
     struct SyncState {
         std::mutex mutex;
         std::condition_variable cv;
+        bool started = false;
         bool done = false;
+        bool cancelled = false;
     };
     auto state = std::make_shared<SyncState>();
     auto task = std::make_shared<std::decay_t<F>>(std::forward<F>(fn));
     QMetaObject::invokeMethod(
         app,
         [state, task]() {
+            {
+                // `fn` often captures the caller's stack by reference, so it
+                // must never run after the caller has given up and returned.
+                std::lock_guard<std::mutex> lock(state->mutex);
+                if (state->cancelled)
+                    return;
+                state->started = true;
+            }
             (*task)();
             {
                 std::lock_guard<std::mutex> lock(state->mutex);
@@ -735,9 +745,17 @@ bool runOnQtMainThreadSync(F &&fn, uint32_t timeout_ms = 500)
         },
         Qt::QueuedConnection);
     std::unique_lock<std::mutex> lock(state->mutex);
-    return state->cv.wait_for(lock, std::chrono::milliseconds(timeout_ms), [&state]() {
-        return state->done;
-    });
+    if (state->cv.wait_for(lock, std::chrono::milliseconds(timeout_ms), [&state]() {
+            return state->done;
+        }))
+        return true;
+    if (!state->started) {
+        state->cancelled = true;
+        return false;
+    }
+    // It is already running on the main thread: wait so it can't outlive our stack.
+    state->cv.wait(lock, [&state]() { return state->done; });
+    return true;
 }
 } // namespace
 #endif
