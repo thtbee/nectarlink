@@ -1573,4 +1573,12 @@
     <string name="community_invite_text">Câu hỏi, ý tưởng và bản dựng sớm, cùng những người làm và dùng NectarLink.</string>
     <string name="community_invite_join">Tham gia Discord</string>
     <string name="community_invite_later">Để sau</string>
+    <string name="deck_confirm_restart_title">Khởi động lại %1$s?</string>
+    <string name="deck_confirm_shut_down_title">Tắt %1$s?</string>
+    <string name="deck_confirm_power_text">Ứng dụng có dữ liệu chưa lưu vẫn có thể chặn việc này.</string>
+    <string name="deck_confirm_restart">Khởi động lại</string>
+    <string name="deck_confirm_shut_down">Tắt máy</string>
+    <string name="deck_default_restart">Khởi động lại</string>
+    <string name="deck_default_shut_down">Tắt máy</string>
+    <string name="deck_default_macro">Macro</string>
 </resources>

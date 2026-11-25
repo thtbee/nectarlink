@@ -1646,6 +1646,14 @@
     <string name="community_invite_text">Questions, ideas and early builds, with the people who make and use NectarLink.</string>
     <string name="community_invite_join">Join Discord</string>
     <string name="community_invite_later">Not now</string>
+    <string name="deck_confirm_restart_title">Restart %1$s?</string>
+    <string name="deck_confirm_shut_down_title">Shut down %1$s?</string>
+    <string name="deck_confirm_power_text">Apps on it with unsaved work can still stop it.</string>
+    <string name="deck_confirm_restart">Restart</string>
+    <string name="deck_confirm_shut_down">Shut down</string>
+    <string name="deck_default_restart">Restart</string>
+    <string name="deck_default_shut_down">Shut down</string>
+    <string name="deck_default_macro">Macro</string>
 </resources>
 
 

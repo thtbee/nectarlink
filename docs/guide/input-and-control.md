@@ -107,8 +107,10 @@ While it's on the phone, Android's pointer acceleration is off (it's given back 
    - Live tiles update in real time to show whether PC media is **Playing** or **Paused**, the current speaker volume percentage, and whether your PC microphone is **Muted** or **Live**.
 2. **Customizing `Deck` on your PC**: Click **Deck** in the left navigation bar on your PC.
    - Drag and drop tiles to reorder them, add new pages, and customize each tile's label, icon, and color.
-   - Choose from built-in tile types: **Play / Pause**, **Previous**, **Next**, **Volume up / down / mute**, **Microphone mute**, **Lock PC**, **Show desktop**, **Switch window**, **Screenshot**, **Keyboard shortcut** (any custom hotkey combo), **Open web link**, **Type text snippet**, **Launch application** (`.exe` or `.lnk`), or **Run shell command**.
-   - **Security gate for shell commands**: Tiles that execute custom PC shell commands are blocked unless you also turn on **Run Deck shell commands** (`commands`, off by default) for that phone in PC **Settings › Devices**.
+   - Choose from built-in tile types: **Play / Pause**, **Previous**, **Next**, **Volume up / down / mute**, **Microphone mute**, **Lock PC**, **Show desktop**, **Switch window**, **Screenshot**, **Keyboard shortcut** (any custom hotkey combo), **Open web link**, **Type text snippet**, **Launch application** (`.exe` or `.lnk`), **Run shell command**, **Restart PC** or **Shut down PC**.
+   - **Macro (several actions)** runs up to 16 of those actions in a row, with a wait of up to 10 seconds after each (30 in all). Add steps, set what each one does, and move them up or down. A step that fails is skipped and the rest still run.
+   - **Restart PC** and **Shut down PC** ask on the phone before they do it, and apps with unsaved work can still stop them. They aren't on Mac yet, and they can't be macro steps.
+   - **Security gate for shell commands**: Tiles that execute custom PC shell commands, and macros with a shell command step, are blocked unless you also turn on **Run Deck shell commands** (`commands`, off by default) for that phone in PC **Settings › Devices**.
 
 ### 4. Phone Controls on PC Home
 

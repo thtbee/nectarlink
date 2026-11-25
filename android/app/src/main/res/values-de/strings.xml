@@ -1645,4 +1645,12 @@
     <string name="community_invite_text">Fragen, Ideen und frühe Builds, mit den Leuten, die NectarLink machen und nutzen.</string>
     <string name="community_invite_join">Discord beitreten</string>
     <string name="community_invite_later">Nicht jetzt</string>
+    <string name="deck_confirm_restart_title">%1$s neu starten?</string>
+    <string name="deck_confirm_shut_down_title">%1$s herunterfahren?</string>
+    <string name="deck_confirm_power_text">Apps darauf mit ungespeicherter Arbeit können es noch aufhalten.</string>
+    <string name="deck_confirm_restart">Neu starten</string>
+    <string name="deck_confirm_shut_down">Herunterfahren</string>
+    <string name="deck_default_restart">Neu starten</string>
+    <string name="deck_default_shut_down">Herunterfahren</string>
+    <string name="deck_default_macro">Makro</string>
 </resources>

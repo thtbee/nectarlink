@@ -8,6 +8,10 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Deck macros, and Restart and Shut down tiles.** A **Macro** tile runs up to 16 actions in a
+  row, with a wait of up to 10 seconds after each. **Restart PC** and **Shut down PC** tiles
+  ask on the phone first. A macro with a shell command needs **Run Deck shell commands**, like a
+  command tile ([#490](https://github.com/thtbee/nectarlink/issues/490)).
 - **Sharing the PC's screen to the phone is lighter on Windows.** The screen is captured,
   converted and encoded on the graphics card, without a copy through the CPU for each frame.
   PCs that can't do that keep the old way. Thanks to [@aihehye](https://github.com/aihehye)

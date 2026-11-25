@@ -1503,4 +1503,12 @@
     <string name="community_invite_text">提问、想法和抢先版本，和制作及使用 NectarLink 的人一起。</string>
     <string name="community_invite_join">加入 Discord</string>
     <string name="community_invite_later">以后再说</string>
+    <string name="deck_confirm_restart_title">要重启 %1$s 吗？</string>
+    <string name="deck_confirm_shut_down_title">要关闭 %1$s 吗？</string>
+    <string name="deck_confirm_power_text">有未保存内容的应用仍可能阻止此操作。</string>
+    <string name="deck_confirm_restart">重启</string>
+    <string name="deck_confirm_shut_down">关机</string>
+    <string name="deck_default_restart">重启</string>
+    <string name="deck_default_shut_down">关机</string>
+    <string name="deck_default_macro">宏</string>
 </resources>

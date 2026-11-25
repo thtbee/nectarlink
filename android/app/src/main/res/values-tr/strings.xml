@@ -1644,6 +1644,14 @@
     <string name="community_invite_text">NectarLink’i yapan ve kullananlarla sorular, fikirler ve erken sürümler.</string>
     <string name="community_invite_join">Discord’a katıl</string>
     <string name="community_invite_later">Şimdi değil</string>
+    <string name="deck_confirm_restart_title">%1$s yeniden başlatılsın mı?</string>
+    <string name="deck_confirm_shut_down_title">%1$s kapatılsın mı?</string>
+    <string name="deck_confirm_power_text">Kaydedilmemiş işi olan uygulamalar bunu hâlâ durdurabilir.</string>
+    <string name="deck_confirm_restart">Yeniden başlat</string>
+    <string name="deck_confirm_shut_down">Kapat</string>
+    <string name="deck_default_restart">Yeniden başlat</string>
+    <string name="deck_default_shut_down">Kapat</string>
+    <string name="deck_default_macro">Makro</string>
 </resources>
 
 

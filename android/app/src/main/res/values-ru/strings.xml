@@ -1517,4 +1517,12 @@
     <string name="community_invite_text">Вопросы, идеи и ранние сборки вместе с теми, кто делает NectarLink и пользуется им.</string>
     <string name="community_invite_join">Войти в Discord</string>
     <string name="community_invite_later">Не сейчас</string>
+    <string name="deck_confirm_restart_title">Перезагрузить %1$s?</string>
+    <string name="deck_confirm_shut_down_title">Выключить %1$s?</string>
+    <string name="deck_confirm_power_text">Приложения с несохранённой работой ещё могут это остановить.</string>
+    <string name="deck_confirm_restart">Перезагрузить</string>
+    <string name="deck_confirm_shut_down">Выключить</string>
+    <string name="deck_default_restart">Перезагрузка</string>
+    <string name="deck_default_shut_down">Выключение</string>
+    <string name="deck_default_macro">Макрос</string>
 </resources>
