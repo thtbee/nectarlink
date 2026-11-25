@@ -8,6 +8,9 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **The mirroring toolbar can sit beside the picture.** **Settings › General › Toolbar beside
+  the picture** gives it a strip of the window above or below the phone's picture, so it never
+  covers the app's own buttons ([#549](https://github.com/thtbee/nectarlink/issues/549)).
 - **A one-color tray icon on Linux.** **Settings › General › Tray icon › One color** now works
   on Linux too. Desktops that recolor tray icons, like KDE Plasma, show it in the panel's
   colors ([#555](https://github.com/thtbee/nectarlink/issues/555)).

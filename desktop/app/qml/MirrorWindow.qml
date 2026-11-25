@@ -49,8 +49,8 @@ Window {
     property bool resizing: false
 
     function frameFitsWindow() {
-        return frame.width > 0 && height > 0
-            && Math.abs((frame.width / frame.height) / (width / height) - 1) < 0.03
+        return frame.width > 0 && height - strip > 0
+            && Math.abs((frame.width / frame.height) / (width / (height - strip)) - 1) < 0.03
     }
 
     // The window has the size it's staying at: remember it, and tell the phone.
@@ -60,7 +60,7 @@ Window {
             return
         Mirror.saveGeometry(mirrorKey, x, y, width, height)
         if (phase === "showing")
-            Mirror.resize(mirrorKey, width, height)
+            Mirror.resize(mirrorKey, width, height - strip)
         if (!resizing)
             return
         if (frameFitsWindow() || phase !== "showing")
@@ -138,7 +138,7 @@ Window {
     // flexible sends one of the size its display already has.
     function applyZoom() {
         if (flexible)
-            Mirror.resize(mirrorKey, width, height)
+            Mirror.resize(mirrorKey, width, height - strip)
         else if (frame.width > 0)
             Mirror.zoomDisplay(mirrorKey, frame.width, frame.height)
     }
@@ -193,10 +193,11 @@ Window {
             if (win.visibility === Window.Maximized || win.visibility === Window.FullScreen)
                 return
             const aspect = win.frame.width / win.frame.height
+            const picH = win.height - win.strip
             const byWidth = Math.abs(win.width - win.lastWidth) / Math.max(1, win.lastWidth)
                           >= Math.abs(win.height - win.lastHeight) / Math.max(1, win.lastHeight)
             win.fitScreen(byWidth ? Math.max(win.width, win.width / aspect)
-                                  : Math.max(win.height, win.height * aspect))
+                                  : Math.max(picH, picH * aspect))
             Mirror.saveGeometry(win.mirrorKey, win.x, win.y, win.width, win.height)
         }
     }
@@ -207,10 +208,10 @@ Window {
         const availW = Screen.desktopAvailableWidth > 0 ? Screen.desktopAvailableWidth : 1920
         const availH = Screen.desktopAvailableHeight > 0 ? Screen.desktopAvailableHeight : 1080
         const scale = Math.min(longSide / Math.max(frame.width, frame.height),
-                               availW * 0.95 / frame.width, availH * 0.95 / frame.height)
+                               availW * 0.95 / frame.width, (availH * 0.95 - strip) / frame.height)
         readyForResize = false
         width = Math.max(minimumWidth, Math.round(frame.width * scale))
-        height = Math.max(minimumHeight, Math.round(frame.height * scale))
+        height = Math.max(minimumHeight, Math.round(frame.height * scale) + strip)
         lastWidth = width
         lastHeight = height
         Qt.callLater(() => { win.readyForResize = true })
@@ -289,9 +290,9 @@ Window {
         // An app that only runs one way up turned the phone's display (#126):
         // the window takes the app's shape, and its usual resize tells the
         // phone the matching size.
-        if (sized && info.app && (frame.width > frame.height) !== (width > height)) {
-            const turnedW = Math.max(240, Math.min(Math.round(availW * 0.95), height))
-            const turnedH = Math.max(240, Math.min(Math.round(availH * 0.95), width))
+        if (sized && info.app && (frame.width > frame.height) !== (width > height - strip)) {
+            const turnedW = Math.max(240, Math.min(Math.round(availW * 0.95), height - strip))
+            const turnedH = Math.max(240, Math.min(Math.round(availH * 0.95), width + strip))
             width = turnedW
             height = turnedH
             placeOnScreen(x, y, turnedW, turnedH)
@@ -310,30 +311,30 @@ Window {
                         && info.savedY !== null && info.savedY !== undefined)
                     placeOnScreen(info.savedX, info.savedY, width, height)
                 sized = true
-            } else if (Math.abs(width / height - frame.width / frame.height) > 0.05) {
-                fitScreen(Math.max(width, height))
+            } else if (Math.abs(width / (height - strip) - frame.width / frame.height) > 0.05) {
+                fitScreen(Math.max(width, height - strip))
             }
             return
         }
         // At the phone's resolution, an app window takes the picture's shape
         // at its height, so it has no bars.
-        if (sized && info.app && !flexible && Math.abs(width / height - frame.width / frame.height) > 0.02) {
+        if (sized && info.app && !flexible && Math.abs(width / (height - strip) - frame.width / frame.height) > 0.02) {
             const shape = frame.width / frame.height
-            const h = Math.min(height, availW * 0.95 / shape)
+            const h = Math.min(height - strip, availW * 0.95 / shape)
             readyForResize = false
             width = Math.max(240, Math.round(h * shape))
-            height = Math.max(240, Math.round(h))
+            height = Math.max(240, Math.round(h) + strip)
             Mirror.saveGeometry(mirrorKey, x, y, width, height)
             Qt.callLater(() => { win.readyForResize = true })
             return
         }
         const maxH = availH * 0.85
         const maxW = availW * 0.85
-        const scale = Math.min(maxH / frame.height, maxW / frame.width, 1)
+        const scale = Math.min((maxH - strip) / frame.height, maxW / frame.width, 1)
         if (!sized) {
             readyForResize = false
             width = Math.round(frame.width * scale)
-            height = Math.round(frame.height * scale)
+            height = Math.round(frame.height * scale) + strip
             sized = true
             if (info.app)
                 Mirror.saveGeometry(mirrorKey, x, y, width, height)
@@ -342,6 +343,21 @@ Window {
     }
     width: 420
     height: 860
+
+    // The toolbar's own strip above or below the picture, when it has one
+    // (#549): room for it, and for the navigation keys under it when the
+    // window is too narrow for them beside it. The window is that much taller.
+    readonly property real strip: Preferences.mirrorToolbarOutside && !Preferences.hideMirrorToolbar
+        ? (!info.app && !navPill.besideToolbar ? 96 : 52) : 0
+    property real lastStrip: 0
+    Component.onCompleted: lastStrip = strip
+    onStripChanged: {
+        const grew = strip - lastStrip
+        lastStrip = strip
+        if (sized && visibility !== Window.Maximized && visibility !== Window.FullScreen)
+            height = Math.max(minimumHeight, height + grew)
+    }
+
     readonly property bool staysOnTop: win.flags & Qt.WindowStaysOnTopHint
 
     function toggleStayOnTop() {
@@ -359,6 +375,8 @@ Window {
     VideoView {
         id: video
         anchors.fill: parent
+        anchors.topMargin: win.toolbarBottom ? 0 : win.strip
+        anchors.bottomMargin: win.toolbarBottom ? win.strip : 0
         stream: win.mirrorKey
         keepShape: win.info.app === true && !win.flexible
         fillsNearShape: win.info.app === true
@@ -710,10 +728,21 @@ Window {
         height: navPill.visible && !navPill.besideToolbar ? 104 : 56
         HoverHandler { id: topZoneHover }
     }
+    // The strip the toolbar has to itself (#549).
+    Rectangle {
+        visible: win.strip > 0
+        anchors.left: parent.left
+        anchors.right: parent.right
+        y: win.toolbarBottom ? parent.height - height : 0
+        height: win.strip
+        color: "#121212"
+    }
     Rectangle {
         id: toolbar
         readonly property real restX: win.toolbarLeft ? 12 : parent.width - width - 12
-        readonly property real restY: win.toolbarBottom
+        readonly property real restY: win.strip > 0
+            ? (win.toolbarBottom ? parent.height - height - 6 : 6)
+            : win.toolbarBottom
             ? parent.height - height - 12 - (hintBanner.visible ? hintBanner.height + 12 : 0)
             : 12
         x: restX
@@ -728,7 +757,7 @@ Window {
             || backBtn.activeFocus || homeBtn.activeFocus || recentsBtn.activeFocus || hideToolbarBtn.activeFocus
         // Only while it's wanted: it sits over the app's own top bar (#340).
         // Recording and a dark phone screen show in the window's title instead.
-        opacity: topZoneHover.hovered || toolbarHover.hovered || navHover.hovered || toolbarWakeTimer.running
+        opacity: win.strip > 0 || topZoneHover.hovered || toolbarHover.hovered || navHover.hovered || toolbarWakeTimer.running
             || toolbarHasFocus || gripDrag.active ? 1 : 0
         Behavior on opacity { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.fadeFast } }
 
@@ -1003,6 +1032,7 @@ Window {
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         anchors.margins: 12
+        anchors.bottomMargin: 12 + (win.toolbarBottom ? win.strip : 0)
         height: Math.max(hint.implicitHeight + 20, 48)
         radius: Theme.radiusMd
         visible: win.phase === "showing" && video.frameSize.width > 0 && !win.canControl && !win.info.app && !hintClose.closed

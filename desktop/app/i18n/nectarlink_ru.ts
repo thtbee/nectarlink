@@ -10099,6 +10099,16 @@ What it needs
         <translation>Панель инструментов в показе экрана и окнах приложений</translation>
     </message>
     <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Toolbar beside the picture</source>
+        <translation>Панель инструментов рядом с изображением</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Gives the toolbar a strip of the window above or below the phone&apos;s picture, so it never covers the app. The window grows by its height.</source>
+        <translation>Даёт панели инструментов свою полосу окна над или под изображением телефона, чтобы она никогда не закрывала приложение. Окно становится выше на её высоту.</translation>
+    </message>
+    <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1557"/>
         <source>Shows when the pointer is near the top of the window. Off, Ctrl+Shift+T in a window shows it again.</source>
         <translation>Появляется, когда указатель у верхнего края окна. Если выключено, Ctrl+Shift+T в окне снова покажет её.</translation>
