@@ -5,6 +5,8 @@
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
 #include <QtCore/QMetaMethod>
+#include <QtCore/QMetaObject>
+#include <QtCore/QSet>
 #include <QtCore/QUrl>
 #include <QtGui/QGuiApplication>
 #include <QtGui/QIcon>
@@ -14,17 +16,28 @@
 #include <QtGui/QPainter>
 #include <QtGui/QPixmap>
 #include <QtQuick/QQuickWindow>
+#include <QtQuick/QSGRendererInterface>
 #include <QtQuick/QSGSimpleTextureNode>
 #include <QtQuick/QSGTexture>
 
 #ifdef _WIN32
+#include <QtQuick/qsgtexture_platform.h>
 #include <windows.h>
+#include <d3d11_1.h>
+#include <dxgi1_2.h>
 #include <propkey.h>
 #include <propsys.h>
 #include <shobjidl.h>
+#include <wrl/client.h>
+
+using Microsoft::WRL::ComPtr;
 #endif
 
 #include <algorithm>
+#ifdef _WIN32
+#include <chrono>
+#endif
+#include <memory>
 #include <mutex>
 #include <vector>
 
@@ -34,6 +47,38 @@ struct Latest
 {
     QImage image;
     quint64 serial = 0;
+#ifdef _WIN32
+    quint64 gpuEpoch = 0;
+    QSize gpuSize;
+    std::shared_ptr<void> gpuHandle;
+#endif
+
+    bool isValid() const
+    {
+#ifdef _WIN32
+        if (gpuHandle && !gpuSize.isEmpty())
+            return true;
+#endif
+        return !image.isNull();
+    }
+
+    bool isGpu() const
+    {
+#ifdef _WIN32
+        return gpuHandle && !gpuSize.isEmpty();
+#else
+        return false;
+#endif
+    }
+
+    QSize size() const
+    {
+#ifdef _WIN32
+        if (gpuHandle && !gpuSize.isEmpty())
+            return gpuSize;
+#endif
+        return image.size();
+    }
 };
 
 // Pictures by stream, and the views to tell. Views register and leave
@@ -44,6 +89,16 @@ std::mutex &lock = *new std::mutex;
 QHash<QString, Latest> &latest = *new QHash<QString, Latest>;
 std::vector<VideoView *> &views = *new std::vector<VideoView *>;
 quint64 nextSerial = 1;
+#ifdef _WIN32
+bool g_gpuUnsupported = false;
+QSet<QString> &failedGpuStreams = *new QSet<QString>;
+
+qint64 steadyMs()
+{
+    return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch())
+        .count();
+}
+#endif
 
 void wakeViews(const QString &stream)
 {
@@ -111,19 +166,193 @@ bool looksDifferent(const QImage &a, const QImage &b)
     return differing >= 8;
 }
 
-// Owns its texture (replaced with each picture).
+// Owns its CPU or D3D11-backed texture.
 class VideoNode : public QSGSimpleTextureNode
 {
 public:
     VideoNode() { setOwnsTexture(false); }
-    ~VideoNode() override { delete texture(); }
-
-    void replaceTexture(QSGTexture *next)
+    ~VideoNode() override
     {
-        QSGTexture *previous = texture();
-        setTexture(next);
-        delete previous;
+        setTexture(nullptr);
+#ifdef _WIN32
+        m_sgTexture.reset();
+#endif
+        delete m_cpuTexture;
+        m_cpuTexture = nullptr;
     }
+
+    void replaceCpuTexture(QSGTexture *next, bool keepGpu = false)
+    {
+        setTexture(next);
+#ifdef _WIN32
+        m_sgTexture.reset();
+#endif
+        delete m_cpuTexture;
+        m_cpuTexture = next;
+#ifdef _WIN32
+        if (!keepGpu)
+            resetGpu();
+#else
+        Q_UNUSED(keepGpu)
+#endif
+    }
+
+#ifdef _WIN32
+    enum class GpuStatus
+    {
+        Ok,
+        Busy,
+        Fatal,
+    };
+
+    bool ensureShared(QQuickWindow *window, quint64 epoch, HANDLE handle, bool createRenderTexture, bool *nonD3d11)
+    {
+        *nonD3d11 = false;
+        QSGRendererInterface *ri = window->rendererInterface();
+        if (!ri || ri->graphicsApi() != QSGRendererInterface::Direct3D11) {
+            *nonD3d11 = true;
+            return false;
+        }
+        auto *device = static_cast<ID3D11Device *>(ri->getResource(window, QSGRendererInterface::DeviceResource));
+        auto *context = static_cast<ID3D11DeviceContext *>(
+            ri->getResource(window, QSGRendererInterface::DeviceContextResource));
+        if (!device || !context)
+            return false;
+
+        if (m_epoch == epoch && m_device == device && m_shared && m_mutex
+            && (!createRenderTexture || (m_texture && m_sgTexture))) {
+            return true;
+        }
+
+        setTexture(nullptr);
+        m_sgTexture.reset();
+        resetGpu();
+        delete m_cpuTexture;
+        m_cpuTexture = nullptr;
+
+        ComPtr<ID3D11Device1> device1;
+        if (FAILED(device->QueryInterface(IID_PPV_ARGS(&device1))))
+            return false;
+        if (FAILED(device1->OpenSharedResource1(handle, IID_PPV_ARGS(&m_shared))) || !m_shared
+            || FAILED(m_shared.As(&m_mutex)) || !m_mutex) {
+            resetGpu();
+            return false;
+        }
+        D3D11_TEXTURE2D_DESC desc {};
+        m_shared->GetDesc(&desc);
+        // QSGD3D11Texture::fromNative assumes RGBA8.
+        if (desc.Format != DXGI_FORMAT_R8G8B8A8_UNORM || desc.Width == 0 || desc.Height == 0) {
+            resetGpu();
+            return false;
+        }
+        if (createRenderTexture) {
+            D3D11_TEXTURE2D_DESC texDesc = desc;
+            texDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+            texDesc.MiscFlags = 0;
+            if (FAILED(device->CreateTexture2D(&texDesc, nullptr, &m_texture)) || !m_texture) {
+                resetGpu();
+                return false;
+            }
+            m_sgTexture.reset(QNativeInterface::QSGD3D11Texture::fromNative(
+                m_texture.Get(), window, QSize(int(desc.Width), int(desc.Height))));
+            if (!m_sgTexture) {
+                resetGpu();
+                return false;
+            }
+            m_sgTexture->setFiltering(QSGTexture::Linear);
+            setTexture(m_sgTexture.get());
+        }
+        m_device = device;
+        m_context = context;
+        m_epoch = epoch;
+        return true;
+    }
+
+    GpuStatus copyGpuFrame()
+    {
+        if (!m_mutex || !m_context || !m_texture || !m_shared)
+            return GpuStatus::Fatal;
+        // S_OK only: WAIT_TIMEOUT is a success code meaning "not acquired".
+        if (m_mutex->AcquireSync(0, 0) != S_OK)
+            return GpuStatus::Busy;
+        m_context->CopyResource(m_texture.Get(), m_shared.Get());
+        m_mutex->ReleaseSync(0);
+        markDirty(QSGNode::DirtyMaterial);
+        return GpuStatus::Ok;
+    }
+
+    GpuStatus readGpuImage(QQuickWindow *window, quint64 epoch, HANDLE handle, QImage *out, bool *nonD3d11)
+    {
+        *out = QImage();
+        if (!ensureShared(window, epoch, handle, false, nonD3d11))
+            return GpuStatus::Fatal;
+        D3D11_TEXTURE2D_DESC desc {};
+        m_shared->GetDesc(&desc);
+        if (!m_staging) {
+            D3D11_TEXTURE2D_DESC stagingDesc = desc;
+            stagingDesc.BindFlags = 0;
+            stagingDesc.MiscFlags = 0;
+            stagingDesc.Usage = D3D11_USAGE_STAGING;
+            stagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+            if (FAILED(m_device->CreateTexture2D(&stagingDesc, nullptr, &m_staging)) || !m_staging)
+                return GpuStatus::Fatal;
+        }
+        if (m_mutex->AcquireSync(0, 0) != S_OK)
+            return GpuStatus::Busy;
+        m_context->CopyResource(m_staging.Get(), m_shared.Get());
+        m_mutex->ReleaseSync(0);
+
+        D3D11_MAPPED_SUBRESOURCE mapped {};
+        if (FAILED(m_context->Map(m_staging.Get(), 0, D3D11_MAP_READ, 0, &mapped)) || !mapped.pData)
+            return GpuStatus::Fatal;
+        QImage img(int(desc.Width), int(desc.Height), QImage::Format_RGB32);
+        if (!img.isNull() && mapped.RowPitch >= desc.Width * 4) {
+            const auto *srcBase = static_cast<const uint8_t *>(mapped.pData);
+            for (UINT y = 0; y < desc.Height; ++y) {
+                const uint8_t *src = srcBase + size_t(y) * mapped.RowPitch;
+                uint8_t *dst = img.scanLine(int(y));
+                for (UINT x = 0; x < desc.Width; ++x) {
+                    dst[x * 4 + 0] = src[x * 4 + 2];
+                    dst[x * 4 + 1] = src[x * 4 + 1];
+                    dst[x * 4 + 2] = src[x * 4 + 0];
+                    dst[x * 4 + 3] = 0xFF;
+                }
+            }
+        }
+        m_context->Unmap(m_staging.Get(), 0);
+        if (img.isNull())
+            return GpuStatus::Fatal;
+        *out = std::move(img);
+        return GpuStatus::Ok;
+    }
+#endif
+
+private:
+#ifdef _WIN32
+    void resetGpu()
+    {
+        m_shared.Reset();
+        m_mutex.Reset();
+        m_texture.Reset();
+        m_staging.Reset();
+        m_device = nullptr;
+        m_context = nullptr;
+        m_epoch = 0;
+    }
+#endif
+
+    QSGTexture *m_cpuTexture = nullptr;
+#ifdef _WIN32
+    ComPtr<ID3D11Texture2D> m_shared;
+    ComPtr<IDXGIKeyedMutex> m_mutex;
+    ComPtr<ID3D11Texture2D> m_texture;
+    ComPtr<ID3D11Texture2D> m_staging;
+    // Wraps m_texture without owning it, so it must be destroyed first.
+    std::unique_ptr<QSGTexture> m_sgTexture;
+    ID3D11Device *m_device = nullptr;       // owned by Qt
+    ID3D11DeviceContext *m_context = nullptr; // owned by Qt
+    quint64 m_epoch = 0;
+#endif
 };
 
 } // namespace
@@ -133,6 +362,20 @@ VideoView::VideoView(QQuickItem *parent)
 {
     setFlag(ItemHasContents, true);
     QGuiApplication::instance()->installNativeEventFilter(this);
+#ifdef _WIN32
+    m_gpuCheckTimer.setSingleShot(true);
+    m_gpuCheckTimer.setTimerType(Qt::PreciseTimer);
+    connect(&m_gpuCheckTimer, &QTimer::timeout, this, [this]() {
+        if (!m_frozen || !m_holding.load(std::memory_order_relaxed) || !m_watchChanges || m_changedSinceFrozen)
+            return;
+        const qint64 last = m_lastGpuCheckMs.load(std::memory_order_relaxed);
+        const qint64 elapsed = steadyMs() - last;
+        if (last != 0 && elapsed < 100)
+            m_gpuCheckTimer.start(qMax(1, int(100 - elapsed)));
+        else
+            update();
+    });
+#endif
     std::lock_guard guard(lock);
     views.push_back(this);
 }
@@ -211,7 +454,12 @@ void VideoView::setFrozen(bool on)
         return;
     m_frozen = on;
     // Turned on: the newest picture is taken once more, then kept.
-    m_holding = false;
+    m_holding.store(false, std::memory_order_relaxed);
+#ifdef _WIN32
+    m_lastFrozenCheckSerial = 0;
+    m_lastGpuCheckMs.store(0, std::memory_order_relaxed);
+    m_gpuCheckTimer.stop();
+#endif
     {
         std::lock_guard guard(lock);
         m_kept = on ? latest.value(m_stream).image : QImage();
@@ -222,6 +470,31 @@ void VideoView::setFrozen(bool on)
     }
     emit frozenChanged();
     update();
+}
+
+void VideoView::setWatchChanges(bool on)
+{
+    if (on == m_watchChanges)
+        return;
+    m_watchChanges = on;
+#ifdef _WIN32
+    m_lastFrozenCheckSerial = 0;
+    m_lastGpuCheckMs.store(0, std::memory_order_relaxed);
+    m_gpuCheckTimer.stop();
+#endif
+    emit watchChangesChanged();
+    if (on && m_frozen && !m_changedSinceFrozen) {
+        QImage image;
+        {
+            std::lock_guard guard(lock);
+            image = latest.value(m_stream).image;
+        }
+        if (!image.isNull() && looksDifferent(m_kept, image)) {
+            m_changedSinceFrozen = true;
+            emit changedSinceFrozenChanged();
+        }
+        update();
+    }
 }
 
 void VideoView::setKeepShape(bool on)
@@ -444,13 +717,14 @@ void VideoView::queueFrame()
 void VideoView::frameArrived()
 {
     m_framePending.store(false);
-    QImage newest;
+    Latest picture;
     {
         std::lock_guard guard(lock);
-        newest = latest.value(m_stream).image;
+        picture = latest.value(m_stream);
     }
-    const QSize size = newest.size();
-    if (m_frozen && !m_changedSinceFrozen && !newest.isNull() && looksDifferent(m_kept, newest)) {
+    const QSize size = picture.size();
+    if (m_frozen && m_watchChanges && !m_changedSinceFrozen && !picture.image.isNull()
+        && looksDifferent(m_kept, picture.image)) {
         m_changedSinceFrozen = true;
         emit changedSinceFrozenChanged();
     }
@@ -460,7 +734,20 @@ void VideoView::frameArrived()
     }
     ++m_frames;
     emit framesChanged();
-    update();
+    if (!m_frozen || !m_holding.load(std::memory_order_relaxed)) {
+        update();
+#ifdef _WIN32
+    } else if (m_watchChanges && !m_changedSinceFrozen && picture.isGpu()) {
+        const qint64 last = m_lastGpuCheckMs.load(std::memory_order_relaxed);
+        const qint64 elapsed = steadyMs() - last;
+        if (last == 0 || elapsed >= 100) {
+            m_gpuCheckTimer.stop();
+            update();
+        } else if (!m_gpuCheckTimer.isActive()) {
+            m_gpuCheckTimer.start(qMax(1, int(100 - elapsed)));
+        }
+#endif
+    }
 }
 
 QSGNode *VideoView::updatePaintNode(QSGNode *old, UpdatePaintNodeData *)
@@ -470,7 +757,7 @@ QSGNode *VideoView::updatePaintNode(QSGNode *old, UpdatePaintNodeData *)
         std::lock_guard guard(lock);
         picture = latest.value(m_stream);
     }
-    if (picture.image.isNull() || !window()) {
+    if (!picture.isValid() || !window()) {
         delete old;
         m_shown = 0;
         return nullptr;
@@ -478,12 +765,116 @@ QSGNode *VideoView::updatePaintNode(QSGNode *old, UpdatePaintNodeData *)
     auto *node = static_cast<VideoNode *>(old);
     if (!node)
         node = new VideoNode;
-    if (!node->texture() || (picture.serial != m_shown && !m_holding)) {
-        QSGTexture *texture = window()->createTextureFromImage(m_frosted ? frost(picture.image) : picture.image);
-        texture->setFiltering(QSGTexture::Linear);
-        node->replaceTexture(texture);
-        m_shown = picture.serial;
-        m_holding = m_frozen;
+
+#ifdef _WIN32
+    if (picture.isGpu()) {
+        const HANDLE handle = reinterpret_cast<HANDLE>(picture.gpuHandle.get());
+        const bool holding = m_holding.load(std::memory_order_relaxed);
+        if (m_frosted || m_frozen) {
+            const bool needDisplay = !node->texture() || (picture.serial != m_shown && !holding)
+                || (m_frozen && !holding && m_kept.isNull());
+            if (needDisplay) {
+                QImage img;
+                bool nonD3d11 = false;
+                const auto status = node->readGpuImage(window(), picture.gpuEpoch, handle, &img, &nonD3d11);
+                if (status == VideoNode::GpuStatus::Fatal) {
+                    {
+                        std::lock_guard guard(lock);
+                        if (nonD3d11)
+                            g_gpuUnsupported = true;
+                        else
+                            failedGpuStreams.insert(m_stream);
+                    }
+                    delete node;
+                    m_shown = 0;
+                    return nullptr;
+                }
+                if (status == VideoNode::GpuStatus::Busy) {
+                    update();
+                } else {
+                    if (m_frozen && m_kept.isNull()) {
+                        m_kept = img;
+                        m_lastFrozenCheckSerial = picture.serial;
+                        m_lastGpuCheckMs.store(steadyMs(), std::memory_order_relaxed);
+                    }
+                    QSGTexture *texture = window()->createTextureFromImage(m_frosted ? frost(img) : img);
+                    texture->setFiltering(QSGTexture::Linear);
+                    node->replaceCpuTexture(texture, true);
+                    m_shown = picture.serial;
+                    m_holding.store(m_frozen, std::memory_order_relaxed);
+                }
+            } else if (m_frozen && holding && m_watchChanges && !m_changedSinceFrozen
+                       && picture.serial != m_lastFrozenCheckSerial) {
+                const qint64 last = m_lastGpuCheckMs.load(std::memory_order_relaxed);
+                const qint64 now = steadyMs();
+                if (last == 0 || now - last >= 100) {
+                    QImage newest;
+                    bool nonD3d11 = false;
+                    const auto status = node->readGpuImage(window(), picture.gpuEpoch, handle, &newest, &nonD3d11);
+                    if (status == VideoNode::GpuStatus::Busy) {
+                        update();
+                    } else if (status == VideoNode::GpuStatus::Ok) {
+                        m_lastFrozenCheckSerial = picture.serial;
+                        m_lastGpuCheckMs.store(now, std::memory_order_relaxed);
+                        if (!m_kept.isNull() && looksDifferent(m_kept, newest)) {
+                            QMetaObject::invokeMethod(this, [this]() {
+                                if (m_frozen && m_watchChanges && !m_changedSinceFrozen) {
+                                    m_changedSinceFrozen = true;
+                                    emit changedSinceFrozenChanged();
+                                }
+                            }, Qt::QueuedConnection);
+                        }
+                    }
+                }
+            }
+        } else {
+            bool nonD3d11 = false;
+            if (!node->ensureShared(window(), picture.gpuEpoch, handle, true, &nonD3d11)) {
+                {
+                    std::lock_guard guard(lock);
+                    if (nonD3d11)
+                        g_gpuUnsupported = true;
+                    else
+                        failedGpuStreams.insert(m_stream);
+                }
+                delete node;
+                m_shown = 0;
+                return nullptr;
+            }
+            if (picture.serial != m_shown) {
+                const auto status = node->copyGpuFrame();
+                if (status == VideoNode::GpuStatus::Fatal) {
+                    {
+                        std::lock_guard guard(lock);
+                        failedGpuStreams.insert(m_stream);
+                    }
+                    delete node;
+                    m_shown = 0;
+                    return nullptr;
+                }
+                if (status == VideoNode::GpuStatus::Busy)
+                    update();
+                else
+                    m_shown = picture.serial;
+            }
+            m_holding.store(false, std::memory_order_relaxed);
+        }
+    } else
+#endif
+    {
+        if (!node->texture() || (picture.serial != m_shown && !m_holding.load(std::memory_order_relaxed))) {
+            QSGTexture *texture = window()->createTextureFromImage(m_frosted ? frost(picture.image) : picture.image);
+            texture->setFiltering(QSGTexture::Linear);
+            node->replaceCpuTexture(texture);
+            m_shown = picture.serial;
+            m_holding.store(m_frozen, std::memory_order_relaxed);
+        }
+    }
+
+    if (!node->texture()) {
+        delete node;
+        m_shown = 0;
+        return nullptr;
     }
     node->setFiltering(QSGTexture::Linear);
     if (m_frosted) {
@@ -508,8 +899,67 @@ void video_frame(rust::Str stream, uint32_t width, uint32_t height, rust::Slice<
     QImage copy = image.copy();
     const QString key = QString::fromUtf8(stream.data(), qsizetype(stream.size()));
     std::lock_guard guard(lock);
-    latest.insert(key, Latest{std::move(copy), nextSerial++});
+    Latest entry;
+    entry.image = std::move(copy);
+    entry.serial = nextSerial++;
+    latest.insert(key, std::move(entry));
     wakeViews(key);
+}
+
+bool video_gpu_frame(rust::Str stream, uint32_t width, uint32_t height, uint64_t epoch, size_t handle)
+{
+#ifndef _WIN32
+    Q_UNUSED(stream)
+    Q_UNUSED(width)
+    Q_UNUSED(height)
+    Q_UNUSED(epoch)
+    Q_UNUSED(handle)
+    return false;
+#else
+    if (width == 0 || height == 0 || epoch == 0 || handle == 0)
+        return false;
+    const auto api = QQuickWindow::graphicsApi();
+    if (api != QSGRendererInterface::Unknown && api != QSGRendererInterface::Direct3D11)
+        return false;
+
+    const QString key = QString::fromUtf8(stream.data(), qsizetype(stream.size()));
+    {
+        std::lock_guard guard(lock);
+        if (g_gpuUnsupported || failedGpuStreams.contains(key))
+            return false;
+        auto it = latest.find(key);
+        if (it != latest.end() && it->gpuEpoch == epoch && it->gpuHandle) {
+            it->image = QImage();
+            it->gpuSize = QSize(int(width), int(height));
+            it->serial = nextSerial++;
+            wakeViews(key);
+            return true;
+        }
+    }
+
+    HANDLE dup = nullptr;
+    if (!DuplicateHandle(GetCurrentProcess(), reinterpret_cast<HANDLE>(uintptr_t(handle)), GetCurrentProcess(), &dup,
+                         0, FALSE, DUPLICATE_SAME_ACCESS)
+        || !dup) {
+        return false;
+    }
+    auto sharedHandle = std::shared_ptr<void>(dup, [](void *h) {
+        if (h && h != INVALID_HANDLE_VALUE)
+            CloseHandle(h);
+    });
+
+    std::lock_guard guard(lock);
+    if (g_gpuUnsupported || failedGpuStreams.contains(key))
+        return false;
+    Latest entry;
+    entry.serial = nextSerial++;
+    entry.gpuEpoch = epoch;
+    entry.gpuSize = QSize(int(width), int(height));
+    entry.gpuHandle = std::move(sharedHandle);
+    latest.insert(key, std::move(entry));
+    wakeViews(key);
+    return true;
+#endif
 }
 
 void video_clear(rust::Str stream)
@@ -517,6 +967,9 @@ void video_clear(rust::Str stream)
     const QString key = QString::fromUtf8(stream.data(), qsizetype(stream.size()));
     std::lock_guard guard(lock);
     latest.remove(key);
+#ifdef _WIN32
+    failedGpuStreams.remove(key);
+#endif
     wakeViews(key);
 }
 
@@ -526,6 +979,9 @@ void clear_idle_video_frames()
     if (views.empty()) {
         latest.clear();
         latest.squeeze();
+#ifdef _WIN32
+        failedGpuStreams.clear();
+#endif
     }
 }
 

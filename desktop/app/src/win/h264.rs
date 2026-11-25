@@ -441,6 +441,7 @@ impl Decoder {
     /// Decodes one access unit (Annex B); returns the pictures it completed.
     /// On a GPU failure, tries another adapter before software. The error is
     /// returned so the caller can request a keyframe for the replacement decoder.
+    #[cfg(test)]
     pub fn decode(&mut self, data: &[u8], time_us: u64) -> windows::core::Result<Vec<Picture>> {
         let frames = self.decode_frames(data, time_us)?;
         frames.iter().map(|frame| self.read_frame(frame)).collect()

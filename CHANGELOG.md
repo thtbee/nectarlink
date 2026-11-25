@@ -8,6 +8,10 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Mirroring on Windows uses much less CPU.** The phone's picture now stays on the graphics
+  card from decoding to the screen, instead of being copied through the CPU for every frame.
+  PCs that can't do that keep the old way. Thanks to [@aihehye](https://github.com/aihehye)
+  ([#585](https://github.com/thtbee/nectarlink/pull/585)).
 - **Unlock the PC from the phone.** With unlock with phone set up, **Unlock PC** on a Windows
   PC's card on the phone brings up the fingerprint prompt for its lock screen, so you don't
   have to pick NectarLink on the PC first. It works only for a phone the PC unlocks with

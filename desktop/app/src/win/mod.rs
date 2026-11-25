@@ -16,6 +16,7 @@ pub mod clipboard;
 pub mod displays;
 pub mod doctor;
 pub mod elevated;
+pub mod gpu_video;
 pub mod h264;
 pub mod http;
 pub mod icon;
