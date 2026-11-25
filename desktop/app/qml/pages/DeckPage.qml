@@ -70,6 +70,8 @@ Item {
         case "sparkle":
         case "bolt": return Icons.bolt
         case "star": return Icons.star
+        case "power": return Icons.power
+        case "restart": return Icons.refresh
         case "music": return Icons.music
         case "folder": return Icons.folder
         case "video": return Icons.video
@@ -90,7 +92,8 @@ Item {
         "volume_up", "volume_down", "volume_off", "mic",
         "mic_off", "lock", "desktop", "switch_window",
         "screenshot", "shortcut", "globe", "text",
-        "app", "terminal", "bolt", "star"
+        "app", "terminal", "bolt", "star",
+        "power", "restart"
     ]
 
     readonly property var actionChoices: [
@@ -109,8 +112,18 @@ Item {
         { id: "open_url",         group: qsTr("Custom"), label: qsTr("Open website") },
         { id: "type_text",        group: qsTr("Custom"), label: qsTr("Type text snippet") },
         { id: "launch_app",       group: qsTr("Apps"),   label: Qt.platform.os === "linux" ? qsTr("Launch application (.desktop / binary)") : qsTr("Launch application (.exe / .lnk)") },
-        { id: "run_command",      group: qsTr("Apps"),   label: qsTr("Run shell command") }
+        { id: "run_command",      group: qsTr("Apps"),   label: qsTr("Run shell command") },
+        { id: "macro",            group: qsTr("Custom"), label: qsTr("Macro (several actions)") },
+        // Not on macOS yet: the Mac app doesn't restart or shut down the Mac.
+        { id: "restart_pc",       group: qsTr("Power"),  label: qsTr("Restart PC"), hidden: Qt.platform.os === "osx" },
+        { id: "shut_down_pc",     group: qsTr("Power"),  label: qsTr("Shut down PC"), hidden: Qt.platform.os === "osx" }
     ]
+    // What a macro step can be: the plain actions (#490).
+    readonly property var stepChoices: actionChoices.filter(c => c.id !== "macro" && c.id !== "restart_pc" && c.id !== "shut_down_pc")
+    function choiceLabel(kind) {
+        const c = actionChoices.find(x => x.id === kind)
+        return c ? c.label : kind
+    }
 
     function openAddTile() {
         editorSheet.tileId = ""
@@ -124,6 +137,7 @@ Item {
         editorSheet.modAlt = false
         editorSheet.modShift = false
         editorSheet.modWin = false
+        editorSheet.macroSteps = []
         editorSheet.errorText = ""
         editorSheet.open()
     }
@@ -140,6 +154,11 @@ Item {
         editorSheet.modAlt = !!tile.alt
         editorSheet.modShift = !!tile.shift
         editorSheet.modWin = !!tile.win
+        let steps = []
+        if (tile.kind === "macro") {
+            try { steps = JSON.parse(tile.param || "[]") } catch (e) { steps = [] }
+        }
+        editorSheet.macroSteps = steps
         editorSheet.errorText = ""
         editorSheet.open()
     }
@@ -617,11 +636,43 @@ Item {
         property bool modShift: false
         property bool modWin: false
         property string errorText: ""
+        // A macro's steps while it's edited; saved as JSON in paramValue (#490).
+        property var macroSteps: []
+
+        function setSteps(steps) { macroSteps = steps; paramValue = JSON.stringify(steps) }
+        function addStep(kind) {
+            const steps = macroSteps.slice()
+            steps.push({ kind: kind, param: kind === "shortcut" ? "c" : kind === "open_url" ? "https://" : "",
+                         ctrl: kind === "shortcut", alt: false, shift: false, win: false, delay: 0 })
+            setSteps(steps)
+        }
+        function changeStep(i, field, value) {
+            const steps = macroSteps.slice()
+            const s = Object.assign({}, steps[i])
+            s[field] = value
+            steps[i] = s
+            setSteps(steps)
+        }
+        function moveStep(i, by) {
+            const j = i + by
+            if (j < 0 || j >= macroSteps.length) return
+            const steps = macroSteps.slice()
+            const s = steps[i]
+            steps[i] = steps[j]
+            steps[j] = s
+            setSteps(steps)
+        }
+        function removeStep(i) {
+            const steps = macroSteps.slice()
+            steps.splice(i, 1)
+            setSteps(steps)
+        }
 
         function selectKind(kind) {
             // Another kind of action: the last one's value and keys don't carry over.
             if (kind !== actionKind) {
                 paramValue = ""
+                macroSteps = []
                 modCtrl = false
                 modAlt = false
                 modShift = false
@@ -640,6 +691,8 @@ Item {
             } else if (kind === "open_url" && paramValue.length === 0) {
                 paramValue = "https://"
             }
+            if (kind === "macro")
+                setSteps(macroSteps)
         }
 
         Column {
@@ -716,7 +769,7 @@ Item {
                     spacing: 6
 
                     Repeater {
-                        model: page.actionChoices
+                        model: page.actionChoices.filter(c => !c.hidden)
                         delegate: Chip {
                             required property var modelData
                             interactive: true
@@ -830,6 +883,224 @@ Item {
                 }
             }
 
+            // A macro's steps (#490): each an action, then a wait before the next.
+            Column {
+                width: parent.width
+                spacing: 6
+                visible: editorSheet.actionKind === "macro"
+
+                Txt {
+                    width: parent.width
+                    wrapMode: Text.WordWrap
+                    role: "bodySmall"
+                    muted: true
+                    text: qsTr("The steps run in order. Up to 16, with up to 10 seconds of waiting after each and 30 in all.")
+                }
+
+                Repeater {
+                    model: editorSheet.macroSteps
+                    delegate: Rectangle {
+                        id: stepRow
+                        required property var modelData
+                        required property int index
+                        readonly property string kind: modelData.kind
+                        readonly property bool hasParam: kind === "shortcut" || kind === "open_url"
+                            || kind === "type_text" || kind === "launch_app" || kind === "run_command"
+                        width: parent.width
+                        height: stepCol.implicitHeight + 16
+                        radius: Theme.radiusSm
+                        color: Theme.surfaceContainerHigh
+
+                        Column {
+                            id: stepCol
+                            x: 10
+                            y: 8
+                            width: parent.width - 20
+                            spacing: 6
+
+                            Row {
+                                width: parent.width
+                                spacing: 4
+                                Txt {
+                                    width: parent.width - stepButtons.width - 4
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    elide: Text.ElideRight
+                                    role: "label"
+                                    text: qsTr("%1. %2").arg(stepRow.index + 1).arg(page.choiceLabel(stepRow.kind))
+                                }
+                                Row {
+                                    id: stepButtons
+                                    spacing: 0
+                                    IconButton {
+                                        iconPath: Icons.chevronUp
+                                        label: qsTr("Move step up")
+                                        enabled: stepRow.index > 0
+                                        onClicked: editorSheet.moveStep(stepRow.index, -1)
+                                    }
+                                    IconButton {
+                                        iconPath: Icons.chevronDown
+                                        label: qsTr("Move step down")
+                                        enabled: stepRow.index < editorSheet.macroSteps.length - 1
+                                        onClicked: editorSheet.moveStep(stepRow.index, 1)
+                                    }
+                                    IconButton {
+                                        iconPath: Icons.close
+                                        label: qsTr("Remove step")
+                                        onClicked: editorSheet.removeStep(stepRow.index)
+                                    }
+                                }
+                            }
+
+                            Row {
+                                visible: stepRow.kind === "shortcut"
+                                spacing: 6
+                                Chip {
+                                    interactive: true
+                                    selected: !!stepRow.modelData.ctrl
+                                    text: qsTr("Ctrl")
+                                    onClicked: editorSheet.changeStep(stepRow.index, "ctrl", !stepRow.modelData.ctrl)
+                                }
+                                Chip {
+                                    interactive: true
+                                    selected: !!stepRow.modelData.alt
+                                    text: qsTr("Alt")
+                                    onClicked: editorSheet.changeStep(stepRow.index, "alt", !stepRow.modelData.alt)
+                                }
+                                Chip {
+                                    interactive: true
+                                    selected: !!stepRow.modelData.shift
+                                    text: qsTr("Shift")
+                                    onClicked: editorSheet.changeStep(stepRow.index, "shift", !stepRow.modelData.shift)
+                                }
+                                Chip {
+                                    interactive: true
+                                    selected: !!stepRow.modelData.win
+                                    text: Qt.platform.os === "linux" ? qsTr("Super") : qsTr("Win")
+                                    onClicked: editorSheet.changeStep(stepRow.index, "win", !stepRow.modelData.win)
+                                }
+                            }
+
+                            Row {
+                                width: parent.width
+                                spacing: 8
+                                Rectangle {
+                                    visible: stepRow.hasParam
+                                    width: parent.width - (waitBox.visible ? waitBox.width + 8 : 0)
+                                    height: 32
+                                    radius: Theme.radiusSm
+                                    color: Theme.surfaceContainer
+                                    border.width: stepParam.activeFocus ? 2 : 1
+                                    border.color: stepParam.activeFocus ? Theme.primary : Theme.outlineVariant
+                                    TextInput {
+                                        id: stepParam
+                                        anchors.fill: parent
+                                        anchors.leftMargin: 10
+                                        anchors.rightMargin: 10
+                                        verticalAlignment: TextInput.AlignVCenter
+                                        clip: true
+                                        color: Theme.surfaceContent
+                                        selectionColor: Theme.primaryContainer
+                                        selectedTextColor: Theme.primaryContainerContent
+                                        font.family: stepRow.kind === "run_command" || stepRow.kind === "shortcut"
+                                            ? Theme.fontMono : Theme.fontUi
+                                        font.pixelSize: 13
+                                        text: stepRow.modelData.param || ""
+                                        onEditingFinished: {
+                                            if (text !== (stepRow.modelData.param || ""))
+                                                editorSheet.changeStep(stepRow.index, "param", text)
+                                        }
+                                        Accessible.name: qsTr("Step %1 value").arg(stepRow.index + 1)
+                                    }
+                                }
+                                Row {
+                                    id: waitBox
+                                    spacing: 6
+                                    visible: stepRow.index < editorSheet.macroSteps.length - 1
+                                    Txt {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        role: "bodySmall"
+                                        muted: true
+                                        text: qsTr("then wait")
+                                    }
+                                    Rectangle {
+                                        width: 56
+                                        height: 32
+                                        radius: Theme.radiusSm
+                                        color: Theme.surfaceContainer
+                                        border.width: waitInput.activeFocus ? 2 : 1
+                                        border.color: waitInput.activeFocus ? Theme.primary : Theme.outlineVariant
+                                        TextInput {
+                                            id: waitInput
+                                            anchors.fill: parent
+                                            anchors.leftMargin: 8
+                                            anchors.rightMargin: 8
+                                            verticalAlignment: TextInput.AlignVCenter
+                                            horizontalAlignment: TextInput.AlignRight
+                                            color: Theme.surfaceContent
+                                            font.pixelSize: 13
+                                            text: ((stepRow.modelData.delay || 0) / 1000).toString()
+                                            onEditingFinished: {
+                                                const seconds = Number(text.replace(",", "."))
+                                                const ms = Math.round(Math.min(10, Math.max(0, isNaN(seconds) ? 0 : seconds)) * 1000)
+                                                if (ms !== (stepRow.modelData.delay || 0))
+                                                    editorSheet.changeStep(stepRow.index, "delay", ms)
+                                                else
+                                                    text = (ms / 1000).toString()
+                                            }
+                                            Accessible.name: qsTr("Seconds to wait after step %1").arg(stepRow.index + 1)
+                                        }
+                                    }
+                                    Txt {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        role: "bodySmall"
+                                        muted: true
+                                        text: qsTr("seconds")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Txt {
+                    visible: editorSheet.macroSteps.length < 16
+                    text: editorSheet.macroSteps.length === 0 ? qsTr("Add a step:") : qsTr("Add another step:")
+                    role: "bodySmall"
+                    muted: true
+                }
+                Flow {
+                    visible: editorSheet.macroSteps.length < 16
+                    width: parent.width
+                    spacing: 6
+                    Repeater {
+                        model: page.stepChoices
+                        delegate: Chip {
+                            required property var modelData
+                            interactive: true
+                            text: modelData.label
+                            onClicked: editorSheet.addStep(modelData.id)
+                        }
+                    }
+                }
+                Txt {
+                    visible: editorSheet.macroSteps.some(s => s.kind === "run_command")
+                    width: parent.width
+                    wrapMode: Text.WordWrap
+                    role: "bodySmall"
+                    color: Theme.warning
+                    text: qsTr("Requires \"Allow running Deck commands\" to be turned on for the phone in Settings → Devices.")
+                }
+            }
+
+            Txt {
+                visible: editorSheet.actionKind === "restart_pc" || editorSheet.actionKind === "shut_down_pc"
+                width: parent.width
+                wrapMode: Text.WordWrap
+                role: "bodySmall"
+                muted: true
+                text: qsTr("The phone asks before it does it. Apps with unsaved work can still stop it.")
+            }
+
             // Tile Label Input
             Column {
                 width: parent.width
@@ -939,6 +1210,8 @@ Item {
                         }
                     }
                     Button {
+                        // Testing one of these would really restart or shut down this PC.
+                        visible: editorSheet.actionKind !== "restart_pc" && editorSheet.actionKind !== "shut_down_pc"
                         variant: "tonal"
                         size: "sm"
                         iconPath: Icons.bolt

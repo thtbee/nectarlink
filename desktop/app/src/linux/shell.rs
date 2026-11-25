@@ -360,6 +360,12 @@ pub fn shutdown() -> Result<(), String> {
     spawn_detached("systemctl", &["poweroff"])
 }
 
+/// Restarts the system (`systemctl reboot`, #490); logind may still ask
+/// when other sessions are signed in.
+pub fn restart() -> Result<(), String> {
+    spawn_detached("systemctl", &["reboot"])
+}
+
 /// Hibernates the system (`systemctl hibernate`, #355).
 pub fn hibernate() -> Result<(), String> {
     spawn_detached("systemctl", &["hibernate"])

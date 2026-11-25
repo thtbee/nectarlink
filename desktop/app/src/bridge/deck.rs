@@ -94,6 +94,34 @@ fn action_fields(action: &DeckAction) -> (String, bool, bool, bool, bool, String
             let preview: String = command.chars().take(28).collect();
             (command.clone(), false, false, false, false, format!("cmd · {preview}"))
         }
+        DeckAction::RestartPc => {
+            (String::new(), false, false, false, false, tr!("Deck", "Asks on the phone first"))
+        }
+        DeckAction::ShutDownPc => {
+            (String::new(), false, false, false, false, tr!("Deck", "Asks on the phone first"))
+        }
+        DeckAction::Macro { steps } => {
+            // The steps as the editor edits them, in the param field.
+            let editor: Vec<deck::EditorStep> = steps
+                .iter()
+                .map(|s| {
+                    let (param, ctrl, alt, shift, win, _) = action_fields(&s.action);
+                    deck::EditorStep {
+                        kind: s.action.kind().into(),
+                        param,
+                        ctrl,
+                        alt,
+                        shift,
+                        win,
+                        delay: s.delay_ms,
+                    }
+                })
+                .collect();
+            let json = serde_json::to_string(&editor).unwrap_or_else(|_| "[]".into());
+            let count =
+                if steps.len() == 1 { tr!("Deck", "1 step") } else { tr!("Deck", "%1 steps", steps.len()) };
+            (json, false, false, false, false, count)
+        }
     }
 }
 

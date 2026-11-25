@@ -1648,6 +1648,14 @@
     <string name="community_invite_later">Not now</string>
     <string name="settings_daily_count_title">Send an anonymous daily count</string>
     <string name="settings_daily_count_body">Once a day: the app\'s version, the platform and model, and how often each feature worked or failed. No ID and nothing personal.</string>
+    <string name="deck_confirm_restart_title">Restart %1$s?</string>
+    <string name="deck_confirm_shut_down_title">Shut down %1$s?</string>
+    <string name="deck_confirm_power_text">Apps on it with unsaved work can still stop it.</string>
+    <string name="deck_confirm_restart">Restart</string>
+    <string name="deck_confirm_shut_down">Shut down</string>
+    <string name="deck_default_restart">Restart</string>
+    <string name="deck_default_shut_down">Shut down</string>
+    <string name="deck_default_macro">Macro</string>
 </resources>
 
 

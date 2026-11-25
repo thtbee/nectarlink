@@ -1575,4 +1575,12 @@
     <string name="community_invite_later">Để sau</string>
     <string name="settings_daily_count_title">Gửi số đếm hằng ngày ẩn danh</string>
     <string name="settings_daily_count_body">Mỗi ngày một lần: phiên bản ứng dụng, nền tảng và mẫu máy, và số lần mỗi tính năng hoạt động hoặc lỗi. Không có ID, không có gì cá nhân.</string>
+    <string name="deck_confirm_restart_title">Khởi động lại %1$s?</string>
+    <string name="deck_confirm_shut_down_title">Tắt %1$s?</string>
+    <string name="deck_confirm_power_text">Ứng dụng có dữ liệu chưa lưu vẫn có thể chặn việc này.</string>
+    <string name="deck_confirm_restart">Khởi động lại</string>
+    <string name="deck_confirm_shut_down">Tắt máy</string>
+    <string name="deck_default_restart">Khởi động lại</string>
+    <string name="deck_default_shut_down">Tắt máy</string>
+    <string name="deck_default_macro">Macro</string>
 </resources>

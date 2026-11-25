@@ -1664,6 +1664,14 @@
     <string name="community_invite_later">Nie teraz</string>
     <string name="settings_daily_count_title">Wysyłaj anonimowe dzienne zliczenie</string>
     <string name="settings_daily_count_body">Raz dziennie: wersja aplikacji, platforma i model oraz ile razy każda funkcja zadziałała lub nie. Bez ID i niczego osobistego.</string>
+    <string name="deck_confirm_restart_title">Uruchomić ponownie %1$s?</string>
+    <string name="deck_confirm_shut_down_title">Wyłączyć %1$s?</string>
+    <string name="deck_confirm_power_text">Aplikacje z niezapisaną pracą wciąż mogą to zatrzymać.</string>
+    <string name="deck_confirm_restart">Uruchom ponownie</string>
+    <string name="deck_confirm_shut_down">Wyłącz</string>
+    <string name="deck_default_restart">Uruchom ponownie</string>
+    <string name="deck_default_shut_down">Wyłącz</string>
+    <string name="deck_default_macro">Makro</string>
 </resources>
 
 

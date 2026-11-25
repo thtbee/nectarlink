@@ -1637,6 +1637,14 @@
     <string name="community_invite_later">今はしない</string>
     <string name="settings_daily_count_title">匿名の1日1回のカウントを送信</string>
     <string name="settings_daily_count_body">1日1回、アプリのバージョン、プラットフォームと機種、各機能が成功・失敗した回数を送ります。IDや個人的な情報は含みません。</string>
+    <string name="deck_confirm_restart_title">%1$s を再起動しますか？</string>
+    <string name="deck_confirm_shut_down_title">%1$s をシャットダウンしますか？</string>
+    <string name="deck_confirm_power_text">保存していない作業があるアプリが止めることもあります。</string>
+    <string name="deck_confirm_restart">再起動</string>
+    <string name="deck_confirm_shut_down">シャットダウン</string>
+    <string name="deck_default_restart">再起動</string>
+    <string name="deck_default_shut_down">シャットダウン</string>
+    <string name="deck_default_macro">マクロ</string>
 </resources>
 
 

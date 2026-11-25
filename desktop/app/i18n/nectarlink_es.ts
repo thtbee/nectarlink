@@ -2230,6 +2230,51 @@
         <translation>Elige una tecla para el atajo.</translation>
     </message>
     <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Asks on the phone first</source>
+        <translation>Pregunta antes en el teléfono</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>1 step</source>
+        <translation>1 paso</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>%1 steps</source>
+        <translation>%1 pasos</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Add the macro&apos;s steps.</source>
+        <translation>Añade los pasos de la macro.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>A macro can have up to %1 steps.</source>
+        <translation>Una macro puede tener hasta %1 pasos.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Step %1: %2</source>
+        <translation>Paso %1: %2</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Step %1: restart, shut down and macros can&apos;t be steps.</source>
+        <translation>Paso %1: reiniciar, apagar y las macros no pueden ser pasos.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Step %1: wait at most 10 seconds.</source>
+        <translation>Paso %1: espera como máximo 10 segundos.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>A macro can wait 30 seconds in all.</source>
+        <translation>Una macro puede esperar 30 segundos en total.</translation>
+    </message>
+    <message>
         <location filename="rust_strings.h" line="192"/>
         <source>Choose an application (.exe or .lnk) on this PC.</source>
         <translation>Elige una aplicación (.exe o .lnk) en este PC.</translation>
@@ -2434,6 +2479,86 @@
         <location filename="../qml/pages/DeckPage.qml" line="112"/>
         <source>Run shell command</source>
         <translation>Ejecutar comando de shell</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Macro (several actions)</source>
+        <translation>Macro (varias acciones)</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Power</source>
+        <translation>Encendido</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Restart PC</source>
+        <translation>Reiniciar el PC</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Shut down PC</source>
+        <translation>Apagar el PC</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>The steps run in order. Up to 16, with up to 10 seconds of waiting after each and 30 in all.</source>
+        <translation>Los pasos se ejecutan en orden. Hasta 16, con hasta 10 segundos de espera después de cada uno y 30 en total.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>%1. %2</source>
+        <translation>%1. %2</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Move step up</source>
+        <translation>Subir paso</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Move step down</source>
+        <translation>Bajar paso</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Remove step</source>
+        <translation>Quitar paso</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Step %1 value</source>
+        <translation>Valor del paso %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>then wait</source>
+        <translation>y esperar</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>seconds</source>
+        <translation>segundos</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Seconds to wait after step %1</source>
+        <translation>Segundos de espera tras el paso %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Add a step:</source>
+        <translation>Añadir un paso:</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Add another step:</source>
+        <translation>Añadir otro paso:</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>The phone asks before it does it. Apps with unsaved work can still stop it.</source>
+        <translation>El teléfono pregunta antes de hacerlo. Las apps con trabajo sin guardar aún pueden impedirlo.</translation>
     </message>
     <message>
         <location filename="../qml/pages/DeckPage.qml" line="149"/>
