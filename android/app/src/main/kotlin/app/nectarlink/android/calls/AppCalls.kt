@@ -80,6 +80,7 @@ internal class AppCalls(private val context: Context, private val onChange: (Cal
      */
     @Synchronized
     fun posted(sbn: StatusBarNotification, caller: String?, photo: () -> ByteArray?, app: String) {
+        lastSeen[sbn.packageName] = android.os.SystemClock.elapsedRealtime()
         val n = sbn.notification
         val showsTimer = n.extras.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER, false) && n.`when` > 0L
         val phase = AppCallRules.phase(callType(n), showsTimer)
@@ -199,6 +200,12 @@ internal class AppCalls(private val context: Context, private val onChange: (Cal
         }
 
     companion object {
+        /** When each app last showed a call notification ([android.os.SystemClock.elapsedRealtime]). */
+        private val lastSeen = java.util.concurrent.ConcurrentHashMap<String, Long>()
+
+        /** Whether [pkg] has shown a call notification since [since]: a call it started is under way. */
+        fun seenSince(pkg: String, since: Long): Boolean = (lastSeen[pkg] ?: Long.MIN_VALUE) >= since
+
         private const val TAG = "AppCalls"
         private const val END_AFTER_MS = 1_500L
         /** `calls::MAX_TEXT_BYTES` in the protocol. */

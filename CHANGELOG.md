@@ -570,6 +570,11 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **A WhatsApp call from the PC starts on the phone by itself.** It used to need a tap on a
+  notification whenever NectarLink wasn't on the phone's screen. Now it starts straight away
+  when Android allows it: with **Display over other apps** allowed for NectarLink, or with the
+  PC set up as the phone's companion device. On a locked phone, or if Android still blocks it,
+  the notification to tap comes as before.
 - **The phone app no longer crashes on start with battery saver on.** On some phones (Xiaomi
   with battery saver, say) Android stopped the background service before it could show its
   notification, and closed the app for it. Thanks to [@aihehye](https://github.com/aihehye)

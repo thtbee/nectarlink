@@ -4,12 +4,17 @@ package app.nectarlink.android.calls
 import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.KeyguardManager
 import android.app.PendingIntent
 import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
 import android.provider.ContactsContract
+import android.provider.Settings
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -27,8 +32,9 @@ import app.nectarlink.core.CallSim
  *
  * The PC sees these apps next to the SIMs in "Call with" (`call.sims`), with
  * an id of `app:<package>`; an older PC just shows them as one more choice.
- * When Android won't let NectarLink open an app from the background, a
- * notification on the phone starts the call with a tap instead.
+ * The call starts by itself when Android lets NectarLink open the app: it's
+ * on screen, may display over other apps, or is the PC's companion app.
+ * Otherwise, and on a locked phone, a notification starts it with a tap.
  */
 internal object AppDial {
     private const val TAG = "AppDial"
@@ -66,12 +72,32 @@ internal object AppDial {
             .setDataAndType(ContentUris.withAppendedId(ContactsContract.Data.CONTENT_URI, row.id), app.mime)
             .setPackage(app.pkg)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        // Opened right away only while NectarLink is on screen: from the
-        // background Android may block it without saying, and a locked phone
-        // would open the app behind the lock. Otherwise a tap starts it.
+        val who = row.name ?: number
         if (inForeground() && runCatching { context.startActivity(intent) }.isSuccess) return true
-        return notify(context, app, row.name ?: number, intent)
+        // A locked phone would open the app behind the lock: a tap, after unlocking, starts it.
+        val locked = context.getSystemService(KeyguardManager::class.java)?.isKeyguardLocked == true
+        if (!locked && mayOpenFromBackground(context)) {
+            val since = SystemClock.elapsedRealtime()
+            if (runCatching { context.startActivity(intent) }.isSuccess) {
+                // Android drops a blocked start without saying. The app's own call
+                // notification says the call began; without one, the tap after all.
+                if (watchesNotifications(context)) {
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        if (!AppCalls.seenSince(app.pkg, since)) notify(context, app, who, intent)
+                    }, CONFIRM_MS)
+                }
+                return true
+            }
+        }
+        return notify(context, app, who, intent)
     }
+
+    /** Whether Android lets NectarLink open another app's screen while it isn't on screen. */
+    private fun mayOpenFromBackground(context: Context): Boolean =
+        Settings.canDrawOverlays(context) || app.nectarlink.android.companion.PcCompanion.isAssociated(context)
+
+    private fun watchesNotifications(context: Context): Boolean =
+        NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
 
     internal data class Row(val id: Long, val name: String?)
 
@@ -170,6 +196,8 @@ internal object AppDial {
     /** The national part of a number: enough to tell contacts apart. */
     private const val COMPARED_DIGITS = 10
     private const val NOTIFICATION_ID = 0x0A11
+    /** How long a started call has to show its notification. */
+    private const val CONFIRM_MS = 3_000L
     /** A call nobody started in a minute is stale. */
     private const val TIMEOUT_MS = 60_000L
 }
