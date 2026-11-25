@@ -164,6 +164,7 @@ class MainActivity : ComponentActivity() {
             handleDeckIntent(intent)
             handleRecordIntent(intent)
             handleWebcamIntent(intent)
+            handleReportsIntent(intent)
         }
 
         setContent {
@@ -282,6 +283,14 @@ class MainActivity : ComponentActivity() {
         handleDeckIntent(intent)
         handleRecordIntent(intent)
         handleWebcamIntent(intent)
+        handleReportsIntent(intent)
+    }
+
+    /** A notification about a sent report: Your reports opens at it. */
+    private fun handleReportsIntent(intent: Intent?) {
+        val rid = intent?.getStringExtra(app.nectarlink.android.diag.ReportNotices.EXTRA_OPEN_REPORTS) ?: return
+        intent.removeExtra(app.nectarlink.android.diag.ReportNotices.EXTRA_OPEN_REPORTS)
+        app.nectarlink.android.diag.ReportNotices.requestOpen(rid)
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
@@ -374,6 +383,7 @@ private sealed interface ScreenRoute {
     data object Walkthrough : ScreenRoute
     data object FeaturesGuide : ScreenRoute
     data object Report : ScreenRoute
+    data class YourReports(val focus: String) : ScreenRoute
     data object Pairing : ScreenRoute
     data class Webcam(val pcId: String) : ScreenRoute
     data class Recorder(val pcId: String) : ScreenRoute
@@ -410,6 +420,15 @@ private fun App(
     var activeFirstRunWalkthrough by rememberSaveable { mutableStateOf(false) }
     var featuresGuideOpen by rememberSaveable { mutableStateOf(false) }
     var reportOpen by rememberSaveable { mutableStateOf(false) }
+    // Your reports, at a report ("" for the list); null while closed.
+    var yourReports by rememberSaveable { mutableStateOf<String?>(null) }
+    val reportsAsked by app.nectarlink.android.diag.ReportNotices.open.collectAsStateWithLifecycle()
+    LaunchedEffect(reportsAsked) {
+        reportsAsked?.let {
+            yourReports = it
+            app.nectarlink.android.diag.ReportNotices.opened()
+        }
+    }
     var crashCard by remember { mutableStateOf<app.nectarlink.core.CrashCard?>(null) }
     var crashSend by remember { mutableStateOf(app.nectarlink.android.ui.settings.CrashSend.Idle) }
     var crashFixedIn by remember { mutableStateOf<String?>(null) }
@@ -574,6 +593,7 @@ private fun App(
         state.status is CoreStatus.Failed -> ScreenRoute.Failed(state.status.message)
         showWalkthrough -> ScreenRoute.Walkthrough
         featuresGuideOpen -> ScreenRoute.FeaturesGuide
+        yourReports != null -> ScreenRoute.YourReports(yourReports.orEmpty())
         reportOpen -> ScreenRoute.Report
         pairing || state.pairing != PairingState.Idle -> ScreenRoute.Pairing
         webcamDevice != null -> ScreenRoute.Webcam(webcamDevice.id)
@@ -741,6 +761,16 @@ private fun App(
                         onAsk = core::reportAsk,
                         reportLogs = core.reportLogs,
                         onBack = { reportOpen = false },
+                        onYourReports = { yourReports = "" },
+                        modifier = Modifier.fillMaxSize().padding(padding),
+                    )
+                }
+            }
+            is ScreenRoute.YourReports -> {
+                Scaffold(snackbarHost = { SnackbarHost(snackbar) }) { padding ->
+                    app.nectarlink.android.ui.settings.YourReportsScreen(
+                        focusRid = route.focus.ifEmpty { null },
+                        onBack = { yourReports = null },
                         modifier = Modifier.fillMaxSize().padding(padding),
                     )
                 }

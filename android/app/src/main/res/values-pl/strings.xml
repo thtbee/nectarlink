@@ -1625,7 +1625,6 @@
     <string name="channel_report_replies">Odpowiedzi na twoje zgłoszenia</string>
     <string name="report_reply_title">Jest odpowiedź na twoje zgłoszenie</string>
     <string name="report_closed_title">Twoje zgłoszenie zostało zamknięte</string>
-    <string name="report_notice_text">Zgłoszenie #%1$d. Stuknij, aby przeczytać na GitHubie.</string>
     <string name="crash_card_sent">Dzięki, raport o awarii został wysłany</string>
     <string name="crash_card_title">NectarLink niespodziewanie się zamknął</string>
     <string name="crash_card_failed">Nie udało się wysłać raportu o awarii. Użyj opcji Najpierw zobacz, aby wysłać go inaczej.</string>
@@ -1672,6 +1671,31 @@
     <string name="deck_default_restart">Uruchom ponownie</string>
     <string name="deck_default_shut_down">Wyłącz</string>
     <string name="deck_default_macro">Makro</string>
+    <string name="report_answer_line">%1$s: %2$s</string>
+    <string name="report_notice_open_text">Zgłoszenie #%1$d. Dotknij, aby przeczytać.</string>
+    <string name="report_reply_action">Odpowiedz</string>
+    <string name="report_reply_hint">Twoja odpowiedź</string>
+    <string name="report_who_you">Ty</string>
+    <string name="report_who_other">Ktoś z tym samym problemem</string>
+    <string name="report_reply_not_sent">Twoja odpowiedź nie została wysłana</string>
+    <string name="report_reply_limited">To limit odpowiedzi na dziś. Spróbuj jutro.</string>
+    <string name="report_reply_refused">To zgłoszenie nie przyjmuje już odpowiedzi.</string>
+    <string name="report_reply_later">Nie udało się wysłać. Sprawdź połączenie i spróbuj ponownie.</string>
+    <string name="your_reports_title">Twoje zgłoszenia</string>
+    <string name="your_reports_check">Sprawdź odpowiedzi</string>
+    <string name="your_reports_intro">Zgłoszenia wysłane z NectarLink zostają tu przez 30 dni, razem z odpowiedziami. Możesz odpowiadać stąd bez konta GitHub. Odpowiedzi są publiczne na GitHubie, tak jak zgłoszenie.</string>
+    <string name="your_reports_none">Z tego telefonu nie wysłano jeszcze zgłoszeń.</string>
+    <string name="your_reports_waiting">Czeka na zgłoszenie</string>
+    <string name="your_reports_closed">Zgłoszenie #%1$d · zamknięte</string>
+    <string name="your_reports_number">Zgłoszenie #%1$d</string>
+    <string name="your_reports_sent">Wysłano %1$s</string>
+    <string name="your_reports_on_github">Na GitHubie</string>
+    <string name="your_reports_load_failed">Nie udało się wczytać odpowiedzi. Sprawdź połączenie i spróbuj ponownie.</string>
+    <string name="your_reports_no_answers">Jeszcze nie ma odpowiedzi. Dostaniesz powiadomienie, gdy się pojawi.</string>
+    <string name="your_reports_reply_on_github">To zgłoszenie wysłano, zanim można było odpowiadać z NectarLink, więc odpowiedz na GitHubie.</string>
+    <string name="your_reports_reply_sent">Wysłano. Jest już przy zgłoszeniu.</string>
+    <string name="your_reports_sending">Wysyłanie</string>
+    <string name="your_reports_send">Wyślij</string>
 </resources>
 
 

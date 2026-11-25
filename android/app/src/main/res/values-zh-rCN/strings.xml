@@ -1466,7 +1466,6 @@
     <string name="channel_report_replies">你的报告收到的回复</string>
     <string name="report_reply_title">你的报告有新回复</string>
     <string name="report_closed_title">你的报告已关闭</string>
-    <string name="report_notice_text">报告 #%1$d。点按即可在 GitHub 上阅读。</string>
     <string name="crash_card_sent">谢谢，崩溃报告已发送</string>
     <string name="crash_card_title">NectarLink 意外关闭</string>
     <string name="crash_card_failed">无法发送崩溃报告。请使用“先看看”以其他方式发送。</string>
@@ -1513,4 +1512,29 @@
     <string name="deck_default_restart">重启</string>
     <string name="deck_default_shut_down">关机</string>
     <string name="deck_default_macro">宏</string>
+    <string name="report_answer_line">%1$s：%2$s</string>
+    <string name="report_notice_open_text">报告 #%1$d。点按即可阅读。</string>
+    <string name="report_reply_action">回复</string>
+    <string name="report_reply_hint">你的回复</string>
+    <string name="report_who_you">你</string>
+    <string name="report_who_other">遇到同样问题的人</string>
+    <string name="report_reply_not_sent">你的回复没有发送</string>
+    <string name="report_reply_limited">今天的回复已达上限，请明天再试。</string>
+    <string name="report_reply_refused">这份报告已无法再回复。</string>
+    <string name="report_reply_later">发送失败。请检查网络后重试。</string>
+    <string name="your_reports_title">你的报告</string>
+    <string name="your_reports_check">查看回复</string>
+    <string name="your_reports_intro">从 NectarLink 发送的报告及其回复会在这里保留 30 天。你无需 GitHub 账号就能在这里回复。回复和报告一样会公开在 GitHub 上。</string>
+    <string name="your_reports_none">这部手机还没有发送过报告。</string>
+    <string name="your_reports_waiting">等待提交</string>
+    <string name="your_reports_closed">报告 #%1$d · 已关闭</string>
+    <string name="your_reports_number">报告 #%1$d</string>
+    <string name="your_reports_sent">发送于 %1$s</string>
+    <string name="your_reports_on_github">在 GitHub 上查看</string>
+    <string name="your_reports_load_failed">无法加载回复。请检查网络后重试。</string>
+    <string name="your_reports_no_answers">还没有回复。有回复时你会收到通知。</string>
+    <string name="your_reports_reply_on_github">这份报告发送时还不能在 NectarLink 中回复，请在 GitHub 上回复。</string>
+    <string name="your_reports_reply_sent">已发送，现在已附在报告上。</string>
+    <string name="your_reports_sending">正在发送</string>
+    <string name="your_reports_send">发送</string>
 </resources>

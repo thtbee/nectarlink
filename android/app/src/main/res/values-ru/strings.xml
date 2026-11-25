@@ -1480,7 +1480,6 @@
     <string name="channel_report_replies">Ответы на ваши отчёты</string>
     <string name="report_reply_title">На ваш отчёт ответили</string>
     <string name="report_closed_title">Ваш отчёт закрыт</string>
-    <string name="report_notice_text">Отчёт #%1$d. Нажмите, чтобы прочитать на GitHub.</string>
     <string name="crash_card_sent">Спасибо, отчёт о сбое отправлен</string>
     <string name="crash_card_title">NectarLink неожиданно закрылся</string>
     <string name="crash_card_failed">Не удалось отправить отчёт о сбое. Нажмите «Сначала посмотреть», чтобы отправить его иначе.</string>
@@ -1527,4 +1526,29 @@
     <string name="deck_default_restart">Перезагрузка</string>
     <string name="deck_default_shut_down">Выключение</string>
     <string name="deck_default_macro">Макрос</string>
+    <string name="report_answer_line">%1$s: %2$s</string>
+    <string name="report_notice_open_text">Отчёт #%1$d. Нажмите, чтобы прочитать.</string>
+    <string name="report_reply_action">Ответить</string>
+    <string name="report_reply_hint">Ваш ответ</string>
+    <string name="report_who_you">Вы</string>
+    <string name="report_who_other">Кто-то с той же проблемой</string>
+    <string name="report_reply_not_sent">Ответ не отправлен</string>
+    <string name="report_reply_limited">Это предел ответов на сегодня. Попробуйте завтра.</string>
+    <string name="report_reply_refused">Этот отчёт больше не принимает ответы.</string>
+    <string name="report_reply_later">Не удалось отправить. Проверьте подключение и попробуйте снова.</string>
+    <string name="your_reports_title">Ваши отчёты</string>
+    <string name="your_reports_check">Проверить ответы</string>
+    <string name="your_reports_intro">Отчёты, отправленные из NectarLink, хранятся здесь 30 дней вместе с ответами. Отвечать можно отсюда без аккаунта GitHub. Ответы публичны на GitHub, как и отчёт.</string>
+    <string name="your_reports_none">С этого телефона ещё не отправлялись отчёты.</string>
+    <string name="your_reports_waiting">Ждёт регистрации</string>
+    <string name="your_reports_closed">Отчёт #%1$d · закрыт</string>
+    <string name="your_reports_number">Отчёт #%1$d</string>
+    <string name="your_reports_sent">Отправлен %1$s</string>
+    <string name="your_reports_on_github">На GitHub</string>
+    <string name="your_reports_load_failed">Не удалось загрузить ответы. Проверьте подключение и попробуйте снова.</string>
+    <string name="your_reports_no_answers">Ответов пока нет. Когда появится ответ, придёт уведомление.</string>
+    <string name="your_reports_reply_on_github">Этот отчёт отправлен до появления ответов из NectarLink, поэтому ответьте на GitHub.</string>
+    <string name="your_reports_reply_sent">Отправлено. Ответ теперь в отчёте.</string>
+    <string name="your_reports_sending">Отправка</string>
+    <string name="your_reports_send">Отправить</string>
 </resources>

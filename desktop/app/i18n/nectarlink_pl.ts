@@ -8908,6 +8908,46 @@ Wymagania
         <source>Your report was closed</source>
         <translation>Twoje zgłoszenie zostało zamknięte</translation>
     </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Report #%1. Open it to read it.</source>
+        <translation>Zgłoszenie #%1. Otwórz, aby przeczytać.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Reply</source>
+        <translation>Odpowiedz</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>You</source>
+        <translation>Ty</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Someone with the same problem</source>
+        <translation>Ktoś z tym samym problemem</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Your reply wasn&apos;t sent</source>
+        <translation>Twoja odpowiedź nie została wysłana</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>That&apos;s the most replies for today. Try again tomorrow.</source>
+        <translation>To limit odpowiedzi na dziś. Spróbuj jutro.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>This report can&apos;t take replies any more.</source>
+        <translation>To zgłoszenie nie przyjmuje już odpowiedzi.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Check the connection, then send it again from Your reports.</source>
+        <translation>Sprawdź połączenie, a potem wyślij ją ponownie z Twoich zgłoszeń.</translation>
+    </message>
 </context>
 <context>
     <name>ReportSheet</name>
@@ -9099,6 +9139,11 @@ Wymagania
         <location filename="../qml/components/ReportSheet.qml" line="349"/>
         <source>Send</source>
         <translation>Wyślij</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="1"/>
+        <source>Your reports</source>
+        <translation>Twoje zgłoszenia</translation>
     </message>
 </context>
 <context>
@@ -11673,6 +11718,16 @@ Wymagania
         <source>80% (Protect battery)</source>
         <translation>80% (ochrona baterii)</translation>
     </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Your reports</source>
+        <translation>Twoje zgłoszenia</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>The reports you sent, the answers to them, and a place to reply without a GitHub account.</source>
+        <translation>Wysłane zgłoszenia, odpowiedzi na nie i miejsce, by odpowiadać bez konta GitHub.</translation>
+    </message>
 </context>
 <context>
     <name>Setup</name>
@@ -13465,6 +13520,129 @@ Wymagania
     <message>
         <source>Not available</source>
         <translation type="vanished">Niedostępne</translation>
+    </message>
+</context>
+<context>
+    <name>YourReportsSheet</name>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>NectarLink</source>
+        <translation>NectarLink</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>You</source>
+        <translation>Ty</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Someone with the same problem</source>
+        <translation>Ktoś z tym samym problemem</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Your reports</source>
+        <translation>Twoje zgłoszenia</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Check for answers</source>
+        <translation>Sprawdź odpowiedzi</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Reports sent from NectarLink stay here for 30 days, with the answers to them. You can reply from here without a GitHub account. Replies are public on GitHub, like the report.</source>
+        <translation>Zgłoszenia wysłane z NectarLink zostają tu przez 30 dni, razem z odpowiedziami. Możesz odpowiadać stąd bez konta GitHub. Odpowiedzi są publiczne na GitHubie, tak jak zgłoszenie.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>No reports sent from this PC yet.</source>
+        <translation>Z tego PC nie wysłano jeszcze zgłoszeń.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Report #%1 · closed</source>
+        <translation>Zgłoszenie #%1 · zamknięte</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Report #%1</source>
+        <translation>Zgłoszenie #%1</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Waiting to be filed</source>
+        <translation>Czeka na zgłoszenie</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Sent %1</source>
+        <translation>Wysłano %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>On GitHub</source>
+        <translation>Na GitHubie</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>No answers yet. You&apos;ll get a notification when there is one.</source>
+        <translation>Jeszcze nie ma odpowiedzi. Dostaniesz powiadomienie, gdy się pojawi.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>The answers couldn&apos;t be loaded. Check the connection and try again.</source>
+        <translation>Nie udało się wczytać odpowiedzi. Sprawdź połączenie i spróbuj ponownie.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>This report was sent before replies from NectarLink, so answer it on GitHub.</source>
+        <translation>To zgłoszenie wysłano, zanim można było odpowiadać z NectarLink, więc odpowiedz na GitHubie.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Reply</source>
+        <translation>Odpowiedz</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Reply to report %1</source>
+        <translation>Odpowiedz na zgłoszenie %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Sending</source>
+        <translation>Wysyłanie</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Sent. It&apos;s on the report now.</source>
+        <translation>Wysłano. Jest już przy zgłoszeniu.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>That&apos;s the most replies for today. Try again tomorrow.</source>
+        <translation>To limit odpowiedzi na dziś. Spróbuj jutro.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>It couldn&apos;t be sent. Check the connection and try again.</source>
+        <translation>Nie udało się wysłać. Sprawdź połączenie i spróbuj ponownie.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>This report can&apos;t take replies any more.</source>
+        <translation>To zgłoszenie nie przyjmuje już odpowiedzi.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Send</source>
+        <translation>Wyślij</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Close</source>
+        <translation>Zamknij</translation>
     </message>
 </context>
 </TS>

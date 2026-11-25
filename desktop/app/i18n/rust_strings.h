@@ -497,12 +497,19 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Prefs", "Connected to OBS."), // desktop/app/src/bridge/prefs.rs
     QT_TRANSLATE_NOOP("Recordings", "Recording from %1 saved"), // desktop/app/src/recordings.rs
     QT_TRANSLATE_NOOP("ReportRequests", "%1 asks for this PC's log"), // desktop/app/src/report_requests.rs
+    QT_TRANSLATE_NOOP("ReportRequests", "Check the connection, then send it again from Your reports."), // desktop/app/src/report_requests.rs
     QT_TRANSLATE_NOOP("ReportRequests", "Don't share"), // desktop/app/src/report_requests.rs
     QT_TRANSLATE_NOOP("ReportRequests", "For a problem report you're making. The log has no names, messages, files, numbers or addresses. You see the whole report before it's sent."), // desktop/app/src/report_requests.rs
-    QT_TRANSLATE_NOOP("ReportRequests", "Report #%1. Open it to read it on GitHub."), // desktop/app/src/report_requests.rs
+    QT_TRANSLATE_NOOP("ReportRequests", "Reply"), // desktop/app/src/report_requests.rs
+    QT_TRANSLATE_NOOP("ReportRequests", "Report #%1. Open it to read it."), // desktop/app/src/report_requests.rs
     QT_TRANSLATE_NOOP("ReportRequests", "Share"), // desktop/app/src/report_requests.rs
+    QT_TRANSLATE_NOOP("ReportRequests", "Someone with the same problem"), // desktop/app/src/report_requests.rs
+    QT_TRANSLATE_NOOP("ReportRequests", "That's the most replies for today. Try again tomorrow."), // desktop/app/src/report_requests.rs
     QT_TRANSLATE_NOOP("ReportRequests", "There's a reply to your report"), // desktop/app/src/report_requests.rs
+    QT_TRANSLATE_NOOP("ReportRequests", "This report can't take replies any more."), // desktop/app/src/report_requests.rs
+    QT_TRANSLATE_NOOP("ReportRequests", "You"), // desktop/app/src/report_requests.rs
     QT_TRANSLATE_NOOP("ReportRequests", "Your phone"), // desktop/app/src/report_requests.rs
+    QT_TRANSLATE_NOOP("ReportRequests", "Your reply wasn't sent"), // desktop/app/src/report_requests.rs
     QT_TRANSLATE_NOOP("ReportRequests", "Your report was closed"), // desktop/app/src/report_requests.rs
     QT_TRANSLATE_NOOP("SendTo", "Copied to your phone's clipboard."), // desktop/app/src/send_to.rs
     QT_TRANSLATE_NOOP("SendTo", "Couldn't reach %1."), // desktop/app/src/send_to.rs

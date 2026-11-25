@@ -4464,16 +4464,32 @@ Item {
 
                 Card {
                     width: parent.width
-                    ListRow {
+                    Column {
                         width: parent.width
-                        iconPath: Icons.warning
-                        title: qsTr("Report a problem")
-                        description: qsTr("Tell us what went wrong. You see the whole report before it goes anywhere.")
-                        Button {
-                            variant: "fill"
-                            size: "sm"
-                            text: qsTr("Start")
-                            onClicked: Report.open()
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.warning
+                            title: qsTr("Report a problem")
+                            description: qsTr("Tell us what went wrong. You see the whole report before it goes anywhere.")
+                            Button {
+                                variant: "fill"
+                                size: "sm"
+                                text: qsTr("Start")
+                                onClicked: Report.open()
+                            }
+                        }
+                        Divider { width: parent.width }
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.messages
+                            title: qsTr("Your reports")
+                            description: qsTr("The reports you sent, the answers to them, and a place to reply without a GitHub account.")
+                            Button {
+                                variant: "tonal"
+                                size: "sm"
+                                text: qsTr("Open")
+                                onClicked: Report.openConversations("")
+                            }
                         }
                     }
                 }

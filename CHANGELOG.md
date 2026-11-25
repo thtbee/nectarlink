@@ -8,6 +8,11 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Read and answer replies to your reports in the app.** When someone answers a problem report
+  you sent, the notification shows what they wrote, and you can reply right in it. **Your
+  reports**, in Settings under Report a problem on the PC and on the phone's Report a problem
+  screen, shows each report with its answers and a field to reply, without a GitHub account.
+  Crash reports from the crash card are followed too, and a closed report stays in the list.
 - **The mirroring toolbar can sit beside the picture.** **Settings › General › Toolbar beside
   the picture** gives it a strip of the window above or below the phone's picture, so it never
   covers the app's own buttons ([#549](https://github.com/thtbee/nectarlink/issues/549)).

@@ -44,6 +44,14 @@ QtObject {
         return match !== null && hosts.indexOf(match[1]) >= 0
     }
 
+    // Opens issue `number` in the repository (a report's, from Your reports).
+    function openIssue(number) {
+        const n = Number(number)
+        if (!Number.isInteger(n) || n <= 0)
+            return false
+        return Qt.openUrlExternally(repo + "/issues/" + n)
+    }
+
     // Opens the link `key`; an unknown key opens nothing.
     function open(key) {
         const address = url(key)

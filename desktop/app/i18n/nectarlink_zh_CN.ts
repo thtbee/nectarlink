@@ -8898,6 +8898,46 @@ What it needs
         <source>Your report was closed</source>
         <translation>你的报告已关闭</translation>
     </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Report #%1. Open it to read it.</source>
+        <translation>报告 #%1。打开即可阅读。</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Reply</source>
+        <translation>回复</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>You</source>
+        <translation>你</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Someone with the same problem</source>
+        <translation>遇到同样问题的人</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Your reply wasn&apos;t sent</source>
+        <translation>你的回复没有发送</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>That&apos;s the most replies for today. Try again tomorrow.</source>
+        <translation>今天的回复已达上限，请明天再试。</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>This report can&apos;t take replies any more.</source>
+        <translation>这份报告已无法再回复。</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Check the connection, then send it again from Your reports.</source>
+        <translation>请检查网络，然后在“你的报告”中重新发送。</translation>
+    </message>
 </context>
 <context>
     <name>ReportSheet</name>
@@ -9089,6 +9129,11 @@ What it needs
         <location filename="../qml/components/ReportSheet.qml" line="349"/>
         <source>Send</source>
         <translation>发送</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="1"/>
+        <source>Your reports</source>
+        <translation>你的报告</translation>
     </message>
 </context>
 <context>
@@ -11663,6 +11708,16 @@ What it needs
         <source>80% (Protect battery)</source>
         <translation>80%（电池保护）</translation>
     </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Your reports</source>
+        <translation>你的报告</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>The reports you sent, the answers to them, and a place to reply without a GitHub account.</source>
+        <translation>你发送的报告、对它们的回复，以及无需 GitHub 账号即可回复的地方。</translation>
+    </message>
 </context>
 <context>
     <name>Setup</name>
@@ -13455,6 +13510,129 @@ What it needs
     <message>
         <source>Not available</source>
         <translation type="vanished">不可用</translation>
+    </message>
+</context>
+<context>
+    <name>YourReportsSheet</name>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>NectarLink</source>
+        <translation>NectarLink</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>You</source>
+        <translation>你</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Someone with the same problem</source>
+        <translation>遇到同样问题的人</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Your reports</source>
+        <translation>你的报告</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Check for answers</source>
+        <translation>查看回复</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Reports sent from NectarLink stay here for 30 days, with the answers to them. You can reply from here without a GitHub account. Replies are public on GitHub, like the report.</source>
+        <translation>从 NectarLink 发送的报告及其回复会在这里保留 30 天。你无需 GitHub 账号就能在这里回复。回复和报告一样会公开在 GitHub 上。</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>No reports sent from this PC yet.</source>
+        <translation>这台电脑还没有发送过报告。</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Report #%1 · closed</source>
+        <translation>报告 #%1 · 已关闭</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Report #%1</source>
+        <translation>报告 #%1</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Waiting to be filed</source>
+        <translation>等待提交</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Sent %1</source>
+        <translation>发送于 %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>On GitHub</source>
+        <translation>在 GitHub 上查看</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>No answers yet. You&apos;ll get a notification when there is one.</source>
+        <translation>还没有回复。有回复时你会收到通知。</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>The answers couldn&apos;t be loaded. Check the connection and try again.</source>
+        <translation>无法加载回复。请检查网络后重试。</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>This report was sent before replies from NectarLink, so answer it on GitHub.</source>
+        <translation>这份报告发送时还不能在 NectarLink 中回复，请在 GitHub 上回复。</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Reply</source>
+        <translation>回复</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Reply to report %1</source>
+        <translation>回复报告 %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Sending</source>
+        <translation>正在发送</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Sent. It&apos;s on the report now.</source>
+        <translation>已发送，现在已附在报告上。</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>That&apos;s the most replies for today. Try again tomorrow.</source>
+        <translation>今天的回复已达上限，请明天再试。</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>It couldn&apos;t be sent. Check the connection and try again.</source>
+        <translation>发送失败。请检查网络后重试。</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>This report can&apos;t take replies any more.</source>
+        <translation>这份报告已无法再回复。</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Send</source>
+        <translation>发送</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Close</source>
+        <translation>关闭</translation>
     </message>
 </context>
 </TS>

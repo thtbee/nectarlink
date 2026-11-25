@@ -8863,6 +8863,46 @@ Nó cần gì
         <source>Your report was closed</source>
         <translation>Báo cáo của bạn đã được đóng</translation>
     </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Report #%1. Open it to read it.</source>
+        <translation>Báo cáo #%1. Mở để đọc.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Reply</source>
+        <translation>Trả lời</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>You</source>
+        <translation>Bạn</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Someone with the same problem</source>
+        <translation>Một người gặp cùng vấn đề</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Your reply wasn&apos;t sent</source>
+        <translation>Câu trả lời của bạn chưa được gửi</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>That&apos;s the most replies for today. Try again tomorrow.</source>
+        <translation>Đã đạt số câu trả lời tối đa hôm nay. Hãy thử lại vào ngày mai.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>This report can&apos;t take replies any more.</source>
+        <translation>Báo cáo này không còn nhận câu trả lời.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Check the connection, then send it again from Your reports.</source>
+        <translation>Hãy kiểm tra kết nối, rồi gửi lại từ Báo cáo của bạn.</translation>
+    </message>
 </context>
 <context>
     <name>ReportSheet</name>
@@ -9054,6 +9094,11 @@ Nó cần gì
         <location filename="../qml/components/ReportSheet.qml" line="349"/>
         <source>Send</source>
         <translation>Gửi</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ReportSheet.qml" line="1"/>
+        <source>Your reports</source>
+        <translation>Báo cáo của bạn</translation>
     </message>
 </context>
 <context>
@@ -11616,6 +11661,16 @@ Nó cần gì
         <source>80% (Protect battery)</source>
         <translation>80% (Bảo vệ pin)</translation>
     </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Your reports</source>
+        <translation>Báo cáo của bạn</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>The reports you sent, the answers to them, and a place to reply without a GitHub account.</source>
+        <translation>Các báo cáo bạn đã gửi, phản hồi cho chúng và nơi để trả lời mà không cần tài khoản GitHub.</translation>
+    </message>
 </context>
 <context>
     <name>Setup</name>
@@ -13377,6 +13432,129 @@ Nó cần gì
         <location filename="../qml/components/WhatsNewPanel.qml" line="231"/>
         <source>Release notes on GitHub</source>
         <translation>Ghi chú phát hành trên GitHub</translation>
+    </message>
+</context>
+<context>
+    <name>YourReportsSheet</name>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>NectarLink</source>
+        <translation>NectarLink</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>You</source>
+        <translation>Bạn</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Someone with the same problem</source>
+        <translation>Một người gặp cùng vấn đề</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Your reports</source>
+        <translation>Báo cáo của bạn</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Check for answers</source>
+        <translation>Kiểm tra phản hồi</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Reports sent from NectarLink stay here for 30 days, with the answers to them. You can reply from here without a GitHub account. Replies are public on GitHub, like the report.</source>
+        <translation>Báo cáo gửi từ NectarLink được giữ ở đây 30 ngày, cùng các phản hồi. Bạn có thể trả lời từ đây mà không cần tài khoản GitHub. Câu trả lời được công khai trên GitHub, giống như báo cáo.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>No reports sent from this PC yet.</source>
+        <translation>Chưa có báo cáo nào được gửi từ PC này.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Report #%1 · closed</source>
+        <translation>Báo cáo #%1 · đã đóng</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Report #%1</source>
+        <translation>Báo cáo #%1</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Waiting to be filed</source>
+        <translation>Đang chờ được tạo</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Sent %1</source>
+        <translation>Đã gửi %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>On GitHub</source>
+        <translation>Trên GitHub</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>No answers yet. You&apos;ll get a notification when there is one.</source>
+        <translation>Chưa có phản hồi. Bạn sẽ nhận thông báo khi có.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>The answers couldn&apos;t be loaded. Check the connection and try again.</source>
+        <translation>Không tải được phản hồi. Hãy kiểm tra kết nối rồi thử lại.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>This report was sent before replies from NectarLink, so answer it on GitHub.</source>
+        <translation>Báo cáo này được gửi trước khi có tính năng trả lời từ NectarLink, nên hãy trả lời trên GitHub.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Reply</source>
+        <translation>Trả lời</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Reply to report %1</source>
+        <translation>Trả lời báo cáo %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Sending</source>
+        <translation>Đang gửi</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Sent. It&apos;s on the report now.</source>
+        <translation>Đã gửi. Câu trả lời đã có trong báo cáo.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>That&apos;s the most replies for today. Try again tomorrow.</source>
+        <translation>Đã đạt số câu trả lời tối đa hôm nay. Hãy thử lại vào ngày mai.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>It couldn&apos;t be sent. Check the connection and try again.</source>
+        <translation>Không gửi được. Hãy kiểm tra kết nối rồi thử lại.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>This report can&apos;t take replies any more.</source>
+        <translation>Báo cáo này không còn nhận câu trả lời.</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Send</source>
+        <translation>Gửi</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
+        <source>Close</source>
+        <translation>Đóng</translation>
     </message>
 </context>
 </TS>

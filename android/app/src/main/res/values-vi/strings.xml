@@ -1536,7 +1536,6 @@
     <string name="channel_report_replies">Phản hồi cho báo cáo của bạn</string>
     <string name="report_reply_title">Có phản hồi cho báo cáo của bạn</string>
     <string name="report_closed_title">Báo cáo của bạn đã được đóng</string>
-    <string name="report_notice_text">Báo cáo #%1$d. Nhấn để đọc trên GitHub.</string>
     <string name="crash_card_sent">Cảm ơn, đã gửi báo cáo sự cố treo</string>
     <string name="crash_card_title">NectarLink đã đóng bất ngờ</string>
     <string name="crash_card_failed">Không gửi được báo cáo sự cố treo. Hãy dùng Xem trước để gửi theo cách khác.</string>
@@ -1583,4 +1582,29 @@
     <string name="deck_default_restart">Khởi động lại</string>
     <string name="deck_default_shut_down">Tắt máy</string>
     <string name="deck_default_macro">Macro</string>
+    <string name="report_answer_line">%1$s: %2$s</string>
+    <string name="report_notice_open_text">Báo cáo #%1$d. Chạm để đọc.</string>
+    <string name="report_reply_action">Trả lời</string>
+    <string name="report_reply_hint">Câu trả lời của bạn</string>
+    <string name="report_who_you">Bạn</string>
+    <string name="report_who_other">Một người gặp cùng vấn đề</string>
+    <string name="report_reply_not_sent">Câu trả lời của bạn chưa được gửi</string>
+    <string name="report_reply_limited">Đã đạt số câu trả lời tối đa hôm nay. Hãy thử lại vào ngày mai.</string>
+    <string name="report_reply_refused">Báo cáo này không còn nhận câu trả lời.</string>
+    <string name="report_reply_later">Không gửi được. Hãy kiểm tra kết nối rồi thử lại.</string>
+    <string name="your_reports_title">Báo cáo của bạn</string>
+    <string name="your_reports_check">Kiểm tra phản hồi</string>
+    <string name="your_reports_intro">Báo cáo gửi từ NectarLink được giữ ở đây 30 ngày, cùng các phản hồi. Bạn có thể trả lời từ đây mà không cần tài khoản GitHub. Câu trả lời được công khai trên GitHub, giống như báo cáo.</string>
+    <string name="your_reports_none">Chưa có báo cáo nào được gửi từ điện thoại này.</string>
+    <string name="your_reports_waiting">Đang chờ được tạo</string>
+    <string name="your_reports_closed">Báo cáo #%1$d · đã đóng</string>
+    <string name="your_reports_number">Báo cáo #%1$d</string>
+    <string name="your_reports_sent">Đã gửi %1$s</string>
+    <string name="your_reports_on_github">Trên GitHub</string>
+    <string name="your_reports_load_failed">Không tải được phản hồi. Hãy kiểm tra kết nối rồi thử lại.</string>
+    <string name="your_reports_no_answers">Chưa có phản hồi. Bạn sẽ nhận thông báo khi có.</string>
+    <string name="your_reports_reply_on_github">Báo cáo này được gửi trước khi có tính năng trả lời từ NectarLink, nên hãy trả lời trên GitHub.</string>
+    <string name="your_reports_reply_sent">Đã gửi. Câu trả lời đã có trong báo cáo.</string>
+    <string name="your_reports_sending">Đang gửi</string>
+    <string name="your_reports_send">Gửi</string>
 </resources>

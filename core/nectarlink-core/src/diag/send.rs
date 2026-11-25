@@ -5,6 +5,10 @@
 //! The platform does the HTTPS POST; this builds the request, proves the
 //! work the service asks for, reads its answer, and keeps the one report
 //! that couldn't be sent yet and the last few that were.
+//!
+//! Each report carries the hash of a key only this device keeps, so the
+//! person can read the answers on its issue and reply from the app, without
+//! a GitHub account: [`read_thread`] and [`reply_request`].
 
 use std::{fs, path::Path};
 
@@ -18,7 +22,7 @@ pub const REPORT_SERVICE: &str = "https://nectarlink-reports.nectarlink.workers.
 /// Zero bits the proof needs: about a second on a phone, once per report.
 pub const PROOF_BITS: u32 = 20;
 /// How many sent reports are kept to check for replies, and for how long.
-const TRACKED: usize = 3;
+const TRACKED: usize = 5;
 const TRACK_SECS: u64 = 30 * 86_400;
 const PENDING_FILE: &str = "pending-report.json";
 const SENT_FILE: &str = "sent-reports.json";
@@ -40,6 +44,10 @@ pub struct Outgoing {
     pub proof: String,
     /// When it was made, in seconds since 1970.
     pub at: u64,
+    /// The key for replying from the app (64 hex characters); only its
+    /// hash goes to the service. Empty for a report made before replies.
+    #[serde(default)]
+    pub reply_key: String,
 }
 
 #[derive(Serialize)]
@@ -54,6 +62,7 @@ struct Wire<'a> {
     versions: Vec<String>,
     platforms: Vec<&'static str>,
     body: String,
+    reply_hash: String,
 }
 
 impl Outgoing {
@@ -75,6 +84,7 @@ impl Outgoing {
         }
         versions.truncate(4);
         platforms.truncate(4);
+        let reply_key = hex(&rand::random::<[u8; 32]>());
         let wire = Wire {
             schema: SCHEMA,
             rid: &report.id,
@@ -88,10 +98,11 @@ impl Outgoing {
             versions,
             platforms,
             body: report.render(),
+            reply_hash: hex(&Sha256::digest(reply_key.as_bytes())),
         };
         let body = serde_json::to_string(&wire).expect("plain data");
         let proof = prove(&hex(&Sha256::digest(body.as_bytes())), now, PROOF_BITS);
-        Outgoing { rid: report.id.clone(), body, proof, at: now }
+        Outgoing { rid: report.id.clone(), body, proof, at: now, reply_key }
     }
 }
 
@@ -229,6 +240,28 @@ pub struct Sent {
     pub comments: u64,
     #[serde(default)]
     pub closed: bool,
+    /// See [`Outgoing::reply_key`].
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub reply_key: String,
+}
+
+impl Sent {
+    /// `outgoing`, sent: filed as `issue`, or queued when `None`.
+    pub fn from_outgoing(outgoing: &Outgoing, issue: Option<u64>) -> Sent {
+        Sent {
+            rid: outgoing.rid.clone(),
+            issue,
+            at: outgoing.at,
+            comments: 0,
+            closed: false,
+            reply_key: outgoing.reply_key.clone(),
+        }
+    }
+
+    /// Whether the person can reply to it from the app.
+    pub fn can_reply(&self) -> bool {
+        self.issue.is_some() && self.reply_key.len() == 64
+    }
 }
 
 /// The sent reports still followed: the newest [`TRACKED`], 30 days at most.
@@ -266,9 +299,9 @@ pub fn issue_api_url(issue: u64) -> String {
 }
 
 /// Reads GitHub's answer about the followed report `rid` (`status`, `body`)
-/// and says what's new since the last check, if anything. A closed issue
-/// isn't followed any more. Only numbers are read: no text from GitHub is
-/// shown.
+/// and says what's new since the last check, if anything: a new comment,
+/// or closing. Only numbers are read here; the answers themselves come from
+/// [`read_thread`].
 pub fn check_issue(dir: &Path, rid: &str, status: u16, body: &[u8], now: u64) -> Option<Notice> {
     #[derive(Deserialize)]
     struct Issue {
@@ -289,12 +322,190 @@ pub fn check_issue(dir: &Path, rid: &str, status: u16, body: &[u8], now: u64) ->
     } else {
         None
     };
-    if closed {
-        forget(dir, rid);
-    } else if issue.comments != entry.comments {
-        remember(dir, Sent { comments: issue.comments, ..entry }, now);
+    // A closed report stays followed: its conversation is still shown in
+    // the app, and an answer after closing is still news.
+    if closed != entry.closed || issue.comments != entry.comments {
+        remember(dir, Sent { comments: issue.comments, closed, ..entry }, now);
     }
     notice
+}
+
+/// GitHub's public API address for `issue`'s comments, oldest first.
+pub fn comments_api_url(issue: u64) -> String {
+    format!("https://api.github.com/repos/thtbee/nectarlink/issues/{issue}/comments?per_page=100")
+}
+
+/// Who wrote one answer on a report's issue.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Who {
+    /// Someone who works on NectarLink.
+    Team,
+    /// The person who sent the report, replying from the app.
+    You,
+    /// Someone else who sent the same crash, replying from their app.
+    OtherReporter,
+    /// Anyone else on GitHub, by their login.
+    Someone(String),
+}
+
+/// One answer on a report's issue, as the app shows it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ThreadEntry {
+    pub who: Who,
+    pub text: String,
+    /// When it was written, as GitHub gives it (`2026-11-25T17:14:26Z`).
+    pub at: String,
+}
+
+/// Longest answer shown, in characters; the rest is on GitHub.
+const MAX_ENTRY_CHARS: usize = 4000;
+const REPLY_MARKER: &str = "<!-- nectarlink-reply rid=";
+
+/// Reads GitHub's comments on the issue of the report `rid` (`status`,
+/// `body` of [`comments_api_url`]): the answers to show, oldest first.
+/// The service's own notes (a crash's tally) are left out; the person's
+/// replies from the app are theirs. `None` when GitHub didn't answer.
+pub fn read_thread(rid: &str, status: u16, body: &[u8]) -> Option<Vec<ThreadEntry>> {
+    #[derive(Deserialize)]
+    struct User {
+        login: String,
+        #[serde(rename = "type", default)]
+        kind: String,
+    }
+    #[derive(Deserialize)]
+    struct Comment {
+        user: Option<User>,
+        #[serde(default)]
+        author_association: String,
+        #[serde(default)]
+        body: String,
+        #[serde(default)]
+        created_at: String,
+    }
+    if status != 200 {
+        return None;
+    }
+    let comments: Vec<Comment> = serde_json::from_slice(body).ok()?;
+    let mine = format!("{REPLY_MARKER}{rid} -->");
+    let mut out = Vec::new();
+    for c in comments {
+        let Some(user) = c.user else { continue };
+        let bot = user.kind == "Bot" || user.login.ends_with("[bot]");
+        let who = if bot {
+            if c.body.contains(&mine) {
+                Who::You
+            } else if c.body.contains(REPLY_MARKER) {
+                Who::OtherReporter
+            } else {
+                // The crash tally and anything else the service writes.
+                continue;
+            }
+        } else if matches!(c.author_association.as_str(), "OWNER" | "MEMBER" | "COLLABORATOR") {
+            Who::Team
+        } else {
+            Who::Someone(user.login)
+        };
+        let text = if bot { unquote_reply(&c.body) } else { clean_comment(&c.body) };
+        if text.is_empty() {
+            continue;
+        }
+        out.push(ThreadEntry { who, text, at: c.created_at });
+    }
+    Some(out)
+}
+
+/// The newest answer from anyone but the person, for a notification.
+pub fn latest_answer(entries: &[ThreadEntry]) -> Option<&ThreadEntry> {
+    entries.iter().rev().find(|e| e.who != Who::You)
+}
+
+/// A reply comment's text: the quoted lines, without the service's line,
+/// its marker, or the characters it added to stop mentions.
+fn unquote_reply(body: &str) -> String {
+    let lines: Vec<String> = body
+        .lines()
+        .filter(|l| l.starts_with('>'))
+        .map(|l| l.strip_prefix("> ").or_else(|| l.strip_prefix('>')).unwrap_or(l).replace('\u{200b}', ""))
+        .collect();
+    limit(&lines.join("\n").replace("&lt;", "<"))
+}
+
+/// A comment's text without HTML comments, trimmed and limited.
+fn clean_comment(body: &str) -> String {
+    let mut out = String::with_capacity(body.len());
+    let mut rest = body;
+    while let Some(start) = rest.find("<!--") {
+        out.push_str(&rest[..start]);
+        match rest[start..].find("-->") {
+            Some(end) => rest = &rest[start + end + 3..],
+            None => {
+                rest = "";
+            }
+        }
+    }
+    out.push_str(rest);
+    limit(out.replace("\r\n", "\n").trim())
+}
+
+fn limit(text: &str) -> String {
+    let text = text.trim();
+    if text.chars().count() <= MAX_ENTRY_CHARS {
+        return text.to_owned();
+    }
+    let cut: String = text.chars().take(MAX_ENTRY_CHARS).collect();
+    format!("{}…", cut.trim_end())
+}
+
+/// Longest reply, in characters (the service's limit).
+pub const MAX_REPLY_CHARS: usize = 2000;
+
+/// A reply ready to POST to `url`, with `X-Proof`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OutgoingReply {
+    pub url: String,
+    pub body: String,
+    pub proof: String,
+}
+
+/// Builds and proves a reply to the sent report `sent`. `None` when it
+/// can't take one (made before replies, or still queued) or `text` is
+/// empty or too long. Takes about a second: off the UI thread.
+pub fn reply_request(sent: &Sent, text: &str, now: u64) -> Option<OutgoingReply> {
+    let text = text.trim();
+    if !sent.can_reply() || text.is_empty() || text.chars().count() > MAX_REPLY_CHARS {
+        return None;
+    }
+    #[derive(Serialize)]
+    struct Body<'a> {
+        key: &'a str,
+        text: &'a str,
+    }
+    let body = serde_json::to_string(&Body { key: &sent.reply_key, text }).expect("plain data");
+    let proof = prove(&hex(&Sha256::digest(body.as_bytes())), now, PROOF_BITS);
+    Some(OutgoingReply { url: format!("{REPORT_SERVICE}/v1/report/{}/reply", sent.rid), body, proof })
+}
+
+/// What the service said to a reply.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ReplyAnswer {
+    Sent,
+    /// Ten replies today already.
+    Limited,
+    /// Try again later (GitHub busy, a stale proof, no network).
+    Later,
+    /// Not taken: the report is unknown or too old to reply to.
+    Refused,
+}
+
+impl ReplyAnswer {
+    pub fn read(status: u16) -> ReplyAnswer {
+        match status {
+            200 => ReplyAnswer::Sent,
+            429 => ReplyAnswer::Limited,
+            400 | 404 | 405 | 413 | 415 => ReplyAnswer::Refused,
+            _ => ReplyAnswer::Later,
+        }
+    }
 }
 
 /// Stops following the report `rid`.
@@ -318,6 +529,82 @@ fn save_sent(dir: &Path, all: &[Sent]) {
 mod tests {
     use super::*;
     use crate::diag::report::{Area, DeviceFacts, DevicePart};
+
+    #[test]
+    fn a_report_carries_only_the_hash_of_its_reply_key() {
+        let out = Outgoing::new(&report(), Kind::Person, None, 1_795_000_000);
+        assert_eq!(out.reply_key.len(), 64);
+        assert!(out.reply_key.bytes().all(|b| b.is_ascii_hexdigit()));
+        assert!(!out.body.contains(&out.reply_key));
+        let wire: serde_json::Value = serde_json::from_str(&out.body).unwrap();
+        assert_eq!(wire["reply_hash"], hex(&Sha256::digest(out.reply_key.as_bytes())));
+        // Two reports, two keys.
+        assert_ne!(Outgoing::new(&report(), Kind::Person, None, 1_795_000_000).reply_key, out.reply_key);
+        let sent = Sent::from_outgoing(&out, Some(5));
+        assert!(sent.can_reply());
+        assert!(!Sent::from_outgoing(&out, None).can_reply());
+    }
+
+    #[test]
+    fn a_followed_report_from_before_replies_still_reads() {
+        let old = br#"[{"rid":"r1","issue":4,"at":1795000000,"comments":1,"closed":false}]"#;
+        let all: Vec<Sent> = serde_json::from_slice(old).unwrap();
+        assert_eq!(all[0].reply_key, "");
+        assert!(!all[0].can_reply());
+        let pending = br#"{"rid":"r2","body":"{}","proof":"1.2","at":1795000000}"#;
+        let o: Outgoing = serde_json::from_slice(pending).unwrap();
+        assert_eq!(o.reply_key, "");
+    }
+
+    #[test]
+    fn the_thread_shows_the_team_others_and_the_persons_own_replies() {
+        let body = br#"[
+            {"user":{"login":"nectarlink-reports[bot]","type":"Bot"},"author_association":"NONE",
+             "body":"Reported from the app **2** times.","created_at":"2026-11-25T10:00:00Z"},
+            {"user":{"login":"thtbee","type":"User"},"author_association":"OWNER",
+             "body":"Thanks. What were you doing?\r\n<!-- hidden note -->","created_at":"2026-11-25T11:00:00Z"},
+            {"user":{"login":"nectarlink-reports[bot]","type":"Bot"},"author_association":"NONE",
+             "body":"The reporter replied from the app:\n\n> Mirroring, @\u200bthtbee see #\u200b12\n>\n> &lt;b>\n\n<!-- nectarlink-reply rid=abc123 -->",
+             "created_at":"2026-11-25T12:00:00Z"},
+            {"user":{"login":"nectarlink-reports[bot]","type":"Bot"},"author_association":"NONE",
+             "body":"The reporter replied from the app:\n\n> Same here\n\n<!-- nectarlink-reply rid=zzz999 -->",
+             "created_at":"2026-11-25T12:30:00Z"},
+            {"user":{"login":"helper","type":"User"},"author_association":"CONTRIBUTOR",
+             "body":"Try Nightly 13.","created_at":"2026-11-25T13:00:00Z"},
+            {"user":null,"author_association":"NONE","body":"ghost","created_at":"x"}
+        ]"#;
+        let thread = read_thread("abc123", 200, body).unwrap();
+        let who: Vec<&Who> = thread.iter().map(|e| &e.who).collect();
+        assert_eq!(who, [&Who::Team, &Who::You, &Who::OtherReporter, &Who::Someone("helper".into())]);
+        assert_eq!(thread[0].text, "Thanks. What were you doing?");
+        assert_eq!(thread[1].text, "Mirroring, @thtbee see #12\n\n<b>");
+        assert_eq!(thread[1].at, "2026-11-25T12:00:00Z");
+        assert_eq!(latest_answer(&thread).map(|e| e.text.as_str()), Some("Try Nightly 13."));
+        assert_eq!(read_thread("abc123", 403, b"[]"), None);
+        assert_eq!(read_thread("abc123", 200, b"not json"), None);
+    }
+
+    #[test]
+    fn a_reply_is_proved_and_sent_to_its_report() {
+        let out = Outgoing::new(&report(), Kind::Person, None, 1_795_000_000);
+        let sent = Sent::from_outgoing(&out, Some(9));
+        let r = reply_request(&sent, "  It happens every time.  ", 1_795_000_100).unwrap();
+        assert_eq!(r.url, format!("{REPORT_SERVICE}/v1/report/{}/reply", sent.rid));
+        let body: serde_json::Value = serde_json::from_str(&r.body).unwrap();
+        assert_eq!(body["key"], sent.reply_key);
+        assert_eq!(body["text"], "It happens every time.");
+        let (t, n) = r.proof.split_once('.').unwrap();
+        assert_eq!(t, "1795000100");
+        let line = format!("{}|{t}|{n}", hex(&Sha256::digest(r.body.as_bytes())));
+        assert!(leading_zeros(&Sha256::digest(line.as_bytes())) >= PROOF_BITS);
+        assert!(reply_request(&sent, "   ", 0).is_none());
+        assert!(reply_request(&sent, &"x".repeat(MAX_REPLY_CHARS + 1), 0).is_none());
+        assert!(reply_request(&Sent::from_outgoing(&out, None), "hi", 0).is_none());
+        assert_eq!(ReplyAnswer::read(200), ReplyAnswer::Sent);
+        assert_eq!(ReplyAnswer::read(429), ReplyAnswer::Limited);
+        assert_eq!(ReplyAnswer::read(404), ReplyAnswer::Refused);
+        assert_eq!(ReplyAnswer::read(503), ReplyAnswer::Later);
+    }
 
     fn report() -> Report {
         let mut r = Report::new(Area::Connection, "", "The phone drops off\nevery few minutes", false);
@@ -415,7 +702,14 @@ mod tests {
         let now = 1_000_000;
         remember(
             dir.path(),
-            Sent { rid: "r".into(), issue: Some(412), at: now, comments: 0, closed: false },
+            Sent {
+                rid: "r".into(),
+                issue: Some(412),
+                at: now,
+                comments: 0,
+                closed: false,
+                reply_key: String::new(),
+            },
             now,
         );
         let issue = |state: &str, comments: u64| {
@@ -433,18 +727,31 @@ mod tests {
             check_issue(dir.path(), "r", 200, &issue("closed", 3), now),
             Some(Notice::Closed { issue: 412 })
         );
-        assert!(sent(dir.path(), now).is_empty());
+        // Still followed, closed, and an answer after closing is still news.
+        assert!(sent(dir.path(), now).iter().any(|s| s.rid == "r" && s.closed && s.comments == 3));
+        assert_eq!(check_issue(dir.path(), "r", 200, &issue("closed", 3), now), None);
+        assert_eq!(
+            check_issue(dir.path(), "r", 200, &issue("closed", 4), now),
+            Some(Notice::Replied { issue: 412 })
+        );
         // Another issue's answer doesn't count for this report.
         remember(
             dir.path(),
-            Sent { rid: "q".into(), issue: Some(7), at: now, comments: 0, closed: false },
+            Sent {
+                rid: "q".into(),
+                issue: Some(7),
+                at: now,
+                comments: 0,
+                closed: false,
+                reply_key: String::new(),
+            },
             now,
         );
         assert_eq!(check_issue(dir.path(), "q", 200, &issue("open", 5), now), None);
     }
 
     #[test]
-    fn one_pending_report_and_three_followed() {
+    fn one_pending_report_and_a_few_followed() {
         let dir = tempfile::tempdir().unwrap();
         let out = Outgoing::new(&report(), Kind::Person, None, 5);
         keep_pending(dir.path(), &out);
@@ -456,14 +763,32 @@ mod tests {
         for (i, at) in [1, now - 4, now - 3, now - 2, now - 1].into_iter().enumerate() {
             remember(
                 dir.path(),
-                Sent { rid: format!("r{i}"), issue: Some(i as u64), at, comments: 0, closed: false },
+                Sent {
+                    rid: format!("r{i}"),
+                    issue: Some(i as u64),
+                    at,
+                    comments: 0,
+                    closed: false,
+                    reply_key: String::new(),
+                },
                 now,
             );
         }
+        // r0 is past 30 days; the rest fit in the five followed.
         let rids: Vec<String> = sent(dir.path(), now).into_iter().map(|s| s.rid).collect();
-        assert_eq!(rids, ["r2", "r3", "r4"]);
+        assert_eq!(rids, ["r1", "r2", "r3", "r4"]);
         forget(dir.path(), "r3");
         let rids: Vec<String> = sent(dir.path(), now).into_iter().map(|s| s.rid).collect();
-        assert_eq!(rids, ["r2", "r4"]);
+        assert_eq!(rids, ["r1", "r2", "r4"]);
+        // A sixth pushes out the oldest.
+        for (i, at) in [now - 9, now - 8, now - 7].into_iter().enumerate() {
+            let rid = format!("n{i}");
+            remember(
+                dir.path(),
+                Sent { rid, issue: Some(9), at, comments: 0, closed: false, reply_key: String::new() },
+                now,
+            );
+        }
+        assert_eq!(sent(dir.path(), now).len(), TRACKED);
     }
 }
