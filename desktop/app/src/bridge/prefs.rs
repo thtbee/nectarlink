@@ -89,6 +89,8 @@ pub mod qobject {
         #[qproperty(bool, auto_update)]
         /// Install a newer release by itself at a quiet moment.
         #[qproperty(bool, install_updates)]
+        /// Send the anonymous daily count.
+        #[qproperty(bool, daily_count)]
         /// The update channel: "stable" or "nightly" (the build's own when unset).
         #[qproperty(QString, update_channel)]
         /// Whether the channel is this PC's, for every account on it (Windows'
@@ -425,6 +427,7 @@ pub struct PreferencesRust {
     start_with_windows: bool,
     auto_update: bool,
     install_updates: bool,
+    daily_count: bool,
     update_channel: QString,
     update_channel_shared: bool,
     battery_alerts: bool,
@@ -544,6 +547,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_send_to_menu(settings.send_to_menu);
         self.as_mut().set_auto_update(settings.auto_update);
         self.as_mut().set_install_updates(settings.install_updates);
+        self.as_mut().set_daily_count(settings.daily_count);
         // Shown as the channel in use, whether picked or the build's own.
         let channel =
             crate::version::Channel::parse(&settings.update_channel).unwrap_or_else(crate::updater::channel);
@@ -729,6 +733,12 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut()
             .on_auto_update_changed(|p| {
                 crate::updater::set_auto(p.auto_update);
+                p.save();
+            })
+            .release();
+        self.as_mut()
+            .on_daily_count_changed(|p| {
+                crate::bridge::report::set_daily_count(p.daily_count);
                 p.save();
             })
             .release();
@@ -1438,6 +1448,7 @@ impl qobject::Preferences {
             send_to_menu: p.send_to_menu,
             auto_update: p.auto_update,
             install_updates: p.install_updates,
+            daily_count: p.daily_count,
             update_channel: String::from(&p.update_channel),
             battery_alerts: p.battery_alerts,
             battery_full_threshold: p.battery_full_threshold.clamp(50, 100) as u8,

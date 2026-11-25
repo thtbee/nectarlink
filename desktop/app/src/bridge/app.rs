@@ -96,6 +96,8 @@ pub mod qobject {
         #[qproperty(f64, update_progress)]
         /// What the update is doing, for Settings ("" when idle).
         #[qproperty(QString, update_status)]
+        /// When the update feed last answered, Unix seconds (0: not yet).
+        #[qproperty(f64, update_checked_at)]
         /// Device ID and name of a phone asking to control this PC for the
         /// first time while `remote_input` is off ("" when none).
         #[qproperty(QString, remote_prompt_device_id)]
@@ -523,6 +525,7 @@ pub struct AppControllerRust {
     update_busy: bool,
     update_progress: f64,
     update_status: QString,
+    update_checked_at: f64,
     remote_prompt_device_id: QString,
     remote_prompt_device_name: QString,
     pc_mirror_prompt_device_id: QString,
@@ -900,6 +903,7 @@ impl cxx_qt::Initialize for qobject::AppController {
             .release();
         self.as_mut().set_can_update(crate::updater::can_update());
         self.as_mut().set_can_install_unattended(crate::updater::can_install_unattended());
+        self.as_mut().set_update_checked_at(crate::updater::last_checked() as f64);
         // Nothing downloading yet (0 would show an empty bar).
         self.as_mut().set_update_progress(-1.0);
         self.as_mut().set_clipboard_history(QString::from(&crate::clipboard::history_json()));
@@ -942,10 +946,11 @@ impl cxx_qt::Initialize for qobject::AppController {
                 | Changes::QUEUE,
             Self::refresh,
         );
-        super::subscribe(qt.clone(), Changes::UPDATE, |object| {
+        super::subscribe(qt.clone(), Changes::UPDATE, |mut object| {
             // Its name for people: "0.1.5", or "Nightly 7 (Amber Clover)".
             let version = crate::updater::available().map(|u| u.title()).unwrap_or_default();
-            object.set_update_version(QString::from(&version));
+            object.as_mut().set_update_version(QString::from(&version));
+            object.as_mut().set_update_checked_at(crate::updater::last_checked() as f64);
         });
         super::subscribe(qt.clone(), Changes::CLIPBOARD, |mut object| {
             let json = crate::clipboard::history_json();
@@ -2710,7 +2715,7 @@ fn load_guide_doc_content(raw_key: &str) -> (String, String) {
             tr!(
                 "Guide",
                 "Local by default\n\
-             Your phone and PC talk directly over your local network or USB cable. When Connect over mobile data is on, encrypted traffic can use a relay when away from home. Automatic update checks contact GitHub Releases and can be turned off in Settings › Connection & About › Check for updates.\n\n\
+             Your phone and PC talk directly over your local network or USB cable. When Connect over mobile data is on, encrypted traffic can use a relay when away from home. Automatic update checks contact GitHub Releases and can be turned off in Settings › Updates › Check for updates.\n\n\
              End-to-end encrypted\n\
              Every connection uses QUIC with TLS 1.3 and Ed25519 device certificates verified during pairing. Device keys are protected by Windows DPAPI and the Android Keystore.\n\n\
              Per-device sharing controls\n\

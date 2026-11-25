@@ -10687,6 +10687,16 @@ Nó cần gì
         <translation>Đồng bộ mật khẩu đã sao chép</translation>
     </message>
     <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3655"/>
+        <source>Send an anonymous daily count</source>
+        <translation>Gửi số đếm hằng ngày ẩn danh</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3655"/>
+        <source>Once a day: the app&apos;s version, the platform and model, and how often each feature worked or failed. No ID and nothing personal.</source>
+        <translation>Mỗi ngày một lần: phiên bản ứng dụng, nền tảng và mẫu máy, và số lần mỗi tính năng hoạt động hoặc lỗi. Không có ID, không có gì cá nhân.</translation>
+    </message>
+    <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3645"/>
         <location filename="../qml/pages/SettingsPage.qml" line="3669"/>
         <source>Clipboard history</source>
@@ -11101,6 +11111,31 @@ Nó cần gì
         <location filename="../qml/pages/SettingsPage.qml" line="4255"/>
         <source>Install updates automatically</source>
         <translation>Tự động cài đặt cập nhật</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Updates</source>
+        <translation>Cập nhật</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Checks, channel &amp; what&apos;s new</source>
+        <translation>Kiểm tra, kênh và tính năng mới</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>This copy doesn&apos;t update itself: it runs from its folder, or it&apos;s the Mac app, which doesn&apos;t yet.</source>
+        <translation>Bản này không tự cập nhật: nó chạy từ thư mục của nó, hoặc là ứng dụng Mac, vốn chưa hỗ trợ.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Last checked %1</source>
+        <translation>Kiểm tra lần cuối: %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Not checked yet.</source>
+        <translation>Chưa kiểm tra.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="4253"/>

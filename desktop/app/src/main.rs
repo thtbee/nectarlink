@@ -886,6 +886,7 @@ fn main() -> ExitCode {
             tracing::warn!(error = %e, "can't save settings");
         }
     }
+    bridge::report::set_daily_count(settings.daily_count);
     // A test instance (own data folder) leaves the user's menu and sign-in
     // alone.
     if options.data_dir.is_none() {

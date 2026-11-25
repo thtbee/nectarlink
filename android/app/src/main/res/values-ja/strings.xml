@@ -1635,6 +1635,8 @@
     <string name="community_invite_text">質問、アイデア、先行ビルド。NectarLink を作る人、使う人と一緒に。</string>
     <string name="community_invite_join">Discord に参加</string>
     <string name="community_invite_later">今はしない</string>
+    <string name="settings_daily_count_title">匿名の1日1回のカウントを送信</string>
+    <string name="settings_daily_count_body">1日1回、アプリのバージョン、プラットフォームと機種、各機能が成功・失敗した回数を送ります。IDや個人的な情報は含みません。</string>
 </resources>
 
 

@@ -10697,6 +10697,16 @@ What it needs
         <translation>Синхронизировать скопированные пароли</translation>
     </message>
     <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3655"/>
+        <source>Send an anonymous daily count</source>
+        <translation>Отправлять анонимный ежедневный счётчик</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3655"/>
+        <source>Once a day: the app&apos;s version, the platform and model, and how often each feature worked or failed. No ID and nothing personal.</source>
+        <translation>Раз в день: версия приложения, платформа и модель и сколько раз каждая функция сработала или нет. Без ID и личных данных.</translation>
+    </message>
+    <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3645"/>
         <location filename="../qml/pages/SettingsPage.qml" line="3669"/>
         <source>Clipboard history</source>
@@ -11111,6 +11121,31 @@ What it needs
         <location filename="../qml/pages/SettingsPage.qml" line="4255"/>
         <source>Install updates automatically</source>
         <translation>Устанавливать обновления автоматически</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Updates</source>
+        <translation>Обновления</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Checks, channel &amp; what&apos;s new</source>
+        <translation>Проверка, канал и что нового</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>This copy doesn&apos;t update itself: it runs from its folder, or it&apos;s the Mac app, which doesn&apos;t yet.</source>
+        <translation>Эта копия не обновляется сама: она запущена из своей папки или это приложение для Mac, которое пока так не умеет.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Last checked %1</source>
+        <translation>Последняя проверка: %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Not checked yet.</source>
+        <translation>Ещё не проверялось.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="4253"/>

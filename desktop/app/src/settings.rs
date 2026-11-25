@@ -679,6 +679,9 @@ pub struct Settings {
     /// Install a newer release by itself at a quiet moment (with `auto_update`).
     #[serde(alias = "install_updates")]
     pub install_updates: bool,
+    /// Send the anonymous daily count to the report service (#534).
+    #[serde(alias = "daily_count")]
+    pub daily_count: bool,
     /// Which builds to update to: "stable", "nightly", or empty to follow
     /// the installed build's own channel.
     #[serde(alias = "update_channel")]
@@ -993,6 +996,7 @@ impl Default for Settings {
             send_to_menu: true,
             auto_update: true,
             install_updates: true,
+            daily_count: true,
             update_channel: String::new(),
             battery_alerts: true,
             battery_full_threshold: default_battery_full_threshold(),
@@ -1353,6 +1357,7 @@ mod tests {
             send_to_menu: false,
             auto_update: false,
             install_updates: false,
+            daily_count: false,
             update_channel: "nightly".into(),
             battery_alerts: false,
             battery_full_threshold: 80,

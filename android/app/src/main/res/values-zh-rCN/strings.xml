@@ -1503,4 +1503,6 @@
     <string name="community_invite_text">提问、想法和抢先版本，和制作及使用 NectarLink 的人一起。</string>
     <string name="community_invite_join">加入 Discord</string>
     <string name="community_invite_later">以后再说</string>
+    <string name="settings_daily_count_title">发送匿名每日计数</string>
+    <string name="settings_daily_count_body">每天一次：应用版本、平台和机型，以及各项功能成功或失败的次数。不含 ID，也不含任何个人信息。</string>
 </resources>

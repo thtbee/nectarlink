@@ -1660,6 +1660,8 @@
     <string name="community_invite_text">Запитання, ідеї й ранні збірки — разом з тими, хто створює NectarLink і користується ним.</string>
     <string name="community_invite_join">Приєднатися до Discord</string>
     <string name="community_invite_later">Не зараз</string>
+    <string name="settings_daily_count_title">Надсилати анонімний щоденний підрахунок</string>
+    <string name="settings_daily_count_body">Раз на день: версія застосунку, платформа й модель і скільки разів кожна функція спрацювала чи ні. Без ID і нічого особистого.</string>
 </resources>
 
 
