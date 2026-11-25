@@ -133,7 +133,7 @@ Sheet {
                             size: "sm"
                             iconPath: Icons.openExternal
                             text: qsTr("On GitHub")
-                            onClicked: Qt.openUrlExternally("https://github.com/thtbee/nectarlink/issues/" + conv.modelData.issue)
+                            onClicked: Links.openIssue(conv.modelData.issue)
                         }
                     }
 

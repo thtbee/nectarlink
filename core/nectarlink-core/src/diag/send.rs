@@ -751,7 +751,7 @@ mod tests {
     }
 
     #[test]
-    fn one_pending_report_and_three_followed() {
+    fn one_pending_report_and_a_few_followed() {
         let dir = tempfile::tempdir().unwrap();
         let out = Outgoing::new(&report(), Kind::Person, None, 5);
         keep_pending(dir.path(), &out);
@@ -774,10 +774,21 @@ mod tests {
                 now,
             );
         }
+        // r0 is past 30 days; the rest fit in the five followed.
         let rids: Vec<String> = sent(dir.path(), now).into_iter().map(|s| s.rid).collect();
-        assert_eq!(rids, ["r2", "r3", "r4"]);
+        assert_eq!(rids, ["r1", "r2", "r3", "r4"]);
         forget(dir.path(), "r3");
         let rids: Vec<String> = sent(dir.path(), now).into_iter().map(|s| s.rid).collect();
-        assert_eq!(rids, ["r2", "r4"]);
+        assert_eq!(rids, ["r1", "r2", "r4"]);
+        // A sixth pushes out the oldest.
+        for (i, at) in [now - 9, now - 8, now - 7].into_iter().enumerate() {
+            let rid = format!("n{i}");
+            remember(
+                dir.path(),
+                Sent { rid, issue: Some(9), at, comments: 0, closed: false, reply_key: String::new() },
+                now,
+            );
+        }
+        assert_eq!(sent(dir.path(), now).len(), TRACKED);
     }
 }
