@@ -494,6 +494,18 @@ fn parse_options_from<I: IntoIterator<Item = std::ffi::OsString>>(iter: I) -> Op
             }
         }
     }
+    // A phone number clicked in another app opens the dialer, as `--tel` does
+    // on Windows, instead of going to the phone as a link (#611).
+    #[cfg(target_os = "linux")]
+    if options.send_to.is_none()
+        && share_targets.is_empty()
+        && let [uri] = paths.as_slice()
+        && let Some(uri) = uri.to_str()
+        && uri.get(..4).is_some_and(|scheme| scheme.eq_ignore_ascii_case("tel:"))
+    {
+        let tel = launch::telephone_number(uri).ok_or(());
+        return Options { tel: Some(tel), data_dir: options.data_dir, ..Options::default() };
+    }
     if let Some((_, files)) = &mut options.send_to {
         *files = paths;
         // Sending doesn't need the window.
@@ -1145,16 +1157,16 @@ mod tests {
 
         #[cfg(target_os = "linux")]
         {
-            let uri_opts = parse_options_from(["tel:+15551234567"].into_iter().map(OsString::from));
-            assert!(uri_opts.minimized);
-            assert_eq!(
-                uri_opts.share,
-                Some(win::share_target::SharedPayload {
-                    files: Vec::new(),
-                    url: Some("tel:+15551234567".into()),
-                    text: None,
-                })
-            );
+            // A clicked phone number opens the dialer (#611).
+            let uri_opts = parse_options_from(["tel:+1-555-123-4567"].into_iter().map(OsString::from));
+            assert_eq!(uri_opts.tel, Some(Ok("+15551234567".into())));
+            assert_eq!(uri_opts.share, None);
+            let bad = parse_options_from(["TEL:555%ZZ"].into_iter().map(OsString::from));
+            assert_eq!(bad.tel, Some(Err(())));
+            // Other links still go to the phone.
+            let geo = parse_options_from(["geo:1,2"].into_iter().map(OsString::from));
+            assert_eq!(geo.tel, None);
+            assert!(geo.share.is_some());
         }
     }
 }

@@ -539,6 +539,8 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **A phone number clicked on Linux opens the dialer.** It was sent to the phone as a link
+  instead, unlike on Windows ([#611](https://github.com/thtbee/nectarlink/issues/611)).
 - **The PC app stays usable in a small tiled window.** Tiling window managers such as Hyprland
   and Sway can make the window smaller than it's meant to go, and the top bar, Home's cards
   and Settings' categories overlapped or ran off the edge. Below that size the app now scrolls,
