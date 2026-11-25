@@ -126,9 +126,19 @@ parse_args() {
         case "$1" in
             --uninstall) UNINSTALL=1 ;;
             --no-extras) EXTRAS=0 ;;
-            --version) shift; WANT_VERSION="${1:-}"; [ -n "$WANT_VERSION" ] || fail "--version needs a version, such as 0.1.5." ;;
+            --version|--package)
+                case "${2:-}" in
+                    ""|-*) fail "$1 needs a value." ;;
+                esac
+                if [ "$1" = "--version" ]; then
+                    WANT_VERSION="$2"
+                else
+                    PACKAGE="$2"
+                fi
+                shift
+                ;;
+            --version=|--package=) fail "${1%=} needs a value." ;;
             --version=*) WANT_VERSION="${1#--version=}" ;;
-            --package) shift; PACKAGE="${1:-}" ;;
             --package=*) PACKAGE="${1#--package=}" ;;
             -h|--help) usage; exit 0 ;;
             *) fail "unknown option $1" "Run with --help to see the options." ;;

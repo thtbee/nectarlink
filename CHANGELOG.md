@@ -547,6 +547,10 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **The Linux install script stops at a missing option value.** `--version` or `--package`
+  with nothing after it no longer takes the next option as its value, or quietly falls back
+  to the defaults. Thanks to [@dani3lsamir](https://github.com/dani3lsamir)
+  ([#617](https://github.com/thtbee/nectarlink/pull/617)).
 - **A phone number clicked on Linux opens the dialer.** It was sent to the phone as a link
   instead, unlike on Windows ([#611](https://github.com/thtbee/nectarlink/issues/611)).
 - **The PC app stays usable in a small tiled window.** Tiling window managers such as Hyprland
