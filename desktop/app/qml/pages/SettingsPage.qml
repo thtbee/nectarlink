@@ -1572,6 +1572,18 @@ Item {
                                 onToggled: (on) => Preferences.hideMirrorToolbar = !on
                             }
                         }
+                        ListRow {
+                            width: parent.width
+                            visible: !Preferences.hideMirrorToolbar
+                            iconPath: Icons.window
+                            title: qsTr("Toolbar beside the picture")
+                            description: qsTr("Gives the toolbar a strip of the window above or below the phone's picture, so it never covers the app. The window grows by its height.")
+                            Toggle {
+                                label: qsTr("Toolbar beside the picture")
+                                checked: Preferences.mirrorToolbarOutside
+                                onToggled: (on) => Preferences.mirrorToolbarOutside = on
+                            }
+                        }
 
                         Divider { width: parent.width }
 

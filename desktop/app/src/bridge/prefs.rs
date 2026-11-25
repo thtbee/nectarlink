@@ -78,6 +78,7 @@ pub mod qobject {
         /// Where that toolbar sits: dragged to a corner of the window.
         #[qproperty(bool, mirror_toolbar_bottom)]
         #[qproperty(bool, mirror_toolbar_left)]
+        #[qproperty(bool, mirror_toolbar_outside)]
         /// No pop-ups for phone notifications while this PC is locked.
         #[qproperty(bool, quiet_when_locked)]
         #[qproperty(bool, hold_when_locked)]
@@ -419,6 +420,7 @@ pub struct PreferencesRust {
     hide_mirror_toolbar: bool,
     mirror_toolbar_bottom: bool,
     mirror_toolbar_left: bool,
+    mirror_toolbar_outside: bool,
     quiet_when_locked: bool,
     hold_when_locked: bool,
     send_to_menu: bool,
@@ -537,6 +539,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_hide_mirror_toolbar(settings.hide_mirror_toolbar);
         self.as_mut().set_mirror_toolbar_bottom(settings.mirror_toolbar_bottom);
         self.as_mut().set_mirror_toolbar_left(settings.mirror_toolbar_left);
+        self.as_mut().set_mirror_toolbar_outside(settings.mirror_toolbar_outside);
         self.as_mut().set_quiet_when_locked(settings.quiet_when_locked);
         crate::notifications::set_quiet_when_locked(settings.quiet_when_locked);
         self.as_mut().set_hold_when_locked(settings.hold_when_locked);
@@ -714,6 +717,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().on_hide_mirror_toolbar_changed(|p| p.save()).release();
         self.as_mut().on_mirror_toolbar_bottom_changed(|p| p.save()).release();
         self.as_mut().on_mirror_toolbar_left_changed(|p| p.save()).release();
+        self.as_mut().on_mirror_toolbar_outside_changed(|p| p.save()).release();
         self.as_mut()
             .on_sync_dnd_changed(|p| {
                 crate::notifications::set_sync_dnd(p.sync_dnd);
@@ -1433,6 +1437,7 @@ impl qobject::Preferences {
             hide_mirror_toolbar: p.hide_mirror_toolbar,
             mirror_toolbar_bottom: p.mirror_toolbar_bottom,
             mirror_toolbar_left: p.mirror_toolbar_left,
+            mirror_toolbar_outside: p.mirror_toolbar_outside,
             quiet_when_locked: p.quiet_when_locked,
             hold_when_locked: p.hold_when_locked,
             send_to_menu: p.send_to_menu,

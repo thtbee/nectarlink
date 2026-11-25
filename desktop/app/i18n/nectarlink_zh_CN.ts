@@ -10114,6 +10114,16 @@ What it needs
         <translation>镜像和应用窗口中的工具栏</translation>
     </message>
     <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Toolbar beside the picture</source>
+        <translation>工具栏放在画面旁边</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Gives the toolbar a strip of the window above or below the phone&apos;s picture, so it never covers the app. The window grows by its height.</source>
+        <translation>给工具栏在手机画面上方或下方留出一条专属区域，让它不会遮住应用。窗口会相应变高。</translation>
+    </message>
+    <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1557"/>
         <source>Shows when the pointer is near the top of the window. Off, Ctrl+Shift+T in a window shows it again.</source>
         <translation>指针靠近窗口顶部时显示。关闭后，在窗口中按 Ctrl+Shift+T 可再次显示。</translation>

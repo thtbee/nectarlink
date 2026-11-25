@@ -10067,6 +10067,16 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
         <translation>ミラーリングやアプリのウィンドウのツールバー</translation>
     </message>
     <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Toolbar beside the picture</source>
+        <translation>ツールバーを画面の外に置く</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Gives the toolbar a strip of the window above or below the phone&apos;s picture, so it never covers the app. The window grows by its height.</source>
+        <translation>ツールバーをスマホの画面の上か下にある専用の帯に置き、アプリに重ならないようにします。ウィンドウはその分だけ高くなります。</translation>
+    </message>
+    <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1557"/>
         <source>Shows when the pointer is near the top of the window. Off, Ctrl+Shift+T in a window shows it again.</source>
         <translation>ポインターをウィンドウ上部に近づけると表示されます。オフのときは、ウィンドウでCtrl＋Shift＋Tを押すと再表示されます。</translation>

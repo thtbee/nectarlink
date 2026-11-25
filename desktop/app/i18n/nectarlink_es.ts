@@ -10089,6 +10089,16 @@ Qué necesitas
         <translation>Barra de herramientas en la duplicación y las ventanas de aplicaciones</translation>
     </message>
     <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Toolbar beside the picture</source>
+        <translation>Barra de herramientas junto a la imagen</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Gives the toolbar a strip of the window above or below the phone&apos;s picture, so it never covers the app. The window grows by its height.</source>
+        <translation>Da a la barra de herramientas una franja de la ventana encima o debajo de la imagen del teléfono, para que nunca tape la app. La ventana crece esa altura.</translation>
+    </message>
+    <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1557"/>
         <source>Shows when the pointer is near the top of the window. Off, Ctrl+Shift+T in a window shows it again.</source>
         <translation>Aparece cuando el puntero está cerca de la parte superior de la ventana. Desactivada, Ctrl+Mayús+T en una ventana la vuelve a mostrar.</translation>

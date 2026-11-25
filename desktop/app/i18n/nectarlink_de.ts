@@ -10124,6 +10124,16 @@ Voraussetzungen
         <translation>Symbolleiste in Spiegelung und App-Fenstern</translation>
     </message>
     <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Toolbar beside the picture</source>
+        <translation>Werkzeugleiste neben dem Bild</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Gives the toolbar a strip of the window above or below the phone&apos;s picture, so it never covers the app. The window grows by its height.</source>
+        <translation>Gibt der Werkzeugleiste einen eigenen Streifen über oder unter dem Bild des Telefons, damit sie die App nie verdeckt. Das Fenster wird um diese Höhe größer.</translation>
+    </message>
+    <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1557"/>
         <source>Shows when the pointer is near the top of the window. Off, Ctrl+Shift+T in a window shows it again.</source>
         <translation>Erscheint, wenn der Mauszeiger oben im Fenster ist. Ist sie aus, zeigt Strg+Umschalt+T in einem Fenster sie wieder an.</translation>

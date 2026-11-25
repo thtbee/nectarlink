@@ -8,6 +8,9 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **The mirroring toolbar can sit beside the picture.** **Settings › General › Toolbar beside
+  the picture** gives it a strip of the window above or below the phone's picture, so it never
+  covers the app's own buttons ([#549](https://github.com/thtbee/nectarlink/issues/549)).
 - **Sharing the PC's screen to the phone is lighter on Windows.** The screen is captured,
   converted and encoded on the graphics card, without a copy through the CPU for each frame.
   PCs that can't do that keep the old way. Thanks to [@aihehye](https://github.com/aihehye)

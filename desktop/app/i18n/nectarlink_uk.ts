@@ -10051,6 +10051,16 @@ What it needs
         <translation>Панель інструментів у дублюванні й вікнах застосунків</translation>
     </message>
     <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Toolbar beside the picture</source>
+        <translation>Панель інструментів поруч із зображенням</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Gives the toolbar a strip of the window above or below the phone&apos;s picture, so it never covers the app. The window grows by its height.</source>
+        <translation>Дає панелі інструментів власну смугу вікна над або під зображенням телефона, щоб вона ніколи не закривала застосунок. Вікно стає вищим на її висоту.</translation>
+    </message>
+    <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1557"/>
         <source>Shows when the pointer is near the top of the window. Off, Ctrl+Shift+T in a window shows it again.</source>
         <translation>З&apos;являється, коли вказівник біля верхнього краю вікна. Якщо вимкнено, Ctrl+Shift+T у вікні знову її покаже.</translation>

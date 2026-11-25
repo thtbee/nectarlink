@@ -10101,6 +10101,16 @@ O que precisa
         <translation>Barra de ferramentas no espelhamento e nas janelas de apps</translation>
     </message>
     <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Toolbar beside the picture</source>
+        <translation>Barra de ferramentas ao lado da imagem</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Gives the toolbar a strip of the window above or below the phone&apos;s picture, so it never covers the app. The window grows by its height.</source>
+        <translation>Dá à barra de ferramentas uma faixa da janela acima ou abaixo da imagem do celular, para que ela nunca cubra o app. A janela cresce essa altura.</translation>
+    </message>
+    <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1557"/>
         <source>Shows when the pointer is near the top of the window. Off, Ctrl+Shift+T in a window shows it again.</source>
         <translation>Aparece quando o ponteiro está perto do topo da janela. Desligada, Ctrl+Shift+T em uma janela mostra de novo.</translation>
