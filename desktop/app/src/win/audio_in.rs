@@ -54,12 +54,19 @@ impl From<windows::core::Error> for MicError {
 
 /// What an HRESULT from opening the microphone means.
 fn mic_error(code: windows::core::HRESULT) -> MicError {
-    match code {
-        windows::Win32::Foundation::E_ACCESSDENIED => MicError::Denied,
-        windows::Win32::Foundation::E_NOTFOUND
-        | windows::Win32::Media::Audio::AUDCLNT_E_DEVICE_INVALIDATED
-        | windows::Win32::Media::Audio::AUDCLNT_E_ENDPOINT_CREATE_FAILED => MicError::Missing,
-        code => MicError::Other(windows::core::Error::from(code).to_string()),
+    use windows::Win32::{
+        Foundation::{E_ACCESSDENIED, ERROR_NOT_FOUND},
+        Media::Audio::{AUDCLNT_E_DEVICE_INVALIDATED, AUDCLNT_E_ENDPOINT_CREATE_FAILED},
+    };
+    if code == E_ACCESSDENIED {
+        MicError::Denied
+    } else if code == ERROR_NOT_FOUND.to_hresult()
+        || code == AUDCLNT_E_DEVICE_INVALIDATED
+        || code == AUDCLNT_E_ENDPOINT_CREATE_FAILED
+    {
+        MicError::Missing
+    } else {
+        MicError::Other(windows::core::Error::from(code).to_string())
     }
 }
 
@@ -224,6 +231,40 @@ fn drain(capture: &IAudioCaptureClient, on_pcm: &mut impl FnMut(Vec<u8>)) {
             if !pcm.is_empty() {
                 on_pcm(pcm);
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use windows::Win32::{
+        Foundation::{E_ACCESSDENIED, E_FAIL, ERROR_NOT_FOUND},
+        Media::Audio::AUDCLNT_E_DEVICE_INVALIDATED,
+    };
+
+    #[test]
+    fn privacy_block_and_missing_microphone_are_told_apart() {
+        assert_eq!(mic_error(E_ACCESSDENIED), MicError::Denied);
+        assert_eq!(mic_error(ERROR_NOT_FOUND.to_hresult()), MicError::Missing);
+        assert_eq!(mic_error(AUDCLNT_E_DEVICE_INVALIDATED), MicError::Missing);
+        assert!(matches!(mic_error(E_FAIL), MicError::Other(_)));
+    }
+
+    /// Opens whatever microphone this PC has; skipped on one without any.
+    #[test]
+    fn records_the_default_microphone_when_there_is_one() {
+        let (tx, rx) = mpsc::channel();
+        match Recorder::start(Some("not-a-real-endpoint".into()), 16_000, move |pcm| {
+            let _ = tx.send(pcm.len());
+        }) {
+            Ok(recorder) => {
+                let got = rx.recv_timeout(Duration::from_secs(3));
+                drop(recorder);
+                assert!(got.is_ok_and(|n| n % 2 == 0), "no sound came from the microphone");
+            }
+            Err(MicError::Missing) | Err(MicError::Denied) => {}
+            Err(e) => panic!("{e}"),
         }
     }
 }
