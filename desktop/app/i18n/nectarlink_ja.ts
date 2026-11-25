@@ -1179,6 +1179,16 @@
         <source>Unknown caller</source>
         <translation>不明な発信者</translation>
     </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Windows keeps NectarLink off the microphone. Turn on Settings › Privacy &amp; security › Microphone › Let desktop apps access your microphone, then try again.</source>
+        <translation>Windows が NectarLink のマイク使用をブロックしています。設定 › プライバシーとセキュリティ › マイク › デスクトップ アプリがマイクにアクセスできるようにする をオンにして、もう一度お試しください。</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>The PC&apos;s microphone couldn&apos;t be started. Pick another one in Settings › Camera &amp; Audio › Microphone for calls, or try again.</source>
+        <translation>PC のマイクを開始できませんでした。設定 › カメラとオーディオ › 通話用マイク で別のマイクを選ぶか、もう一度お試しください。</translation>
+    </message>
 </context>
 <context>
     <name>CallsPage</name>

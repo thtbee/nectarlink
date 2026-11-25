@@ -149,7 +149,7 @@ pub fn toggle_mic_mute() -> Result<bool, String> {
     }
 }
 
-fn device_id_string(device: &IMMDevice) -> Option<String> {
+pub(super) fn device_id_string(device: &IMMDevice) -> Option<String> {
     // SAFETY: `GetId` returns a task-allocated wide string freed with `CoTaskMemFree`.
     unsafe {
         let raw: PWSTR = device.GetId().ok()?;

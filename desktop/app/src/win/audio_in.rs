@@ -18,11 +18,50 @@ use std::{
 use windows::Win32::{
     Media::Audio::{
         AUDCLNT_BUFFERFLAGS_SILENT, AUDCLNT_SHAREMODE_SHARED, AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM,
-        AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY, IAudioCaptureClient, IAudioClient, IMMDeviceEnumerator,
-        MMDeviceEnumerator, WAVE_FORMAT_PCM, WAVEFORMATEX, eCapture, eCommunications,
+        AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY, DEVICE_STATE_ACTIVE, IAudioCaptureClient, IAudioClient,
+        IMMDevice, IMMDeviceEnumerator, MMDeviceEnumerator, WAVE_FORMAT_PCM, WAVEFORMATEX, eCapture,
+        eCommunications, eConsole,
     },
     System::Com::{CLSCTX_ALL, COINIT_MULTITHREADED, CoCreateInstance, CoInitializeEx, CoUninitialize},
 };
+
+/// Why the microphone can't be recorded.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MicError {
+    /// Windows' privacy settings keep desktop apps off the microphone.
+    Denied,
+    /// No microphone is plugged in or turned on.
+    Missing,
+    /// Something else, as Windows said it.
+    Other(String),
+}
+
+impl std::fmt::Display for MicError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MicError::Denied => f.write_str("access to the microphone is off in Windows' privacy settings"),
+            MicError::Missing => f.write_str("no microphone"),
+            MicError::Other(e) => f.write_str(e),
+        }
+    }
+}
+
+impl From<windows::core::Error> for MicError {
+    fn from(e: windows::core::Error) -> Self {
+        mic_error(e.code())
+    }
+}
+
+/// What an HRESULT from opening the microphone means.
+fn mic_error(code: windows::core::HRESULT) -> MicError {
+    match code {
+        windows::Win32::Foundation::E_ACCESSDENIED => MicError::Denied,
+        windows::Win32::Foundation::E_NOTFOUND
+        | windows::Win32::Media::Audio::AUDCLNT_E_DEVICE_INVALIDATED
+        | windows::Win32::Media::Audio::AUDCLNT_E_ENDPOINT_CREATE_FAILED => MicError::Missing,
+        code => MicError::Other(windows::core::Error::from(code).to_string()),
+    }
+}
 
 /// Records until dropped.
 pub struct Recorder {
@@ -39,7 +78,7 @@ impl Recorder {
         device: Option<String>,
         rate: u32,
         mut on_pcm: impl FnMut(Vec<u8>) + Send + 'static,
-    ) -> Result<Recorder, String> {
+    ) -> Result<Recorder, MicError> {
         let running = Arc::new(AtomicBool::new(true));
         let (ready, started) = mpsc::channel();
         let keep = running.clone();
@@ -67,8 +106,8 @@ impl Recorder {
                     unsafe { CoUninitialize() };
                 }
             })
-            .map_err(|e| e.to_string())?;
-        match started.recv().unwrap_or_else(|_| Err("the microphone thread ended".into())) {
+            .map_err(|e| MicError::Other(e.to_string()))?;
+        match started.recv().unwrap_or_else(|_| Err(MicError::Other("the microphone thread ended".into()))) {
             Ok(()) => Ok(Recorder { running, thread: Some(thread) }),
             Err(e) => {
                 let _ = thread.join();
@@ -87,7 +126,56 @@ impl Drop for Recorder {
     }
 }
 
-fn open(device: Option<&str>, rate: u32) -> Result<(IAudioClient, IAudioCaptureClient), String> {
+fn open(device: Option<&str>, rate: u32) -> Result<(IAudioClient, IAudioCaptureClient), MicError> {
+    // SAFETY: COM on this thread (the recorder's).
+    let enumerator: IMMDeviceEnumerator = unsafe { CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL) }?;
+    // The chosen microphone while it's plugged in and on, then Windows'
+    // default communications one, then its default one: a PC whose
+    // communications default is a turned-off or virtual device still talks.
+    let mut tried: Vec<String> = Vec::new();
+    let mut last = MicError::Missing;
+    let chosen = device.and_then(|id| {
+        // SAFETY: an endpoint ID from input_devices.
+        unsafe { enumerator.GetDevice(&windows::core::HSTRING::from(id)) }.ok()
+    });
+    for role in [None, Some(eCommunications), Some(eConsole)] {
+        let candidate = match role {
+            None => chosen.clone(),
+            // SAFETY: a plain enumerator call.
+            Some(role) => match unsafe { enumerator.GetDefaultAudioEndpoint(eCapture, role) } {
+                Ok(d) => Some(d),
+                Err(e) => {
+                    if last == MicError::Missing {
+                        last = e.into();
+                    }
+                    None
+                }
+            },
+        };
+        let Some(candidate) = candidate else { continue };
+        // SAFETY: a plain endpoint call.
+        let active = unsafe { candidate.GetState() }.is_ok_and(|s| s == DEVICE_STATE_ACTIVE);
+        let id = super::audio::device_id_string(&candidate).unwrap_or_default();
+        if !active || tried.contains(&id) {
+            continue;
+        }
+        tried.push(id);
+        match start_on(&candidate, rate) {
+            Ok(opened) => return Ok(opened),
+            Err(e) => {
+                tracing::info!(error = %e, "can't record this microphone, trying the next");
+                // Denied says the most: the others would be denied too.
+                if last != MicError::Denied {
+                    last = e;
+                }
+            }
+        }
+    }
+    Err(last)
+}
+
+/// Starts shared capture on `device` in 16-bit mono at `rate`.
+fn start_on(device: &IMMDevice, rate: u32) -> Result<(IAudioClient, IAudioCaptureClient), MicError> {
     let format = WAVEFORMATEX {
         wFormatTag: WAVE_FORMAT_PCM as u16,
         nChannels: 1,
@@ -97,35 +185,21 @@ fn open(device: Option<&str>, rate: u32) -> Result<(IAudioClient, IAudioCaptureC
         wBitsPerSample: 16,
         cbSize: 0,
     };
-    // SAFETY: WASAPI shared capture on the chosen (or default communications)
-    // microphone, in a format we own; Windows converts the microphone's own to it.
+    // SAFETY: WASAPI shared capture in a format we own; Windows converts the
+    // microphone's own to it.
     unsafe {
-        let enumerator: IMMDeviceEnumerator =
-            CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).map_err(|e| e.to_string())?;
-        // A chosen microphone that's unplugged or off: the default one.
-        let chosen = device
-            .and_then(|id| enumerator.GetDevice(&windows::core::HSTRING::from(id)).ok())
-            .filter(|d| d.GetState().is_ok_and(|s| s == windows::Win32::Media::Audio::DEVICE_STATE_ACTIVE));
-        let device = match chosen {
-            Some(device) => device,
-            None => {
-                enumerator.GetDefaultAudioEndpoint(eCapture, eCommunications).map_err(|e| e.to_string())?
-            }
-        };
-        let client: IAudioClient = device.Activate(CLSCTX_ALL, None).map_err(|e| e.to_string())?;
+        let client: IAudioClient = device.Activate(CLSCTX_ALL, None)?;
         // 20 ms of buffer, in 100-ns units.
-        client
-            .Initialize(
-                AUDCLNT_SHAREMODE_SHARED,
-                AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY,
-                200_000,
-                0,
-                &format,
-                None,
-            )
-            .map_err(|e| e.to_string())?;
-        let capture: IAudioCaptureClient = client.GetService().map_err(|e| e.to_string())?;
-        client.Start().map_err(|e| e.to_string())?;
+        client.Initialize(
+            AUDCLNT_SHAREMODE_SHARED,
+            AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM | AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY,
+            200_000,
+            0,
+            &format,
+            None,
+        )?;
+        let capture: IAudioCaptureClient = client.GetService()?;
+        client.Start()?;
         Ok((client, capture))
     }
 }

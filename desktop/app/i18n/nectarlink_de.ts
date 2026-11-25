@@ -1194,6 +1194,16 @@
         <source>Unknown caller</source>
         <translation>Unbekannter Anrufer</translation>
     </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Windows keeps NectarLink off the microphone. Turn on Settings › Privacy &amp; security › Microphone › Let desktop apps access your microphone, then try again.</source>
+        <translation>Windows lässt NectarLink nicht ans Mikrofon. Schalte Einstellungen › Datenschutz und Sicherheit › Mikrofon › Desktop-Apps den Zugriff auf das Mikrofon erlauben ein und versuche es noch einmal.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>The PC&apos;s microphone couldn&apos;t be started. Pick another one in Settings › Camera &amp; Audio › Microphone for calls, or try again.</source>
+        <translation>Das Mikrofon des PCs ließ sich nicht starten. Wähle ein anderes unter Einstellungen › Kamera &amp; Audio › Mikrofon für Anrufe oder versuche es noch einmal.</translation>
+    </message>
 </context>
 <context>
     <name>CallsPage</name>

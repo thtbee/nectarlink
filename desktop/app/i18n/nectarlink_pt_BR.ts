@@ -1179,6 +1179,16 @@
         <source>Unknown caller</source>
         <translation>Número desconhecido</translation>
     </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Windows keeps NectarLink off the microphone. Turn on Settings › Privacy &amp; security › Microphone › Let desktop apps access your microphone, then try again.</source>
+        <translation>O Windows não deixa o NectarLink usar o microfone. Ative Configurações › Privacidade e segurança › Microfone › Permitir que aplicativos da área de trabalho acessem seu microfone e tente de novo.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>The PC&apos;s microphone couldn&apos;t be started. Pick another one in Settings › Camera &amp; Audio › Microphone for calls, or try again.</source>
+        <translation>Não foi possível iniciar o microfone do PC. Escolha outro em Configurações › Câmera e áudio › Microfone para chamadas ou tente de novo.</translation>
+    </message>
 </context>
 <context>
     <name>CallsPage</name>

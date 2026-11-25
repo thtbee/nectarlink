@@ -98,11 +98,11 @@ pub fn start(device: DeviceId) {
         let recording = uplink.clone();
         let recorded = tokio::task::spawn_blocking(move || record_into(&recording, device))
             .await
-            .unwrap_or_else(|e| Err(e.to_string()));
+            .unwrap_or_else(|e| Err(MicError::Other(e.to_string())));
         if let Err(e) = recorded {
             tracing::warn!(error = %e, "can't record the PC's microphone");
             stop(device);
-            show_message(tr!("Calls", "No microphone on this PC to talk with."));
+            show_message(mic_message(&e));
             return;
         }
         state(|s| {
@@ -120,7 +120,42 @@ pub fn start(device: DeviceId) {
 }
 
 #[cfg(windows)]
-fn record_into(uplink: &Arc<nectarlink_core::MirrorStream>, device: DeviceId) -> Result<(), String> {
+use crate::win::audio_in::MicError;
+
+/// Why the microphone can't be recorded, off Windows.
+#[cfg(not(windows))]
+#[derive(Debug)]
+pub enum MicError {
+    Other(String),
+}
+
+#[cfg(not(windows))]
+impl std::fmt::Display for MicError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let MicError::Other(e) = self;
+        f.write_str(e)
+    }
+}
+
+/// What to tell the person when the microphone can't be recorded.
+fn mic_message(e: &MicError) -> String {
+    match e {
+        #[cfg(windows)]
+        MicError::Denied => tr!(
+            "Calls",
+            "Windows keeps NectarLink off the microphone. Turn on Settings › Privacy & security › Microphone › Let desktop apps access your microphone, then try again."
+        ),
+        #[cfg(windows)]
+        MicError::Missing => tr!("Calls", "No microphone on this PC to talk with."),
+        MicError::Other(_) => tr!(
+            "Calls",
+            "The PC's microphone couldn't be started. Pick another one in Settings › Camera & Audio › Microphone for calls, or try again."
+        ),
+    }
+}
+
+#[cfg(windows)]
+fn record_into(uplink: &Arc<nectarlink_core::MirrorStream>, device: DeviceId) -> Result<(), MicError> {
     let rate = nectarlink_core::CALLS_AUDIO_RATE;
     let config = MirrorAudioConfig { codec: nectarlink_core::MIRROR_PCM.into(), rate, channels: 1 };
     uplink.send(nectarlink_core::PacketKind::Config, 0, config.to_cbor());
@@ -135,7 +170,7 @@ fn record_into(uplink: &Arc<nectarlink_core::MirrorStream>, device: DeviceId) ->
 
 /// Records the chosen microphone into `uplink`. Blocks a moment.
 #[cfg(windows)]
-fn recorder(uplink: &Arc<nectarlink_core::MirrorStream>) -> Result<crate::win::audio_in::Recorder, String> {
+fn recorder(uplink: &Arc<nectarlink_core::MirrorStream>) -> Result<crate::win::audio_in::Recorder, MicError> {
     let rate = nectarlink_core::CALLS_AUDIO_RATE;
     let stream = uplink.clone();
     let mut samples = 0u64;
@@ -206,14 +241,14 @@ fn switch_mic() {
         }),
         Err(e) => {
             tracing::warn!(error = %e, "can't record the chosen microphone");
-            show_message(tr!("Calls", "No microphone on this PC to talk with."));
+            show_message(mic_message(&e));
         }
     }
 }
 
 #[cfg(not(windows))]
-fn record_into(_uplink: &Arc<nectarlink_core::MirrorStream>, _device: DeviceId) -> Result<(), String> {
-    Err("not on this system".into())
+fn record_into(_uplink: &Arc<nectarlink_core::MirrorStream>, _device: DeviceId) -> Result<(), MicError> {
+    Err(MicError::Other("not on this system".into()))
 }
 
 /// Gives the call's sound back to `device` and tells it.

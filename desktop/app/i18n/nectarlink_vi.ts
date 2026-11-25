@@ -1179,6 +1179,16 @@
         <source>Unknown caller</source>
         <translation>Người gọi không xác định</translation>
     </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Windows keeps NectarLink off the microphone. Turn on Settings › Privacy &amp; security › Microphone › Let desktop apps access your microphone, then try again.</source>
+        <translation>Windows chặn NectarLink dùng micrô. Bật Cài đặt › Quyền riêng tư &amp; bảo mật › Micrô › Cho phép ứng dụng trên máy tính truy cập micrô của bạn, rồi thử lại.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>The PC&apos;s microphone couldn&apos;t be started. Pick another one in Settings › Camera &amp; Audio › Microphone for calls, or try again.</source>
+        <translation>Không khởi động được micrô của PC. Chọn micrô khác trong Cài đặt › Máy ảnh &amp; Âm thanh › Micrô cho cuộc gọi, hoặc thử lại.</translation>
+    </message>
 </context>
 <context>
     <name>CallsPage</name>

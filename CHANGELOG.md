@@ -570,6 +570,10 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **Moving a call to the PC no longer stops at "No microphone"** when Windows' default
+  communications microphone is off or missing: it uses the default microphone instead. When
+  Windows' privacy settings keep NectarLink off the microphone, it now says so and where to
+  turn it on ([#637](https://github.com/thtbee/nectarlink/issues/637)).
 - **A WhatsApp call from the PC starts on the phone by itself.** It used to need a tap on a
   notification whenever NectarLink wasn't on the phone's screen. Now it starts straight away
   when Android allows it: with **Display over other apps** allowed for NectarLink, or with the

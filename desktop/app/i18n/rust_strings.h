@@ -62,8 +62,10 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Calls", "No microphone on this PC to talk with."), // desktop/app/src/call_audio.rs
     QT_TRANSLATE_NOOP("Calls", "On a call with %1"), // desktop/app/src/calls.rs
     QT_TRANSLATE_NOOP("Calls", "That call is over."), // desktop/app/src/call_audio.rs
+    QT_TRANSLATE_NOOP("Calls", "The PC's microphone couldn't be started. Pick another one in Settings › Camera & Audio › Microphone for calls, or try again."), // desktop/app/src/call_audio.rs
     QT_TRANSLATE_NOOP("Calls", "This phone doesn't let NectarLink reach its calls' sound."), // desktop/app/src/call_audio.rs
     QT_TRANSLATE_NOOP("Calls", "Unknown caller"), // desktop/app/src/bridge/calls.rs
+    QT_TRANSLATE_NOOP("Calls", "Windows keeps NectarLink off the microphone. Turn on Settings › Privacy & security › Microphone › Let desktop apps access your microphone, then try again."), // desktop/app/src/call_audio.rs
     QT_TRANSLATE_NOOP("Clipboard", "Copied from %1"), // desktop/app/src/clipboard.rs
     QT_TRANSLATE_NOOP("Clipboard", "Copied from %1."), // desktop/app/src/clipboard.rs
     QT_TRANSLATE_NOOP("Clipboard", "Copied to clipboard"), // desktop/app/src/clipboard.rs

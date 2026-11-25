@@ -56,6 +56,8 @@ Use headphones if you can: on speakers, your PC's microphone also picks up the o
 
 Calls use Windows' default communications microphone. To pick another one, go to **Settings › Camera & Audio › Microphone for calls**; a change applies to a call that's already on the PC too.
 
+If Windows' default communications microphone is off or missing, NectarLink uses the default microphone instead. If NectarLink says Windows keeps it off the microphone, turn on **Settings › Privacy & security › Microphone › Let desktop apps access your microphone** in Windows.
+
 Whether your phone allows this is up to its maker: the phone's audio system must let apps reach the call (Android calls this call audio interception). It works on Google Pixel phones. NectarLink checks this when Elevated starts; on a phone that doesn't allow it, the PC shows no **On PC** button. Details are in [`docs/research/hfp.md`](../research/hfp.md).
 
 On Linux, call audio goes to the PC over Bluetooth instead, as for a headset.
