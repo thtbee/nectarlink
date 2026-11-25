@@ -664,6 +664,10 @@ pub struct Settings {
     pub mirror_toolbar_bottom: bool,
     #[serde(default)]
     pub mirror_toolbar_left: bool,
+    /// That toolbar gets a strip of the window to itself, above or below the
+    /// picture, instead of floating over it (#549).
+    #[serde(default)]
+    pub mirror_toolbar_outside: bool,
     /// No pop-ups for phone notifications while this PC is locked.
     #[serde(default, alias = "quiet_when_locked")]
     pub quiet_when_locked: bool,
@@ -991,6 +995,7 @@ impl Default for Settings {
             hide_mirror_toolbar: false,
             mirror_toolbar_bottom: false,
             mirror_toolbar_left: false,
+            mirror_toolbar_outside: false,
             quiet_when_locked: false,
             hold_when_locked: false,
             send_to_menu: true,
@@ -1352,6 +1357,7 @@ mod tests {
             hide_mirror_toolbar: true,
             mirror_toolbar_bottom: true,
             mirror_toolbar_left: true,
+            mirror_toolbar_outside: true,
             quiet_when_locked: true,
             hold_when_locked: true,
             send_to_menu: false,
