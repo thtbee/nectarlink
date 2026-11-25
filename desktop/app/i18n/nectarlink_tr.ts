@@ -4130,7 +4130,7 @@
     <message>
         <location filename="rust_strings.h" line="309"/>
         <source>Local by default
-Your phone and PC talk directly over your local network or USB cable. When Connect over mobile data is on, encrypted traffic can use a relay when away from home. Automatic update checks contact GitHub Releases and can be turned off in Settings › Connection &amp; About › Check for updates.
+Your phone and PC talk directly over your local network or USB cable. When Connect over mobile data is on, encrypted traffic can use a relay when away from home. Automatic update checks contact GitHub Releases and can be turned off in Settings › Updates › Check for updates.
 
 End-to-end encrypted
 Every connection uses QUIC with TLS 1.3 and Ed25519 device certificates verified during pairing. Device keys are protected by Windows DPAPI and the Android Keystore.
@@ -4138,7 +4138,7 @@ Every connection uses QUIC with TLS 1.3 and Ed25519 device certificates verified
 Per-device sharing controls
 Sensitive capabilities such as Share PC folders, Remote input, and Reverse PC screen mirroring are turned off by default for each paired device until you turn them on.</source>
         <translation>Varsayılan olarak yerel
-Telefonunuz ve bilgisayarınız doğrudan yerel ağınız veya USB kablosu üzerinden konuşur. Mobil veri üzerinden bağlan açıkken, evden uzaktayken şifreli trafik bir aktarma sunucusu kullanabilir. Otomatik güncelleme denetimleri GitHub Releases&apos;e bağlanır ve Ayarlar › Bağlantı ve Hakkında › Güncellemeleri denetle bölümünden kapatılabilir.
+Telefonunuz ve bilgisayarınız doğrudan yerel ağınız veya USB kablosu üzerinden konuşur. Mobil veri üzerinden bağlan açıkken, evden uzaktayken şifreli trafik bir aktarma sunucusu kullanabilir. Otomatik güncelleme denetimleri GitHub Releases&apos;e bağlanır ve Ayarlar › Güncellemeler › Güncellemeleri denetle bölümünden kapatılabilir.
 
 Uçtan uca şifreli
 Her bağlantı, eşleştirme sırasında doğrulanan Ed25519 cihaz sertifikalarıyla QUIC ve TLS 1.3 kullanır. Cihaz anahtarları Windows DPAPI ve Android Keystore ile korunur.

@@ -4115,7 +4115,7 @@
     <message>
         <location filename="rust_strings.h" line="309"/>
         <source>Local by default
-Your phone and PC talk directly over your local network or USB cable. When Connect over mobile data is on, encrypted traffic can use a relay when away from home. Automatic update checks contact GitHub Releases and can be turned off in Settings › Connection &amp; About › Check for updates.
+Your phone and PC talk directly over your local network or USB cable. When Connect over mobile data is on, encrypted traffic can use a relay when away from home. Automatic update checks contact GitHub Releases and can be turned off in Settings › Updates › Check for updates.
 
 End-to-end encrypted
 Every connection uses QUIC with TLS 1.3 and Ed25519 device certificates verified during pairing. Device keys are protected by Windows DPAPI and the Android Keystore.
@@ -4123,7 +4123,7 @@ Every connection uses QUIC with TLS 1.3 and Ed25519 device certificates verified
 Per-device sharing controls
 Sensitive capabilities such as Share PC folders, Remote input, and Reverse PC screen mirroring are turned off by default for each paired device until you turn them on.</source>
         <translation>Local por padrão
-O celular e o PC se comunicam diretamente pela rede local ou por USB. Quando Conectar usando dados móveis está ativado, o tráfego criptografado pode usar um retransmissor quando você está fora da rede local. As verificações automáticas de atualização consultam o GitHub Releases e podem ser desativadas em Configurações › Conexão e sobre › Verificar atualizações.
+O celular e o PC se comunicam diretamente pela rede local ou por USB. Quando Conectar usando dados móveis está ativado, o tráfego criptografado pode usar um retransmissor quando você está fora da rede local. As verificações automáticas de atualização consultam o GitHub Releases e podem ser desativadas em Configurações › Atualizações › Verificar atualizações.
 
 Criptografado de ponta a ponta
 Cada conexão usa QUIC com TLS 1.3. Os certificados Ed25519 dos dispositivos são verificados durante o pareamento. As chaves ficam protegidas pelo Windows DPAPI e pelo Android Keystore.
