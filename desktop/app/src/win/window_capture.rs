@@ -6,8 +6,8 @@
 use windows::{
     Graphics::{
         Capture::{
-            Direct3D11CaptureFramePool, GraphicsCaptureAccess, GraphicsCaptureAccessKind,
-            GraphicsCaptureItem, GraphicsCaptureSession,
+            Direct3D11CaptureFrame, Direct3D11CaptureFramePool, GraphicsCaptureAccess,
+            GraphicsCaptureAccessKind, GraphicsCaptureItem, GraphicsCaptureSession,
         },
         DirectX::{Direct3D11::IDirect3DDevice, DirectXPixelFormat},
         SizeInt32,
@@ -17,11 +17,15 @@ use windows::{
         Graphics::{
             Direct3D::D3D_DRIVER_TYPE_HARDWARE,
             Direct3D11::{
-                D3D11_BOX, D3D11_CPU_ACCESS_READ, D3D11_CREATE_DEVICE_BGRA_SUPPORT, D3D11_MAP_READ,
-                D3D11_MAPPED_SUBRESOURCE, D3D11_SDK_VERSION, D3D11_TEXTURE2D_DESC, D3D11_USAGE_STAGING,
-                D3D11CreateDevice, ID3D11Device, ID3D11DeviceContext, ID3D11Texture2D,
+                D3D11_BIND_SHADER_RESOURCE, D3D11_BOX, D3D11_CPU_ACCESS_READ,
+                D3D11_CREATE_DEVICE_BGRA_SUPPORT, D3D11_CREATE_DEVICE_VIDEO_SUPPORT, D3D11_MAP_READ,
+                D3D11_MAPPED_SUBRESOURCE, D3D11_SDK_VERSION, D3D11_TEXTURE2D_DESC, D3D11_USAGE_DEFAULT,
+                D3D11_USAGE_STAGING, D3D11CreateDevice, ID3D11Device, ID3D11DeviceContext, ID3D11Multithread,
+                ID3D11Texture2D,
             },
-            Dxgi::{Common::DXGI_FORMAT_B8G8R8A8_UNORM, Common::DXGI_SAMPLE_DESC, IDXGIDevice},
+            Dxgi::{
+                Common::DXGI_FORMAT_B8G8R8A8_UNORM, Common::DXGI_SAMPLE_DESC, IDXGIAdapter1, IDXGIDevice,
+            },
         },
         System::{
             Com::{COINIT_MULTITHREADED, CoInitializeEx},
@@ -47,9 +51,20 @@ pub struct WindowCapture {
     session: GraphicsCaptureSession,
     size: SizeInt32,
     staging: Option<(ID3D11Texture2D, u32, u32)>,
+    gpu_texture: Option<(ID3D11Texture2D, u32, u32)>,
     /// The latest crop, kept for when no new frame came (nothing changed).
     last: Vec<u8>,
     last_size: (u32, u32),
+    columns: Vec<(usize, u32)>,
+}
+
+/// Latest cropped frame surface and bounds returned by `WindowCapture::next_cropped_frame`.
+struct CroppedFrame {
+    _frame: Direct3D11CaptureFrame,
+    texture: ID3D11Texture2D,
+    area: D3D11_BOX,
+    width: u32,
+    height: u32,
 }
 
 impl WindowCapture {
@@ -69,18 +84,39 @@ impl WindowCapture {
                 None,
                 D3D_DRIVER_TYPE_HARDWARE,
                 Default::default(),
-                D3D11_CREATE_DEVICE_BGRA_SUPPORT,
+                D3D11_CREATE_DEVICE_BGRA_SUPPORT | D3D11_CREATE_DEVICE_VIDEO_SUPPORT,
                 None,
                 D3D11_SDK_VERSION,
                 Some(&mut device),
                 None,
                 Some(&mut context),
-            )?;
+            )
+            .or_else(|_| {
+                device = None;
+                context = None;
+                D3D11CreateDevice(
+                    None,
+                    D3D_DRIVER_TYPE_HARDWARE,
+                    Default::default(),
+                    D3D11_CREATE_DEVICE_BGRA_SUPPORT,
+                    None,
+                    D3D11_SDK_VERSION,
+                    Some(&mut device),
+                    None,
+                    Some(&mut context),
+                )
+            })?;
         }
         let device: ID3D11Device =
             device.ok_or_else(|| windows::core::Error::from(windows::Win32::Foundation::E_FAIL))?;
         let context =
             context.ok_or_else(|| windows::core::Error::from(windows::Win32::Foundation::E_FAIL))?;
+        if let Ok(mt) = device.cast::<ID3D11Multithread>() {
+            // SAFETY: enables thread-safe access when sharing the D3D11 device with Media Foundation.
+            unsafe {
+                let _ = mt.SetMultithreadProtected(true);
+            }
+        }
         // SAFETY: as above.
         let (winrt_device, item) = unsafe {
             let dxgi: IDXGIDevice = device.cast()?;
@@ -115,14 +151,57 @@ impl WindowCapture {
             session,
             size,
             staging: None,
+            gpu_texture: None,
             last: Vec::new(),
             last_size: (0, 0),
+            columns: Vec::new(),
         })
     }
 
     /// The window this captures.
     pub fn window(&self) -> HWND {
         self.hwnd
+    }
+
+    /// The D3D11 device capturing this window.
+    pub fn device(&self) -> &ID3D11Device {
+        &self.device
+    }
+
+    /// The DXGI adapter LUID backing `device()`.
+    pub fn adapter_luid(&self) -> Option<u64> {
+        // SAFETY: queries DXGI adapter description from the live D3D11 device.
+        unsafe {
+            let dxgi: IDXGIDevice = self.device.cast().ok()?;
+            let adapter = dxgi.GetAdapter().ok()?;
+            let adapter1: IDXGIAdapter1 = adapter.cast().ok()?;
+            let desc = adapter1.GetDesc1().ok()?;
+            Some(u64::from(desc.AdapterLuid.LowPart) | ((desc.AdapterLuid.HighPart as u64) << 32))
+        }
+    }
+
+    /// The window's latest picture of `crop` (in the window's own pixels,
+    /// from its top-left) copied into a reusable GPU `DEFAULT` texture, along
+    /// with its `ID3D11Device`. Reuses the previous texture when no new frame
+    /// arrived; returns `None` before the first frame.
+    pub fn latest_texture(&mut self, crop: RECT) -> Option<(&ID3D11Device, &ID3D11Texture2D)> {
+        let update = (|| -> windows::core::Result<()> {
+            let Some(CroppedFrame { _frame, texture, area, width: w, height: h }) =
+                self.next_cropped_frame(crop)?
+            else {
+                return Ok(());
+            };
+            let dst = ensure_texture(&self.device, &mut self.gpu_texture, w, h, false)?;
+            // SAFETY: `_frame` keeps the pool surface alive while copying the cropped box.
+            unsafe {
+                self.context.CopySubresourceRegion(&dst, 0, 0, 0, 0, &texture, 0, Some(&area));
+            }
+            Ok(())
+        })();
+        if let Err(e) = update {
+            tracing::debug!(error = %e, "window capture GPU frame failed");
+        }
+        self.gpu_texture.as_ref().map(|(tex, _, _)| (&self.device, tex))
     }
 
     /// The window's latest picture of `crop` (in the window's own pixels,
@@ -137,18 +216,17 @@ impl WindowCapture {
         if w == 0 || h == 0 {
             return false;
         }
-        scale_bgra(&self.last, w, h, dst_w, dst_h, bgra);
+        scale_bgra_into(&self.last, w, h, dst_w, dst_h, bgra, &mut self.columns);
         true
     }
 
-    /// Reads the newest frame, if one came, into `last`.
-    fn latest(&mut self, crop: RECT) -> windows::core::Result<()> {
+    fn next_cropped_frame(&mut self, crop: RECT) -> windows::core::Result<Option<CroppedFrame>> {
         // Only the newest matters: older frames are dropped.
         let mut newest = None;
         while let Ok(frame) = self.pool.TryGetNextFrame() {
             newest = Some(frame);
         }
-        let Some(frame) = newest else { return Ok(()) };
+        let Some(frame) = newest else { return Ok(None) };
         let content = frame.ContentSize()?;
         if content.Width != self.size.Width || content.Height != self.size.Height {
             // The window changed size: frames come at the new size from the next one.
@@ -160,8 +238,7 @@ impl WindowCapture {
                 content,
             )?;
         }
-        // SAFETY: COM calls on live interfaces; the staging texture is
-        // mapped for reading and unmapped before it's used again.
+        // SAFETY: COM calls on live interfaces; `_frame` keeps the surface alive for the caller.
         unsafe {
             let access: IDirect3DDxgiInterfaceAccess = frame.Surface()?.cast()?;
             let texture: ID3D11Texture2D = access.GetInterface()?;
@@ -174,11 +251,25 @@ impl WindowCapture {
             let right = crop.right.clamp(0, tw as i32) as u32;
             let bottom = crop.bottom.clamp(0, th as i32) as u32;
             if right <= left || bottom <= top {
-                return Ok(());
+                return Ok(None);
             }
-            let (w, h) = (right - left, bottom - top);
-            let staging = self.staging(w, h)?;
+            let (width, height) = (right - left, bottom - top);
             let area = D3D11_BOX { left, top, front: 0, right, bottom, back: 1 };
+            Ok(Some(CroppedFrame { _frame: frame, texture, area, width, height }))
+        }
+    }
+
+    /// Reads the newest frame, if one came, into `last`.
+    fn latest(&mut self, crop: RECT) -> windows::core::Result<()> {
+        let Some(CroppedFrame { _frame, texture, area, width: w, height: h }) =
+            self.next_cropped_frame(crop)?
+        else {
+            return Ok(());
+        };
+        // SAFETY: COM calls on live interfaces; the staging texture is
+        // mapped for reading and unmapped before it's used again.
+        unsafe {
+            let staging = ensure_texture(&self.device, &mut self.staging, w, h, true)?;
             self.context.CopySubresourceRegion(&staging, 0, 0, 0, 0, &texture, 0, Some(&area));
             let mut mapped = D3D11_MAPPED_SUBRESOURCE::default();
             self.context.Map(&staging, 0, D3D11_MAP_READ, 0, Some(&mut mapped))?;
@@ -194,34 +285,39 @@ impl WindowCapture {
         }
         Ok(())
     }
+}
 
-    /// A texture the CPU can read, `w` × `h`, reused while the size stays.
-    fn staging(&mut self, w: u32, h: u32) -> windows::core::Result<ID3D11Texture2D> {
-        if let Some((texture, sw, sh)) = &self.staging
-            && (*sw, *sh) == (w, h)
-        {
-            return Ok(texture.clone());
-        }
-        let desc = D3D11_TEXTURE2D_DESC {
-            Width: w,
-            Height: h,
-            MipLevels: 1,
-            ArraySize: 1,
-            Format: DXGI_FORMAT_B8G8R8A8_UNORM,
-            SampleDesc: DXGI_SAMPLE_DESC { Count: 1, Quality: 0 },
-            Usage: D3D11_USAGE_STAGING,
-            BindFlags: 0,
-            CPUAccessFlags: D3D11_CPU_ACCESS_READ.0 as u32,
-            MiscFlags: 0,
-        };
-        let mut texture = None;
-        // SAFETY: creates a texture from a filled-in description.
-        unsafe { self.device.CreateTexture2D(&desc, None, Some(&mut texture))? };
-        let texture =
-            texture.ok_or_else(|| windows::core::Error::from(windows::Win32::Foundation::E_FAIL))?;
-        self.staging = Some((texture.clone(), w, h));
-        Ok(texture)
+/// Allocates or reuses a `w` × `h` BGRA texture (`staging` for CPU readback or `DEFAULT` for GPU use).
+fn ensure_texture(
+    device: &ID3D11Device,
+    slot: &mut Option<(ID3D11Texture2D, u32, u32)>,
+    w: u32,
+    h: u32,
+    staging: bool,
+) -> windows::core::Result<ID3D11Texture2D> {
+    if let Some((texture, sw, sh)) = slot
+        && (*sw, *sh) == (w, h)
+    {
+        return Ok(texture.clone());
     }
+    let desc = D3D11_TEXTURE2D_DESC {
+        Width: w,
+        Height: h,
+        MipLevels: 1,
+        ArraySize: 1,
+        Format: DXGI_FORMAT_B8G8R8A8_UNORM,
+        SampleDesc: DXGI_SAMPLE_DESC { Count: 1, Quality: 0 },
+        Usage: if staging { D3D11_USAGE_STAGING } else { D3D11_USAGE_DEFAULT },
+        BindFlags: if staging { 0 } else { D3D11_BIND_SHADER_RESOURCE.0 as u32 },
+        CPUAccessFlags: if staging { D3D11_CPU_ACCESS_READ.0 as u32 } else { 0 },
+        MiscFlags: 0,
+    };
+    let mut texture = None;
+    // SAFETY: creates a texture from a filled-in description.
+    unsafe { device.CreateTexture2D(&desc, None, Some(&mut texture))? };
+    let texture = texture.ok_or_else(|| windows::core::Error::from(windows::Win32::Foundation::E_FAIL))?;
+    *slot = Some((texture.clone(), w, h));
+    Ok(texture)
 }
 
 impl Drop for WindowCapture {
@@ -232,8 +328,16 @@ impl Drop for WindowCapture {
 }
 
 /// Scales a `w` × `h` BGRA picture to `dst_w` × `dst_h` (bilinear), or
-/// copies it when the size is the same.
-pub(crate) fn scale_bgra(src: &[u8], w: u32, h: u32, dst_w: u32, dst_h: u32, out: &mut Vec<u8>) {
+/// copies it when the size is the same, reusing `columns` across frames.
+fn scale_bgra_into(
+    src: &[u8],
+    w: u32,
+    h: u32,
+    dst_w: u32,
+    dst_h: u32,
+    out: &mut Vec<u8>,
+    columns: &mut Vec<(usize, u32)>,
+) {
     let (w, h, dw, dh) = (w as usize, h as usize, dst_w as usize, dst_h as usize);
     out.resize(dw * dh * 4, 0);
     // Nothing to scale from (or to): black, rather than a panic.
@@ -246,12 +350,11 @@ pub(crate) fn scale_bgra(src: &[u8], w: u32, h: u32, dst_w: u32, dst_h: u32, out
         return;
     }
     // Where each output column samples from: left pixel and weight (of 256).
-    let columns: Vec<(usize, u32)> = (0..dw)
-        .map(|x| {
-            let at = ((x as f32 + 0.5) * w as f32 / dw as f32 - 0.5).clamp(0.0, (w - 1) as f32);
-            (at as usize, ((at - at.floor()) * 256.0) as u32)
-        })
-        .collect();
+    columns.clear();
+    columns.extend((0..dw).map(|x| {
+        let at = ((x as f32 + 0.5) * w as f32 / dw as f32 - 0.5).clamp(0.0, (w - 1) as f32);
+        (at as usize, ((at - at.floor()) * 256.0) as u32)
+    }));
     for (y, line) in out.chunks_exact_mut(dw * 4).enumerate() {
         let at = ((y as f32 + 0.5) * h as f32 / dh as f32 - 0.5).clamp(0.0, (h - 1) as f32);
         let (y0, wy) = (at as usize, ((at - at.floor()) * 256.0) as u32);
@@ -267,6 +370,11 @@ pub(crate) fn scale_bgra(src: &[u8], w: u32, h: u32, dst_w: u32, dst_h: u32, out
             }
         }
     }
+}
+
+#[cfg(test)]
+pub(crate) fn scale_bgra(src: &[u8], w: u32, h: u32, dst_w: u32, dst_h: u32, out: &mut Vec<u8>) {
+    scale_bgra_into(src, w, h, dst_w, dst_h, out, &mut Vec::new());
 }
 
 #[cfg(test)]

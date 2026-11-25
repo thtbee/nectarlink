@@ -8,6 +8,10 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Sharing the PC's screen to the phone is lighter on Windows.** The screen is captured,
+  converted and encoded on the graphics card, without a copy through the CPU for each frame.
+  PCs that can't do that keep the old way. Thanks to [@aihehye](https://github.com/aihehye)
+  ([#593](https://github.com/thtbee/nectarlink/pull/593)).
 - **Mirroring on Windows uses much less CPU.** The phone's picture now stays on the graphics
   card from decoding to the screen, instead of being copied through the CPU for every frame.
   PCs that can't do that keep the old way. Thanks to [@aihehye](https://github.com/aihehye)
