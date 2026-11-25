@@ -1517,4 +1517,6 @@
     <string name="community_invite_text">Вопросы, идеи и ранние сборки вместе с теми, кто делает NectarLink и пользуется им.</string>
     <string name="community_invite_join">Войти в Discord</string>
     <string name="community_invite_later">Не сейчас</string>
+    <string name="settings_daily_count_title">Отправлять анонимный ежедневный счётчик</string>
+    <string name="settings_daily_count_body">Раз в день: версия приложения, платформа и модель и сколько раз каждая функция сработала или нет. Без ID и личных данных.</string>
 </resources>

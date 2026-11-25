@@ -1645,6 +1645,8 @@
     <string name="community_invite_text">Dúvidas, ideias e versões antecipadas, com quem faz e usa o NectarLink.</string>
     <string name="community_invite_join">Entrar no Discord</string>
     <string name="community_invite_later">Agora não</string>
+    <string name="settings_daily_count_title">Enviar contagem diária anônima</string>
+    <string name="settings_daily_count_body">Uma vez por dia: a versão do app, a plataforma e o modelo, e quantas vezes cada função funcionou ou falhou. Sem ID e nada pessoal.</string>
 </resources>
 
 

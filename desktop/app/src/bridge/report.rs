@@ -402,10 +402,29 @@ pub fn follow_up() {
     }
 }
 
+/// Whether the daily count goes: Settings, on by default (#534).
+static DAILY_COUNT: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
+
+pub fn set_daily_count(on: bool) {
+    DAILY_COUNT.store(on, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// Whether the count may go: the setting, and `NECTARLINK_NO_DAILY_COUNT`
+/// for packagers who want it off for everyone.
+fn daily_count_allowed(setting: bool, env: Option<std::ffi::OsString>) -> bool {
+    setting && env.is_none_or(|v| v.is_empty() || v == "0")
+}
+
 /// Sends today's count (`diag::usage`) if it hasn't gone yet.
 fn daily_count() {
     // Builds from source and test runs aren't installs.
     if cfg!(debug_assertions) {
+        return;
+    }
+    if !daily_count_allowed(
+        DAILY_COUNT.load(std::sync::atomic::Ordering::Relaxed),
+        std::env::var_os("NECTARLINK_NO_DAILY_COUNT"),
+    ) {
         return;
     }
     let dir = diag_dir();
@@ -599,4 +618,21 @@ fn pc_facts() -> DeviceFacts {
 
 fn now() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_secs())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::daily_count_allowed;
+
+    #[test]
+    fn the_daily_count_follows_the_setting_and_the_packager_switch() {
+        assert!(daily_count_allowed(true, None));
+        assert!(!daily_count_allowed(false, None));
+        assert!(!daily_count_allowed(true, Some("1".into())));
+        assert!(!daily_count_allowed(true, Some("yes".into())));
+        // Set but empty or "0" leaves it to the setting.
+        assert!(daily_count_allowed(true, Some("".into())));
+        assert!(daily_count_allowed(true, Some("0".into())));
+        assert!(!daily_count_allowed(false, Some("0".into())));
+    }
 }

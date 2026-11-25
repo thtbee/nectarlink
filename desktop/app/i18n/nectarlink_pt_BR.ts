@@ -10704,6 +10704,16 @@ O que precisa
         <translation>Sincronizar senhas copiadas</translation>
     </message>
     <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3655"/>
+        <source>Send an anonymous daily count</source>
+        <translation>Enviar contagem diária anônima</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="3655"/>
+        <source>Once a day: the app&apos;s version, the platform and model, and how often each feature worked or failed. No ID and nothing personal.</source>
+        <translation>Uma vez por dia: a versão do app, a plataforma e o modelo, e quantas vezes cada função funcionou ou falhou. Sem ID e nada pessoal.</translation>
+    </message>
+    <message>
         <source>Also sends what password managers mark private. It stays on the phone&apos;s clipboard until something replaces it, and is never kept in history.</source>
         <translation type="vanished">Envia também o que os gerenciadores de senhas marcam como privado. Fica na área de transferência do celular até algo substituir, e nunca é guardado no histórico.</translation>
     </message>
@@ -11122,6 +11132,31 @@ O que precisa
         <location filename="../qml/pages/SettingsPage.qml" line="4255"/>
         <source>Install updates automatically</source>
         <translation>Instalar atualizações automaticamente</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Updates</source>
+        <translation>Atualizações</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Checks, channel &amp; what&apos;s new</source>
+        <translation>Verificação, canal e novidades</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>This copy doesn&apos;t update itself: it runs from its folder, or it&apos;s the Mac app, which doesn&apos;t yet.</source>
+        <translation>Esta cópia não se atualiza sozinha: ela roda da própria pasta, ou é o app para Mac, que ainda não faz isso.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Last checked %1</source>
+        <translation>Última verificação: %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Not checked yet.</source>
+        <translation>Ainda não verificado.</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="4253"/>

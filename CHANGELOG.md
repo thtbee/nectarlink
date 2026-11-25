@@ -8,6 +8,14 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Updates get their own place in PC Settings.** **Settings › Updates** has the version, the
+  check and when it last happened, automatic checks and installs, the channel and What's new.
+  Connection & About keeps the version, logs and reporting a problem
+  ([#558](https://github.com/thtbee/nectarlink/issues/558)).
+- **Turn off the anonymous daily count.** **Send an anonymous daily count** in Settings, under
+  Storage & Privacy on the PC and About on the phone, stops it. On a PC,
+  `NECTARLINK_NO_DAILY_COUNT=1` turns it off for packagers
+  ([#534](https://github.com/thtbee/nectarlink/issues/534)).
 - **Sharing the PC's screen to the phone is lighter on Windows.** The screen is captured,
   converted and encoded on the graphics card, without a copy through the CPU for each frame.
   PCs that can't do that keep the old way. Thanks to [@aihehye](https://github.com/aihehye)

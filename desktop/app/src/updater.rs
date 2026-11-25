@@ -32,7 +32,7 @@ use std::{
     process::ExitCode,
     sync::{
         Condvar, Mutex, MutexGuard,
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicU64, Ordering},
     },
     time::{Duration, Instant},
 };
@@ -107,6 +107,10 @@ const DETACHED_PROCESS: u32 = 0x0000_0008;
 static AUTO: AtomicBool = AtomicBool::new(true);
 static AUTO_INSTALL: AtomicBool = AtomicBool::new(true);
 static CHECKING: AtomicBool = AtomicBool::new(false);
+/// When the update feed last answered, in Unix seconds (0: not yet), kept
+/// in the data folder across restarts for Settings (#558).
+static LAST_CHECKED: AtomicU64 = AtomicU64::new(0);
+const LAST_CHECKED_FILE: &str = "last-update-check";
 static FOUND: Mutex<Option<Update>> = Mutex::new(None);
 /// The channel picked in Settings; `None` follows the build's own.
 static CHANNEL: Mutex<Option<Channel>> = Mutex::new(None);
@@ -312,6 +316,7 @@ pub fn check_now(told: bool) -> Option<String> {
     CHECKING.store(false, Ordering::Release);
     match result {
         Ok(Some(update)) => {
+            mark_checked();
             let new = found().as_ref() != Some(&update);
             *found() = Some(update.clone());
             core_host::host().hub.update(|_| Changes::UPDATE);
@@ -321,6 +326,7 @@ pub fn check_now(told: bool) -> Option<String> {
             Some(tr!("Updater", "NectarLink %1 is available.", update.title()))
         }
         Ok(None) => {
+            mark_checked();
             // Nothing newer on this channel now (it may have just changed):
             // what was found before isn't for this install anymore.
             if found().take().is_some() {
@@ -333,6 +339,29 @@ pub fn check_now(told: bool) -> Option<String> {
             told.then(|| tr!("Updater", "Couldn't check for updates. Check your internet connection."))
         }
     }
+}
+
+/// When the update feed last answered, in Unix seconds; 0 if it never has.
+pub fn last_checked() -> u64 {
+    let known = LAST_CHECKED.load(Ordering::Relaxed);
+    if known != 0 {
+        return known;
+    }
+    let saved = std::fs::read_to_string(core_host::host().data_dir.join(LAST_CHECKED_FILE))
+        .ok()
+        .and_then(|text| text.trim().parse().ok())
+        .unwrap_or(0);
+    LAST_CHECKED.store(saved, Ordering::Relaxed);
+    saved
+}
+
+fn mark_checked() {
+    let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs());
+    LAST_CHECKED.store(now, Ordering::Relaxed);
+    if let Err(e) = std::fs::write(core_host::host().data_dir.join(LAST_CHECKED_FILE), now.to_string()) {
+        tracing::debug!(error = %e, "couldn't keep the update check's time");
+    }
+    core_host::host().hub.update(|_| Changes::UPDATE);
 }
 
 fn announce(update: &Update) {

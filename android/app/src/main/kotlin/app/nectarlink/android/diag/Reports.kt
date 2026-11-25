@@ -142,6 +142,17 @@ object Reports {
         }
     }
 
+    private const val PREFS = "reports"
+    private const val KEY_DAILY_COUNT = "daily_count"
+
+    /** Whether the daily count goes: Settings, on by default (#534). */
+    fun dailyCountOn(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_DAILY_COUNT, true)
+
+    fun setDailyCount(context: Context, on: Boolean) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_DAILY_COUNT, on).apply()
+    }
+
     /**
      * Sends today's count (`nectarlink_core::diag::usage`) once a day: version, Android version
      * and phone model, and how features did yesterday. No ID. Blocking.
@@ -149,6 +160,7 @@ object Reports {
     private fun dailyCount(context: Context) {
         // Debug builds and test runs aren't installs.
         if (BuildConfig.DEBUG) return
+        if (!dailyCountOn(context)) return
         val version = BuildConfig.VERSION_NAME
         val install = CountInstall(
             app = version,
