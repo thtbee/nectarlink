@@ -237,6 +237,14 @@ Item {
             const rh = c.h * h
             if (rw <= 0.5 || rh <= 0.5) continue
             const topFlush = c.y <= 0.006
+            if (topFlush && rw < rh * 1.6) {
+                // A camera hole the phone reports as the box from the top edge
+                // down (some Honor and Huawei phones): a round camera in its
+                // middle, not a square tab hanging from the edge (#618).
+                const d = Math.min(rw, rh) * 0.8
+                parts.push(roundedRectSvg(rx + (rw - d) / 2, ry + (rh - d) / 2, d, d, d / 2, d / 2, d / 2, d / 2))
+                continue
+            }
             const r = topFlush ? Math.min(rw * 0.35, rh * 0.55) : Math.min(rw, rh) * 0.5
             parts.push(roundedRectSvg(rx, ry, rw, rh, topFlush ? 0 : r, topFlush ? 0 : r, r, r))
         }
@@ -757,6 +765,15 @@ Item {
                         readonly property real bezel: 3.5
                         readonly property real innerW: Math.max(10, width - bezel * 2)
                         readonly property real innerH: Math.max(20, height - bezel * 2)
+                        // Where the camera's middle is, for lining the status icons up
+                        // with it (#618): the first cutout at the top, else the dot.
+                        readonly property real cameraCenterY: {
+                            const s = home.screenData
+                            const c = s && s.cutouts && s.cutouts.length > 0 ? s.cutouts[0] : null
+                            if (c && c.y < 0.08 && c.h > 0)
+                                return bezel + (c.y + c.h / 2) * innerH
+                            return bezel + 6.5
+                        }
                         readonly property real defaultCorner: width * 0.14
                         readonly property real rTl: home.screenData && home.screenData.corners
                             ? Math.max(3, home.screenData.corners.tl * width) : defaultCorner
@@ -919,7 +936,7 @@ Item {
                         Item {
                             id: miniStatusBar
                             x: phoneArt.bezel + 5
-                            y: phoneArt.bezel + 3.5
+                            y: Math.max(phoneArt.bezel + 1.5, phoneArt.cameraCenterY - height / 2)
                             width: phoneArt.innerW - 10
                             height: 9
                             visible: home.online
