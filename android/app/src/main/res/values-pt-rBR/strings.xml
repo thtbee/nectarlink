@@ -1647,6 +1647,14 @@
     <string name="community_invite_later">Agora não</string>
     <string name="settings_daily_count_title">Enviar contagem diária anônima</string>
     <string name="settings_daily_count_body">Uma vez por dia: a versão do app, a plataforma e o modelo, e quantas vezes cada função funcionou ou falhou. Sem ID e nada pessoal.</string>
+    <string name="deck_confirm_restart_title">Reiniciar %1$s?</string>
+    <string name="deck_confirm_shut_down_title">Desligar %1$s?</string>
+    <string name="deck_confirm_power_text">Apps com trabalho não salvo ainda podem impedir.</string>
+    <string name="deck_confirm_restart">Reiniciar</string>
+    <string name="deck_confirm_shut_down">Desligar</string>
+    <string name="deck_default_restart">Reiniciar</string>
+    <string name="deck_default_shut_down">Desligar</string>
+    <string name="deck_default_macro">Macro</string>
 </resources>
 
 

@@ -77,6 +77,11 @@ pub fn shutdown() -> Result<(), String> {
     Err("not on macOS".into())
 }
 
+/// Macs aren't restarted on request either.
+pub fn restart() -> Result<(), String> {
+    Err("not on macOS".into())
+}
+
 /// Macs aren't hibernated on request (#355).
 pub fn hibernate() -> Result<(), String> {
     Err("not on macOS".into())

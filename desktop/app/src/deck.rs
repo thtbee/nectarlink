@@ -237,6 +237,7 @@ fn commit_config(mutate: impl FnOnce(&mut DeckConfig)) {
 }
 
 /// Called when a paired phone presses a Deck tile (`Platform::deck_press`).
+/// The core has checked the device's toggles for the tile already.
 pub fn handle_press(_peer: &DeviceId, tile_id: &str) -> Result<(), String> {
     execute_tile(tile_id)
 }
@@ -367,6 +368,31 @@ fn execute_action(action: &DeckAction) -> Result<(), String> {
             } else {
                 win::shell::run_command(command)
             }
+        }
+        DeckAction::RestartPc => win::shell::restart(),
+        DeckAction::ShutDownPc => win::shell::shutdown(),
+        DeckAction::Macro { steps } => {
+            // In the background, so the phone hears back at once: its steps
+            // and pauses can take longer than a press waits (#490).
+            let steps = steps.clone();
+            std::thread::Builder::new()
+                .name("deck-macro".into())
+                .spawn(move || run_macro(&steps))
+                .map(|_| ())
+                .map_err(|e| format!("macro: {e}"))
+        }
+    }
+}
+
+/// Runs a macro's steps in order, pausing after each as set. A step that
+/// fails is logged and the rest still run, as with keys pressed by hand.
+fn run_macro(steps: &[nectarlink_core::deck::MacroStep]) {
+    for (i, step) in steps.iter().enumerate() {
+        if let Err(e) = execute_action(&step.action) {
+            tracing::info!(step = i, kind = step.action.kind(), error = %e, "a macro step didn't run");
+        }
+        if step.delay_ms > 0 && i + 1 < steps.len() {
+            std::thread::sleep(std::time::Duration::from_millis(u64::from(step.delay_ms)));
         }
     }
 }
@@ -528,6 +554,9 @@ pub fn build_action(
             }
             DeckAction::RunCommand { command: p.to_owned() }
         }
+        deck_kinds::RESTART_PC => DeckAction::RestartPc,
+        deck_kinds::SHUT_DOWN_PC => DeckAction::ShutDownPc,
+        deck_kinds::MACRO => DeckAction::Macro { steps: build_macro_steps(param)? },
         _ => return Err(format!("Unknown action type {kind:?}.")),
     };
     if !action.is_valid() {
@@ -547,6 +576,54 @@ pub fn build_action(
         });
     }
     Ok(action)
+}
+
+/// One macro step as the Deck editor has it: the same fields as a tile's
+/// action, and the pause after it.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct EditorStep {
+    pub kind: String,
+    #[serde(default)]
+    pub param: String,
+    #[serde(default)]
+    pub ctrl: bool,
+    #[serde(default)]
+    pub alt: bool,
+    #[serde(default)]
+    pub shift: bool,
+    #[serde(default)]
+    pub win: bool,
+    #[serde(default)]
+    pub delay: u32,
+}
+
+/// A macro's steps from the editor's JSON list (#490), each checked as its
+/// own action, with the step's number in what's wrong.
+pub fn build_macro_steps(json: &str) -> Result<Vec<nectarlink_core::MacroStep>, String> {
+    let steps: Vec<EditorStep> =
+        serde_json::from_str(json).map_err(|_| tr!("Deck", "Add the macro's steps."))?;
+    if steps.is_empty() {
+        return Err(tr!("Deck", "Add the macro's steps."));
+    }
+    if steps.len() > nectarlink_core::MAX_MACRO_STEPS {
+        return Err(tr!("Deck", "A macro can have up to %1 steps.", nectarlink_core::MAX_MACRO_STEPS));
+    }
+    let mut out = Vec::with_capacity(steps.len());
+    for (i, step) in steps.iter().enumerate() {
+        let action = build_action(&step.kind, &step.param, step.ctrl, step.alt, step.shift, step.win)
+            .map_err(|e| tr!("Deck", "Step %1: %2", i + 1, e))?;
+        if !action.fits_in_macro() {
+            return Err(tr!("Deck", "Step %1: restart, shut down and macros can't be steps.", i + 1));
+        }
+        if step.delay > nectarlink_core::MAX_MACRO_DELAY_MS {
+            return Err(tr!("Deck", "Step %1: wait at most 10 seconds.", i + 1));
+        }
+        out.push(nectarlink_core::MacroStep { action, delay_ms: step.delay });
+    }
+    if out.iter().map(|s| s.delay_ms).sum::<u32>() > nectarlink_core::MAX_MACRO_TOTAL_DELAY_MS {
+        return Err(tr!("Deck", "A macro can wait 30 seconds in all."));
+    }
+    Ok(out)
 }
 
 /// Adds or updates a tile on `page_id`. If `tile_id` is empty, creates a new tile.

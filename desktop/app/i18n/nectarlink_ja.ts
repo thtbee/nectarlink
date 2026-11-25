@@ -2230,6 +2230,51 @@
         <translation>ショートカット用のキーを選択してください。</translation>
     </message>
     <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Asks on the phone first</source>
+        <translation>先にスマホで確認します</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>1 step</source>
+        <translation>1 手順</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>%1 steps</source>
+        <translation>%1 手順</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Add the macro&apos;s steps.</source>
+        <translation>マクロの手順を追加してください。</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>A macro can have up to %1 steps.</source>
+        <translation>マクロの手順は最大 %1 個です。</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Step %1: %2</source>
+        <translation>手順 %1: %2</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Step %1: restart, shut down and macros can&apos;t be steps.</source>
+        <translation>手順 %1: 再起動、シャットダウン、マクロは手順にできません。</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Step %1: wait at most 10 seconds.</source>
+        <translation>手順 %1: 待ち時間は 10 秒までです。</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>A macro can wait 30 seconds in all.</source>
+        <translation>マクロの待ち時間は合計 30 秒までです。</translation>
+    </message>
+    <message>
         <location filename="rust_strings.h" line="192"/>
         <source>Choose an application (.exe or .lnk) on this PC.</source>
         <translation>このPC上のアプリケーション（.exeまたは.lnk）を選択してください。</translation>
@@ -2434,6 +2479,86 @@
         <location filename="../qml/pages/DeckPage.qml" line="112"/>
         <source>Run shell command</source>
         <translation>シェルコマンドを実行</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Macro (several actions)</source>
+        <translation>マクロ（複数の操作）</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Power</source>
+        <translation>電源</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Restart PC</source>
+        <translation>PC を再起動</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Shut down PC</source>
+        <translation>PC をシャットダウン</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>The steps run in order. Up to 16, with up to 10 seconds of waiting after each and 30 in all.</source>
+        <translation>手順は順番に実行されます。最大 16 個で、各手順のあとの待ち時間は最大 10 秒、合計 30 秒までです。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>%1. %2</source>
+        <translation>%1. %2</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Move step up</source>
+        <translation>手順を上へ</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Move step down</source>
+        <translation>手順を下へ</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Remove step</source>
+        <translation>手順を削除</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Step %1 value</source>
+        <translation>手順 %1 の値</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>then wait</source>
+        <translation>その後待つ</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>seconds</source>
+        <translation>秒</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Seconds to wait after step %1</source>
+        <translation>手順 %1 のあとに待つ秒数</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Add a step:</source>
+        <translation>手順を追加:</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Add another step:</source>
+        <translation>手順をさらに追加:</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>The phone asks before it does it. Apps with unsaved work can still stop it.</source>
+        <translation>実行する前にスマホで確認します。保存していない作業があるアプリが止めることもあります。</translation>
     </message>
     <message>
         <location filename="../qml/pages/DeckPage.qml" line="149"/>

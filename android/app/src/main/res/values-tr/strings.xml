@@ -1646,6 +1646,14 @@
     <string name="community_invite_later">Şimdi değil</string>
     <string name="settings_daily_count_title">Anonim günlük sayım gönder</string>
     <string name="settings_daily_count_body">Günde bir kez: uygulama sürümü, platform ve model ile her özelliğin kaç kez çalıştığı ya da başarısız olduğu. Kimlik yok, kişisel bir şey yok.</string>
+    <string name="deck_confirm_restart_title">%1$s yeniden başlatılsın mı?</string>
+    <string name="deck_confirm_shut_down_title">%1$s kapatılsın mı?</string>
+    <string name="deck_confirm_power_text">Kaydedilmemiş işi olan uygulamalar bunu hâlâ durdurabilir.</string>
+    <string name="deck_confirm_restart">Yeniden başlat</string>
+    <string name="deck_confirm_shut_down">Kapat</string>
+    <string name="deck_default_restart">Yeniden başlat</string>
+    <string name="deck_default_shut_down">Kapat</string>
+    <string name="deck_default_macro">Makro</string>
 </resources>
 
 

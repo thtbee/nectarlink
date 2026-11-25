@@ -1647,4 +1647,12 @@
     <string name="community_invite_later">Nicht jetzt</string>
     <string name="settings_daily_count_title">Anonyme tägliche Zählung senden</string>
     <string name="settings_daily_count_body">Einmal am Tag: App-Version, Plattform und Modell und wie oft jede Funktion geklappt hat oder nicht. Keine ID, nichts Persönliches.</string>
+    <string name="deck_confirm_restart_title">%1$s neu starten?</string>
+    <string name="deck_confirm_shut_down_title">%1$s herunterfahren?</string>
+    <string name="deck_confirm_power_text">Apps darauf mit ungespeicherter Arbeit können es noch aufhalten.</string>
+    <string name="deck_confirm_restart">Neu starten</string>
+    <string name="deck_confirm_shut_down">Herunterfahren</string>
+    <string name="deck_default_restart">Neu starten</string>
+    <string name="deck_default_shut_down">Herunterfahren</string>
+    <string name="deck_default_macro">Makro</string>
 </resources>

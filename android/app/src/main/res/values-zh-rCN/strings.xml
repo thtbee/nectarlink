@@ -1505,4 +1505,12 @@
     <string name="community_invite_later">以后再说</string>
     <string name="settings_daily_count_title">发送匿名每日计数</string>
     <string name="settings_daily_count_body">每天一次：应用版本、平台和机型，以及各项功能成功或失败的次数。不含 ID，也不含任何个人信息。</string>
+    <string name="deck_confirm_restart_title">要重启 %1$s 吗？</string>
+    <string name="deck_confirm_shut_down_title">要关闭 %1$s 吗？</string>
+    <string name="deck_confirm_power_text">有未保存内容的应用仍可能阻止此操作。</string>
+    <string name="deck_confirm_restart">重启</string>
+    <string name="deck_confirm_shut_down">关机</string>
+    <string name="deck_default_restart">重启</string>
+    <string name="deck_default_shut_down">关机</string>
+    <string name="deck_default_macro">宏</string>
 </resources>

@@ -4065,6 +4065,17 @@ pub mod deck_kinds {
     pub const TYPE_TEXT: &str = "type_text";
     pub const LAUNCH_APP: &str = "launch_app";
     pub const RUN_COMMAND: &str = "run_command";
+    /// Restarts the PC; phones ask first (#490).
+    pub const RESTART_PC: &str = "restart_pc";
+    /// Shuts the PC down; phones ask first (#490).
+    pub const SHUT_DOWN_PC: &str = "shut_down_pc";
+    /// Several actions in a row, with pauses between them (#490).
+    pub const MACRO: &str = "macro";
+
+    /// Kinds a phone asks about before pressing: they end what's running on the PC.
+    pub fn needs_confirmation(kind: &str) -> bool {
+        matches!(kind, RESTART_PC | SHUT_DOWN_PC)
+    }
 
     pub const ALL: &[&str] = &[
         MEDIA_PLAY_PAUSE,
@@ -4083,6 +4094,9 @@ pub mod deck_kinds {
         TYPE_TEXT,
         LAUNCH_APP,
         RUN_COMMAND,
+        RESTART_PC,
+        SHUT_DOWN_PC,
+        MACRO,
     ];
 
     /// Default icon for an action kind.
@@ -4105,6 +4119,9 @@ pub mod deck_kinds {
             TYPE_TEXT => TEXT,
             LAUNCH_APP => APP,
             RUN_COMMAND => TERMINAL,
+            RESTART_PC => RESTART,
+            SHUT_DOWN_PC => POWER,
+            MACRO => BOLT,
             _ => SPARKLE,
         }
     }
@@ -4125,6 +4142,9 @@ pub mod deck_kinds {
             TYPE_TEXT => GREEN,
             LAUNCH_APP => TEAL,
             RUN_COMMAND => CORAL,
+            RESTART_PC => AMBER,
+            SHUT_DOWN_PC => RED,
+            MACRO => VIOLET,
             _ => AMBER,
         }
     }
@@ -4148,6 +4168,9 @@ pub mod deck_kinds {
             TYPE_TEXT => "Type text",
             LAUNCH_APP => "Launch app",
             RUN_COMMAND => "Run command",
+            RESTART_PC => "Restart",
+            SHUT_DOWN_PC => "Shut down",
+            MACRO => "Macro",
             _ => "Action",
         }
     }
@@ -4175,6 +4198,9 @@ pub mod deck_icons {
     pub const TERMINAL: &str = "terminal";
     pub const SPARKLE: &str = "sparkle";
     pub const STAR: &str = "star";
+    pub const POWER: &str = "power";
+    pub const RESTART: &str = "restart";
+    pub const BOLT: &str = "bolt";
 
     pub const ALL: &[&str] = &[
         PLAY,
@@ -4197,6 +4223,9 @@ pub mod deck_icons {
         TERMINAL,
         SPARKLE,
         STAR,
+        POWER,
+        RESTART,
+        BOLT,
     ];
 }
 
@@ -4247,6 +4276,11 @@ pub struct DeckTile {
     pub icon: String,
     pub color: String,
     pub kind: String,
+    /// Pressing it runs a shell command on the PC, so it needs the
+    /// `commands` toggle like a `run_command` tile (a macro with a command
+    /// step, #490). Left out when false.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub needs_commands: bool,
 }
 
 /// Never prints the user label (protocol v0 §11).
@@ -4299,7 +4333,14 @@ impl DeckTile {
         } else {
             deck_kinds::default_color(&self.kind).into()
         };
-        Some(DeckTile { id: self.id, label, icon, color, kind: self.kind })
+        Some(DeckTile {
+            id: self.id,
+            label,
+            icon,
+            color,
+            kind: self.kind,
+            needs_commands: self.needs_commands,
+        })
     }
 }
 
@@ -4395,6 +4436,7 @@ impl DeckLayout {
             icon: deck_kinds::default_icon(kind).into(),
             color: deck_kinds::default_color(kind).into(),
             kind: kind.into(),
+            needs_commands: false,
         };
         DeckLayout {
             pages: vec![DeckPage {
@@ -6575,6 +6617,7 @@ mod tests {
             icon: "unknown_icon".into(),
             color: "unknown_color".into(),
             kind: deck_kinds::RUN_COMMAND.into(),
+            needs_commands: false,
         }
         .sanitized()
         .unwrap();

@@ -21,7 +21,7 @@ never sends commands, file paths, or URLs.
 
 - **Per-device toggles on the PC:**
   - `remote_input` (**off by default**): required for all `deck.press` requests (and accepted alongside `pc_actions` for `pc.audio.set`). When a paired phone presses a tile or calls `remote.check` while `remote_input` is off, the PC refuses with `DENIED` and emits a one-time consent prompt (`RemoteInputRequested`) for that phone.
-  - `commands` (**off by default**): additionally required for tiles whose `kind` is `"run_command"`. Even when `remote_input` is on, pressing a `"run_command"` tile while `commands` is off for that phone is refused with `DENIED`.
+  - `commands` (**off by default**): additionally required for tiles whose `kind` is `"run_command"`, or that have `needs_commands`. Even when `remote_input` is on, pressing such a tile while `commands` is off for that phone is refused with `DENIED`.
 
 ## 2. Messages
 
@@ -60,8 +60,14 @@ DeckTile = {
   icon:  text,              // from the fixed icon set (§2.5)
   color: text,              // from the fixed color set (§2.5)
   kind:  text,              // action kind (§2.5); never contains paths, URLs, or commands
+  needs_commands: bool?,    // true when pressing it runs a shell command although its kind
+                            // isn't "run_command" (a "macro" with a command step); left out when false
 }
 ```
+
+A phone drops, one by one, tiles whose `kind` it doesn't know, and keeps the
+rest of the layout: kinds can be added without breaking older phones. Unknown
+fields are ignored.
 
 ### 2.2 `deck.state`
 
@@ -98,7 +104,7 @@ DeckPress = {
 Errors:
 - `BAD_MESSAGE` when `tile` is empty, longer than 64 bytes, or contains disallowed characters.
 - `UNSUPPORTED` when the PC does not offer `deck.actions`.
-- `DENIED` when `remote_input` is off for the phone, or when the tile's `kind` is `"run_command"` and `commands` is off for the phone.
+- `DENIED` when `remote_input` is off for the phone, or when the tile's `kind` is `"run_command"` or it has `needs_commands`, and `commands` is off for the phone.
 - `NOT_FOUND` when no tile with ID `tile` exists in the PC's current Deck layout.
 - `INTERNAL` when the platform action fails on the PC.
 
@@ -155,5 +161,7 @@ Errors for `pc.audio.set`:
     - `"type_text"` (text snippet typed into the focused field)
     - `"launch_app"` (`.exe` or `.lnk` picked on the PC, launched via `ShellExecuteW` without arguments)
     - `"run_command"` (command written on the PC; requires the per-device `commands` toggle)
-- **Icons (`icon`):** `"play"`, `"pause"`, `"skip_next"`, `"skip_previous"`, `"volume_up"`, `"volume_down"`, `"volume_off"`, `"mic"`, `"mic_off"`, `"lock"`, `"desktop"`, `"switch_window"`, `"screenshot"`, `"shortcut"`, `"globe"`, `"text"`, `"app"`, `"terminal"`, `"sparkle"`, `"star"`.
+    - `"macro"` (1..=16 steps run in order, each one of the kinds above except `"macro"`, with a pause of up to 10 s after it and 30 s in all; the PC answers the press at once and runs the steps after; `needs_commands` when a step runs a command)
+  - Power: `"restart_pc"`, `"shut_down_pc"`. A phone asks the user before it sends the press. Neither can be a macro step.
+- **Icons (`icon`):** `"play"`, `"pause"`, `"skip_next"`, `"skip_previous"`, `"volume_up"`, `"volume_down"`, `"volume_off"`, `"mic"`, `"mic_off"`, `"lock"`, `"desktop"`, `"switch_window"`, `"screenshot"`, `"shortcut"`, `"globe"`, `"text"`, `"app"`, `"terminal"`, `"sparkle"`, `"star"`, `"power"`, `"restart"`, `"bolt"`.
 - **Colors (`color`):** `"amber"`, `"coral"`, `"red"`, `"teal"`, `"green"`, `"blue"`, `"violet"`, `"slate"`.
