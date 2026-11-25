@@ -62,8 +62,11 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import app.nectarlink.android.NectarlinkApplication
 import app.nectarlink.android.R
 import app.nectarlink.android.core.Core
@@ -166,10 +169,15 @@ class MainActivity : ComponentActivity() {
         setContent {
             val appearance by preferences.appearance.collectAsStateWithLifecycle()
             val state by core.state.collectAsStateWithLifecycle()
+            val lifecycleOwner = LocalLifecycleOwner.current
             // Stay reachable in the background while a PC is paired.
-            LaunchedEffect(state.devices.isNotEmpty(), state.status is CoreStatus.Ready) {
+            LaunchedEffect(lifecycleOwner, state.devices.isNotEmpty(), state.status is CoreStatus.Ready) {
                 if (state.devices.isNotEmpty()) {
-                    ConnectionService.start(this@MainActivity)
+                    lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                        if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+                            ConnectionService.start(this@MainActivity, fromForeground = true)
+                        }
+                    }
                 } else if (state.status is CoreStatus.Ready) {
                     ConnectionService.stop(this@MainActivity)
                 }
@@ -1064,7 +1072,7 @@ private fun App(
                                     onTurnOnBackgroundService = {
                                         preferences.updateBackgroundServiceEnabled(true)
                                         core.start()
-                                        ConnectionService.start(context)
+                                        ConnectionService.start(context, fromForeground = true)
                                     },
                                     onDismissWhatsNewGuide = {
                                         preferences.updateWalkthrough { it.dismissWhatsNewGuide() }
@@ -1126,7 +1134,7 @@ private fun App(
                                         preferences.updateBackgroundServiceEnabled(enabled)
                                         if (enabled) {
                                             core.start()
-                                            ConnectionService.start(context)
+                                            ConnectionService.start(context, fromForeground = true)
                                         } else {
                                             ConnectionService.stop(context)
                                         }
