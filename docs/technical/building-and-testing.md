@@ -112,10 +112,13 @@ Push-Location android
 # Fast single-ABI build for an attached arm64 phone:
 .\gradlew.bat assembleGithubDebug -Pnectarlink.abis=arm64-v8a
 
-# Release APK:
+# Release APK (GitHub, Google Play, or F-Droid):
 .\gradlew.bat assembleGithubRelease
+.\gradlew.bat assembleFdroidRelease -Pnectarlink.abis=arm64-v8a,armeabi-v7a
 Pop-Location
 ```
+
+For F-Droid source builds (the `fdroid` flavor: full features and permissions without the built-in self-updater), see [`android/fdroid/app.nectarlink.yml`](../../android/fdroid/app.nectarlink.yml) for the `fdroiddata` metadata recipe and [`scripts/check-fdroid-build.py`](../../scripts/check-fdroid-build.py) for the APK verification script.
 
 ### 6. Full Release Packaging (`scripts/package.ps1`)
 

@@ -18,7 +18,8 @@ Then, from `android/`:
 ```
 ./gradlew assembleGithubDebug                    # phones + x86_64 emulator
 ./gradlew assembleGithubDebug -Pnectarlink.abis=x86_64 # emulator only (faster)
-./gradlew testGithubDebugUnitTest testPlayDebugUnitTest
+./gradlew assembleFdroidRelease -Pnectarlink.abis=arm64-v8a,armeabi-v7a # F-Droid (no self-updater)
+./gradlew testGithubDebugUnitTest testPlayDebugUnitTest testFdroidDebugUnitTest
 ```
 
 Gradle builds the core with cargo-ndk (cargo profile `android`: release

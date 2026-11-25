@@ -99,10 +99,10 @@ try {
                             if (Test-Path $candidate) { $env:JAVA_HOME = $candidate; break }
                         }
                     }
-                    & ./gradlew --console=plain -q testGithubDebugUnitTest testPlayDebugUnitTest lintGithubDebug lintPlayDebug assembleGithubDebug
+                    & ./gradlew --console=plain -q testGithubDebugUnitTest testPlayDebugUnitTest testFdroidDebugUnitTest lintGithubDebug lintPlayDebug lintFdroidDebug assembleGithubDebug
                 } else {
                     if (-not $env:JAVA_HOME) { $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jbr" }
-                    & .\gradlew.bat --console=plain -q testGithubDebugUnitTest testPlayDebugUnitTest lintGithubDebug lintPlayDebug assembleGithubDebug
+                    & .\gradlew.bat --console=plain -q testGithubDebugUnitTest testPlayDebugUnitTest testFdroidDebugUnitTest lintGithubDebug lintPlayDebug lintFdroidDebug assembleGithubDebug
                 }
             } finally {
                 Pop-Location

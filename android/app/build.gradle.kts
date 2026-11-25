@@ -76,10 +76,12 @@ android {
         }
     }
 
-    // Two builds of the same app (same ID, same key, so either installs over the other):
-    // `github`, everything, updated from GitHub releases; and `play`, for Google Play,
-    // without what Play doesn't allow (src/play/AndroidManifest.xml, BuildConfig.PLAY):
-    // no self-update, no installing APKs, no donation links (.private Play plan).
+    // Three builds of the same app (same ID):
+    // - `github`, everything, updated from GitHub releases;
+    // - `play`, for Google Play, without what Play doesn't allow (src/play/AndroidManifest.xml,
+    //   BuildConfig.PLAY): no self-update, no installing APKs, no donation links;
+    // - `fdroid`, for F-Droid: all features and permissions of `github`, without the
+    //   built-in self-updater (F-Droid updates it).
     flavorDimensions += "store"
     productFlavors {
         create("github") {
@@ -91,6 +93,16 @@ android {
             dimension = "store"
             buildConfigField("boolean", "PLAY", "true")
         }
+        create("fdroid") {
+            dimension = "store"
+            buildConfigField("boolean", "PLAY", "false")
+        }
+    }
+
+    // Omit Google's encrypted Signing Block dependency metadata (required by F-Droid).
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
     }
 
     // Play's bundle: every language stays in the base (the in-app language picker

@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# F-Droid metadata template for submission to https://gitlab.com/fdroid/fdroiddata
+# (metadata/app.nectarlink.yml). Update versionName, versionCode, commit, and
+# CurrentVersion* for each tagged release.
+Categories:
+  - Connectivity
+  - System
+License: GPL-3.0-or-later
+AuthorName: thtbee
+SourceCode: https://github.com/thtbee/nectarlink
+IssueTracker: https://github.com/thtbee/nectarlink/issues
+Changelog: https://github.com/thtbee/nectarlink/releases
+Donate: https://buymeacoffee.com/thtbee_
+
+AutoName: NectarLink
+
+RepoType: git
+Repo: https://github.com/thtbee/nectarlink.git
+
+Builds:
+  - versionName: 0.1.5
+    versionCode: 105999
+    commit: v0.1.5
+    subdir: android/app
+    gradle:
+      - fdroid
+    output: build/outputs/apk/fdroid/release/app-fdroid-release.apk
+    ndk: 30.0.16248370
+    prebuild:
+      - echo "nectarlink.abis=arm64-v8a,armeabi-v7a" >> ../gradle.properties
+      - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain none
+      - export PATH="$HOME/.cargo/bin:$PATH"
+      - rustup show active-toolchain || rustup toolchain install
+      - rustup target add aarch64-linux-android armv7-linux-androideabi
+      - cargo install --locked cargo-ndk
+
+AutoUpdateMode: Version v%v
+UpdateCheckMode: Tags ^v[0-9]+\.[0-9]+\.[0-9]+$
+CurrentVersion: 0.1.5
+CurrentVersionCode: 105999
