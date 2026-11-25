@@ -547,6 +547,9 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **The phone on PC Home has a round camera.** Phones that report their camera hole as a box
+  from the top edge showed a square tab there. It's now drawn round, and the signal and Wi-Fi
+  icons line up with it ([#618](https://github.com/thtbee/nectarlink/issues/618)).
 - **The Linux install script stops at a missing option value.** `--version` or `--package`
   with nothing after it no longer takes the next option as its value, or quietly falls back
   to the defaults. Thanks to [@dani3lsamir](https://github.com/dani3lsamir)
