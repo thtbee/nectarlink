@@ -29,9 +29,9 @@ use windows::Win32::{
             },
         },
         WindowsAndMessaging::{
-            GetForegroundWindow, GetSystemMetrics, GetWindowThreadProcessId, SM_CXVIRTUALSCREEN,
-            SM_CYVIRTUALSCREEN, SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN, SMTO_ABORTIFHUNG, SendMessageTimeoutW,
-            WHEEL_DELTA, WM_IME_CONTROL,
+            GetForegroundWindow, GetSystemMetrics, GetWindowThreadProcessId, SM_CXSCREEN, SM_CXVIRTUALSCREEN,
+            SM_CYSCREEN, SM_CYVIRTUALSCREEN, SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN, SMTO_ABORTIFHUNG,
+            SendMessageTimeoutW, WHEEL_DELTA, WM_IME_CONTROL,
         },
     },
 };
@@ -190,6 +190,24 @@ pub fn move_absolute(x: f32, y: f32) {
     }
     let (ax, ay, desk) = absolute(x, y);
     send_inputs(&[mouse_input(ax, ay, 0, MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE | desk)]);
+}
+
+/// The main screen's size in pixels, where another PC's mouse moves (D432).
+pub fn main_screen_size() -> Option<(i32, i32)> {
+    // SAFETY: plain system metrics.
+    let (w, h) = unsafe { (GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN)) };
+    (w > 0 && h > 0).then_some((w, h))
+}
+
+/// Moves the cursor to `(x, y)` (`0.0..=1.0`) of the main screen, whatever
+/// screen a phone is viewing (D432).
+pub fn move_to_main(x: f32, y: f32) {
+    if !x.is_finite() || !y.is_finite() {
+        return;
+    }
+    let (ax, ay) =
+        ((x.clamp(0.0, 1.0) * 65535.0).round() as i32, (y.clamp(0.0, 1.0) * 65535.0).round() as i32);
+    send_inputs(&[mouse_input(ax, ay, 0, MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE)]);
 }
 
 /// Injects a normalized touch event (`0.0..=1.0`) from reverse PC mirroring as

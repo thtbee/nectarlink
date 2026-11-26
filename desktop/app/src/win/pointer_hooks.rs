@@ -11,6 +11,10 @@
 //! phone's pointer is pushed against its edge facing the PC, on Ctrl+Alt+Esc,
 //! or as soon as the phone stops answering. `pointer_flow` has the arithmetic.
 //!
+//! Another PC beside this one (D432) takes the mouse the same way
+//! (`pointer_in` over there), and its keys as remote input (`remote.input`),
+//! with this PC's modifiers and keyboard layout.
+//!
 //! The hook procedures only read two atomics and queue an event: Windows
 //! drops a low-level hook that's slow to answer.
 
@@ -38,7 +42,7 @@ use windows::Win32::{
     },
 };
 
-use crate::pointer_flow::{self, Bounds, EdgeWatch, KeyAction, OnPhone, Side, vk};
+use crate::pointer_flow::{self, Bounds, EdgeWatch, Held, KeyAction, OnPhone, PcKey, Side, vk};
 
 /// What the hooks saw, and what came back from the phone.
 #[derive(Debug)]
@@ -268,10 +272,12 @@ fn screen_at(x: i32, y: i32) -> Bounds {
     }
 }
 
-/// What goes to the phone, in order.
+/// What goes to the phone (or the other PC), in order.
 enum Out {
     Move(PointerMove),
     Input(MirrorInput),
+    /// A key or text for another PC (D432).
+    Remote(nectarlink_core::RemoteInput),
     Leave,
 }
 
@@ -311,6 +317,7 @@ fn sender(device: DeviceId) -> tokio::sync::mpsc::UnboundedSender<Out> {
                     node.pointer_move(device, moved).await
                 }
                 Out::Input(input) => node.mirror_input(device, nectarlink_core::MIRROR_SCREEN, input).await,
+                Out::Remote(input) => node.remote_input(device, input).await,
                 Out::Leave => {
                     let _ = node.pointer_leave(device).await;
                     return;
@@ -333,6 +340,9 @@ struct Mods {
     ctrl: bool,
     alt: bool,
     caps: bool,
+    win: bool,
+    /// Win went down and nothing else since: on its own, it opens Start.
+    win_alone: bool,
 }
 
 impl Mods {
@@ -342,8 +352,19 @@ impl Mods {
             vk::CONTROL | vk::LCONTROL | vk::RCONTROL => self.ctrl = down,
             vk::MENU | vk::LMENU | vk::RMENU => self.alt = down,
             vk::CAPITAL if down => self.caps = !self.caps,
+            vk::LWIN | vk::RWIN => {
+                self.win = down;
+                if down {
+                    self.win_alone = true;
+                }
+            }
+            _ if down => self.win_alone = false,
             _ => {}
         }
+    }
+
+    fn held(&self) -> Held {
+        Held { ctrl: self.ctrl, alt: self.alt, shift: self.shift, win: self.win }
     }
 
     /// What the key types on the PC's keyboard layout, with these held.
@@ -397,11 +418,30 @@ struct Flow {
     side: Side,
     state: State,
     mods: Mods,
+    /// Another PC, not a phone (D432).
+    to_pc: bool,
+}
+
+/// Whether `device` is a PC (a desktop or laptop) rather than a phone.
+fn is_pc(device: DeviceId) -> bool {
+    use nectarlink_core::DeviceKind;
+    crate::core_host::host().hub.read(|s| {
+        s.devices
+            .iter()
+            .find(|d| d.id == device)
+            .is_some_and(|d| matches!(d.info.kind, DeviceKind::Desktop | DeviceKind::Laptop))
+    })
 }
 
 impl Flow {
     fn new(device: DeviceId, side: Side) -> Self {
-        Flow { device, side, state: State::Watching(EdgeWatch::new(side)), mods: Mods::default() }
+        Flow {
+            device,
+            side,
+            state: State::Watching(EdgeWatch::new(side)),
+            mods: Mods::default(),
+            to_pc: is_pc(device),
+        }
     }
 
     fn run(mut self, rx: mpsc::Receiver<Event>) {
@@ -511,8 +551,16 @@ impl Flow {
                 let _ = out.send(Out::Move(PointerMove { dx: 0, dy: 0, buttons: *buttons, wheel: notches }));
             }
             (State::OnPhone { out, .. }, Event::BackButton) => {
-                let _ =
-                    out.send(Out::Input(MirrorInput::Key { key: nectarlink_core::mirror_keys::BACK.into() }));
+                let back = if self.to_pc {
+                    // Back in a browser or Explorer.
+                    Out::Remote(nectarlink_core::RemoteInput::Key {
+                        key: nectarlink_core::remote_keys::LEFT.into(),
+                        mods: vec![nectarlink_core::KeyMod::Alt],
+                    })
+                } else {
+                    Out::Input(MirrorInput::Key { key: nectarlink_core::mirror_keys::BACK.into() })
+                };
+                let _ = out.send(back);
             }
             (State::OnPhone { .. }, Event::Key { code, scan, down }) => self.key(code, scan, down),
             (State::OnPhone { .. }, Event::Lost) => self.come_back(None),
@@ -521,7 +569,11 @@ impl Flow {
     }
 
     fn key(&mut self, code: u16, scan: u16, down: bool) {
+        let win_alone = self.mods.win_alone;
         self.mods.key(code, down);
+        if self.to_pc {
+            return self.pc_key(code, scan, down, win_alone);
+        }
         if !down {
             return;
         }
@@ -548,6 +600,38 @@ impl Flow {
         };
         if let Some(input) = input {
             let _ = out.send(Out::Input(input));
+        }
+    }
+
+    /// A key while the mouse is on another PC (D432).
+    fn pc_key(&mut self, code: u16, scan: u16, down: bool, win_alone: bool) {
+        use nectarlink_core::RemoteInput;
+        let State::OnPhone { out, .. } = &self.state else { return };
+        if !down {
+            // Win pressed and let go on its own: Start over there.
+            if (code == vk::LWIN || code == vk::RWIN) && win_alone {
+                let _ = out.send(Out::Remote(RemoteInput::Key {
+                    key: nectarlink_core::remote_keys::WIN.into(),
+                    mods: Vec::new(),
+                }));
+            }
+            return;
+        }
+        let held = self.mods.held();
+        let input = match pointer_flow::pc_key(code, held) {
+            PcKey::Key(key) => Some(RemoteInput::Key { key: key.into(), mods: held.mods() }),
+            PcKey::Text => self.mods.text(code, scan).map(|text| RemoteInput::Text { text }),
+            PcKey::Leave => {
+                let fraction = match &self.state {
+                    State::OnPhone { track, .. } => track.height_fraction(),
+                    _ => 0.5,
+                };
+                return self.come_back(Some(fraction));
+            }
+            PcKey::Ignore => None,
+        };
+        if let Some(input) = input.filter(RemoteInput::is_valid) {
+            let _ = out.send(Out::Remote(input));
         }
     }
 

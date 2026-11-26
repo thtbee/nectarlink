@@ -11808,6 +11808,11 @@ Voraussetzungen
         <source>The reports you sent, the answers to them, and a place to reply without a GitHub account.</source>
         <translation>Die Berichte, die du gesendet hast, die Antworten darauf und ein Ort zum Antworten ohne GitHub-Konto.</translation>
     </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Move the mouse past that edge of the screen to use it on that PC, and type there with this keyboard. Move it back, or press Ctrl+Alt+Esc, to return. That PC asks the first time, or turn on Remote mouse, keyboard &amp; Deck for this PC there.</source>
+        <translation>Bewege die Maus über diesen Bildschirmrand, um sie an jenem PC zu nutzen und dort mit dieser Tastatur zu tippen. Zurück geht es mit der Maus oder mit Strg+Alt+Esc. Jener PC fragt beim ersten Mal, oder schalte dort Remote-Maus, -Tastatur &amp; Deck für diesen PC ein.</translation>
+    </message>
 </context>
 <context>
     <name>Setup</name>

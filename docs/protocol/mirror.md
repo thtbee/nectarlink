@@ -26,6 +26,7 @@ windows of their own (§6).
 | `mirror.listen` | PC | Plays a mirrored phone's sound |
 | `mirror.volume` | PC or phone | Plays the phone's sound at its own volume, and shares that volume both ways (`mirror.volume`) |
 | `mirror.displays` | PC | Lists its screens and shares the one a phone picks (`display`) |
+| `mirror.pointer` | phone or PC | Takes a PC's mouse over the edge of its screen (§4.1): a phone with Elevated, a PC on Windows or Linux |
 
 Both devices must allow it: the `mirroring` device toggle, on by default,
 on each side.
@@ -199,6 +200,37 @@ the phone. Dragging and dropping files onto the mirror canvas sends them to
 the phone via the `files` service (`files.offer`). The app also offers a
 **Type on phone** bar on Home (and in the Command Palette) to type on the
 phone with the PC keyboard without mirroring its screen.
+
+### 4.1 A PC's mouse over the edge of its screen (`pointer.*`)
+
+A PC moves its mouse onto a device beside it (#107, D432): a phone that
+offers `mirror.pointer` (with Elevated, which adds a pointer of its own), or
+another PC that offers it (Windows and Linux).
+
+```
+t = "pointer.enter"  id = n  b = { edge: "left" | "right", y: float32 }   ; y: 0..=1 down that edge
+t = "pointer.enter"  re = n  b = { width: uint, height: uint, scale: float32 } ; pixels, and pixels per count
+t = "pointer.move"           b = { dx: int, dy: int, buttons?: uint8, wheel?: int8 } ; no reply
+t = "pointer.where"  id = n  b = {}
+t = "pointer.where"  re = n  b = { x: float32, y: float32 }          ; pixels of that screen
+t = "pointer.leave"          b = {}
+```
+
+- `edge` is the receiver's edge facing the PC: the pointer comes in there,
+  `y` of the way down, and goes back when it's pushed against it again. The
+  PC counts where the pointer is from the moves (`dx`, `dy` in counts, at
+  most 4096 each) and asks `pointer.where` only when it seems to be back at
+  that edge.
+- `buttons` is the buttons held (1 left, 2 right, 4 middle); `wheel` is whole
+  notches, positive forward.
+- A phone takes it while `mirroring` is on for that PC. A PC takes another
+  PC's mouse only while `remote_input` is on for it: the first
+  `pointer.enter` while it's off is `DENIED` and asks the user once, like
+  `remote.check`. Keys to a PC go as `remote.input` ([remote.md](remote.md));
+  to a phone, as `mirror.input` `key` and `text`.
+- A PC places its cursor rather than nudging it (`scale` 1), so its pointer
+  speed doesn't change the distances counted, and lets go of any held button
+  on `pointer.leave` or when the session ends.
 
 ## 5. Sound
 

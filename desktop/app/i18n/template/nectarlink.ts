@@ -11390,6 +11390,11 @@ What it needs
         <source>The reports you sent, the answers to them, and a place to reply without a GitHub account.</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Move the mouse past that edge of the screen to use it on that PC, and type there with this keyboard. Move it back, or press Ctrl+Alt+Esc, to return. That PC asks the first time, or turn on Remote mouse, keyboard &amp; Deck for this PC there.</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>Setup</name>

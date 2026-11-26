@@ -227,6 +227,11 @@ pub mod vk {
     pub const MENU: u16 = 0x12;
     pub const CAPITAL: u16 = 0x14;
     pub const ESCAPE: u16 = 0x1B;
+    pub const SPACE: u16 = 0x20;
+    pub const PRIOR: u16 = 0x21;
+    pub const NEXT: u16 = 0x22;
+    pub const END: u16 = 0x23;
+    pub const HOME: u16 = 0x24;
     pub const LEFT: u16 = 0x25;
     pub const UP: u16 = 0x26;
     pub const RIGHT: u16 = 0x27;
@@ -293,6 +298,106 @@ pub fn key_action(code: u16, ctrl: bool, alt: bool) -> KeyAction {
     }
 }
 
+/// Modifiers held on this PC, for another PC's keys (D432).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Held {
+    pub ctrl: bool,
+    pub alt: bool,
+    pub shift: bool,
+    pub win: bool,
+}
+
+impl Held {
+    /// As `remote.input` names them.
+    pub fn mods(self) -> Vec<nectarlink_core::KeyMod> {
+        use nectarlink_core::KeyMod;
+        [
+            (self.ctrl, KeyMod::Ctrl),
+            (self.alt, KeyMod::Alt),
+            (self.shift, KeyMod::Shift),
+            (self.win, KeyMod::Win),
+        ]
+        .into_iter()
+        .filter_map(|(on, m)| on.then_some(m))
+        .collect()
+    }
+}
+
+/// What a key pressed on this PC does while its mouse is on another PC (D432).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PcKey {
+    /// A named key (`remote_keys::NAMED`) or a letter or digit, with the
+    /// modifiers held.
+    Key(&'static str),
+    /// Whatever text it types with the modifiers held (this PC's keyboard
+    /// layout says what): letters, symbols, AltGr's characters.
+    Text,
+    /// Ctrl+Alt+Esc: the mouse comes back, wherever it is.
+    Leave,
+    /// Nothing over there: a modifier on its own.
+    Ignore,
+}
+
+/// What `code` does on another PC with `held` down.
+pub fn pc_key(code: u16, held: Held) -> PcKey {
+    use nectarlink_core::remote_keys as keys;
+    if vk::is_modifier(code) || code == vk::LWIN || code == vk::RWIN {
+        return PcKey::Ignore;
+    }
+    if code == vk::ESCAPE && held.ctrl && held.alt {
+        return PcKey::Leave;
+    }
+    let named = match code {
+        vk::RETURN => Some(keys::ENTER),
+        vk::BACK => Some(keys::BACKSPACE),
+        vk::TAB => Some(keys::TAB),
+        vk::ESCAPE => Some(keys::ESCAPE),
+        vk::LEFT => Some(keys::LEFT),
+        vk::RIGHT => Some(keys::RIGHT),
+        vk::UP => Some(keys::UP),
+        vk::DOWN => Some(keys::DOWN),
+        vk::HOME => Some(keys::HOME),
+        vk::END => Some(keys::END),
+        vk::PRIOR => Some(keys::PAGE_UP),
+        vk::NEXT => Some(keys::PAGE_DOWN),
+        vk::DELETE => Some(keys::DELETE),
+        0x70..=0x7B => Some(
+            [
+                keys::F1,
+                keys::F2,
+                keys::F3,
+                keys::F4,
+                keys::F5,
+                keys::F6,
+                keys::F7,
+                keys::F8,
+                keys::F9,
+                keys::F10,
+                keys::F11,
+                keys::F12,
+            ][(code - 0x70) as usize],
+        ),
+        vk::SPACE if held.ctrl || held.alt || held.win => Some(keys::SPACE),
+        _ => None,
+    };
+    if let Some(key) = named {
+        return PcKey::Key(key);
+    }
+    // Ctrl, Alt or Win with a letter or digit is a shortcut; Ctrl and Alt
+    // together are AltGr on many layouts, which types.
+    let shortcut = (held.ctrl || held.alt || held.win) && !(held.ctrl && held.alt && !held.win);
+    if shortcut {
+        const LETTERS: &str = "abcdefghijklmnopqrstuvwxyz";
+        const DIGITS: &str = "0123456789";
+        return match code {
+            0x41..=0x5A => PcKey::Key(&LETTERS[(code - 0x41) as usize..=(code - 0x41) as usize]),
+            0x30..=0x39 => PcKey::Key(&DIGITS[(code - 0x30) as usize..=(code - 0x30) as usize]),
+            _ => PcKey::Ignore,
+        };
+    }
+    PcKey::Text
+}
+
 /// One wheel event of `delta` (120 a notch) added to what's left over from
 /// the last ones: the whole notches to scroll now. A touchpad sends small
 /// steps that only make a notch together; turning the other way drops the
@@ -309,6 +414,37 @@ pub fn wheel_notches(rest: &mut i32, delta: i32) -> i32 {
 
 #[cfg(test)]
 mod tests {
+
+    #[test]
+    fn keys_for_another_pc() {
+        use nectarlink_core::{KeyMod, remote_keys};
+        let none = Held::default();
+        let ctrl = Held { ctrl: true, ..none };
+        let shift = Held { shift: true, ..none };
+        assert_eq!(pc_key(vk::RETURN, none), PcKey::Key("enter"));
+        assert_eq!(pc_key(vk::LEFT, shift), PcKey::Key("left"));
+        assert_eq!(pc_key(0x73, Held { alt: true, ..none }), PcKey::Key("f4"));
+        assert_eq!(pc_key(0x43, ctrl), PcKey::Key("c"));
+        assert_eq!(pc_key(0x35, Held { win: true, ..none }), PcKey::Key("5"));
+        // Plain letters and AltGr type.
+        assert_eq!(pc_key(0x43, none), PcKey::Text);
+        assert_eq!(pc_key(0x45, Held { ctrl: true, alt: true, ..none }), PcKey::Text);
+        assert_eq!(pc_key(vk::SPACE, none), PcKey::Text);
+        assert_eq!(pc_key(vk::SPACE, ctrl), PcKey::Key("space"));
+        assert_eq!(pc_key(vk::ESCAPE, Held { ctrl: true, alt: true, ..none }), PcKey::Leave);
+        assert_eq!(pc_key(vk::LSHIFT, shift), PcKey::Ignore);
+        assert_eq!(pc_key(vk::LWIN, none), PcKey::Ignore);
+        // Every key it sends is one remote.input takes, with the modifiers held.
+        for code in 0x08..=0x7Bu16 {
+            for held in [none, ctrl, shift, Held { alt: true, win: true, ..none }] {
+                if let PcKey::Key(key) = pc_key(code, held) {
+                    assert!(remote_keys::is_valid(key, &held.mods()), "{key} {:?}", held.mods());
+                }
+            }
+        }
+        assert_eq!(Held { ctrl: true, shift: true, ..none }.mods(), vec![KeyMod::Ctrl, KeyMod::Shift]);
+    }
+
     use super::*;
 
     #[test]

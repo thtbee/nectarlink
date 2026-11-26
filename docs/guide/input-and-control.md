@@ -97,6 +97,17 @@ With the phone on a stand beside your monitor, the PC's mouse can go over the ed
 
 While it's on the phone, Android's pointer acceleration is off (it's given back after), so the PC can follow the pointer. The PC's cursor waits in the middle of the screen it left.
 
+#### One mouse and keyboard for two PCs, over the screen edge
+
+The same works between two paired PCs, with no phone needed: your mouse goes over the edge of the screen onto the other PC, and the keyboard types there.
+
+1. On the PC whose mouse and keyboard you'll use (Windows), open **Settings › Devices**, pick the other PC, and set **Beside this PC** to **Left** or **Right**.
+2. Push the mouse past that edge. The first time, the other PC asks whether to allow it; you can also turn on **Remote mouse, keyboard & Deck** for this PC in its **Settings › Devices**.
+3. The mouse moves, clicks, drags and scrolls on the other PC's main screen. Keys go with your modifiers and keyboard layout: Shift+arrows, Ctrl+C and other shortcuts, Alt+F4, the function keys, and the Windows key on its own opens Start there. A mouse's back button is Alt+Left.
+4. Move the mouse back past the other PC's edge facing this one to return, or press **Ctrl+Alt+Esc**.
+
+The other PC can be on Windows or Linux; a Mac can't take another PC's mouse yet. One device at a time can be beside a PC, a phone or another PC. Keys are sent as they're pressed, not held, so it's for working across two PCs rather than for games.
+
 ### 3. `Deck`: Customizable Macro Pad and PC Audio Controller
 
 `Deck` turns your phone into a tactile, multi-page button grid and live audio controller for your PC:

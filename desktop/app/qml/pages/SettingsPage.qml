@@ -1809,14 +1809,14 @@ Item {
                         visible: index === page.selectedDeviceIndex
                         width: visible ? column.width : 0
 
-                        // Another PC (#432): only its clipboard and files switches mean anything.
+                        // Another PC (#432): its clipboard and files switches, and remote input for its mouse and keyboard here.
                         readonly property bool isPc: kind === "desktop" || kind === "laptop"
                             || (kind === "unknown" && (os === "windows" || os === "macos" || os === "linux"))
 
                         // Re-read when toggles (and so capabilities) change.
                         readonly property var toggles: AppController.capsRevision >= 0 && AppController.togglesRevision >= 0
                                                        ? AppController.deviceToggles(deviceId)
-                                                             .filter(t => !isPc || t.name === "clipboard" || t.name === "files")
+                                                             .filter(t => !isPc || t.name === "clipboard" || t.name === "files" || t.name === "remote_input")
                                                        : []
 
                         Column {
@@ -1904,12 +1904,15 @@ Item {
                                 }
                             }
                             // The phone beside the PC: the mouse goes over the edge of the screen to it (#107).
+                            // Another PC too: its mouse and keyboard, over that edge (D432).
                             ListRow {
                                 width: parent.width
-                                visible: Qt.platform.os === "windows" && !deviceCard.isPc
+                                visible: Qt.platform.os === "windows"
                                 iconPath: Icons.desktop
                                 title: qsTr("Beside this PC")
-                                description: qsTr("Move the mouse past that edge of the screen to use it on this phone, and type there. Move it back, or press Ctrl+Alt+Esc, to return. Needs Elevated.")
+                                description: deviceCard.isPc
+                                    ? qsTr("Move the mouse past that edge of the screen to use it on that PC, and type there with this keyboard. Move it back, or press Ctrl+Alt+Esc, to return. That PC asks the first time, or turn on Remote mouse, keyboard & Deck for this PC there.")
+                                    : qsTr("Move the mouse past that edge of the screen to use it on this phone, and type there. Move it back, or press Ctrl+Alt+Esc, to return. Needs Elevated.")
                                 Segmented {
                                     options: [
                                         { value: "", label: qsTr("Off") },
