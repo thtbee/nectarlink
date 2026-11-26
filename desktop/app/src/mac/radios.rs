@@ -6,6 +6,7 @@ pub fn read() -> (Option<bool>, Option<bool>) {
     (None, None)
 }
 
+#[allow(dead_code)]
 pub fn available() -> bool {
     false
 }
