@@ -73,8 +73,8 @@ pub use deck::{
     COMMANDS_TOGGLE as DECK_COMMANDS_TOGGLE, DECK_ACTIONS, DeckAction, DeckConfig, DeckLayout, DeckPage,
     DeckPageConfig, DeckPress, DeckState, DeckTile, DeckTileConfig, INPUT_TOGGLE as DECK_INPUT_TOGGLE,
     MAX_DECK_ID_BYTES, MAX_DECK_LABEL_BYTES, MAX_DECK_PAGES, MAX_DECK_TILES_PER_PAGE, MAX_MACRO_DELAY_MS,
-    MAX_MACRO_STEPS, MAX_MACRO_TOTAL_DELAY_MS, MacroStep, PC_AUDIO, deck_colors, deck_icons, deck_kinds,
-    format_shortcut, is_valid_app_path, is_valid_command, is_valid_deck_id, is_valid_http_url,
+    MAX_MACRO_STEPS, MAX_MACRO_TOTAL_DELAY_MS, MacroStep, PC_AUDIO, PC_RADIOS, deck_colors, deck_icons,
+    deck_kinds, format_shortcut, is_valid_app_path, is_valid_command, is_valid_deck_id, is_valid_http_url,
     is_valid_shortcut, is_valid_snippet,
 };
 pub use diag_ask::{PeerLog, PeerPart};
@@ -110,11 +110,11 @@ pub use nectarlink_protocol::{
         CameraCaptureResultMeta, Contact, ContactNumber, DeviceInfo, DeviceKind, LivePoint, LiveSegment,
         MediaPlayer, MirrorAudioConfig, MirrorConfig, MirrorDisplay, MirrorInput, MirrorPower, MirrorResize,
         MirrorRotate, MirrorStart, Notification, NotificationAction, NotificationChatMessage,
-        NotificationConversation, NotificationLive, PcAudioSet, PcWakeInfo, PhoneApp, PhoneToggleSet,
-        PhoneToggleValue, PhoneToggles, PhotoAlbum, PhotoItem, PhotoNew as Photo, PhotoThumb, PointerAt,
-        PointerEdge, PointerMove, PointerScreen, PowerLevel, ScreenCorners, ScreenRect, ScreenShape,
-        SmsAttachment, SmsMessage, SmsPart, SmsThread, StorageChanged, StorageDelete, StorageEntries,
-        StorageEntry, StorageList, StorageMkdir, StorageRead, StorageReadMeta, StorageRename,
+        NotificationConversation, NotificationLive, PcAudioSet, PcRadioSet, PcWakeInfo, PhoneApp,
+        PhoneToggleSet, PhoneToggleValue, PhoneToggles, PhotoAlbum, PhotoItem, PhotoNew as Photo, PhotoThumb,
+        PointerAt, PointerEdge, PointerMove, PointerScreen, PowerLevel, ScreenCorners, ScreenRect,
+        ScreenShape, SmsAttachment, SmsMessage, SmsPart, SmsThread, StorageChanged, StorageDelete,
+        StorageEntries, StorageEntry, StorageList, StorageMkdir, StorageRead, StorageReadMeta, StorageRename,
         StorageWriteAccept, StorageWriteDone, StorageWriteOffer, TaskNotify, TouchAction, WatchFile,
         WebcamConfig, WebcamStart,
         calls::{

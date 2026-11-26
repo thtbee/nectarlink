@@ -1558,4 +1558,9 @@
     <string name="media_center_page">%1$d из %2$d</string>
     <string name="media_center_phone_volume">Громкость телефона</string>
     <string name="media_center_output">Выбрать, где играть</string>
+    <string name="pc_radio_wifi">Wi-Fi</string>
+    <string name="pc_radio_bluetooth">Bluetooth</string>
+    <string name="pc_radio_wifi_off_title">Выключить Wi-Fi на %1$s?</string>
+    <string name="pc_radio_wifi_off_text">Если телефон подключён к ПК по Wi-Fi, связь прервётся, и Wi-Fi придётся включить на самом ПК.</string>
+    <string name="pc_radio_wifi_off_confirm">Выключить</string>
 </resources>

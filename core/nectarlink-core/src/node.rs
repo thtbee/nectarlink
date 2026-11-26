@@ -4429,6 +4429,18 @@ impl Node {
         crate::deck::set_pc_audio_output(&self.shared, &session, output).await
     }
 
+    /// Asks a paired PC to turn its Wi-Fi and/or Bluetooth on or off
+    /// (`pc.radio.set`, #636).
+    pub async fn set_pc_radio(
+        &self,
+        peer: DeviceId,
+        wifi: Option<bool>,
+        bluetooth: Option<bool>,
+    ) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::deck::set_pc_radio(&self.shared, &session, wifi, bluetooth).await
+    }
+
     // ---- Phone storage (PC File Explorer) ----
 
     /// Lists a directory on a connected phone (`storage.list`).

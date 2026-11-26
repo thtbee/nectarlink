@@ -103,6 +103,7 @@ struct RecordingPlatform {
     pc_audio_outputs: Mutex<Vec<String>>,
     tasks: Mutex<Vec<nectarlink_core::TaskNotify>>,
     storage: Mutex<Option<nectarlink_core::FolderStorage>>,
+    pc_radio_changes: Mutex<Vec<(Option<bool>, Option<bool>)>>,
 }
 
 impl Platform for RecordingPlatform {
@@ -762,6 +763,15 @@ impl Platform for RecordingPlatform {
     }
     fn set_pc_audio_output(&self, _from: &nectarlink_core::DeviceId, id: &str) -> Result<(), String> {
         self.pc_audio_outputs.lock().unwrap().push(id.to_owned());
+        Ok(())
+    }
+    fn set_pc_radio(
+        &self,
+        _from: &nectarlink_core::DeviceId,
+        wifi: Option<bool>,
+        bluetooth: Option<bool>,
+    ) -> Result<(), String> {
+        self.pc_radio_changes.lock().unwrap().push((wifi, bluetooth));
         Ok(())
     }
     fn storage_list(
@@ -4848,6 +4858,8 @@ async fn deck_layout_and_state_arrive_press_runs_action_and_respects_toggles_and
         mic_muted: Some(false),
         output_devices: Vec::new(),
         toggles_on: Vec::new(),
+        wifi: None,
+        bluetooth: None,
     };
     pc.node.set_deck_state(initial_state.clone()).await.unwrap();
 
@@ -4913,6 +4925,8 @@ async fn deck_layout_and_state_arrive_press_runs_action_and_respects_toggles_and
         mic_muted: Some(true),
         output_devices: Vec::new(),
         toggles_on: Vec::new(),
+        wifi: None,
+        bluetooth: None,
     };
     pc.node.set_deck_state(updated_state.clone()).await.unwrap();
     let got_updated = wait_for(&mut phone, "updated deck state", |e| match e {
@@ -5354,6 +5368,8 @@ async fn pc_audio_volume_mute_output_devices_and_smart_clipboard_context_chips_f
             },
         ],
         toggles_on: Vec::new(),
+        wifi: None,
+        bluetooth: None,
     };
     pc.node.set_deck_state(initial_state.clone()).await.unwrap();
 
@@ -8218,6 +8234,56 @@ async fn queue_offline_no_busy_loop_timeline_only_on_delivery_and_clear_history_
 
     pc.node.shutdown().await;
     phone.node.shutdown().await;
+}
+
+/// A phone sees the PC's Wi-Fi and Bluetooth and switches them (#636), with
+/// the PC's volume's permission.
+#[tokio::test]
+async fn a_phone_switches_the_pcs_wifi_and_bluetooth() {
+    use nectarlink_core::{DECK_ACTIONS, DeckState, PC_RADIOS};
+
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[DECK_ACTIONS, PC_RADIOS]).await;
+    let mut phone = device_with("Pixel", DeviceKind::Phone, &[]).await;
+    let initial = DeckState { wifi: Some(true), bluetooth: Some(false), ..DeckState::default() };
+    pc.node.set_deck_state(initial.clone()).await.unwrap();
+
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+    wait_for(&mut phone, "radios in the first deck state", |e| match e {
+        NodeEvent::DeckState { device, state } if *device == pc_id && *state == initial => Some(()),
+        _ => None,
+    })
+    .await;
+
+    with_timeout("bluetooth on", phone.node.set_pc_radio(pc_id, None, Some(true))).await.unwrap();
+    wait_for(&mut phone, "bluetooth on in the deck state", |e| match e {
+        NodeEvent::DeckState { device, state }
+            if *device == pc_id && state.bluetooth == Some(true) && state.wifi == Some(true) =>
+        {
+            Some(())
+        }
+        _ => None,
+    })
+    .await;
+    assert_eq!(*pc.platform.pc_radio_changes.lock().unwrap(), vec![(None, Some(true))]);
+
+    // Nothing to switch is the phone's mistake.
+    assert!(matches!(phone.node.set_pc_radio(pc_id, None, None).await, Err(Error::Protocol(_))));
+    // With PC actions and remote input off, it's denied.
+    pc.node.set_device_toggle(phone_id, "pc_actions", false).unwrap();
+    assert!(matches!(phone.node.set_pc_radio(pc_id, Some(false), None).await, Err(Error::Denied)));
+    assert_eq!(pc.platform.pc_radio_changes.lock().unwrap().len(), 1);
+}
+
+/// A PC that doesn't offer `pc.radios` isn't asked.
+#[tokio::test]
+async fn a_pc_without_radio_controls_is_not_asked() {
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[nectarlink_core::DECK_ACTIONS]).await;
+    let mut phone = device_with("Pixel", DeviceKind::Phone, &[]).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let pc_id = pc.node.device_id();
+    assert!(matches!(phone.node.set_pc_radio(pc_id, Some(true), None).await, Err(Error::Unsupported)));
+    assert!(pc.platform.pc_radio_changes.lock().unwrap().is_empty());
 }
 
 #[tokio::test(flavor = "multi_thread")]

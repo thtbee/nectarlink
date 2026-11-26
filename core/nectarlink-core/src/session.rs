@@ -806,7 +806,7 @@ async fn handle(
             && crate::continuity_camera::handle(shared, session, &env).await? => {}
         t if t.starts_with("remote.") && crate::remote::handle(shared, session, &env).await? => {}
         t if t.starts_with("phone.toggle") && crate::toggles::handle(shared, session, &env).await? => {}
-        t if (t.starts_with("deck.") || t == types::PC_AUDIO_SET)
+        t if (t.starts_with("deck.") || t == types::PC_AUDIO_SET || t == types::PC_RADIO_SET)
             && crate::deck::handle(shared, session, &env).await? => {}
         t if t.starts_with("storage.") && crate::storage::handle(shared, session, &env).await? => {}
         t if t.starts_with("unlock.linux.v1.")

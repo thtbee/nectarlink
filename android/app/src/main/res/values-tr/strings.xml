@@ -1685,6 +1685,11 @@
     <string name="media_center_page">%2$d içinden %1$d</string>
     <string name="media_center_phone_volume">Telefon ses düzeyi</string>
     <string name="media_center_output">Nerede çalacağını seç</string>
+    <string name="pc_radio_wifi">Wi-Fi</string>
+    <string name="pc_radio_bluetooth">Bluetooth</string>
+    <string name="pc_radio_wifi_off_title">%1$s cihazının Wi-Fi\'ı kapatılsın mı?</string>
+    <string name="pc_radio_wifi_off_text">Bu telefon bilgisayara Wi-Fi ile bağlanıyorsa bağlantı kopar ve Wi-Fi\'ı bilgisayardan yeniden açmanız gerekir.</string>
+    <string name="pc_radio_wifi_off_confirm">Kapat</string>
 </resources>
 
 

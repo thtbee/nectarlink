@@ -1696,4 +1696,9 @@
     <string name="media_center_page">%1$d de %2$d</string>
     <string name="media_center_phone_volume">Volumen del teléfono</string>
     <string name="media_center_output">Elegir dónde suena</string>
+    <string name="pc_radio_wifi">Wi-Fi</string>
+    <string name="pc_radio_bluetooth">Bluetooth</string>
+    <string name="pc_radio_wifi_off_title">¿Desactivar el Wi-Fi de %1$s?</string>
+    <string name="pc_radio_wifi_off_text">Si este teléfono llega al PC por Wi-Fi, perderán la conexión y tendrás que volver a activar el Wi-Fi en el PC.</string>
+    <string name="pc_radio_wifi_off_confirm">Desactivar</string>
 </resources>

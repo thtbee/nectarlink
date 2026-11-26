@@ -18,6 +18,7 @@ never sends commands, file paths, or URLs.
 |---|---|---|
 | `deck.actions` | desktop | Shares its Deck layout (`deck.layout`) and live state (`deck.state`) and accepts `deck.press` requests (`input.deck`) |
 | `pc.audio` | desktop | Reports active audio output devices in `deck.state` and accepts `pc.audio.set` requests (`media.pc_audio`) |
+| `pc.radios` | desktop | Reports its Wi-Fi and Bluetooth in `deck.state` and accepts `pc.radio.set` requests (#636) |
 
 - **Per-device toggles on the PC:**
   - `remote_input` (**off by default**): required for all `deck.press` requests (and accepted alongside `pc_actions` for `pc.audio.set`). When a paired phone presses a tile or calls `remote.check` while `remote_input` is off, the PC refuses with `DENIED` and emits a one-time consent prompt (`RemoteInputRequested`) for that phone.
@@ -83,6 +84,8 @@ DeckState = {
   mic_muted?:      bool,                 // default PC microphone is muted (`mic_mute` tiles); omitted when no capture device exists
   output_devices?: [AudioOutputDevice],  // active PC playback endpoints (0..=32)
   toggles_on?:     [text],               // IDs of the "toggle" tiles that are on (0..=192); omitted when none are
+  wifi?:           bool,                 // the PC's Wi-Fi is on; omitted when it has none or can't tell
+  bluetooth?:      bool,                 // the PC's Bluetooth is on; omitted when it has none or can't tell
 }
 
 AudioOutputDevice = {
@@ -167,3 +170,21 @@ Errors for `pc.audio.set`:
   - Power: `"restart_pc"`, `"shut_down_pc"`. A phone asks the user before it sends the press. Neither can be a macro step or a side of a toggle.
 - **Icons (`icon`):** `"play"`, `"pause"`, `"skip_next"`, `"skip_previous"`, `"volume_up"`, `"volume_down"`, `"volume_off"`, `"mic"`, `"mic_off"`, `"lock"`, `"desktop"`, `"switch_window"`, `"screenshot"`, `"shortcut"`, `"globe"`, `"text"`, `"app"`, `"terminal"`, `"sparkle"`, `"star"`, `"power"`, `"restart"`, `"bolt"`, `"toggle"`.
 - **Colors (`color`):** `"amber"`, `"coral"`, `"red"`, `"teal"`, `"green"`, `"blue"`, `"violet"`, `"slate"`.
+
+### 2.6 `pc.radio.set`
+
+Sent by a phone to a PC that offers `pc.radios` to turn its Wi-Fi and/or
+Bluetooth on or off (#636). Same permission as `pc.audio.set`: `pc_actions`
+or `remote_input` on for that phone, else `DENIED`.
+
+```
+PcRadioSet = {
+  wifi?:      bool,   // at least one of the two
+  bluetooth?: bool,
+}
+```
+
+The PC answers `ok` once the switch is made and sends `deck.state` with the
+new values; `INTERNAL` when the system refused (Windows' radio access, or
+NetworkManager's or BlueZ's policy on Linux). A phone asks before turning the
+PC's Wi-Fi off, since it may be how it reaches that PC.

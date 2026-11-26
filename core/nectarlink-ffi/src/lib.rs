@@ -932,6 +932,10 @@ pub struct DeckState {
     pub output_devices: Vec<AudioOutputDevice>,
     /// The `toggle` tiles that are on, by ID (#640).
     pub toggles_on: Vec<String>,
+    /// Whether the PC's Wi-Fi is on; `None` when it has none or can't tell (#636).
+    pub wifi: Option<bool>,
+    /// Whether the PC's Bluetooth is on; `None` when it has none or can't tell (#636).
+    pub bluetooth: Option<bool>,
 }
 
 impl From<core::DeckState> for DeckState {
@@ -943,6 +947,8 @@ impl From<core::DeckState> for DeckState {
             mic_muted: s.mic_muted,
             output_devices: s.output_devices.into_iter().map(Into::into).collect(),
             toggles_on: s.toggles_on,
+            wifi: s.wifi,
+            bluetooth: s.bluetooth,
         }
     }
 }
@@ -4785,6 +4791,14 @@ impl NectarlinkNode {
         let id = parse_id(&id)?;
         let node = self.node.clone();
         self.run(async move { Ok(node.set_pc_audio(id, volume, muted).await?) }).await
+    }
+
+    /// Asks a paired PC to turn its Wi-Fi and/or Bluetooth on or off
+    /// (`pc.radio.set`, #636).
+    pub async fn set_pc_radio(&self, id: String, wifi: Option<bool>, bluetooth: Option<bool>) -> Result<()> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.set_pc_radio(id, wifi, bluetooth).await?) }).await
     }
 
     /// Asks a paired PC to make one of its audio outputs (by its `id` in

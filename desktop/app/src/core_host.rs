@@ -153,6 +153,10 @@ pub fn compute_capabilities(
         caps.push(nectarlink_core::STORAGE_WRITE.into());
         caps.push(nectarlink_core::DECK_ACTIONS.into());
         caps.push(nectarlink_core::PC_AUDIO.into());
+        // Wi-Fi and Bluetooth for phones, where there are any (#636).
+        if crate::win::radios::available() {
+            caps.push(nectarlink_core::PC_RADIOS.into());
+        }
         caps.push(nectarlink_core::PC_SHUTDOWN.into());
         // Only while hibernation is on: Windows can turn it off (#355).
         if crate::win::shell::can_hibernate() {

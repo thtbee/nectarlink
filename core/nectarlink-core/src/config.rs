@@ -666,6 +666,17 @@ pub trait Platform: Send + Sync + 'static {
         Err("this device has no PC audio controls".into())
     }
 
+    /// Turn this PC's Wi-Fi and/or Bluetooth on or off (`pc.radio.set`,
+    /// #636). The per-device permission has been checked.
+    fn set_pc_radio(
+        &self,
+        _from: &nectarlink_protocol::DeviceId,
+        _wifi: Option<bool>,
+        _bluetooth: Option<bool>,
+    ) -> Result<(), String> {
+        Err("this device can't switch its radios".into())
+    }
+
     /// Make `id`, one of this PC's `output_devices`, the default audio output
     /// (`pc.audio.set { output }`). The ID has been validated and the
     /// per-device permission checked.

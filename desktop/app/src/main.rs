@@ -267,6 +267,14 @@ impl Platform for DesktopPlatform {
     fn set_pc_audio_output(&self, _peer: &nectarlink_core::DeviceId, id: &str) -> Result<(), String> {
         deck::handle_set_output(id)
     }
+    fn set_pc_radio(
+        &self,
+        _peer: &nectarlink_core::DeviceId,
+        wifi: Option<bool>,
+        bluetooth: Option<bool>,
+    ) -> Result<(), String> {
+        deck::handle_set_radio(wifi, bluetooth)
+    }
     fn storage_list(&self, path: &str) -> Result<Vec<StorageEntry>, StorageError> {
         pc_storage::storage_list(path)
     }

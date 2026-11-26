@@ -1676,6 +1676,11 @@
     <string name="media_center_page">%2$d 件中 %1$d 件目</string>
     <string name="media_center_phone_volume">スマートフォンの音量</string>
     <string name="media_center_output">再生先を選ぶ</string>
+    <string name="pc_radio_wifi">Wi-Fi</string>
+    <string name="pc_radio_bluetooth">Bluetooth</string>
+    <string name="pc_radio_wifi_off_title">%1$s の Wi-Fi をオフにしますか?</string>
+    <string name="pc_radio_wifi_off_text">このスマートフォンが Wi-Fi で PC につながっている場合は接続が切れ、PC で Wi-Fi をオンに戻す必要があります。</string>
+    <string name="pc_radio_wifi_off_confirm">オフにする</string>
 </resources>
 
 

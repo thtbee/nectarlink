@@ -222,6 +222,8 @@ fun DeckScreen(
         micMuted = false,
         outputDevices = emptyList(),
         togglesOn = emptyList(),
+        wifi = null,
+        bluetooth = null,
     )
     val pages = layout.pages.ifEmpty { fallbackDefaultLayout(context).pages }
     val pagerState = rememberPagerState(pageCount = { pages.size })
@@ -290,6 +292,7 @@ fun DeckScreen(
                 liveState = liveState,
                 onSetPcAudio = { vol, muted -> core.setPcAudio(device.id, vol, muted) },
                 onPickOutput = { output -> core.setPcAudioOutput(device.id, output) },
+                onSetRadio = { wifi, bluetooth -> core.setPcRadio(device.id, wifi, bluetooth) },
             )
         }
 
@@ -415,6 +418,7 @@ private fun DeckAudioHeaderBar(
     liveState: DeckState,
     onSetPcAudio: (volume: Int?, muted: Boolean?) -> Unit,
     onPickOutput: (String) -> Unit,
+    onSetRadio: (wifi: Boolean?, bluetooth: Boolean?) -> Unit,
 ) {
     var draggingVolume by remember { mutableStateOf<Float?>(null) }
     var lastSentVolume by remember { mutableStateOf(liveState.volume.toInt()) }
@@ -502,6 +506,13 @@ private fun DeckAudioHeaderBar(
                     }
                 }
             }
+            // The PC's Wi-Fi and Bluetooth (#636).
+            app.nectarlink.android.ui.home.PcRadioSwitches(
+                pcName = pcName,
+                state = liveState,
+                onSet = onSetRadio,
+                modifier = Modifier.padding(horizontal = 4.dp),
+            )
         }
     }
 

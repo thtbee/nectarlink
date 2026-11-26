@@ -20,6 +20,8 @@ use nectarlink_core::{
 use crate::{core_host, links, state::Changes, win};
 
 const FILE_NAME: &str = "deck.json";
+/// How often Wi-Fi and Bluetooth are looked at for a change made on the PC.
+const RADIO_CHECK: Duration = Duration::from_secs(5);
 
 struct RuntimeState {
     config: DeckConfig,
@@ -45,6 +47,7 @@ fn sample_live_state() -> DeckState {
     let (volume, muted) = win::audio::speaker_state().unwrap_or((50, false));
     let mic_muted = win::audio::mic_muted();
     let playing = MEDIA_PLAYING.load(Ordering::Relaxed);
+    let (wifi, bluetooth) = win::radios::read();
     let mut output_devices = win::audio::output_devices();
     if crate::pc_audio_stream::is_enabled() {
         output_devices.push(nectarlink_core::AudioOutputDevice {
@@ -53,7 +56,7 @@ fn sample_live_state() -> DeckState {
             is_default: false,
         });
     }
-    DeckState { volume, muted, mic_muted, playing, output_devices, toggles_on: Vec::new() }
+    DeckState { volume, muted, mic_muted, playing, output_devices, toggles_on: Vec::new(), wifi, bluetooth }
 }
 
 /// Immediately re-samples and broadcasts `deck.state` to connected phones when
@@ -96,6 +99,8 @@ pub fn init(data_dir: &Path) {
         playing: false,
         output_devices: Vec::new(),
         toggles_on: Vec::new(),
+        wifi: None,
+        bluetooth: None,
     };
     let wire_layout = config.to_wire_layout();
     {
@@ -112,6 +117,8 @@ pub fn init(data_dir: &Path) {
             playing: false,
             output_devices: Vec::new(),
             toggles_on: Vec::new(),
+            wifi: None,
+            bluetooth: None,
         });
         {
             let mut guard = lock(&DECK);
@@ -127,6 +134,18 @@ pub fn init(data_dir: &Path) {
         // Windows reports audio changes as they happen; the poll only
         // picks up edits to deck.json while the Deck page is open.
         win::audio::watch(|| core_host::spawn(refresh_live_state()));
+        // Wi-Fi and Bluetooth switched on the PC itself, now and then (#636).
+        core_host::spawn(async {
+            let mut every = tokio::time::interval(RADIO_CHECK);
+            loop {
+                every.tick().await;
+                let Ok(now) = tokio::task::spawn_blocking(win::radios::read).await else { continue };
+                let known = lock(&DECK).as_ref().map(|rt| (rt.state.wifi, rt.state.bluetooth));
+                if known.is_some_and(|known| known != now) {
+                    refresh_live_state().await;
+                }
+            }
+        });
         let mut interval = tokio::time::interval(Duration::from_millis(1500));
         loop {
             interval.tick().await;
@@ -272,6 +291,16 @@ pub fn handle_set_audio(peer: &DeviceId, volume: Option<u8>, muted: Option<bool>
     if let Some(m) = muted {
         win::audio::set_speaker_mute(m)?;
     }
+    core_host::spawn(async {
+        refresh_live_state().await;
+    });
+    Ok(())
+}
+
+/// Turns this PC's Wi-Fi and/or Bluetooth on or off for a phone
+/// (`pc.radio.set`, #636), then sends phones the state it's in.
+pub fn handle_set_radio(wifi: Option<bool>, bluetooth: Option<bool>) -> Result<(), String> {
+    win::radios::set(wifi, bluetooth)?;
     core_host::spawn(async {
         refresh_live_state().await;
     });

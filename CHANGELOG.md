@@ -31,6 +31,10 @@ change things that need a step from you, and its notes say so.
   Storage & Privacy on the PC and About on the phone, stops it. On a PC,
   `NECTARLINK_NO_DAILY_COUNT=1` turns it off for packagers
   ([#534](https://github.com/thtbee/nectarlink/issues/534)).
+- **The PC's Wi-Fi and Bluetooth on the phone.** The PC's card on Home and the top of Deck
+  show whether they're on, and a tap switches them. Turning Wi-Fi off asks first, since the
+  phone may reach the PC over it. Windows and Linux. Thanks to
+  [@M-P-A](https://github.com/M-P-A) ([#636](https://github.com/thtbee/nectarlink/issues/636)).
 - **On / off tiles in Deck.** One tile with two actions, one to turn something on and one to
   turn it off, run in turn with each press. The tile on the phone stays lit while it's on, like
   the mute tiles, and the PC remembers it after a restart. Thanks to

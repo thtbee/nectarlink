@@ -1686,6 +1686,11 @@
     <string name="media_center_page">%1$d de %2$d</string>
     <string name="media_center_phone_volume">Volume do celular</string>
     <string name="media_center_output">Escolher onde tocar</string>
+    <string name="pc_radio_wifi">Wi-Fi</string>
+    <string name="pc_radio_bluetooth">Bluetooth</string>
+    <string name="pc_radio_wifi_off_title">Desligar o Wi-Fi de %1$s?</string>
+    <string name="pc_radio_wifi_off_text">Se este celular se conecta ao PC por Wi-Fi, a conexão vai cair e você vai precisar religar o Wi-Fi no PC.</string>
+    <string name="pc_radio_wifi_off_confirm">Desligar</string>
 </resources>
 
 

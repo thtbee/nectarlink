@@ -1686,4 +1686,9 @@
     <string name="media_center_page">%1$d von %2$d</string>
     <string name="media_center_phone_volume">Handy-Lautstärke</string>
     <string name="media_center_output">Wählen, wo es läuft</string>
+    <string name="pc_radio_wifi">WLAN</string>
+    <string name="pc_radio_bluetooth">Bluetooth</string>
+    <string name="pc_radio_wifi_off_title">WLAN von %1$s ausschalten?</string>
+    <string name="pc_radio_wifi_off_text">Wenn dieses Handy den PC über WLAN erreicht, bricht die Verbindung ab, und du musst das WLAN am PC wieder einschalten.</string>
+    <string name="pc_radio_wifi_off_confirm">Ausschalten</string>
 </resources>

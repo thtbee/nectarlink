@@ -20,6 +20,7 @@ pub mod media_sessions;
 #[path = "../linux/mp4.rs"]
 pub mod mp4;
 pub mod net;
+pub mod radios;
 pub mod share;
 pub mod share_target;
 pub mod shell;

@@ -3033,6 +3033,32 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         }
     }
 
+    /** Turns the PC's Wi-Fi and/or Bluetooth on or off (`pc.radio.set`, #636). */
+    fun setPcRadio(id: String, wifi: Boolean? = null, bluetooth: Boolean? = null) {
+        // Shown at once; the PC's next state confirms it or puts it back.
+        _state.update { s ->
+            val current = s.device(id)?.deckState ?: return@update s
+            s.reduce(
+                Event.DeckState(
+                    id = id,
+                    state = current.copy(wifi = wifi ?: current.wifi, bluetooth = bluetooth ?: current.bluetooth),
+                ),
+            )
+        }
+        enqueueRemoteOp { node ->
+            try {
+                node.setPcRadio(id, wifi, bluetooth)
+            } catch (e: NectarlinkException) {
+                if (e is NectarlinkException.Denied) {
+                    val name = _state.value.nameOf(id).orEmpty()
+                    _messages.tryEmit(context.getString(R.string.remote_denied_title, name))
+                } else if (e !is NectarlinkException.Offline) {
+                    _messages.tryEmit(describe(e))
+                }
+            }
+        }
+    }
+
     /** Makes [output], one of the PC's audio outputs, its default (`pc.audio.set { output }`). */
     fun setPcAudioOutput(id: String, output: String) {
         // Shown at once; the PC's next state confirms it or puts it back.
