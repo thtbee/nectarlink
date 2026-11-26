@@ -1671,6 +1671,11 @@
     <string name="your_reports_send">送信</string>
     <string name="deck_on">オン</string>
     <string name="deck_off">オフ</string>
+    <string name="media_center_title">再生中</string>
+    <string name="media_center_on_phone">このスマートフォン</string>
+    <string name="media_center_page">%2$d 件中 %1$d 件目</string>
+    <string name="media_center_phone_volume">スマートフォンの音量</string>
+    <string name="media_center_output">再生先を選ぶ</string>
 </resources>
 
 

@@ -113,6 +113,10 @@ While it's on the phone, Android's pointer acceleration is off (it's given back 
    - **Restart PC** and **Shut down PC** ask on the phone before they do it, and apps with unsaved work can still stop them. They aren't on Mac yet, and they can't be macro steps.
    - **Security gate for shell commands**: Tiles that execute custom PC shell commands, and macros with a shell command step, are blocked unless you also turn on **Run Deck shell commands** (`commands`, off by default) for that phone in PC **Settings › Devices**.
 
+### Now playing on the phone
+
+When more than one thing plays, or something plays on the phone itself, the phone's Home shows **Now playing**: every player on your PCs and on the phone, a page each to swipe through. Each has play and pause, previous and next, and the position in the track where the app allows seeking. A PC's player has that PC's volume and output; one on the phone has the phone's media volume and **Choose where it plays**, Android's own output switcher (its volume panel before Android 14). The phone's own players need notification access, as for showing them on the PC.
+
 ### 4. Phone Controls on PC Home
 
 The **Phone controls** section on your PC's Home screen lets you check and toggle your phone's hardware and sound settings from your desk:

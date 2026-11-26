@@ -694,6 +694,34 @@ fun HomeScreen(
                 )
             }
         }
+        // Everything that plays, on the PCs and here (#536). A single PC player
+        // is already on its PC's card, so this shows for two or more, or the phone's own.
+        item(key = "media_center", contentType = "media_center") {
+            val context = LocalContext.current
+            val core = remember(context) { (context.applicationContext as? NectarlinkApplication)?.core }
+            if (core != null) {
+                val pcPlayers by core.pcMedia.all.collectAsStateWithLifecycle()
+                val phonePlayers by core.phoneMedia.players.collectAsStateWithLifecycle()
+                val entries = remember(pcPlayers, phonePlayers, state.devices) {
+                    mediaEntries(pcPlayers, phonePlayers, state.devices.associate { it.id to it.deckState })
+                }
+                if (entries.size > 1 || entries.any { it is MediaEntry.OnPhone }) {
+                    MediaCenterCard(
+                        entries = entries,
+                        onPcCommand = { pc, player, action, position ->
+                            if (action == app.nectarlink.core.MediaAction.SEEK && position != null) {
+                                core.pcMedia.seek(pc, player, position.toLong())
+                            } else {
+                                core.pcMedia.command(pc, player, action)
+                            }
+                        },
+                        onPhoneCommand = { player, action, position -> core.phoneMedia.control(player, action, position) },
+                        onSetPcAudio = onSetPcAudio,
+                        onPickPcOutput = core::setPcAudioOutput,
+                    )
+                }
+            }
+        }
         items(state.devices.filter { !it.isAndroid }, key = { it.id }, contentType = { "pc_card" }) { device ->
             Box(
                 modifier = Modifier.guideHighlightRing(

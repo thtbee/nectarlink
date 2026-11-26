@@ -109,6 +109,22 @@ class PcMedia(
     private val _summaries = MutableStateFlow<Map<String, Summary>>(emptyMap())
     val summaries: StateFlow<Map<String, Summary>> = _summaries
 
+    /** One of a PC's players, for the media center (#536). */
+    @androidx.compose.runtime.Immutable
+    data class Player(
+        val pc: String,
+        val pcName: String,
+        val player: MediaPlayer,
+        val artwork: Bitmap?,
+        /** `SystemClock.elapsedRealtime` when [player]'s position was right. */
+        val atElapsedMs: Long,
+    )
+
+    private val _all = MutableStateFlow<List<Player>>(emptyList())
+
+    /** Every PC's players, playing ones first (#536). */
+    val all: StateFlow<List<Player>> = _all
+
     private data class Snapshot(val pc: String, val name: String, val players: List<MediaPlayer>)
     private val updates = Channel<Snapshot>(Channel.UNLIMITED)
 
@@ -173,6 +189,18 @@ class PcMedia(
                     )
                 }
             }.toMap()
+            _all.value = players.flatMap { (id, all) ->
+                all.map { p ->
+                    Player(
+                        pc = id,
+                        pcName = names[id].orEmpty(),
+                        // Without the artwork bytes: decoded once above.
+                        player = p.copy(art = null),
+                        artwork = p.artKey?.let { art["$id/$it"]?.first },
+                        atElapsedMs = now,
+                    )
+                }
+            }.sortedByDescending { it.player.playing }
             render()
         }
     }

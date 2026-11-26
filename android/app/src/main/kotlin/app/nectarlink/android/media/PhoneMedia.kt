@@ -27,6 +27,18 @@ import java.io.ByteArrayOutputStream
  * [PcMedia]) is left out, so a PC never gets its own music back.
  */
 class PhoneMedia(context: Context, private val onChange: (List<MediaPlayer>) -> Unit) {
+    /** What plays on this phone, for the media center (#536). */
+    data class Players(
+        val players: List<MediaPlayer>,
+        /** `SystemClock.elapsedRealtime` when their positions were right. */
+        val atElapsedMs: Long,
+    )
+
+    private val _players = kotlinx.coroutines.flow.MutableStateFlow(Players(emptyList(), 0L))
+
+    /** This phone's own players, playing ones first, for the media center (#536). */
+    val players: kotlinx.coroutines.flow.StateFlow<Players> = _players
+
     private val context = context.applicationContext
     private val manager = context.getSystemService(MediaSessionManager::class.java)
     private val main = Handler(Looper.getMainLooper())
@@ -78,6 +90,7 @@ class PhoneMedia(context: Context, private val onChange: (List<MediaPlayer>) -> 
             controllers = emptyMap()
             activeSeedColor = null
             lastSent = null
+            _players.value = Players(emptyList(), SystemClock.elapsedRealtime())
             onChange(emptyList())
         }
     }
@@ -229,6 +242,7 @@ class PhoneMedia(context: Context, private val onChange: (List<MediaPlayer>) -> 
             if (sameButLater(lastSent, lastSentAt, players, now)) return@execute
             lastSent = players
             lastSentAt = now
+            _players.value = Players(players, now)
             onChange(players)
         }
     }
@@ -241,6 +255,10 @@ class PhoneMedia(context: Context, private val onChange: (List<MediaPlayer>) -> 
             pm.getApplicationLabel(pm.getApplicationInfo(packageName, 0)).toString()
         }.getOrDefault(packageName)
     }
+
+    /** The media center's command for one of this phone's players (#536); false when it's gone. */
+    fun control(player: String, action: MediaAction, position: ULong? = null): Boolean =
+        runCatching { command(player, action, position) }.isSuccess
 
     /** A PC's command for one of the players last sent. */
     fun command(player: String, action: MediaAction, position: ULong?) {

@@ -114,8 +114,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     fun setPcSoundBufferMs(ms: Int) {
         pcSpeakerPlayer.bufferMs = ms
     }
-    /** What plays on this phone, for PCs (needs notification access). */
-    private val phoneMedia = PhoneMedia(this.context) { players ->
+    /** What plays on this phone, for PCs (needs notification access), and for the media center (#536). */
+    val phoneMedia = PhoneMedia(this.context) { players ->
         syncActiveMediaColor()
         enqueueNotificationOp { it.mediaChanged(players) }
     }

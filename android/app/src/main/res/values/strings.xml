@@ -1682,6 +1682,11 @@
     <string name="your_reports_send">Send</string>
     <string name="deck_on">On</string>
     <string name="deck_off">Off</string>
+    <string name="media_center_title">Now playing</string>
+    <string name="media_center_on_phone">this phone</string>
+    <string name="media_center_page">%1$d of %2$d</string>
+    <string name="media_center_phone_volume">Phone volume</string>
+    <string name="media_center_output">Choose where it plays</string>
 </resources>
 
 

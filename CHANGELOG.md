@@ -8,6 +8,10 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Now playing on the phone.** One card on the phone's Home with every player on your PCs and
+  on the phone, a page each to swipe through, with play and pause, previous and next, the
+  position, and the volume and output of where it plays. Thanks to
+  [@doodoobug-dot](https://github.com/doodoobug-dot) ([#536](https://github.com/thtbee/nectarlink/issues/536)).
 - **Read and answer replies to your reports in the app.** When someone answers a problem report
   you sent, the notification shows what they wrote, and you can reply right in it. **Your
   reports**, in Settings under Report a problem on the PC and on the phone's Report a problem

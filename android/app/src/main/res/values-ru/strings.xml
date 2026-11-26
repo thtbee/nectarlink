@@ -1553,4 +1553,9 @@
     <string name="your_reports_send">Отправить</string>
     <string name="deck_on">Вкл.</string>
     <string name="deck_off">Выкл.</string>
+    <string name="media_center_title">Сейчас играет</string>
+    <string name="media_center_on_phone">этом телефоне</string>
+    <string name="media_center_page">%1$d из %2$d</string>
+    <string name="media_center_phone_volume">Громкость телефона</string>
+    <string name="media_center_output">Выбрать, где играть</string>
 </resources>

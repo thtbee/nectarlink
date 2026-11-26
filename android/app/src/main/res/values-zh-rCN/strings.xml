@@ -1539,4 +1539,9 @@
     <string name="your_reports_send">发送</string>
     <string name="deck_on">开</string>
     <string name="deck_off">关</string>
+    <string name="media_center_title">正在播放</string>
+    <string name="media_center_on_phone">这部手机</string>
+    <string name="media_center_page">第 %1$d 个，共 %2$d 个</string>
+    <string name="media_center_phone_volume">手机音量</string>
+    <string name="media_center_output">选择播放位置</string>
 </resources>

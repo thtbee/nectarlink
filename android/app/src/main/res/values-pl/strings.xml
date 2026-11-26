@@ -1698,6 +1698,11 @@
     <string name="your_reports_send">Wyślij</string>
     <string name="deck_on">Wł.</string>
     <string name="deck_off">Wył.</string>
+    <string name="media_center_title">Teraz odtwarzane</string>
+    <string name="media_center_on_phone">tym telefonie</string>
+    <string name="media_center_page">%1$d z %2$d</string>
+    <string name="media_center_phone_volume">Głośność telefonu</string>
+    <string name="media_center_output">Wybierz, gdzie grać</string>
 </resources>
 
 

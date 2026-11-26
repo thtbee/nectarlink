@@ -1680,6 +1680,11 @@
     <string name="your_reports_send">Gönder</string>
     <string name="deck_on">Açık</string>
     <string name="deck_off">Kapalı</string>
+    <string name="media_center_title">Şimdi çalıyor</string>
+    <string name="media_center_on_phone">bu telefon</string>
+    <string name="media_center_page">%2$d içinden %1$d</string>
+    <string name="media_center_phone_volume">Telefon ses düzeyi</string>
+    <string name="media_center_output">Nerede çalacağını seç</string>
 </resources>
 
 

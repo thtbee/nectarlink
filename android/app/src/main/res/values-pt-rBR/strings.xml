@@ -1681,6 +1681,11 @@
     <string name="your_reports_send">Enviar</string>
     <string name="deck_on">Ligado</string>
     <string name="deck_off">Desligado</string>
+    <string name="media_center_title">Tocando agora</string>
+    <string name="media_center_on_phone">este celular</string>
+    <string name="media_center_page">%1$d de %2$d</string>
+    <string name="media_center_phone_volume">Volume do celular</string>
+    <string name="media_center_output">Escolher onde tocar</string>
 </resources>
 
 
