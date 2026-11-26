@@ -233,6 +233,26 @@ object InputServer {
 
     @Volatile private var clipListenerProxy: Any? = null
 
+    /** The clipboard service and its listener calls, once the watcher found them. */
+    @Volatile private var clipWatch: Triple<Any, Method, Method?>? = null
+    @Volatile private var clipWatching = false
+    private val clipWatchLock = Any()
+
+    /**
+     * Starts or stops passing the phone's copies to the app (#655): only
+     * while some device takes them by itself. Stopping unregisters the
+     * listener, so the helper reads nothing from the clipboard.
+     */
+    private fun watchClipboard(on: Boolean) = synchronized(clipWatchLock) {
+        if (on == clipWatching) return@synchronized
+        val (clipboard, add, remove) = clipWatch ?: return@synchronized
+        val proxy = clipListenerProxy ?: return@synchronized
+        val method = if (on) add else remove ?: return@synchronized
+        runCatching { method.invoke(clipboard, *buildClipboardArgs(method.parameterTypes, proxy, null)) }
+            .onSuccess { clipWatching = on }
+            .onFailure { System.err.println("can't ${if (on) "start" else "stop"} watching the clipboard: $it") }
+    }
+
     /** The clipboard service and its setPrimaryClip, once the watcher found them. */
     @Volatile private var clipService: Pair<Any, Method>? = null
     @Volatile private var clipGet: Method? = null
@@ -318,7 +338,12 @@ object InputServer {
             }
             proxyRef = proxy
             clipListenerProxy = proxy
-            addMethod.invoke(clipboard, *buildClipboardArgs(addMethod.parameterTypes, proxy, null))
+            val removeMethod = clipboard.javaClass.methods.firstOrNull { it.name == "removePrimaryClipChangedListener" }
+            synchronized(clipWatchLock) {
+                clipWatch = Triple(clipboard, addMethod, removeMethod)
+                addMethod.invoke(clipboard, *buildClipboardArgs(addMethod.parameterTypes, proxy, null))
+                clipWatching = true
+            }
         }.onFailure {
             System.err.println("clipboard watcher unavailable: $it")
         }
@@ -929,6 +954,7 @@ object InputServer {
                 "P" -> if (display < 0) setDisplayPower(rest.trim() != "0")
                 "B" -> if (display < 0) setClipboard(rest)
                 "X" -> if (display < 0) clearClipboard(rest)
+                "W" -> if (display < 0) watchClipboard(rest.trim() != "0")
             }
         }
 

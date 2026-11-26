@@ -594,6 +594,11 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **Copy and paste on the phone works with Elevated on** for phones where it pasted nothing in
+  every app (a Xiaomi with HyperOS). Elevated only watches the clipboard while some device takes
+  the phone's copies by itself, so with **Share my clipboard with it** off for every device, it
+  doesn't touch the clipboard. Thanks to [@golip37](https://github.com/golip37)
+  ([#655](https://github.com/thtbee/nectarlink/issues/655)).
 - **Clicking Play on a phone video in Photos more than once downloads it once.** The button shows
   that it's fetching and waits. Thanks to [@SolomonNumb1](https://github.com/SolomonNumb1)
   ([#666](https://github.com/thtbee/nectarlink/pull/666)).

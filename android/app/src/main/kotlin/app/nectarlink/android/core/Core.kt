@@ -456,6 +456,16 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             app.nectarlink.android.diag.Crashes.noteExits(context)
             // Today's count, and a report that couldn't be sent before; off the start path.
             currentRunScope.launch(Dispatchers.IO) { runCatching { app.nectarlink.android.diag.Reports.followUp(context) } }
+            // The Elevated helper watches the clipboard only while some device takes
+            // this phone's copies by itself (#655).
+            currentRunScope.launch {
+                combine(
+                    _state.map { s -> s.devices.map { it.id } }.distinctUntilChanged(),
+                    app.nectarlink.android.clipboard.ClipboardPeers.notShared(context),
+                ) { ids, notShared -> ids.any { it !in notShared } }
+                    .distinctUntilChanged()
+                    .collect { app.nectarlink.android.elevated.Elevated.setClipboardWatch(it) }
+            }
             val initialAwayMode = app.nectarlink.android.ui.Preferences.isAwayModeEnabled(context)
             val initialUsbOnly = app.nectarlink.android.ui.Preferences.isUsbOnlyEnabled(context)
             val options = NodeOptions(

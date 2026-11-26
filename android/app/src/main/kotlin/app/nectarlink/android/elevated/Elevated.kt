@@ -116,6 +116,12 @@ object Elevated {
     /** Where the helper listens, and the token it wants, while it runs. */
     @Volatile private var helper: Pair<Int, String>? = null
     @Volatile private var screenOffRequested = false
+
+    /**
+     * Whether the helper watches the clipboard: only while some device takes
+     * this phone's copies by itself (#655). It's on until the app says.
+     */
+    @Volatile private var clipboardWatchWanted = true
     @Volatile private var serviceClient: NectarlinkServiceClient? = null
     @Volatile private var serviceStatus: ServiceStatus? = null
 
@@ -878,6 +884,7 @@ object Elevated {
         input = writer
         _state.value = State.Running
         if (screenOffRequested) send(writer, "P 0")
+        send(writer, "W ${if (clipboardWatchWanted) 1 else 0}")
         compileIfUpdated()
         checkCallAudio()
         Thread {
@@ -1458,6 +1465,18 @@ object Elevated {
         val power = context.getSystemService(android.os.PowerManager::class.java)
         if (power?.isInteractive != false) return true
         return send(writer, "K ${KeyEvent.KEYCODE_WAKEUP}")
+    }
+
+    /**
+     * Has the helper watch the clipboard, or stop: it only needs to while some
+     * device takes this phone's copies by itself. On some phones (a Xiaomi
+     * with HyperOS) its watching left paste empty in every app (#655).
+     */
+    fun setClipboardWatch(on: Boolean) {
+        if (clipboardWatchWanted == on) return
+        clipboardWatchWanted = on
+        val writer = input ?: return
+        send(writer, "W ${if (on) 1 else 0}")
     }
 
     /** Turns the physical screen panel off or back on while mirroring. */
