@@ -7169,6 +7169,11 @@ What it needs
         <source>Wait for the screen to appear first.</source>
         <translation>请等待屏幕先显示出来。</translation>
     </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Open</source>
+        <translation>打开</translation>
+    </message>
 </context>
 <context>
     <name>MirrorWindow</name>
@@ -8770,6 +8775,16 @@ What it needs
         <location filename="rust_strings.h" line="489"/>
         <source>Recording from %1 saved</source>
         <translation>已保存来自 %1 的录音</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Open</source>
+        <translation>打开</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Show in folder</source>
+        <translation>在文件夹中显示</translation>
     </message>
 </context>
 <context>
@@ -12871,6 +12886,16 @@ What it needs
         <location filename="rust_strings.h" line="561"/>
         <source>There&apos;s nothing to send in there.</source>
         <translation>那里没有可发送的内容。</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Open</source>
+        <translation>打开</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Show in folder</source>
+        <translation>在文件夹中显示</translation>
     </message>
 </context>
 <context>

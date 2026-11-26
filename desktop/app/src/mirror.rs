@@ -718,7 +718,10 @@ pub fn screenshot_file(window: Window) {
         attribution: "NectarLink".into(),
         icon: None,
         image: Some(path),
-        actions: vec![(ACTION_OPEN.into(), "Open".into()), (ACTION_SHOW.into(), "Show in folder".into())],
+        actions: vec![
+            (ACTION_OPEN.into(), tr!("Mirror", "Open")),
+            (ACTION_SHOW.into(), tr!("Mirror", "Show in folder")),
+        ],
         reply: None,
         silent: false,
         progress: None,
@@ -881,7 +884,7 @@ pub fn stop_recording(window: Window) {
                     icon: None,
                     image: None,
                     actions: vec![
-                        (ACTION_OPEN.into(), "Open".into()),
+                        (ACTION_OPEN.into(), tr!("Mirror", "Open")),
                         (ACTION_SHOW.into(), tr!("Mirror", "Show in folder")),
                     ],
                     reply: None,

@@ -7146,6 +7146,11 @@ What it needs
         <source>Wait for the screen to appear first.</source>
         <translation>Дождитесь, пока появится экран.</translation>
     </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Open</source>
+        <translation>Открыть</translation>
+    </message>
 </context>
 <context>
     <name>MirrorWindow</name>
@@ -8745,6 +8750,16 @@ What it needs
         <location filename="rust_strings.h" line="489"/>
         <source>Recording from %1 saved</source>
         <translation>Запись с %1 сохранена</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Open</source>
+        <translation>Открыть</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Show in folder</source>
+        <translation>Показать в папке</translation>
     </message>
 </context>
 <context>
@@ -12818,6 +12833,16 @@ What it needs
         <location filename="rust_strings.h" line="561"/>
         <source>There&apos;s nothing to send in there.</source>
         <translation>Там нечего отправлять.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Open</source>
+        <translation>Открыть</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Show in folder</source>
+        <translation>Показать в папке</translation>
     </message>
 </context>
 <context>

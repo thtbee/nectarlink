@@ -7173,6 +7173,11 @@ Voraussetzungen
         <source>Wait for the screen to appear first.</source>
         <translation>Warte zuerst, bis der Bildschirm angezeigt wird.</translation>
     </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Open</source>
+        <translation>Öffnen</translation>
+    </message>
 </context>
 <context>
     <name>MirrorWindow</name>
@@ -8775,6 +8780,16 @@ Voraussetzungen
         <location filename="rust_strings.h" line="489"/>
         <source>Recording from %1 saved</source>
         <translation>Aufnahme von %1 gespeichert</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Open</source>
+        <translation>Öffnen</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Show in folder</source>
+        <translation>Im Ordner anzeigen</translation>
     </message>
 </context>
 <context>
@@ -12876,6 +12891,16 @@ Voraussetzungen
         <location filename="rust_strings.h" line="561"/>
         <source>There&apos;s nothing to send in there.</source>
         <translation>Dort gibt es nichts zu senden.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Open</source>
+        <translation>Öffnen</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Show in folder</source>
+        <translation>Im Ordner anzeigen</translation>
     </message>
 </context>
 <context>

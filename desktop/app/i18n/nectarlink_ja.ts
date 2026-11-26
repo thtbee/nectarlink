@@ -7133,6 +7133,11 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
         <source>Wait for the screen to appear first.</source>
         <translation>まず画面が表示されるまでお待ちください。</translation>
     </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Open</source>
+        <translation>開く</translation>
+    </message>
 </context>
 <context>
     <name>MirrorWindow</name>
@@ -8726,6 +8731,16 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
         <location filename="rust_strings.h" line="489"/>
         <source>Recording from %1 saved</source>
         <translation>%1からの録音を保存しました</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Open</source>
+        <translation>開く</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Show in folder</source>
+        <translation>フォルダーで表示</translation>
     </message>
 </context>
 <context>
@@ -12791,6 +12806,16 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
         <location filename="rust_strings.h" line="561"/>
         <source>There&apos;s nothing to send in there.</source>
         <translation>そこに送信するものはありません。</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Open</source>
+        <translation>開く</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Show in folder</source>
+        <translation>フォルダーで表示</translation>
     </message>
 </context>
 <context>

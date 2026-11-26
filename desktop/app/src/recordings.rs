@@ -1239,7 +1239,10 @@ pub fn on_done(transfer: Transfer) {
             attribution: "NectarLink".into(),
             icon: None,
             image: None,
-            actions: vec![(ACTION_OPEN.into(), "Open".into()), (ACTION_SHOW.into(), "Show in folder".into())],
+            actions: vec![
+                (ACTION_OPEN.into(), tr!("Recordings", "Open")),
+                (ACTION_SHOW.into(), tr!("Recordings", "Show in folder")),
+            ],
             reply: None,
             silent: false,
             progress: None,

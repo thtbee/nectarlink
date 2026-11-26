@@ -594,6 +594,9 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **The Open and Show in folder buttons on the PC's notifications are in your language** for
+  received files, recordings and screenshots, not always in English. Thanks to
+  [@yiriyangguang](https://github.com/yiriyangguang) ([#659](https://github.com/thtbee/nectarlink/issues/659)).
 - **What's new on the phone no longer closes the app** when two lines of the notes read the
   same ([#594](https://github.com/thtbee/nectarlink/issues/594)).
 - **A failure in one of the phone's answers to the PC no longer takes the connection down.**

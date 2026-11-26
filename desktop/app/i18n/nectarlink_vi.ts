@@ -7138,6 +7138,11 @@ Nó cần gì
         <source>Wait for the screen to appear first.</source>
         <translation>Hãy đợi màn hình xuất hiện trước.</translation>
     </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Open</source>
+        <translation>Mở</translation>
+    </message>
 </context>
 <context>
     <name>MirrorWindow</name>
@@ -8735,6 +8740,16 @@ Nó cần gì
         <location filename="rust_strings.h" line="489"/>
         <source>Recording from %1 saved</source>
         <translation>Đã lưu bản ghi từ %1</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Open</source>
+        <translation>Mở</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Show in folder</source>
+        <translation>Hiện trong thư mục</translation>
     </message>
 </context>
 <context>
@@ -12808,6 +12823,16 @@ Nó cần gì
         <location filename="rust_strings.h" line="561"/>
         <source>There&apos;s nothing to send in there.</source>
         <translation>Không có gì để gửi ở đó.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Open</source>
+        <translation>Mở</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Show in folder</source>
+        <translation>Hiện trong thư mục</translation>
     </message>
 </context>
 <context>

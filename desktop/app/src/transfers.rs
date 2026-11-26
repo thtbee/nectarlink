@@ -358,7 +358,10 @@ pub fn on_event(event: &NodeEvent) {
         attribution: "NectarLink".into(),
         icon: None,
         image: None,
-        actions: vec![(ACTION_OPEN.into(), "Open".into()), (ACTION_SHOW.into(), "Show in folder".into())],
+        actions: vec![
+            (ACTION_OPEN.into(), tr!("Transfers", "Open")),
+            (ACTION_SHOW.into(), tr!("Transfers", "Show in folder")),
+        ],
         reply: None,
         silent: false,
         progress: None,
