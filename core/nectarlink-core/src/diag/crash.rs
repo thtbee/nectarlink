@@ -37,7 +37,8 @@ pub struct CrashRecord {
     /// The same for the same bug: 12 hex digits.
     pub sig: String,
     /// `panic`, `native` (Windows' record of a crash), `exception`
-    /// (Android's Java/Kotlin) or `anr`.
+    /// (Android's Java/Kotlin), `anr`, or `caught` (an exception the app
+    /// caught and carried on from: in reports, never on the crash card).
     pub kind: String,
     /// Where: `crate/src/file.rs:12:5`, a module name, a class.
     pub location: String,
@@ -307,16 +308,20 @@ fn save_card_file(dir: &Path, file: &CardFile) {
     }
 }
 
+/// A record's kind for an exception the app caught and carried on from.
+pub const CAUGHT: &str = "caught";
+
 /// The crash the crash card should offer to report: the newest one from
 /// this `version` in the last week that it hasn't shown, unless the card
-/// is turned off. Once per crash per version.
+/// is turned off. Once per crash per version. Never a caught exception.
 pub fn for_card(dir: &Path, version: &str, now: u64) -> Option<CrashRecord> {
     let file = card_file(dir);
     if file.off {
         return None;
     }
     records(dir).into_iter().find(|r| {
-        r.version == version
+        r.kind != CAUGHT
+            && r.version == version
             && now.saturating_sub(r.at) < CARD_DAYS * 86_400
             && !file.shown.iter().any(|s| *s == format!("{}@{}", r.sig, r.version))
     })
@@ -471,5 +476,26 @@ mod tests {
         assert!(for_card(dir.path(), "0.1.7", now).is_some());
         card_off(dir.path());
         assert_eq!(for_card(dir.path(), "0.1.7", now), None);
+    }
+
+    #[test]
+    fn a_caught_exception_never_gets_the_crash_card() {
+        let dir = tempfile::tempdir().unwrap();
+        let now = 2_000_000_000;
+        let caught = CrashRecord {
+            sig: "dddddddddddd".into(),
+            kind: CAUGHT.into(),
+            location: "Platform.setClipboard < app.nectarlink.android.core.PhoneClipboard.write".into(),
+            message: "java.lang.SecurityException".into(),
+            thread: None,
+            version: "0.1.6".into(),
+            at: now - 60,
+        };
+        fs::create_dir_all(dir.path().join(CRASH_DIR)).unwrap();
+        fs::write(dir.path().join(CRASH_DIR).join("caught.json"), serde_json::to_vec(&caught).unwrap())
+            .unwrap();
+        assert_eq!(for_card(dir.path(), "0.1.6", now), None);
+        // It's still kept, for problem reports.
+        assert_eq!(records(dir.path()).len(), 1);
     }
 }

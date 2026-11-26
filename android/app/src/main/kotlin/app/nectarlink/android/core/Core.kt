@@ -468,7 +468,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 usbPort = 53319u.toUShort(),
             )
             val started = try {
-                NectarlinkNode.start(options, platform, KeystoreKeyProtector(), this@Core)
+                NectarlinkNode.start(options, GuardedPlatform(context, platform), KeystoreKeyProtector(), this@Core)
             } catch (e: NectarlinkException) {
                 Log.e(TAG, "core failed to start", e)
                 _state.update { it.copy(status = CoreStatus.Failed(e.message ?: e.javaClass.simpleName)) }
@@ -885,7 +885,16 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     /** Voice recordings stored on this phone and their delivery status to PCs. */
     val recordings = RecordingsStore(this.context)
 
+    // An exception here would reach the core as a panic: caught and recorded instead.
     override fun onEvent(event: Event) {
+        try {
+            handle(event)
+        } catch (e: Exception) {
+            app.nectarlink.android.diag.Crashes.caught(context, "Core.onEvent", e)
+        }
+    }
+
+    private fun handle(event: Event) {
         if (event is Event.Transfer) {
             val transfer = event.transfer
             val isRunningProgress = transfer.status is TransferStatus.Running &&
@@ -2350,9 +2359,13 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 emptyList()
             }) +
             (if (Elevated.hasCapability(NectarlinkServiceContract.CAP_CLIPBOARD_SYNC)) listOf("clip.read.auto") else emptyList()) +
-            // Apps in windows of their own run on displays the Elevated helper makes.
+            // Apps in windows of their own run on displays the Elevated helper makes,
+            // and only where Android runs apps on other displays: some phones
+            // (Android Go ones among them) leave that out and open the app on the
+            // phone's own screen instead (#635).
             (if (Elevated.hasCapability(NectarlinkServiceContract.CAP_APP_VIRTUAL_DISPLAY) &&
-                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
+                    context.packageManager.hasSystemFeature(PackageManager.FEATURE_ACTIVITIES_ON_SECONDARY_DISPLAYS)) {
                 listOf("mirror.virtual_display")
             } else {
                 emptyList()

@@ -44,6 +44,22 @@ object Crashes {
         }
     }
 
+    /**
+     * Keeps a record of [error], caught in [where] and survived: the same
+     * record as a crash's (kind `caught`), so a report says what failed even
+     * though nothing closed.
+     */
+    fun caught(context: Context, where: String, error: Throwable) {
+        android.util.Log.w("NectarLink", "caught in $where", error)
+        runCatching {
+            val record = exceptionRecord(error, Thread.currentThread().name, BuildConfig.VERSION_NAME, now())
+            save(
+                dir(context).resolve("crashes"),
+                record.copy(kind = "caught", location = cut("$where < ${record.location}")),
+            )
+        }
+    }
+
     /** A crash record, as the core writes it. */
     internal data class Record(
         val kind: String,

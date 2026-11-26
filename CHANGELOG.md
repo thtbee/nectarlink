@@ -570,6 +570,18 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **What's new on the phone no longer closes the app** when two lines of the notes read the
+  same ([#594](https://github.com/thtbee/nectarlink/issues/594)).
+- **A failure in one of the phone's answers to the PC no longer takes the connection down.**
+  It's caught and kept for problem reports with where it happened
+  ([#597](https://github.com/thtbee/nectarlink/issues/597)).
+- **The PC's volume no longer jumps to full when an app opens on some phones** (HyperOS) while
+  the phone's volume buttons control the PC. A sudden jump up that isn't from the buttons or the
+  volume panel is left alone; turning it down always works
+  ([#643](https://github.com/thtbee/nectarlink/issues/643)).
+- **App windows aren't offered on phones that can't run apps on another display** (some Android
+  Go phones), instead of opening the app on the phone's own screen
+  ([#635](https://github.com/thtbee/nectarlink/issues/635)).
 - **A laptop's battery now shows on the phone**: on the PC's card, in the PC widget and on the
   Desk clock. The phone could show it, but the PC never sent it. Thanks to
   [@M-P-A](https://github.com/M-P-A) ([#636](https://github.com/thtbee/nectarlink/issues/636)).

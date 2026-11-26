@@ -13,7 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -215,7 +215,8 @@ private fun WhatsNewSheet(summary: WhatsNew.Summary?, onDismiss: () -> Unit) {
                         modifier = Modifier.padding(top = if (index == 0) 4.dp else 12.dp),
                     )
                 }
-                items(group.items, key = { "item$index:$it" }) { line ->
+                // By position: two lines can read the same, and LazyColumn throws on a repeated key.
+                itemsIndexed(group.items, key = { at, _ -> "item$index:$at" }) { _, line ->
                     Row(verticalAlignment = Alignment.Top) {
                         Box(
                             Modifier

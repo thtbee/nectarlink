@@ -2640,6 +2640,14 @@ pub enum UnlockRefusal {
     KeyGone,
 }
 
+// An exception in the app's answer: declined, so nothing it keeps is undone.
+impl From<uniffi::UnexpectedUniFFICallbackError> for UnlockRefusal {
+    fn from(e: uniffi::UnexpectedUniFFICallbackError) -> Self {
+        tracing::warn!(reason = %e.reason, "the app failed answering an unlock");
+        UnlockRefusal::Declined
+    }
+}
+
 impl From<UnlockRefusal> for core::unlock::KeyRefusal {
     fn from(r: UnlockRefusal) -> Self {
         match r {
