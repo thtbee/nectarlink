@@ -126,10 +126,20 @@ pub struct Step {
     /// Counts to send.
     pub dx: i32,
     pub dy: i32,
-    /// The pointer is at the edge facing the PC and the mouse pushes on:
-    /// time to ask the phone where it really is, and come back if it's there.
+    /// Time to ask the phone where its pointer really is, and come back if
+    /// it's at the edge facing the PC: the mouse pushes on at that edge as
+    /// the PC reckons it, or has gone a good way towards it since the phone
+    /// last said (the PC's reckoning drifts from the phone's own, so a pointer
+    /// already at the edge isn't left waiting for the count to get there).
     pub pushing_out: bool,
 }
+
+/// Counts towards the edge facing the PC between checks with the phone.
+const CHECK_COUNTS: i32 = 40;
+
+/// Counts towards the edge facing the PC after which a pointer the phone
+/// still says is in the same place counts as stuck.
+const STUCK_COUNTS: i32 = 20;
 
 /// The phone's pointer, as the PC follows it.
 #[derive(Debug, Clone)]
@@ -142,6 +152,9 @@ pub struct OnPhone {
     carry_y: f32,
     /// Where the phone last said its pointer was, short of the edge.
     last_report: Option<PointerAt>,
+    /// Counts sent towards the edge facing the PC since the phone last said
+    /// where its pointer was (never below 0).
+    towards_exit: i32,
 }
 
 /// What the phone's answer to "where is your pointer?" means.
@@ -174,6 +187,7 @@ impl OnPhone {
             carry_x: 0.0,
             carry_y: 0.0,
             last_report: None,
+            towards_exit: 0,
         }
     }
 
@@ -191,10 +205,12 @@ impl OnPhone {
         let (max_x, max_y) = (self.screen.width.max(1) as f32 - 1.0, self.screen.height.max(1) as f32 - 1.0);
         self.x = (self.x + counts_x * scale).clamp(0.0, max_x);
         self.y = (self.y + counts_y * scale).clamp(0.0, max_y);
-        let pushing_out = match self.edge {
-            PointerEdge::Left => dx < 0 && self.x <= 0.0,
-            PointerEdge::Right => dx > 0 && self.x >= max_x,
+        let (towards, at_edge) = match self.edge {
+            PointerEdge::Left => (-counts_x as i32, dx < 0 && self.x <= 0.0),
+            PointerEdge::Right => (counts_x as i32, dx > 0 && self.x >= max_x),
         };
+        self.towards_exit = (self.towards_exit + towards).max(0);
+        let pushing_out = at_edge || (towards > 0 && self.towards_exit >= CHECK_COUNTS);
         Step { dx: counts_x as i32, dy: counts_y as i32, pushing_out }
     }
 
@@ -210,6 +226,7 @@ impl OnPhone {
     /// The phone said its pointer is at `at`, asked when the PC reckoned it
     /// at the edge facing the PC. Follows it from there unless it's coming back.
     pub fn reported(&mut self, at: PointerAt) -> Report {
+        let moved_towards = std::mem::take(&mut self.towards_exit);
         if self.at_exit(at) {
             self.resync(at);
             return Report::AtExit;
@@ -218,7 +235,7 @@ impl OnPhone {
             self.last_report.is_some_and(|last| (last.x - at.x).abs() < 1.0 && (last.y - at.y).abs() < 1.0);
         self.last_report = Some(at);
         self.resync(at);
-        if same { Report::Stuck } else { Report::Elsewhere }
+        if same && moved_towards >= STUCK_COUNTS { Report::Stuck } else { Report::Elsewhere }
     }
 
     /// Where the phone says its pointer really is (Android moved it on its
@@ -571,11 +588,29 @@ mod tests {
         let at = |x: f32, y: f32| PointerAt { x, y };
         // Android moved it on its own: followed from there.
         assert_eq!(on.reported(at(300.0, 900.0)), Report::Elsewhere);
-        // Moved all the way to the edge since, yet the phone says the same place.
+        // Barely moved towards the PC since: the same place is no surprise.
+        on.moved(-10, 0);
+        assert_eq!(on.reported(at(300.0, 900.0)), Report::Elsewhere);
+        // Moved well towards the PC since, yet the phone says the same place.
+        on.moved(-100, 0);
         assert_eq!(on.reported(at(300.0, 900.0)), Report::Stuck);
         // Somewhere new is followed again, and the edge brings it back.
         assert_eq!(on.reported(at(500.0, 100.0)), Report::Elsewhere);
         assert_eq!(on.reported(at(0.0, 100.0)), Report::AtExit);
+    }
+
+    #[test]
+    fn going_towards_the_pc_it_checks_with_the_phone_before_its_count_reaches_the_edge() {
+        // The PC reckons the pointer far from the edge, as after drift.
+        let mut on = OnPhone::new(phone(), PointerEdge::Left, 0.5);
+        on.resync(PointerAt { x: 900.0, y: 1200.0 });
+        // 2 pixels a count: 38 counts towards the PC, no check yet.
+        assert!(!on.moved(-76, 0).pushing_out);
+        // Past 40: asks, though the count says it's nowhere near the edge.
+        assert!(on.moved(-6, 0).pushing_out);
+        // Away from the PC never asks.
+        let mut away = OnPhone::new(phone(), PointerEdge::Left, 0.5);
+        assert!(!away.moved(400, 0).pushing_out);
     }
 
     #[test]
