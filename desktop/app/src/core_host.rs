@@ -157,6 +157,8 @@ pub fn compute_capabilities(
         if crate::win::radios::available() {
             caps.push(nectarlink_core::PC_RADIOS.into());
         }
+        // Another PC's mouse, over the edge of its screen (D432).
+        caps.push(nectarlink_core::MIRROR_POINTER.into());
         caps.push(nectarlink_core::PC_SHUTDOWN.into());
         // Only while hibernation is on: Windows can turn it off (#355).
         if crate::win::shell::can_hibernate() {

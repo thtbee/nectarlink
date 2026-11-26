@@ -8,6 +8,10 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **One mouse and keyboard for two PCs.** Set another paired PC **Beside this PC** on the left
+  or right, and the mouse goes over that edge of the screen onto it, with the keyboard typing
+  there, no phone needed. The other PC asks first. From Windows, to Windows or Linux. Thanks to
+  [@ManuZhu0728](https://github.com/ManuZhu0728) ([#432](https://github.com/thtbee/nectarlink/discussions/432)).
 - **Now playing on the phone.** One card on the phone's Home with every player on your PCs and
   on the phone, a page each to swipe through, with play and pause, previous and next, the
   position, and the volume and output of where it plays. Thanks to

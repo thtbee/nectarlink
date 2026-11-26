@@ -914,6 +914,17 @@ pub fn move_relative(dx: f32, dy: f32) {
     }
 }
 
+/// The main screen's size in pixels, where another PC's mouse moves (D432).
+pub fn main_screen_size() -> Option<(i32, i32)> {
+    let (w, h) = display_dimensions();
+    (w > 0 && h > 0).then_some((w, h))
+}
+
+/// Moves the cursor to `(x, y)` (`0.0..=1.0`) of the main screen (D432).
+pub fn move_to_main(x: f32, y: f32) {
+    move_absolute(x, y);
+}
+
 /// Moves the mouse cursor to normalized coordinates `(x, y)` on the primary
 /// display (`0.0..=1.0`).
 pub fn move_absolute(x: f32, y: f32) {

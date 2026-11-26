@@ -2923,6 +2923,52 @@ async fn the_phone_screen_streams_to_the_pc() {
     assert_eq!(shown, ["sink 0", "sink 0"], "the screen and its sound");
 }
 
+/// One PC's mouse and keyboard on another (D432): the other PC takes them
+/// only with remote input on for it, asking once while it's off.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_pcs_mouse_goes_over_to_another_pc_with_remote_input_on() {
+    use nectarlink_core::{PointerEdge, PointerMove};
+    let mut left = device_with("Laptop", DeviceKind::Desktop, &[nectarlink_core::MIRROR_VIEW]).await;
+    let mut right = device_with(
+        "Desktop",
+        DeviceKind::Desktop,
+        &[nectarlink_core::MIRROR_VIEW, nectarlink_core::MIRROR_POINTER, nectarlink_core::INPUT_INJECT],
+    )
+    .await;
+    pair_qr(&mut left, &mut right).await;
+    let (left_id, right_id) = (left.node.device_id(), right.node.device_id());
+
+    // Remote input is off for the laptop: refused, and the desktop asks once.
+    assert!(matches!(left.node.pointer_enter(right_id, PointerEdge::Left, 0.5).await, Err(Error::Denied)));
+    wait_for(&mut right, "the remote input prompt", |e| match e {
+        NodeEvent::RemoteInputRequested { device } if *device == left_id => Some(()),
+        _ => None,
+    })
+    .await;
+    // A move sent anyway lands while it's still off, and goes nowhere.
+    let _ = left.node.pointer_move(right_id, PointerMove { dx: 5, dy: 0, buttons: 0, wheel: 0 }).await;
+    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+    assert!(right.platform.mirror_asks.lock().unwrap().is_empty());
+
+    right.node.set_device_toggle(left_id, "remote_input", true).unwrap();
+    let screen = left.node.pointer_enter(right_id, PointerEdge::Left, 0.25).await.unwrap();
+    assert_eq!((screen.width, screen.height), (1080, 2400));
+    left.node.pointer_move(right_id, PointerMove { dx: 7, dy: 3, buttons: 1, wheel: 0 }).await.unwrap();
+    let at = left.node.pointer_where(right_id).await.unwrap();
+    assert_eq!((at.x, at.y), (0.0, 600.0));
+    left.node.pointer_leave(right_id).await.unwrap();
+
+    let deadline = tokio::time::Instant::now() + WAIT;
+    let asks = loop {
+        let asks = right.platform.mirror_asks.lock().unwrap().clone();
+        if asks.iter().any(|a| a == "pointer out") || tokio::time::Instant::now() >= deadline {
+            break asks;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+    };
+    assert_eq!(asks, ["pointer in Left 0.25", "pointer 7,3 b1 w0", "pointer out"]);
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn the_pcs_mouse_goes_over_to_a_phone_that_takes_it() {
     use nectarlink_core::{PointerEdge, PointerMove};

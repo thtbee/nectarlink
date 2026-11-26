@@ -11813,6 +11813,11 @@ Wymagania
         <source>The reports you sent, the answers to them, and a place to reply without a GitHub account.</source>
         <translation>Wysłane zgłoszenia, odpowiedzi na nie i miejsce, by odpowiadać bez konta GitHub.</translation>
     </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Move the mouse past that edge of the screen to use it on that PC, and type there with this keyboard. Move it back, or press Ctrl+Alt+Esc, to return. That PC asks the first time, or turn on Remote mouse, keyboard &amp; Deck for this PC there.</source>
+        <translation>Przesuń mysz za tę krawędź ekranu, aby używać jej na tamtym komputerze i pisać tam tą klawiaturą. Wróć, przesuwając ją z powrotem lub naciskając Ctrl+Alt+Esc. Tamten komputer pyta za pierwszym razem; możesz też włączyć tam Zdalna mysz, klawiatura i Deck dla tego komputera.</translation>
+    </message>
 </context>
 <context>
     <name>Setup</name>

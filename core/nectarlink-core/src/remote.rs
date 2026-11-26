@@ -162,7 +162,10 @@ fn check_allowed_with(
     Ok(())
 }
 
-fn check_allowed(shared: &Shared, peer: &DeviceId) -> std::result::Result<(), (ErrorCode, &'static str)> {
+pub(crate) fn check_allowed(
+    shared: &Shared,
+    peer: &DeviceId,
+) -> std::result::Result<(), (ErrorCode, &'static str)> {
     check_allowed_with(shared, peer, false)
 }
 

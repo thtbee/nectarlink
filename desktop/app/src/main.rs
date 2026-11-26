@@ -56,6 +56,7 @@ mod phone_sound;
 mod photo_backup;
 mod photos;
 mod play_on_phone;
+mod pointer_in;
 // The arithmetic builds and is tested everywhere; only Windows takes the mouse so far.
 #[cfg_attr(not(windows), allow(dead_code))]
 mod pointer_flow;
@@ -274,6 +275,24 @@ impl Platform for DesktopPlatform {
         bluetooth: Option<bool>,
     ) -> Result<(), String> {
         deck::handle_set_radio(wifi, bluetooth)
+    }
+    // Another PC's mouse on this one (D432).
+    fn pointer_enter(
+        &self,
+        peer: &nectarlink_core::DeviceId,
+        edge: nectarlink_core::PointerEdge,
+        y: f32,
+    ) -> Result<nectarlink_core::PointerScreen, String> {
+        pointer_in::enter(peer, edge, y)
+    }
+    fn pointer_move(&self, peer: &nectarlink_core::DeviceId, moved: nectarlink_core::PointerMove) {
+        pointer_in::moved(peer, moved);
+    }
+    fn pointer_where(&self, peer: &nectarlink_core::DeviceId) -> Option<nectarlink_core::PointerAt> {
+        pointer_in::at(peer)
+    }
+    fn pointer_leave(&self, peer: &nectarlink_core::DeviceId) {
+        pointer_in::leave(peer);
     }
     fn storage_list(&self, path: &str) -> Result<Vec<StorageEntry>, StorageError> {
         pc_storage::storage_list(path)
