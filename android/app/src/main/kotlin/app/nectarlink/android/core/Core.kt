@@ -1506,7 +1506,10 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             try {
                 startJob?.join()
                 val node = node ?: return@launch
-                val wasOnline = _state.value.device(pcId)?.online == true
+                // A LocalSend device isn't paired, so it's never online here, but a
+                // send to it goes out at once rather than waiting for it.
+                val wasOnline = _state.value.device(pcId)?.online == true ||
+                    _state.value.localsendPeers.any { it.id == pcId }
                 try {
                     val singleFileName = if (files.size == 1) {
                         when (val f = files[0]) {

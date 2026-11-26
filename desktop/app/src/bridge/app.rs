@@ -790,7 +790,10 @@ pub(crate) fn show_offline_queued_toast(device: DeviceId, item_id: Option<String
         let name = s.name_of(&device).unwrap_or_else(|| tr!("App", "Your phone"));
         (online, name)
     });
-    if online {
+    // A LocalSend device isn't a paired one, so it's never in the list as
+    // online, but a send to it goes out at once rather than waiting.
+    let localsend = || core_host::node().is_some_and(|n| n.localsend_peers().iter().any(|p| p.id == device));
+    if online || localsend() {
         return false;
     }
     let resolved_item_id = item_id.or_else(|| {

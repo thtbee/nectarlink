@@ -594,6 +594,8 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **Sending to a LocalSend device no longer says it's offline.** It wasn't a paired device, so the
+  PC and the phone said "offline, will send when it's back" though the files were going out.
 - **A phone's music no longer comes back to the phones from a Windows PC.** The PC shows a phone's
   media in Windows' media controls, and could then send it on to phones as if it played on the PC,
   showing on the phone that plays it and on any other. Thanks to
