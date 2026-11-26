@@ -301,15 +301,29 @@ fn snapshot(
     players
 }
 
+/// Whether a session's app ID is NectarLink's own: the process's ID, or the
+/// sparse package's (`Nectarlink.Desktop_<publisher>!Nectarlink`) when the
+/// app runs with package identity.
+fn is_own_id(id: &str) -> bool {
+    id.eq_ignore_ascii_case(AUMID)
+        || id.get(..AUMID.len() + 1).is_some_and(|p| p.eq_ignore_ascii_case(&format!("{AUMID}_")))
+}
+
 fn player(
     session: &GlobalSystemMediaTransportControlsSession,
     art: &mut ArtCache,
 ) -> windows::core::Result<Option<MediaPlayer>> {
     let id = session.SourceAppUserModelId()?.to_string();
-    if id == AUMID {
+    if is_own_id(&id) {
         return Ok(None);
     }
     let properties = session.TryGetMediaPropertiesAsync()?.join()?;
+    // A phone's media this PC shows in the flyout, under whatever ID Windows
+    // gives it: sending it on would play a phone's music back to it (#653).
+    let raw = |s: windows::core::Result<HSTRING>| s.map(|s| s.to_string()).unwrap_or_default();
+    if super::smtc::is_published(&raw(properties.Title()), &raw(properties.Artist())) {
+        return Ok(None);
+    }
     let text =
         |s: windows::core::Result<HSTRING>| s.ok().map(|s| s.to_string()).filter(|s| !s.trim().is_empty());
     let mut title = text(properties.Title());
@@ -779,7 +793,7 @@ pub fn pause_for_call() {
         for session in sessions {
             let Ok(id_h) = session.SourceAppUserModelId() else { continue };
             let id = id_h.to_string();
-            if id == AUMID {
+            if is_own_id(&id) {
                 continue;
             }
             let is_playing = session
@@ -833,6 +847,15 @@ pub fn resume_after_call() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn nectarlinks_own_sessions_are_left_out() {
+        assert!(is_own_id("Nectarlink.Desktop"));
+        assert!(is_own_id("Nectarlink.Desktop_x9vsc3j3gdrmg!Nectarlink"));
+        assert!(!is_own_id("Spotify.exe"));
+        assert!(!is_own_id("Nectarlink.DesktopOther"));
+        assert!(!is_own_id("Nectar"));
+    }
 
     fn playing(title: &str, timeline: Option<(u64, u64)>, seek: bool) -> MediaPlayer {
         MediaPlayer {

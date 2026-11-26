@@ -594,6 +594,10 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **A phone's music no longer comes back to the phones from a Windows PC.** The PC shows a phone's
+  media in Windows' media controls, and could then send it on to phones as if it played on the PC,
+  showing on the phone that plays it and on any other. Thanks to
+  [@FlootingDream](https://github.com/FlootingDream) ([#653](https://github.com/thtbee/nectarlink/issues/653)).
 - **The phone's check for banking apps keeps its slow pace once the screen turns off**, instead
   of looking once more straight away after a recent unlock. Thanks to
   [@aihehye](https://github.com/aihehye) ([#592](https://github.com/thtbee/nectarlink/pull/592)).

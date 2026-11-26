@@ -59,6 +59,17 @@ static ON_COMMAND: OnceLock<OnCommand> = OnceLock::new();
 /// The player the controls stand for, for button presses.
 static CURRENT: Mutex<Option<(DeviceId, String)>> = Mutex::new(None);
 
+/// The title and artist line last shown for a phone, so reading this PC's
+/// sessions can leave it out by what it shows, whatever app ID Windows
+/// reports for it (#653).
+static PUBLISHED: Mutex<Option<(String, String)>> = Mutex::new(None);
+
+/// Whether a media session showing `title` and `artist` is the phone media
+/// this shows itself.
+pub fn is_published(title: &str, artist: &str) -> bool {
+    lock(&PUBLISHED).as_ref().is_some_and(|(t, a)| t == title && a == artist)
+}
+
 const WM_UPDATE: u32 = WM_APP + 1;
 
 fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -215,6 +226,7 @@ fn apply(controls: &mut Controls, shown: Option<Shown>) -> windows::core::Result
     let smtc = &controls.smtc;
     let Some(shown) = shown else {
         *lock(&CURRENT) = None;
+        *lock(&PUBLISHED) = None;
         smtc.SetIsEnabled(false)?;
         smtc.DisplayUpdater()?.ClearAll()?;
         controls.art = None;
@@ -238,14 +250,16 @@ fn apply(controls: &mut Controls, shown: Option<Shown>) -> windows::core::Result
     let updater = smtc.DisplayUpdater()?;
     updater.SetType(MediaPlaybackType::Music)?;
     let music = updater.MusicProperties()?;
-    music.SetTitle(&HSTRING::from(player.title.as_deref().unwrap_or(&player.app)))?;
+    let title = player.title.clone().unwrap_or_else(|| player.app.clone());
+    music.SetTitle(&HSTRING::from(&title))?;
     // The flyout shows two lines; the second says where it plays.
     let source = format!("{} on {}", player.app, shown.device_name);
     let artist = match &player.artist {
         Some(artist) => format!("{artist} · {source}"),
         None => source,
     };
-    music.SetArtist(&HSTRING::from(artist))?;
+    music.SetArtist(&HSTRING::from(&artist))?;
+    *lock(&PUBLISHED) = Some((title, artist));
     music.SetAlbumTitle(&HSTRING::from(player.album.as_deref().unwrap_or_default()))?;
     if controls.art != shown.view.art {
         match shown.view.art.as_deref().map(std::fs::read) {
@@ -285,4 +299,19 @@ fn thumbnail(bytes: &[u8]) -> windows::core::Result<RandomAccessStreamReference>
     writer.DetachStream()?;
     stream.Seek(0)?;
     RandomAccessStreamReference::CreateFromStream(&stream)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_what_it_shows_counts_as_its_own() {
+        *lock(&PUBLISHED) = Some(("Love Story".into(), "Taylor Swift · LX Music on Phone".into()));
+        assert!(is_published("Love Story", "Taylor Swift · LX Music on Phone"));
+        assert!(!is_published("Love Story", "Taylor Swift"), "the same song playing on the PC itself");
+        assert!(!is_published("Blank Space", "Taylor Swift · LX Music on Phone"));
+        *lock(&PUBLISHED) = None;
+        assert!(!is_published("Love Story", "Taylor Swift · LX Music on Phone"));
+    }
 }
