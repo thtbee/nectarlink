@@ -166,24 +166,30 @@ bool looksDifferent(const QImage &a, const QImage &b)
     return differing >= 8;
 }
 
-// Owns its CPU or D3D11-backed texture.
+// Owns its CPU or D3D11-backed texture. QSGSimpleTextureNode::setTexture
+// never takes a null texture (it reads the one it's given), so the texture
+// on screen stays alive until another one replaces it.
 class VideoNode : public QSGSimpleTextureNode
 {
 public:
     VideoNode() { setOwnsTexture(false); }
     ~VideoNode() override
     {
-        setTexture(nullptr);
+        // The node doesn't own its texture and never draws again: free them.
 #ifdef _WIN32
         m_sgTexture.reset();
+        m_retiredSg.reset();
 #endif
         delete m_cpuTexture;
         m_cpuTexture = nullptr;
+        delete m_retiredCpu;
+        m_retiredCpu = nullptr;
     }
 
     void replaceCpuTexture(QSGTexture *next, bool keepGpu = false)
     {
         setTexture(next);
+        freeRetired();
 #ifdef _WIN32
         m_sgTexture.reset();
 #endif
@@ -224,11 +230,8 @@ public:
             return true;
         }
 
-        setTexture(nullptr);
-        m_sgTexture.reset();
-        resetGpu();
-        delete m_cpuTexture;
-        m_cpuTexture = nullptr;
+        // What's on screen stays until something replaces it.
+        retire();
 
         ComPtr<ID3D11Device1> device1;
         if (FAILED(device->QueryInterface(IID_PPV_ARGS(&device1))))
@@ -261,6 +264,7 @@ public:
             }
             m_sgTexture->setFiltering(QSGTexture::Linear);
             setTexture(m_sgTexture.get());
+            freeRetired();
         }
         m_device = device;
         m_context = context;
@@ -328,6 +332,39 @@ public:
 #endif
 
 private:
+    // Keeps the textures on screen, without the node's own pointers to them,
+    // until freeRetired: after setTexture shows another one.
+    void retire()
+    {
+#ifdef _WIN32
+        if (m_sgTexture) {
+            // Wraps m_texture: both stay.
+            m_retiredSg.reset();
+            m_retiredSg = std::move(m_sgTexture);
+            m_retiredTexture = m_texture;
+        }
+#endif
+        if (m_cpuTexture) {
+            delete m_retiredCpu;
+            m_retiredCpu = m_cpuTexture;
+            m_cpuTexture = nullptr;
+        }
+#ifdef _WIN32
+        resetGpu();
+#endif
+    }
+
+    void freeRetired()
+    {
+#ifdef _WIN32
+        // The wrapper first: it doesn't own the texture under it.
+        m_retiredSg.reset();
+        m_retiredTexture.Reset();
+#endif
+        delete m_retiredCpu;
+        m_retiredCpu = nullptr;
+    }
+
 #ifdef _WIN32
     void resetGpu()
     {
@@ -342,7 +379,11 @@ private:
 #endif
 
     QSGTexture *m_cpuTexture = nullptr;
+    // Still on screen, waiting for the next texture (see retire).
+    QSGTexture *m_retiredCpu = nullptr;
 #ifdef _WIN32
+    ComPtr<ID3D11Texture2D> m_retiredTexture;
+    std::unique_ptr<QSGTexture> m_retiredSg;
     ComPtr<ID3D11Texture2D> m_shared;
     ComPtr<IDXGIKeyedMutex> m_mutex;
     ComPtr<ID3D11Texture2D> m_texture;
