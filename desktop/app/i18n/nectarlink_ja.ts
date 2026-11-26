@@ -3294,6 +3294,11 @@
         <source>just now</source>
         <translation>たった今</translation>
     </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Over Bluetooth</source>
+        <translation>Bluetooth 経由</translation>
+    </message>
 </context>
 <context>
     <name>DoctorSheet</name>
@@ -6106,6 +6111,11 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
         <location filename="../qml/pages/HomePage.qml" line="2807"/>
         <source>Set a custom name for this phone on your PC. Leave blank to use &quot;%1&quot;.</source>
         <translation>PC上でこのスマートフォンにカスタム名を設定します。空欄のままにすると「%1」が使用されます。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="1"/>
+        <source>Bluetooth: notifications, texts and calls</source>
+        <translation>Bluetooth: 通知、メッセージ、通話</translation>
     </message>
 </context>
 <context>
@@ -11738,6 +11748,16 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>The reports you sent, the answers to them, and a place to reply without a GitHub account.</source>
         <translation>送信したレポートとその返信。GitHub アカウントがなくてもここから返信できます。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Bluetooth when there&apos;s no network</source>
+        <translation>ネットワークがないときは Bluetooth</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>A phone paired with this PC in Bluetooth settings stays connected without Wi-Fi or data, for notifications, texts, calls and the clipboard. Turn it on in the phone&apos;s Settings too.</source>
+        <translation>Bluetooth 設定でこの PC とペアリングしたスマートフォンは、Wi-Fi やモバイルデータがなくても通知、メッセージ、通話、クリップボードのために接続されたままになります。スマートフォンの設定でもオンにしてください。</translation>
     </message>
 </context>
 <context>

@@ -146,6 +146,8 @@ pub mod qobject {
         #[qproperty(bool, keep_popups_paused, cxx_name = "keepPopupsPaused")]
         /// Use phones' USB debugging for USB features (#439); applies on restart.
         #[qproperty(bool, usb_debugging)]
+        /// Reach paired phones over Bluetooth when nothing else does.
+        #[qproperty(bool, bluetooth_link)]
         /// How many days notification history is kept: 1, 3, 7 or 30 (#442).
         #[qproperty(i32, notification_history_days)]
         #[qproperty(QString, mirror_quality)]
@@ -458,6 +460,7 @@ pub struct PreferencesRust {
     sync_passwords: bool,
     keep_popups_paused: bool,
     usb_debugging: bool,
+    bluetooth_link: bool,
     notification_history_days: i32,
     mirror_quality: QString,
     mirror_fps: i32,
@@ -588,6 +591,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_sync_passwords(settings.sync_passwords);
         self.as_mut().set_keep_popups_paused(settings.keep_popups_paused);
         self.as_mut().set_usb_debugging(settings.usb_debugging);
+        self.as_mut().set_bluetooth_link(settings.bluetooth_link);
         self.as_mut().set_notification_history_days(settings.notification_history_days as i32);
         self.as_mut().set_mirror_quality(QString::from(crate::settings::mirror_quality().name()));
         self.as_mut().set_mirror_fps(crate::settings::sane_mirror_fps(settings.mirror_fps) as i32);
@@ -952,6 +956,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
             .release();
         // Saved for the next start: the core reads it once (#439).
         self.as_mut().on_usb_debugging_changed(|p| p.save()).release();
+        self.as_mut().on_bluetooth_link_changed(|p| p.save()).release();
         self.as_mut()
             .on_notification_history_days_changed(|p| {
                 crate::state::set_history_days(u32::try_from(p.notification_history_days).unwrap_or(1));
@@ -1495,6 +1500,7 @@ impl qobject::Preferences {
             keep_popups_paused: p.keep_popups_paused,
             popups_paused: p.keep_popups_paused && crate::notifications::paused(),
             usb_debugging: p.usb_debugging,
+            bluetooth_link: p.bluetooth_link,
             notification_history_days: u32::try_from(p.notification_history_days).unwrap_or(1),
             mirror_quality: String::from(&p.mirror_quality),
             mirror_fps: crate::settings::sane_mirror_fps(u32::try_from(p.mirror_fps).unwrap_or(60)),

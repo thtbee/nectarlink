@@ -3310,6 +3310,11 @@
         <source>just now</source>
         <translation>przed chwilą</translation>
     </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Over Bluetooth</source>
+        <translation>Przez Bluetooth</translation>
+    </message>
 </context>
 <context>
     <name>DoctorSheet</name>
@@ -6130,6 +6135,11 @@ Wymagania
         <location filename="../qml/pages/HomePage.qml" line="2807"/>
         <source>Set a custom name for this phone on your PC. Leave blank to use &quot;%1&quot;.</source>
         <translation>Ustaw własną nazwę tego telefonu na komputerze. Pozostaw puste, aby użyć nazwy &quot;%1&quot;.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="1"/>
+        <source>Bluetooth: notifications, texts and calls</source>
+        <translation>Bluetooth: powiadomienia, SMS-y i połączenia</translation>
     </message>
 </context>
 <context>
@@ -11812,6 +11822,16 @@ Wymagania
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>The reports you sent, the answers to them, and a place to reply without a GitHub account.</source>
         <translation>Wysłane zgłoszenia, odpowiedzi na nie i miejsce, by odpowiadać bez konta GitHub.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Bluetooth when there&apos;s no network</source>
+        <translation>Bluetooth, gdy nie ma sieci</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>A phone paired with this PC in Bluetooth settings stays connected without Wi-Fi or data, for notifications, texts, calls and the clipboard. Turn it on in the phone&apos;s Settings too.</source>
+        <translation>Telefon sparowany z tym komputerem w ustawieniach Bluetooth pozostaje połączony bez Wi-Fi i danych komórkowych: powiadomienia, SMS-y, połączenia i schowek. Włącz to też w ustawieniach telefonu.</translation>
     </message>
 </context>
 <context>

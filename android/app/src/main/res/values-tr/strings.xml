@@ -36,6 +36,7 @@
     <string name="link_online_rtt">Bağlı · %1$d ms</string>
     <string name="link_usb">USB ile bağlı</string>
     <string name="link_usb_rtt">USB ile bağlı · %1$d ms</string>
+    <string name="link_bluetooth">Bluetooth ile</string>
     <string name="link_away">Uzaktan bağlı</string>
     <string name="link_connecting">Bağlanılıyor…</string>
     <string name="link_offline_seen">Çevrimdışı · son görülme %1$s</string>
@@ -1466,6 +1467,8 @@
     <string name="usb_only_tile_label">Yalnızca USB</string>
     <string name="settings_theme_artwork_color">Medya kapak görseli rengi</string>
     <string name="settings_mobile_data_body">Wi-Fi\'dan uzaktayken LTE/5G veya aktarma sunucusu üzerinden bağlı kalın</string>
+    <string name="settings_bluetooth_link_title">Ağ yokken Bluetooth</string>
+    <string name="settings_bluetooth_link_body">Bluetooth ayarlarında bu telefonla eşlenen bir bilgisayar, Wi-Fi veya veri olmadan bildirimler, mesajlar, aramalar ve pano için bağlı kalır</string>
     <string name="settings_background_clipboard_title">Arka planda pano erişimi</string>
     <string name="settings_guide_card_body">Tüm özelliklere göz atın, gereksinimleri canlı olarak kontrol edin veya doğrudan kontrollerine gidin.</string>
     <string name="settings_walkthrough_body">İzinler, eşleştirme ve yetki düzeyleri için kurulum rehberini yeniden açın.</string>

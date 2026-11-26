@@ -3254,6 +3254,11 @@
         <source>just now</source>
         <translation>щойно</translation>
     </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Over Bluetooth</source>
+        <translation>Через Bluetooth</translation>
+    </message>
 </context>
 <context>
     <name>DoctorSheet</name>
@@ -6070,6 +6075,11 @@ What it needs
         <location filename="../qml/pages/HomePage.qml" line="2807"/>
         <source>Set a custom name for this phone on your PC. Leave blank to use &quot;%1&quot;.</source>
         <translation>Задайте власну назву цього телефона на ПК. Залиште порожнім, щоб використовувати «%1».</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="1"/>
+        <source>Bluetooth: notifications, texts and calls</source>
+        <translation>Bluetooth: сповіщення, повідомлення й дзвінки</translation>
     </message>
 </context>
 <context>
@@ -11725,6 +11735,16 @@ What it needs
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>The reports you sent, the answers to them, and a place to reply without a GitHub account.</source>
         <translation>Надіслані звіти, відповіді на них і місце, щоб відповісти без облікового запису GitHub.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Bluetooth when there&apos;s no network</source>
+        <translation>Bluetooth, коли немає мережі</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>A phone paired with this PC in Bluetooth settings stays connected without Wi-Fi or data, for notifications, texts, calls and the clipboard. Turn it on in the phone&apos;s Settings too.</source>
+        <translation>Телефон, спарений із цим ПК у налаштуваннях Bluetooth, лишається на зв’язку без Wi-Fi і мобільних даних: для сповіщень, повідомлень, дзвінків і буфера обміну. Увімкніть це й у налаштуваннях телефона.</translation>
     </message>
 </context>
 <context>

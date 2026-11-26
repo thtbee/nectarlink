@@ -3310,6 +3310,11 @@
         <source>just now</source>
         <translation>刚刚</translation>
     </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Over Bluetooth</source>
+        <translation>通过蓝牙</translation>
+    </message>
 </context>
 <context>
     <name>DoctorSheet</name>
@@ -6126,6 +6131,11 @@ What it needs
         <location filename="../qml/pages/HomePage.qml" line="2807"/>
         <source>Set a custom name for this phone on your PC. Leave blank to use &quot;%1&quot;.</source>
         <translation>在您的电脑上为此手机设置自定义名称。留空以使用“%1”。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="1"/>
+        <source>Bluetooth: notifications, texts and calls</source>
+        <translation>蓝牙：通知、短信和通话</translation>
     </message>
 </context>
 <context>
@@ -11802,6 +11812,16 @@ What it needs
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>The reports you sent, the answers to them, and a place to reply without a GitHub account.</source>
         <translation>你发送的报告、对它们的回复，以及无需 GitHub 账号即可回复的地方。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Bluetooth when there&apos;s no network</source>
+        <translation>没有网络时使用蓝牙</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>A phone paired with this PC in Bluetooth settings stays connected without Wi-Fi or data, for notifications, texts, calls and the clipboard. Turn it on in the phone&apos;s Settings too.</source>
+        <translation>在蓝牙设置中与此电脑配对的手机，在没有 Wi-Fi 或移动数据时仍保持连接，用于通知、短信、通话和剪贴板。也请在手机的设置中打开。</translation>
     </message>
 </context>
 <context>

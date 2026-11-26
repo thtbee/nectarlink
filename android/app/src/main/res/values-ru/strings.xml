@@ -32,6 +32,7 @@
     <string name="link_online_rtt">Подключено · %1$d мс</string>
     <string name="link_usb">По USB</string>
     <string name="link_usb_rtt">По USB · %1$d мс</string>
+    <string name="link_bluetooth">По Bluetooth</string>
     <string name="link_away">Подключено вне дома</string>
     <string name="link_connecting">Подключение…</string>
     <string name="link_offline_seen">Не в сети · был %1$s</string>
@@ -1342,6 +1343,8 @@
     <string name="usb_only_tile_label">Только USB</string>
     <string name="settings_theme_artwork_color">Цвет обложки медиа</string>
     <string name="settings_mobile_data_body">Оставайтесь на связи через LTE/5G или ретранслятор вдали от Wi-Fi</string>
+    <string name="settings_bluetooth_link_title">Bluetooth, когда нет сети</string>
+    <string name="settings_bluetooth_link_body">ПК, сопряжённый с этим телефоном в настройках Bluetooth, остаётся на связи без Wi-Fi и мобильных данных: уведомления, SMS, звонки и буфер обмена</string>
     <string name="settings_background_clipboard_title">Доступ к буферу обмена в фоне</string>
     <string name="settings_guide_card_body">Смотрите все функции, проверяйте требования или сразу переходите к их настройкам.</string>
     <string name="settings_walkthrough_body">Снова открыть пошаговую настройку разрешений, связывания и уровней доступа.</string>

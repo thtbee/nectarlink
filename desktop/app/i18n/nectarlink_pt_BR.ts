@@ -3295,6 +3295,11 @@
         <source>just now</source>
         <translation>agora mesmo</translation>
     </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Over Bluetooth</source>
+        <translation>Por Bluetooth</translation>
+    </message>
 </context>
 <context>
     <name>DoctorSheet</name>
@@ -6113,6 +6118,11 @@ O que precisa
         <location filename="../qml/pages/HomePage.qml" line="2807"/>
         <source>Set a custom name for this phone on your PC. Leave blank to use &quot;%1&quot;.</source>
         <translation>Defina um nome para identificar este celular no PC. Deixe em branco para usar “%1”.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="1"/>
+        <source>Bluetooth: notifications, texts and calls</source>
+        <translation>Bluetooth: notificações, mensagens e chamadas</translation>
     </message>
 </context>
 <context>
@@ -11776,6 +11786,16 @@ O que precisa
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>The reports you sent, the answers to them, and a place to reply without a GitHub account.</source>
         <translation>Os relatórios que você enviou, as respostas e um lugar para responder sem uma conta no GitHub.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Bluetooth when there&apos;s no network</source>
+        <translation>Bluetooth quando não há rede</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>A phone paired with this PC in Bluetooth settings stays connected without Wi-Fi or data, for notifications, texts, calls and the clipboard. Turn it on in the phone&apos;s Settings too.</source>
+        <translation>Um celular pareado com este PC nas configurações de Bluetooth continua conectado sem Wi-Fi ou dados, para notificações, mensagens, chamadas e a área de transferência. Ative também nas configurações do celular.</translation>
     </message>
 </context>
 <context>

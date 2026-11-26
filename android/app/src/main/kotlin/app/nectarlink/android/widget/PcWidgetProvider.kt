@@ -89,6 +89,7 @@ class PcWidgetProvider : BloomWidget() {
                     context.getString(R.string.widget_battery_charging, battery.level.toInt())
                 battery != null -> context.getString(R.string.widget_battery, battery.level.toInt())
                 link.relayed -> context.getString(R.string.link_away)
+                link.bluetooth -> context.getString(R.string.link_bluetooth)
                 link.usb -> context.getString(R.string.link_usb)
                 else -> context.getString(R.string.widget_link_lan)
             }

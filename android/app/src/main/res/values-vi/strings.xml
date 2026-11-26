@@ -34,6 +34,7 @@
 <string name="link_online_rtt">Đã kết nối · %1$d ms</string>
 <string name="link_usb">Qua USB</string>
 <string name="link_usb_rtt">Qua USB · %1$d ms</string>
+    <string name="link_bluetooth">Qua Bluetooth</string>
 <string name="link_away">Đã kết nối từ xa</string>
 <string name="link_connecting">Đang kết nối…</string>
 <string name="link_offline_seen">Ngoại tuyến · thấy lần cuối %1$s</string>
@@ -1397,6 +1398,8 @@
 <string name="usb_only_tile_label">Chỉ USB</string>
 <string name="settings_theme_artwork_color">Màu từ ảnh bìa media</string>
 <string name="settings_mobile_data_body">Giữ kết nối qua LTE/5G hoặc chuyển tiếp khi không có Wi-Fi</string>
+    <string name="settings_bluetooth_link_title">Bluetooth khi không có mạng</string>
+    <string name="settings_bluetooth_link_body">Máy tính đã ghép nối với điện thoại này trong cài đặt Bluetooth vẫn kết nối khi không có Wi-Fi hay dữ liệu, cho thông báo, tin nhắn, cuộc gọi và bộ nhớ tạm</string>
 <string name="settings_background_clipboard_title">Truy cập bảng nhớ tạm ở chế độ nền</string>
 <string name="settings_guide_card_body">Duyệt mọi tính năng, kiểm tra yêu cầu trực tiếp hoặc chuyển thẳng đến các điều khiển của tính năng đó.</string>
 <string name="settings_walkthrough_body">Mở lại hướng dẫn thiết lập dành cho quyền, ghép nối và mức nguồn.</string>

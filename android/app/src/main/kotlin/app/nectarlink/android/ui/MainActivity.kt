@@ -1178,6 +1178,7 @@ private fun App(
                                     onToggleLocalSend = core::setLocalSendEnabled,
                                     onToggleAwayMode = core::setAwayMode,
                                     onToggleUsbOnly = core::setUsbOnly,
+                                    onToggleBluetoothLink = core::setBluetoothLink,
                                     onOpenRelaySettings = { relaySettingsOpen = true },
                                     onOpenWalkthrough = {
                                         preferences.updateWalkthrough { it.goToStep(WalkthroughStep.Welcome) }

@@ -3295,6 +3295,11 @@
         <source>just now</source>
         <translation>только что</translation>
     </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Over Bluetooth</source>
+        <translation>По Bluetooth</translation>
+    </message>
 </context>
 <context>
     <name>DoctorSheet</name>
@@ -6111,6 +6116,11 @@ What it needs
         <location filename="../qml/pages/HomePage.qml" line="2807"/>
         <source>Set a custom name for this phone on your PC. Leave blank to use &quot;%1&quot;.</source>
         <translation>Задайте своё имя для этого телефона на ПК. Оставьте пустым, чтобы использовать «%1».</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="1"/>
+        <source>Bluetooth: notifications, texts and calls</source>
+        <translation>Bluetooth: уведомления, SMS и звонки</translation>
     </message>
 </context>
 <context>
@@ -11765,6 +11775,16 @@ What it needs
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>The reports you sent, the answers to them, and a place to reply without a GitHub account.</source>
         <translation>Отправленные отчёты, ответы на них и место, чтобы ответить без аккаунта GitHub.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Bluetooth when there&apos;s no network</source>
+        <translation>Bluetooth, когда нет сети</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>A phone paired with this PC in Bluetooth settings stays connected without Wi-Fi or data, for notifications, texts, calls and the clipboard. Turn it on in the phone&apos;s Settings too.</source>
+        <translation>Телефон, сопряжённый с этим ПК в настройках Bluetooth, остаётся на связи без Wi-Fi и мобильных данных: уведомления, SMS, звонки и буфер обмена. Включите это и в настройках телефона.</translation>
     </message>
 </context>
 <context>

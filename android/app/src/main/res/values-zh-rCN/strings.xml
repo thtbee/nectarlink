@@ -32,6 +32,7 @@
     <string name="link_online_rtt">已连接 · %1$d 毫秒</string>
     <string name="link_usb">USB连接</string>
     <string name="link_usb_rtt">USB连接 · %1$d 毫秒</string>
+    <string name="link_bluetooth">通过蓝牙</string>
     <string name="link_away">远程已连接</string>
     <string name="link_connecting">正在连接…</string>
     <string name="link_offline_seen">离线 · 最后出现于 %1$s</string>
@@ -1328,6 +1329,8 @@
     <string name="usb_only_tile_label">仅 USB</string>
     <string name="settings_theme_artwork_color">跟随封面取色</string>
     <string name="settings_mobile_data_body">离开 Wi-Fi 时通过 LTE/5G 或中继保持连接</string>
+    <string name="settings_bluetooth_link_title">没有网络时使用蓝牙</string>
+    <string name="settings_bluetooth_link_body">在蓝牙设置中与此手机配对的电脑，在没有 Wi-Fi 或移动数据时仍保持连接，用于通知、短信、通话和剪贴板</string>
     <string name="settings_background_clipboard_title">后台剪贴板权限</string>
     <string name="settings_guide_card_body">浏览全部功能、查看实时要求，或直接跳到对应开关。</string>
     <string name="settings_walkthrough_body">重新打开设置向导，处理权限、配对和省电级别。</string>

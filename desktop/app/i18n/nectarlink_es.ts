@@ -3295,6 +3295,11 @@
         <source>just now</source>
         <translation>ahora mismo</translation>
     </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Over Bluetooth</source>
+        <translation>Por Bluetooth</translation>
+    </message>
 </context>
 <context>
     <name>DoctorSheet</name>
@@ -6109,6 +6114,11 @@ Qué necesitas
         <location filename="../qml/pages/HomePage.qml" line="2807"/>
         <source>Set a custom name for this phone on your PC. Leave blank to use &quot;%1&quot;.</source>
         <translation>Establece un nombre personalizado para este teléfono en tu PC. Déjalo en blanco para usar &quot;%1&quot;.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="1"/>
+        <source>Bluetooth: notifications, texts and calls</source>
+        <translation>Bluetooth: notificaciones, mensajes y llamadas</translation>
     </message>
 </context>
 <context>
@@ -11760,6 +11770,16 @@ Qué necesitas
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>The reports you sent, the answers to them, and a place to reply without a GitHub account.</source>
         <translation>Los informes que enviaste, sus respuestas y un lugar para responder sin una cuenta de GitHub.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Bluetooth when there&apos;s no network</source>
+        <translation>Bluetooth cuando no hay red</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>A phone paired with this PC in Bluetooth settings stays connected without Wi-Fi or data, for notifications, texts, calls and the clipboard. Turn it on in the phone&apos;s Settings too.</source>
+        <translation>Un teléfono emparejado con este PC en los ajustes de Bluetooth sigue conectado sin Wi-Fi ni datos, para notificaciones, mensajes, llamadas y el portapapeles. Actívalo también en los ajustes del teléfono.</translation>
     </message>
 </context>
 <context>

@@ -1701,6 +1701,9 @@
     <string name="media_center_page">%1$d з %2$d</string>
     <string name="media_center_phone_volume">Гучність телефона</string>
     <string name="media_center_output">Вибрати, де грати</string>
+    <string name="link_bluetooth">Через Bluetooth</string>
+    <string name="settings_bluetooth_link_title">Bluetooth, коли немає мережі</string>
+    <string name="settings_bluetooth_link_body">ПК, спарений із цим телефоном у налаштуваннях Bluetooth, лишається на зв’язку без Wi-Fi і мобільних даних: для сповіщень, повідомлень, дзвінків і буфера обміну</string>
 </resources>
 
 

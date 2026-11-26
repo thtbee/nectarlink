@@ -124,6 +124,9 @@ pub enum Link {
         relayed: bool,
         #[uniffi(default = false)]
         usb: bool,
+        /// Over Bluetooth: only light messages go over it.
+        #[uniffi(default = false)]
+        bluetooth: bool,
         rtt_ms: u32,
     },
 }
@@ -1170,6 +1173,12 @@ pub enum MirrorSendResult {
 #[derive(Debug, uniffi::Object)]
 pub struct MirrorStream(core::MirrorStream);
 
+/// The RFCOMM service UUID NectarLink listens on.
+#[uniffi::export]
+pub fn bluetooth_service_uuid() -> String {
+    core::bluetooth::SERVICE_UUID.to_owned()
+}
+
 #[uniffi::export]
 impl MirrorStream {
     /// Hands over a packet without waiting (a config packet waits for room).
@@ -2132,6 +2141,7 @@ impl From<LinkState> for Link {
             LinkState::Online { path, rtt_ms } => Link::Online {
                 relayed: path == ConnectionPath::Relay,
                 usb: path == ConnectionPath::Usb,
+                bluetooth: path == ConnectionPath::Bluetooth,
                 rtt_ms,
             },
         }
@@ -3856,6 +3866,12 @@ impl NectarlinkNode {
     /// This device's ID (z-base-32).
     pub fn device_id(&self) -> String {
         self.node.device_id().to_string()
+    }
+
+    /// Opens (once) the loopback port each incoming Bluetooth link is piped
+    /// into, and returns it.
+    pub fn start_bluetooth_listener(&self) -> Option<u16> {
+        self.node.start_bluetooth_listener()
     }
 
     /// Stops networking and tells connected devices.

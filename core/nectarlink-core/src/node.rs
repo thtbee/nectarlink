@@ -254,6 +254,10 @@ pub(crate) struct Shared {
     pub(crate) usb_bridge_ports: Arc<Mutex<HashMap<u16, DeviceId>>>,
     /// USB tunnels whose plaintext `UsbHello` arrived but whose QUIC identity is not yet verified.
     pub(crate) usb_pending: Mutex<HashMap<u16, PendingUsbTunnel>>,
+    /// Loopback UDP bridge ports that carry a Bluetooth link rather than a USB cable.
+    pub(crate) bt_bridge_ports: Arc<Mutex<std::collections::HashSet<u16>>>,
+    /// Bound loopback TCP port the phone's Bluetooth links are piped into (0 if not started).
+    pub(crate) bt_listener_port: std::sync::atomic::AtomicU16,
     /// Active USB tunnel peers mapped to their local UDP bridge address and cancellation token.
     pub(crate) usb_peers: Arc<Mutex<HashMap<DeviceId, (SocketAddr, CancellationToken)>>>,
     /// The adb serial, adb server, and local UDP bridge port each USB-tunnelled phone is on.
@@ -893,6 +897,15 @@ impl Shared {
         lock(&self.usb_peers).get(peer).map(|(addr, _)| *addr)
     }
 
+    pub(crate) fn is_bt_port(&self, port: u16) -> bool {
+        lock(&self.bt_bridge_ports).contains(&port)
+    }
+
+    /// Whether `peer` has a tunnel over a USB cable (not over Bluetooth).
+    pub(crate) fn has_cable(&self, peer: &DeviceId) -> bool {
+        self.usb_peer_addr(peer).is_some_and(|addr| !self.is_bt_port(addr.port()))
+    }
+
     pub(crate) fn usb_peer_or_pending_addr(&self, peer: &DeviceId) -> Option<(SocketAddr, bool)> {
         if let Some(addr) = self.usb_peer_addr(peer) {
             return Some((addr, false));
@@ -909,11 +922,13 @@ impl Shared {
 
     pub(crate) fn is_usb_connection(&self, conn: &Connection) -> bool {
         let peer = crate::device_id(&conn.remote_id());
-        if self.usb_peer_addr(&peer).is_some() {
+        if self.has_cable(&peer) {
             return true;
         }
         conn.paths().iter().any(|p| match p.remote_addr() {
-            iroh::TransportAddr::Ip(addr) => self.is_usb_addr_for(&peer, addr),
+            iroh::TransportAddr::Ip(addr) => {
+                self.is_usb_addr_for(&peer, addr) && !self.is_bt_port(addr.port())
+            }
             _ => false,
         })
     }
@@ -963,6 +978,10 @@ impl Shared {
         let peer = pending.peer;
         let bridge_addr = pending.bridge_addr;
         let bridge_port = bridge_addr.port();
+        if self.is_bt_port(bridge_port) && self.has_cable(&peer) {
+            pending.cancel.cancel();
+            return;
+        }
         if let Some(cb) = pending.on_verified.take() {
             cb();
         }
@@ -1086,6 +1105,7 @@ impl Shared {
     pub(crate) async fn on_usb_tunnel_disconnected(&self, peer: DeviceId, bridge_addr: SocketAddr) {
         let bridge_port = bridge_addr.port();
         lock(&self.usb_pending).remove(&bridge_port);
+        lock(&self.bt_bridge_ports).remove(&bridge_port);
         let removed = {
             let mut peers = lock(&self.usb_peers);
             if peers.get(&peer).is_some_and(|(addr, _)| *addr == bridge_addr) {
@@ -1120,7 +1140,7 @@ impl Shared {
         self.endpoint.network_change().await;
         if let Some(session) = self.session(&peer) {
             if session.uses_usb_bridge_port(bridge_port) {
-                session.close(CLOSE_NORMAL, b"usb disconnected");
+                session.close(CLOSE_NORMAL, b"tunnel disconnected");
             } else {
                 self.publish_online(&session);
             }
@@ -2078,6 +2098,8 @@ impl Node {
             usb_bridge_ports: Arc::new(Mutex::new(HashMap::new())),
             usb_pending: Mutex::new(HashMap::new()),
             usb_peers: Arc::new(Mutex::new(HashMap::new())),
+            bt_bridge_ports: Arc::new(Mutex::new(std::collections::HashSet::new())),
+            bt_listener_port: std::sync::atomic::AtomicU16::new(0),
             usb_serials: Mutex::new(HashMap::new()),
             usb_helpers: Mutex::new(HashMap::new()),
             usb_inbound: Mutex::new(std::collections::HashSet::new()),
@@ -2355,6 +2377,26 @@ impl Node {
     /// (`127.0.0.1:<port>`) and returns the phone's [`DeviceId`].
     pub async fn connect_usb_tunnel(&self, forwarded_tcp: SocketAddr) -> Result<DeviceId> {
         crate::usb::connect_usb_tunnel(&self.shared, forwarded_tcp).await
+    }
+
+    /// Phone: starts (once) the loopback listener the platform pipes each
+    /// incoming Bluetooth link into, and returns its port.
+    pub fn start_bluetooth_listener(&self) -> Option<u16> {
+        crate::bluetooth::start_phone_listener(&self.shared)
+    }
+
+    /// PC: runs the session over a Bluetooth link the platform opened to a
+    /// paired phone and exposes at `forwarded_tcp` (`127.0.0.1:<port>`).
+    /// Returns the phone's ID; ends with an error for an unpaired phone, one
+    /// that's already connected, or one on a cable.
+    pub async fn connect_bluetooth(&self, forwarded_tcp: SocketAddr) -> Result<DeviceId> {
+        crate::bluetooth::connect(&self.shared, forwarded_tcp).await
+    }
+
+    /// PC: the paired phones a Bluetooth link would help now, with their
+    /// names: offline, reconnecting on, and not on a cable.
+    pub fn bluetooth_wanted(&self) -> Vec<(DeviceId, String)> {
+        crate::bluetooth::wanted(&self.shared)
     }
 
     // ---- Pairing ----

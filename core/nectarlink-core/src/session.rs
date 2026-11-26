@@ -242,6 +242,7 @@ pub(crate) struct Session {
     last_rx_ms: AtomicU64,
     usb_bridge_ports: Arc<Mutex<HashMap<u16, DeviceId>>>,
     usb_peers: Arc<Mutex<HashMap<DeviceId, (std::net::SocketAddr, CancellationToken)>>>,
+    bt_bridge_ports: Arc<Mutex<HashSet<u16>>>,
     /// Apps whose notification icon this peer already got.
     sent_icons: crate::notifications::SentIcons,
     /// Serializes media snapshots and remembers the artwork queued for this device.
@@ -323,6 +324,7 @@ impl Session {
             last_rx_ms: AtomicU64::new(0),
             usb_bridge_ports: shared.usb_bridge_ports.clone(),
             usb_peers: shared.usb_peers.clone(),
+            bt_bridge_ports: shared.bt_bridge_ports.clone(),
             sent_icons: Default::default(),
             sent_art: Default::default(),
             notifications_held: Default::default(),
@@ -366,14 +368,28 @@ impl Session {
         self.last_rx_ms.load(Ordering::Relaxed) > since_ms
     }
 
-    pub(crate) fn is_usb_addr(&self, addr: &std::net::SocketAddr) -> bool {
+    fn is_tunnel_addr(&self, addr: &std::net::SocketAddr) -> bool {
         addr.ip().to_canonical().is_loopback()
             && self.usb_bridge_ports.lock().unwrap_or_else(|e| e.into_inner()).get(&addr.port())
                 == Some(&self.peer)
     }
 
+    fn is_bt_addr(&self, addr: &std::net::SocketAddr) -> bool {
+        self.is_tunnel_addr(addr)
+            && self.bt_bridge_ports.lock().unwrap_or_else(|e| e.into_inner()).contains(&addr.port())
+    }
+
+    pub(crate) fn is_usb_addr(&self, addr: &std::net::SocketAddr) -> bool {
+        self.is_tunnel_addr(addr) && !self.is_bt_addr(addr)
+    }
+
+    /// A tunnel over a USB cable (a Bluetooth link doesn't count).
     fn has_usb_tunnel(&self) -> bool {
-        self.usb_peers.lock().unwrap_or_else(|e| e.into_inner()).contains_key(&self.peer)
+        let tunnel =
+            self.usb_peers.lock().unwrap_or_else(|e| e.into_inner()).get(&self.peer).map(|(a, _)| a.port());
+        tunnel.is_some_and(|port| {
+            !self.bt_bridge_ports.lock().unwrap_or_else(|e| e.into_inner()).contains(&port)
+        })
     }
 
     pub(crate) fn uses_usb_bridge_port(&self, port: u16) -> bool {
@@ -385,7 +401,7 @@ impl Session {
             || self.conn.paths().iter().any(|p| {
                 matches!(
                     p.remote_addr(),
-                    iroh::TransportAddr::Ip(addr) if addr.port() == port && self.is_usb_addr(addr)
+                    iroh::TransportAddr::Ip(addr) if addr.port() == port && self.is_tunnel_addr(addr)
                 )
             })
     }
@@ -402,6 +418,12 @@ impl Session {
         }
     }
 
+    /// Whether the connection runs over Bluetooth now: only light messages,
+    /// no streams and no datagrams.
+    pub fn on_bluetooth(&self) -> bool {
+        self.path() == ConnectionPath::Bluetooth
+    }
+
     /// The path the connection currently uses.
     pub fn path(&self) -> ConnectionPath {
         if self.has_usb_tunnel() {
@@ -411,6 +433,9 @@ impl Session {
         let selected = paths.iter().find(|p| p.is_selected()).or_else(|| paths.iter().next());
         match selected {
             Some(p) if p.is_relay() => ConnectionPath::Relay,
+            Some(p) if matches!(p.remote_addr(), iroh::TransportAddr::Ip(addr) if self.is_bt_addr(addr)) => {
+                ConnectionPath::Bluetooth
+            }
             Some(p) if matches!(p.remote_addr(), iroh::TransportAddr::Ip(addr) if self.is_usb_addr(addr)) => {
                 ConnectionPath::Usb
             }
@@ -419,6 +444,12 @@ impl Session {
                     |p| matches!(p.remote_addr(), iroh::TransportAddr::Ip(addr) if self.is_usb_addr(addr)),
                 ) {
                     ConnectionPath::Usb
+                } else if selected.is_none()
+                    && paths.iter().any(
+                        |p| matches!(p.remote_addr(), iroh::TransportAddr::Ip(addr) if self.is_bt_addr(addr)),
+                    )
+                {
+                    ConnectionPath::Bluetooth
                 } else {
                     ConnectionPath::Lan
                 }
@@ -476,16 +507,25 @@ impl Session {
 
     /// Sends a QUIC datagram (protocol v0 §4).
     pub fn send_datagram(&self, data: bytes::Bytes) -> Result<()> {
+        if self.on_bluetooth() {
+            return Err(Error::Unsupported);
+        }
         self.conn.send_datagram(data).map_err(crate::error::net)
     }
 
     /// Opens a bidirectional stream on the session connection.
     pub async fn open_bi(&self) -> Result<(SendStream, RecvStream)> {
+        if self.on_bluetooth() {
+            return Err(Error::Unsupported);
+        }
         self.conn.open_bi().await.map_err(crate::error::net)
     }
 
     /// Queues a one-way message.
     pub async fn send(&self, env: Envelope) -> Result<()> {
+        if env.re.is_none() && self.on_bluetooth() && !crate::bluetooth::allows(&env.t) {
+            return Err(Error::Unsupported);
+        }
         self.outbox.send(env).await.map_err(|_| Error::Offline)
     }
 
@@ -514,6 +554,9 @@ impl Session {
     /// sent. A request that went out may have run on the peer even if no
     /// reply came back, so only an unsent one is safe to send again.
     pub async fn request_tracked(&self, env: Envelope, timeout: Duration) -> (Result<Envelope>, bool) {
+        if self.on_bluetooth() && !crate::bluetooth::allows(&env.t) {
+            return (Err(Error::Unsupported), false);
+        }
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
         let (tx, rx) = oneshot::channel();
         self.pending.lock().unwrap_or_else(|e| e.into_inner()).insert(id, tx);
@@ -635,6 +678,14 @@ async fn reader(session: &Arc<Session>, mut recv: RecvStream, shared: &Weak<Shar
             env
         };
         let Some(shared) = shared.upgrade() else { return };
+        if session.on_bluetooth() && !crate::bluetooth::allows(&env.t) {
+            tracing::debug!(peer = %session.peer.short(), t = %env.t, "not over Bluetooth");
+            if env.id.is_some() {
+                let reply = Envelope::error(ErrorCode::Unsupported, "not over Bluetooth");
+                let _ = session.send(reply.reply_to(env.id)).await;
+            }
+            continue;
+        }
         if is_background_rpc(&env.t) {
             // Waiting for a slot would hold up heartbeats behind slow
             // requests, so past the limit a request is turned away instead.
@@ -883,8 +934,12 @@ const MAX_INCOMING_STREAMS: usize = 32;
 /// Streams the other device opens (file transfers), each handled on its own.
 async fn streams(session: &Arc<Session>, shared: &Weak<Shared>) {
     let limit = Arc::new(tokio::sync::Semaphore::new(MAX_INCOMING_STREAMS));
-    while let Ok((send, recv)) = session.conn.accept_bi().await {
+    while let Ok((mut send, recv)) = session.conn.accept_bi().await {
         session.touch_rx();
+        if session.on_bluetooth() {
+            let _ = send.reset(VarInt::from_u32(ErrorCode::Unsupported.close_code()));
+            continue;
+        }
         let Some(shared) = shared.upgrade() else { return };
         let Ok(permit) = limit.clone().acquire_owned().await else { return };
         let session = session.clone();
@@ -900,6 +955,9 @@ async fn datagrams(session: &Arc<Session>, shared: &Weak<Shared>) {
         match session.conn.read_datagram().await {
             Ok(bytes) => {
                 session.touch_rx();
+                if session.on_bluetooth() {
+                    continue;
+                }
                 let Some(shared) = shared.upgrade() else { return };
                 if bytes.len() > 10 && &bytes[0..4] == b"NLPA" {
                     let sample_rate = u32::from_le_bytes([bytes[4], bytes[5], bytes[6], bytes[7]]);

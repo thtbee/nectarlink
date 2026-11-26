@@ -36,6 +36,7 @@
     <string name="link_online_rtt">接続済み · %1$d ms</string>
     <string name="link_usb">USB接続時</string>
     <string name="link_usb_rtt">USB接続時 · %1$d ms</string>
+    <string name="link_bluetooth">Bluetooth で接続</string>
     <string name="link_away">外出先で接続済み</string>
     <string name="link_connecting">接続中…</string>
     <string name="link_offline_seen">オフライン · 最終確認 %1$s</string>
@@ -1459,6 +1460,8 @@
     <string name="usb_only_tile_label">USBのみ</string>
     <string name="settings_theme_artwork_color">メディアアートワークの色</string>
     <string name="settings_mobile_data_body">Wi-Fi環境外でもLTE/5Gやリレーで接続を維持</string>
+    <string name="settings_bluetooth_link_title">ネットワークがないときは Bluetooth</string>
+    <string name="settings_bluetooth_link_body">Bluetooth 設定でこのスマートフォンとペアリングした PC は、Wi-Fi やモバイルデータがなくても通知、メッセージ、通話、クリップボードのために接続されたままになります</string>
     <string name="settings_background_clipboard_title">バックグラウンドでのクリップボードアクセス</string>
     <string name="settings_guide_card_body">すべての機能を閲覧したり、リアルタイムの要件を確認したり、あるいは直接操作画面へ進んだりできます。</string>
     <string name="settings_walkthrough_body">権限、ペアリング、パワーレベルに関するセットアップガイドを再表示します。</string>

@@ -36,6 +36,7 @@
     <string name="link_online_rtt">Conectado · %1$d ms</string>
     <string name="link_usb">Por USB</string>
     <string name="link_usb_rtt">En USB · %1$d ms</string>
+    <string name="link_bluetooth">Por Bluetooth</string>
     <string name="link_away">Conectado mientras estás fuera</string>
     <string name="link_connecting">Conectando…</string>
     <string name="link_offline_seen">Desconectado · visto %1$s</string>
@@ -1476,6 +1477,8 @@
     <string name="usb_only_tile_label">Solo USB</string>
     <string name="settings_theme_artwork_color">Color de la carátula multimedia</string>
     <string name="settings_mobile_data_body">Mantén la conexión mediante LTE/5G o un servidor de retransmisión cuando estés fuera de la red Wi-Fi</string>
+    <string name="settings_bluetooth_link_title">Bluetooth cuando no hay red</string>
+    <string name="settings_bluetooth_link_body">Un PC emparejado con este teléfono en los ajustes de Bluetooth sigue conectado sin Wi-Fi ni datos, para notificaciones, mensajes, llamadas y el portapapeles</string>
     <string name="settings_background_clipboard_title">Acceso al portapapeles en segundo plano</string>
     <string name="settings_guide_card_body">Explora todas las funciones, comprueba sus requisitos o accede directamente a sus controles.</string>
     <string name="settings_walkthrough_body">Vuelve a abrir la guía de configuración de permisos, emparejamiento y niveles de acceso.</string>
