@@ -26,23 +26,27 @@ use std::sync::{
 
 use nectarlink_core::{DeviceId, MirrorInput, PointerEdge, PointerMove, PointerScreen};
 use windows::Win32::{
-    Foundation::{LPARAM, LRESULT, POINT, WPARAM},
+    Foundation::{LPARAM, LRESULT, POINT, RECT, WPARAM},
     Graphics::Gdi::{GetMonitorInfoW, MONITOR_DEFAULTTONEAREST, MONITORINFO, MonitorFromPoint},
     System::Threading::GetCurrentThreadId,
     UI::{
         Input::KeyboardAndMouse::{GetKeyState, GetKeyboardLayout, ToUnicodeEx},
+        Shell::{
+            QUNS_BUSY, QUNS_PRESENTATION_MODE, QUNS_RUNNING_D3D_FULL_SCREEN, SHQueryUserNotificationState,
+        },
         WindowsAndMessaging::{
-            CallNextHookEx, GetCursorPos, GetMessageW, GetSystemMetrics, HC_ACTION, KBDLLHOOKSTRUCT, MSG,
-            MSLLHOOKSTRUCT, PostThreadMessageW, SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN, SM_XVIRTUALSCREEN,
-            SM_YVIRTUALSCREEN, SetCursorPos, SetWindowsHookExW, UnhookWindowsHookEx, WH_KEYBOARD_LL,
-            WH_MOUSE_LL, WM_KEYDOWN, WM_KEYUP, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MBUTTONDOWN, WM_MBUTTONUP,
-            WM_MOUSEMOVE, WM_MOUSEWHEEL, WM_QUIT, WM_RBUTTONDOWN, WM_RBUTTONUP, WM_SYSKEYDOWN, WM_SYSKEYUP,
-            WM_XBUTTONDOWN, WM_XBUTTONUP,
+            CURSOR_SHOWING, CURSORINFO, CallNextHookEx, GetClipCursor, GetCursorInfo, GetCursorPos,
+            GetMessageW, GetSystemMetrics, HC_ACTION, KBDLLHOOKSTRUCT, MSG, MSLLHOOKSTRUCT,
+            PostThreadMessageW, SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN, SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN,
+            SetCursorPos, SetWindowsHookExW, UnhookWindowsHookEx, WH_KEYBOARD_LL, WH_MOUSE_LL, WM_KEYDOWN,
+            WM_KEYUP, WM_LBUTTONDOWN, WM_LBUTTONUP, WM_MBUTTONDOWN, WM_MBUTTONUP, WM_MOUSEMOVE,
+            WM_MOUSEWHEEL, WM_QUIT, WM_RBUTTONDOWN, WM_RBUTTONUP, WM_SYSKEYDOWN, WM_SYSKEYUP, WM_XBUTTONDOWN,
+            WM_XBUTTONUP,
         },
     },
 };
 
-use crate::pointer_flow::{self, Bounds, EdgeWatch, Held, KeyAction, OnPhone, PcKey, Side, vk};
+use crate::pointer_flow::{self, Bounds, EdgeWatch, Held, KeyAction, OnPhone, PcKey, Report, Side, vk};
 
 /// What the hooks saw, and what came back from the phone.
 #[derive(Debug)]
@@ -459,6 +463,11 @@ impl Flow {
         match (&mut self.state, event) {
             (State::Watching(watch), Event::Moved(x, y)) => {
                 if watch.moved(x, y, desktop()) {
+                    if let Some(why) = pc_has_the_mouse() {
+                        tracing::debug!(why, "the mouse stays: an app here has it");
+                        watch.disarm();
+                        return;
+                    }
                     tracing::debug!(x, y, "the mouse pushed against the edge facing the phone");
                     self.go_over(x, y);
                 }
@@ -529,13 +538,17 @@ impl Flow {
             }
             (State::OnPhone { track, asked_where, .. }, Event::Where(at)) => {
                 *asked_where = false;
-                match at {
-                    Some(at) if track.at_exit(at) => {
-                        track.resync(at);
+                match at.map(|at| track.reported(at)) {
+                    Some(Report::AtExit) => {
                         let fraction = track.height_fraction();
                         self.come_back(Some(fraction));
                     }
-                    Some(at) => track.resync(at),
+                    Some(Report::Stuck) => {
+                        tracing::info!("the phone's pointer isn't moving; the mouse comes back");
+                        let fraction = track.height_fraction();
+                        self.come_back(Some(fraction));
+                    }
+                    Some(Report::Elsewhere) => {}
                     // The phone can't say: trust the count.
                     None => {
                         let fraction = track.height_fraction();
@@ -678,6 +691,38 @@ impl Flow {
         let mut watch = EdgeWatch::new(self.side);
         watch.disarm();
         self.state = State::Watching(watch);
+    }
+}
+
+/// Why the mouse should stay on this PC though it's pushed against the edge,
+/// or `None` when it may go: a game or other app in full screen, or one that
+/// has hidden the cursor or held it inside its window. A game pushing the
+/// cursor against the edge isn't the user reaching for the phone, and once
+/// over, the mouse and keyboard would have left the game.
+fn pc_has_the_mouse() -> Option<&'static str> {
+    let mut info = CURSORINFO { cbSize: std::mem::size_of::<CURSORINFO>() as u32, ..Default::default() };
+    // SAFETY: GetCursorInfo fills the struct whose size it's given.
+    if unsafe { GetCursorInfo(&mut info) }.is_ok() && info.flags.0 & CURSOR_SHOWING.0 == 0 {
+        return Some("the cursor is hidden");
+    }
+    let mut clip = RECT::default();
+    // SAFETY: GetClipCursor writes the rectangle.
+    if unsafe { GetClipCursor(&mut clip) }.is_ok() {
+        let desk = desktop();
+        if clip.left > desk.left
+            || clip.top > desk.top
+            || clip.right < desk.right
+            || clip.bottom < desk.bottom
+        {
+            return Some("an app holds the cursor in its window");
+        }
+    }
+    // SAFETY: no preconditions; it only reports.
+    match unsafe { SHQueryUserNotificationState() } {
+        Ok(QUNS_BUSY | QUNS_RUNNING_D3D_FULL_SCREEN | QUNS_PRESENTATION_MODE) => {
+            Some("an app is in full screen")
+        }
+        _ => None,
     }
 }
 

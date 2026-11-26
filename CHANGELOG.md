@@ -594,6 +594,10 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **The mouse no longer gets lost on the phone with Beside this PC.** It stays on the PC while a
+  game or other app is in full screen or holds the cursor, so pushing against the edge in a game
+  doesn't take the mouse and keyboard away. And if the phone's pointer doesn't move when the mouse
+  reaches the edge facing the PC, the mouse comes back instead of staying lost there.
 - **Sending to a LocalSend device no longer says it's offline.** It wasn't a paired device, so the
   PC and the phone said "offline, will send when it's back" though the files were going out.
 - **A phone's music no longer comes back to the phones from a Windows PC.** The PC shows a phone's

@@ -140,6 +140,21 @@ pub struct OnPhone {
     y: f32,
     carry_x: f32,
     carry_y: f32,
+    /// Where the phone last said its pointer was, short of the edge.
+    last_report: Option<PointerAt>,
+}
+
+/// What the phone's answer to "where is your pointer?" means.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Report {
+    /// At the edge facing the PC: the mouse comes back.
+    AtExit,
+    /// Somewhere else: the PC follows it from there.
+    Elsewhere,
+    /// Where it was last time, though the PC has moved it all the way to the
+    /// edge since: the phone's pointer isn't moving (or isn't showing), so the
+    /// mouse comes back rather than staying lost on the phone.
+    Stuck,
 }
 
 impl OnPhone {
@@ -151,7 +166,15 @@ impl OnPhone {
             PointerEdge::Left => 0.0,
             PointerEdge::Right => width - 1.0,
         };
-        OnPhone { screen, edge, x, y: y.clamp(0.0, 1.0) * (height - 1.0), carry_x: 0.0, carry_y: 0.0 }
+        OnPhone {
+            screen,
+            edge,
+            x,
+            y: y.clamp(0.0, 1.0) * (height - 1.0),
+            carry_x: 0.0,
+            carry_y: 0.0,
+            last_report: None,
+        }
     }
 
     /// The PC's mouse moved `dx`, `dy` of its pixels. The phone's pointer
@@ -182,6 +205,20 @@ impl OnPhone {
             PointerEdge::Left => at.x <= 1.0,
             PointerEdge::Right => at.x >= max_x - 1.0,
         }
+    }
+
+    /// The phone said its pointer is at `at`, asked when the PC reckoned it
+    /// at the edge facing the PC. Follows it from there unless it's coming back.
+    pub fn reported(&mut self, at: PointerAt) -> Report {
+        if self.at_exit(at) {
+            self.resync(at);
+            return Report::AtExit;
+        }
+        let same =
+            self.last_report.is_some_and(|last| (last.x - at.x).abs() < 1.0 && (last.y - at.y).abs() < 1.0);
+        self.last_report = Some(at);
+        self.resync(at);
+        if same { Report::Stuck } else { Report::Elsewhere }
     }
 
     /// Where the phone says its pointer really is (Android moved it on its
@@ -526,6 +563,19 @@ mod tests {
 
     fn phone() -> PointerScreen {
         PointerScreen { width: 1080, height: 2400, scale: 2.0 }
+    }
+
+    #[test]
+    fn a_phone_pointer_that_doesnt_move_lets_the_mouse_come_back() {
+        let mut on = OnPhone::new(phone(), PointerEdge::Left, 0.5);
+        let at = |x: f32, y: f32| PointerAt { x, y };
+        // Android moved it on its own: followed from there.
+        assert_eq!(on.reported(at(300.0, 900.0)), Report::Elsewhere);
+        // Moved all the way to the edge since, yet the phone says the same place.
+        assert_eq!(on.reported(at(300.0, 900.0)), Report::Stuck);
+        // Somewhere new is followed again, and the edge brings it back.
+        assert_eq!(on.reported(at(500.0, 100.0)), Report::Elsewhere);
+        assert_eq!(on.reported(at(0.0, 100.0)), Report::AtExit);
     }
 
     #[test]
