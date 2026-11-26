@@ -94,21 +94,27 @@ pub(crate) fn wanted(shared: &Shared) -> Vec<(DeviceId, String)> {
 
 /// Phone: opens (once) the loopback listener that each incoming Bluetooth
 /// link is piped into, and returns its port.
+///
+/// The app calls this from its own threads, outside the node's runtime, so
+/// the listener is registered and its task spawned on that runtime (#654).
 pub(crate) fn start_phone_listener(shared: &Arc<Shared>) -> Option<u16> {
     let started = shared.bt_listener_port.load(Ordering::Relaxed);
     if started != 0 {
         return Some(started);
     }
+    let _runtime = shared.runtime.enter();
     let std_listener = std::net::TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).ok()?;
     std_listener.set_nonblocking(true).ok()?;
     let port = std_listener.local_addr().ok()?.port();
+    let listener = TcpListener::from_std(std_listener).ok()?;
+    // Published only once it listens; a caller that lost the race uses the
+    // winner's port and drops its own listener.
     if shared.bt_listener_port.compare_exchange(0, port, Ordering::Relaxed, Ordering::Relaxed).is_err() {
         return Some(shared.bt_listener_port.load(Ordering::Relaxed));
     }
-    let listener = TcpListener::from_std(std_listener).ok()?;
     let weak = Arc::downgrade(shared);
     let cancel = shared.cancel.clone();
-    tokio::spawn(async move {
+    shared.runtime.spawn(async move {
         loop {
             let accepted = tokio::select! {
                 _ = cancel.cancelled() => return,

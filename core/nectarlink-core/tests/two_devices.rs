@@ -9219,8 +9219,14 @@ async fn a_bluetooth_link_carries_light_messages_only() {
         "an offline paired phone is one Bluetooth would help"
     );
 
-    let port = phone.node.start_bluetooth_listener().expect("the Bluetooth listener is up");
-    assert_eq!(phone.node.start_bluetooth_listener(), Some(port), "it's opened once");
+    // The app opens it from its own thread, outside the node's runtime (#654).
+    let (first, again) = std::thread::scope(|s| {
+        s.spawn(|| (phone.node.start_bluetooth_listener(), phone.node.start_bluetooth_listener()))
+            .join()
+            .expect("opening the listener off the runtime doesn't panic")
+    });
+    let port = first.expect("the Bluetooth listener is up");
+    assert_eq!(again, Some(port), "it's opened once");
     let link: SocketAddr = ("127.0.0.1".parse::<std::net::IpAddr>().unwrap(), port).into();
     let connected = with_timeout("connect over Bluetooth", pc.node.connect_bluetooth(link)).await;
     assert_eq!(connected.unwrap(), phone_id);
