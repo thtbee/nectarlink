@@ -120,6 +120,7 @@ pub mod types {
     pub const DECK_STATE: &str = "deck.state";
     pub const DECK_PRESS: &str = "deck.press";
     pub const PC_AUDIO_SET: &str = "pc.audio.set";
+    pub const PC_RADIO_SET: &str = "pc.radio.set";
     pub const STORAGE_LIST: &str = "storage.list";
     pub const STORAGE_ENTRIES: &str = "storage.entries";
     pub const STORAGE_READ: &str = "storage.read";
@@ -4031,6 +4032,9 @@ pub mod deck {
     pub const ACTIONS: &str = "deck.actions";
     /// Offered by PCs that share their active audio output devices and accept `pc.audio.set`.
     pub const PC_AUDIO: &str = "pc.audio";
+    /// Offered by PCs that report their Wi-Fi and Bluetooth in `deck.state`
+    /// and turn them on or off for `pc.radio.set` (#636).
+    pub const PC_RADIOS: &str = "pc.radios";
     /// Maximum pages in a `DeckLayout`.
     pub const MAX_PAGES: usize = 8;
     /// Maximum tiles on a single `DeckPage`.
@@ -4545,6 +4549,12 @@ pub struct DeckState {
     /// The `toggle` tiles that are on, by ID (#640). Left out when none are.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub toggles_on: Vec<String>,
+    /// Whether the PC's Wi-Fi is on; left out when it has none or can't tell (#636).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wifi: Option<bool>,
+    /// Whether the PC's Bluetooth is on; left out when it has none or can't tell (#636).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bluetooth: Option<bool>,
 }
 
 impl DeckState {
@@ -4653,6 +4663,22 @@ impl PcAudioSet {
                 && !id.chars().any(char::is_control)
         });
         (self.volume.is_some() || self.muted.is_some() || self.output.is_some()) && vol_ok && output_ok
+    }
+}
+
+/// Body of `pc.radio.set`: turn the PC's Wi-Fi and/or Bluetooth on or off
+/// (`docs/protocol/deck.md` §2.6, #636).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PcRadioSet {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wifi: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bluetooth: Option<bool>,
+}
+
+impl PcRadioSet {
+    pub fn is_valid(&self) -> bool {
+        self.wifi.is_some() || self.bluetooth.is_some()
     }
 }
 
@@ -6672,6 +6698,8 @@ mod tests {
                 },
             ],
             toggles_on: vec!["mon".into()],
+            wifi: None,
+            bluetooth: None,
         };
         assert!(state.is_valid());
         assert_eq!(state.default_output_name(), Some("Speakers (Realtek Audio)"));

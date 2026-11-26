@@ -1539,4 +1539,9 @@
     <string name="your_reports_send">发送</string>
     <string name="deck_on">开</string>
     <string name="deck_off">关</string>
+    <string name="pc_radio_wifi">WLAN</string>
+    <string name="pc_radio_bluetooth">蓝牙</string>
+    <string name="pc_radio_wifi_off_title">关闭 %1$s 的 WLAN？</string>
+    <string name="pc_radio_wifi_off_text">如果这部手机通过 WLAN 连接电脑，连接会断开，需要在电脑上重新打开 WLAN。</string>
+    <string name="pc_radio_wifi_off_confirm">关闭</string>
 </resources>

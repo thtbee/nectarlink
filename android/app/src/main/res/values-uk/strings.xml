@@ -1696,6 +1696,11 @@
     <string name="your_reports_send">Надіслати</string>
     <string name="deck_on">Увімк.</string>
     <string name="deck_off">Вимк.</string>
+    <string name="pc_radio_wifi">Wi-Fi</string>
+    <string name="pc_radio_bluetooth">Bluetooth</string>
+    <string name="pc_radio_wifi_off_title">Вимкнути Wi-Fi на %1$s?</string>
+    <string name="pc_radio_wifi_off_text">Якщо телефон під\'єднаний до ПК через Wi-Fi, зв\'язок обірветься, і Wi-Fi доведеться ввімкнути на самому ПК.</string>
+    <string name="pc_radio_wifi_off_confirm">Вимкнути</string>
 </resources>
 
 

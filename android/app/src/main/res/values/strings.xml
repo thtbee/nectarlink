@@ -1682,6 +1682,11 @@
     <string name="your_reports_send">Send</string>
     <string name="deck_on">On</string>
     <string name="deck_off">Off</string>
+    <string name="pc_radio_wifi">Wi-Fi</string>
+    <string name="pc_radio_bluetooth">Bluetooth</string>
+    <string name="pc_radio_wifi_off_title">Turn off %1$s\'s Wi-Fi?</string>
+    <string name="pc_radio_wifi_off_text">If this phone reaches the PC over Wi-Fi, they\'ll lose the connection, and you\'ll need to turn Wi-Fi back on at the PC.</string>
+    <string name="pc_radio_wifi_off_confirm">Turn off</string>
 </resources>
 
 

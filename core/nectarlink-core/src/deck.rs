@@ -14,10 +14,10 @@ use std::{
 };
 
 pub use nectarlink_protocol::messages::{
-    AudioOutputDevice, DeckLayout, DeckPage, DeckPress, DeckState, DeckTile, KeyMod, PcAudioSet,
+    AudioOutputDevice, DeckLayout, DeckPage, DeckPress, DeckState, DeckTile, KeyMod, PcAudioSet, PcRadioSet,
     deck::{
         ACTIONS as DECK_ACTIONS, MAX_ID_BYTES as MAX_DECK_ID_BYTES, MAX_LABEL_BYTES as MAX_DECK_LABEL_BYTES,
-        MAX_PAGES as MAX_DECK_PAGES, MAX_TILES_PER_PAGE as MAX_DECK_TILES_PER_PAGE, PC_AUDIO,
+        MAX_PAGES as MAX_DECK_PAGES, MAX_TILES_PER_PAGE as MAX_DECK_TILES_PER_PAGE, PC_AUDIO, PC_RADIOS,
     },
     deck_colors, deck_icons, deck_kinds, is_valid_deck_id, remote_keys,
 };
@@ -674,6 +674,10 @@ impl Shared {
         self.we_offer(PC_AUDIO)
     }
 
+    fn offers_pc_radios(&self) -> bool {
+        self.we_offer(PC_RADIOS)
+    }
+
     fn deck_allowed(&self, peer: &DeviceId) -> bool {
         self.toggle_on(peer, INPUT_TOGGLE) || self.toggle_on(peer, crate::actions::POWER_TOGGLE)
     }
@@ -782,7 +786,27 @@ async fn send_pc_audio(shared: &Arc<Shared>, session: &Arc<Session>, req: PcAudi
     Ok(())
 }
 
-/// Handles `deck.layout`, `deck.state`, `deck.press`, and `pc.audio.set`.
+/// Asks a paired PC to turn its Wi-Fi and/or Bluetooth on or off (`pc.radio.set`, #636).
+pub(crate) async fn set_pc_radio(
+    shared: &Arc<Shared>,
+    session: &Arc<Session>,
+    wifi: Option<bool>,
+    bluetooth: Option<bool>,
+) -> Result<()> {
+    let req = PcRadioSet { wifi, bluetooth };
+    if !req.is_valid() {
+        return Err(Error::Protocol("invalid PC radio request".into()));
+    }
+    let peer_caps = shared.store.get_peer(&session.peer)?.map(|p| p.caps).unwrap_or_default();
+    if !peer_caps.contains(PC_RADIOS) {
+        return Err(Error::Unsupported);
+    }
+    let env = Envelope::new(types::PC_RADIO_SET, &req)?;
+    session.request(env, REQUEST_TIMEOUT).await?.expect(types::OK)?;
+    Ok(())
+}
+
+/// Handles `deck.layout`, `deck.state`, `deck.press`, `pc.audio.set` and `pc.radio.set`.
 pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &Envelope) -> Result<bool> {
     let peer = session.peer;
     match env.t.as_str() {
@@ -809,6 +833,13 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
             let reply = match env.body::<PcAudioSet>() {
                 Ok(req) => run_pc_audio_set(shared, &peer, req).await,
                 Err(_) => Envelope::error(ErrorCode::BadMessage, "invalid pc.audio.set body"),
+            };
+            session.send(reply.reply_to(env.id)).await?;
+        }
+        types::PC_RADIO_SET => {
+            let reply = match env.body::<PcRadioSet>() {
+                Ok(req) => run_pc_radio_set(shared, &peer, req).await,
+                Err(_) => Envelope::error(ErrorCode::BadMessage, "invalid pc.radio.set body"),
             };
             session.send(reply.reply_to(env.id)).await?;
         }
@@ -885,6 +916,39 @@ async fn run_pc_audio_set(shared: &Arc<Shared>, peer: &DeviceId, req: PcAudioSet
         }
         Err(reason) => {
             tracing::warn!(reason, "pc.audio.set failed");
+            Envelope::error(ErrorCode::Internal, "failed")
+        }
+    }
+}
+
+/// Turns this PC's radios on or off for a phone, with the same permission
+/// as its volume: PC actions or remote input on for that phone.
+async fn run_pc_radio_set(shared: &Arc<Shared>, peer: &DeviceId, req: PcRadioSet) -> Envelope {
+    if !req.is_valid() {
+        return Envelope::error(ErrorCode::BadMessage, "nothing to turn on or off");
+    }
+    if !shared.offers_pc_radios() {
+        return Envelope::error(ErrorCode::Unsupported, "this PC can't switch its radios");
+    }
+    if !shared.toggle_on(peer, crate::actions::POWER_TOGGLE) && !shared.toggle_on(peer, INPUT_TOGGLE) {
+        return Envelope::error(ErrorCode::Denied, "PC actions are turned off for this device");
+    }
+    let platform = shared.platform.clone();
+    let from = *peer;
+    let (wifi, bluetooth) = (req.wifi, req.bluetooth);
+    let ran = tokio::task::spawn_blocking(move || platform.set_pc_radio(&from, wifi, bluetooth))
+        .await
+        .unwrap_or_else(|e| Err(e.to_string()));
+    match ran {
+        Ok(()) => {
+            let mut state = shared.deck.local_state();
+            state.wifi = wifi.or(state.wifi);
+            state.bluetooth = bluetooth.or(state.bluetooth);
+            let _ = shared.set_deck_state(state).await;
+            Envelope::empty(types::OK)
+        }
+        Err(reason) => {
+            tracing::warn!(reason, "pc.radio.set failed");
             Envelope::error(ErrorCode::Internal, "failed")
         }
     }

@@ -1681,4 +1681,9 @@
     <string name="your_reports_send">Senden</string>
     <string name="deck_on">An</string>
     <string name="deck_off">Aus</string>
+    <string name="pc_radio_wifi">WLAN</string>
+    <string name="pc_radio_bluetooth">Bluetooth</string>
+    <string name="pc_radio_wifi_off_title">WLAN von %1$s ausschalten?</string>
+    <string name="pc_radio_wifi_off_text">Wenn dieses Handy den PC über WLAN erreicht, bricht die Verbindung ab, und du musst das WLAN am PC wieder einschalten.</string>
+    <string name="pc_radio_wifi_off_confirm">Ausschalten</string>
 </resources>

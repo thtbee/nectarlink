@@ -227,6 +227,7 @@ fun HomeScreen(
     onClearTimeline: () -> Unit = {},
     onResendTimelineEntry: (entry: TimelineEntry) -> Unit = {},
     onSetPcAudio: (pcId: String, volume: Int?, muted: Boolean?) -> Unit = { _, _, _ -> },
+    onSetPcRadio: (pcId: String, wifi: Boolean?, bluetooth: Boolean?) -> Unit = { _, _, _ -> },
     onStopKeyboardFromPc: (pcId: String) -> Unit = {},
     onListPcFiles: (pcId: String, path: String, onResult: (PcFolder) -> Unit) -> Unit = { _, _, onResult ->
         onResult(PcFolder(emptyList()))
@@ -723,6 +724,7 @@ fun HomeScreen(
                     onRecord = onRecord,
                     onWebcam = onWebcam,
                     onSetPcAudio = onSetPcAudio,
+                    onSetPcRadio = onSetPcRadio,
                     onBrowsePcFiles = { browseFilesPcId = it },
                     micOn = micStreamingTo == device.id,
                     onToggleMic = { on -> if (on) onStartMic(device.id) else onStopMic() },
@@ -1527,6 +1529,7 @@ private fun PcCard(
     onRecord: (String) -> Unit,
     onWebcam: (String) -> Unit,
     onSetPcAudio: (String, Int?, Boolean?) -> Unit,
+    onSetPcRadio: (String, Boolean?, Boolean?) -> Unit,
     onBrowsePcFiles: (String) -> Unit = {},
     onDesk: (String) -> Unit = {},
     /** Whether this phone's microphone streams to this PC now. */
@@ -1868,6 +1871,12 @@ private fun PcCard(
                         micAvailable = micOn || device.has("media.phone_mic"),
                         micOn = micOn,
                         onToggleMic = onToggleMic,
+                    )
+                    // The PC's Wi-Fi and Bluetooth (#636).
+                    PcRadioSwitches(
+                        pcName = device.name,
+                        state = deckState,
+                        onSet = { wifi, bluetooth -> onSetPcRadio(device.id, wifi, bluetooth) },
                     )
                     // The phone's sound on the PC, started from here (#398) and
                     // brought back to the phone from the same button (#521).

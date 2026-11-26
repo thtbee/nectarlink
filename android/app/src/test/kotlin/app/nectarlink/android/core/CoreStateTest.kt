@@ -33,7 +33,7 @@ class CoreStateTest {
         val speaker = app.nectarlink.core.AudioOutputDevice(PHONE_SPEAKER_OUTPUT, "Phone speaker (NectarLink)", false)
         val headphones = app.nectarlink.core.AudioOutputDevice("hp", "Headphones", true)
         fun deck(vararg outputs: app.nectarlink.core.AudioOutputDevice) =
-            app.nectarlink.core.DeckState(playing = false, volume = 50u, muted = false, micMuted = null, outputDevices = outputs.toList(), togglesOn = emptyList())
+            app.nectarlink.core.DeckState(playing = false, volume = 50u, muted = false, micMuted = null, outputDevices = outputs.toList(), togglesOn = emptyList(), wifi = null, bluetooth = null)
         val online = CoreState()
             .reduce(Event.DeviceAdded(pc("a", "Desk", 10)))
             .reduce(Event.LinkChanged("a", Link.Online(relayed = false, usb = false, rttMs = 5u)))
@@ -163,6 +163,8 @@ class CoreStateTest {
             micMuted = true,
             outputDevices = outputs,
             togglesOn = listOf("mon"),
+            wifi = true,
+            bluetooth = null,
         )
         val state = CoreState()
             .reduce(Event.DeviceAdded(pc("a", "Desk", 10)))

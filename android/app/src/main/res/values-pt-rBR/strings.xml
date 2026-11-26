@@ -1681,6 +1681,11 @@
     <string name="your_reports_send">Enviar</string>
     <string name="deck_on">Ligado</string>
     <string name="deck_off">Desligado</string>
+    <string name="pc_radio_wifi">Wi-Fi</string>
+    <string name="pc_radio_bluetooth">Bluetooth</string>
+    <string name="pc_radio_wifi_off_title">Desligar o Wi-Fi de %1$s?</string>
+    <string name="pc_radio_wifi_off_text">Se este celular se conecta ao PC por Wi-Fi, a conexão vai cair e você vai precisar religar o Wi-Fi no PC.</string>
+    <string name="pc_radio_wifi_off_confirm">Desligar</string>
 </resources>
 
 

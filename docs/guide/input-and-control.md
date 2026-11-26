@@ -113,6 +113,10 @@ While it's on the phone, Android's pointer acceleration is off (it's given back 
    - **Restart PC** and **Shut down PC** ask on the phone before they do it, and apps with unsaved work can still stop them. They aren't on Mac yet, and they can't be macro steps.
    - **Security gate for shell commands**: Tiles that execute custom PC shell commands, and macros with a shell command step, are blocked unless you also turn on **Run Deck shell commands** (`commands`, off by default) for that phone in PC **Settings › Devices**.
 
+### The PC's Wi-Fi and Bluetooth on the phone
+
+On a Windows or Linux PC that has them, the PC's card on the phone's Home and the bar at the top of **Deck** show whether its Wi-Fi and Bluetooth are on, and tapping one switches it. Turning the PC's Wi-Fi off asks first: if the phone reaches the PC over Wi-Fi, the two lose the connection until Wi-Fi is back on at the PC. It needs **PC actions** or **Remote input** on for that phone in PC **Settings › Devices**, like the PC's volume. On Linux, NetworkManager and BlueZ decide whether your user may switch them.
+
 ### 4. Phone Controls on PC Home
 
 The **Phone controls** section on your PC's Home screen lets you check and toggle your phone's hardware and sound settings from your desk:

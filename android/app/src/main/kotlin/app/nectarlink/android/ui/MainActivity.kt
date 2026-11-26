@@ -1061,6 +1061,7 @@ private fun App(
                                     onClearTimeline = core::clearTimeline,
                                     onResendTimelineEntry = core::resendTimelineEntry,
                                     onSetPcAudio = core::setPcAudio,
+                                    onSetPcRadio = core::setPcRadio,
                                     onStopKeyboardFromPc = core::stopKeyboardFromPc,
                                     onListPcFiles = core::listPcFiles,
                                     onDownloadPcFile = core::downloadPcFile,
