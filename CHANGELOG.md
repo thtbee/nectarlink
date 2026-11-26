@@ -599,6 +599,11 @@ change things that need a step from you, and its notes say so.
   the phone's copies by itself, so with **Share my clipboard with it** off for every device, it
   doesn't touch the clipboard. Thanks to [@golip37](https://github.com/golip37)
   ([#655](https://github.com/thtbee/nectarlink/issues/655)).
+- **A crash that could close the app on Deck** (likeliest as the PC connected or the phone was
+  plugged in) is fixed, along with the same mistake on Desk clock and Control PC. Thanks to
+  everyone who sent the report
+  ([#550](https://github.com/thtbee/nectarlink/issues/550), [#589](https://github.com/thtbee/nectarlink/issues/589),
+  [#671](https://github.com/thtbee/nectarlink/issues/671)).
 - **Clicking Play on a phone video in Photos more than once downloads it once.** The button shows
   that it's fetching and waits. Thanks to [@SolomonNumb1](https://github.com/SolomonNumb1)
   ([#666](https://github.com/thtbee/nectarlink/pull/666)).

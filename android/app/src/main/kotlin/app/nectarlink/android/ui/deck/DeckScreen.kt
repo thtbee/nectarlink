@@ -170,11 +170,12 @@ fun DeckScreen(
     }
 
     // The screen stays on while Deck is in use with its PC there: on a charger, or
-    // for a while after each tap. Restore system bars on exit.
-    app.nectarlink.android.ui.KeepScreenOn(
-        device.online &&
-            (app.nectarlink.android.ui.rememberCharging() || app.nectarlink.android.ui.rememberTouchedRecently()),
-    )
+    // for a while after each tap. Restore system bars on exit. Both are called
+    // every time: a composable skipped by `&&` or `||` shifts the remembered
+    // values after it, and one came back as another type (db2955fed729).
+    val charging = app.nectarlink.android.ui.rememberCharging()
+    val touched = app.nectarlink.android.ui.rememberTouchedRecently()
+    app.nectarlink.android.ui.KeepScreenOn(device.online && (charging || touched))
     DisposableEffect(view, device.id) {
         val window = (context as? Activity)?.window
         onDispose {

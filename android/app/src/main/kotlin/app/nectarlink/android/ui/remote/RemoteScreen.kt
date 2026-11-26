@@ -143,7 +143,9 @@ fun RemoteScreen(
 
     // Keep the phone's screen on while controlling the PC (for a while after each
     // touch), and release any held laser/button when leaving.
-    app.nectarlink.android.ui.KeepScreenOn(device.online && app.nectarlink.android.ui.rememberTouchedRecently())
+    // Called every time, not behind `&&` (see DeckScreen).
+    val touched = app.nectarlink.android.ui.rememberTouchedRecently()
+    app.nectarlink.android.ui.KeepScreenOn(device.online && touched)
     DisposableEffect(view, device.id) {
         onDispose {
             core.remoteLaser(device.id, false)

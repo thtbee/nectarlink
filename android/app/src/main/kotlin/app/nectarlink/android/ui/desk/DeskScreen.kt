@@ -95,9 +95,10 @@ fun DeskScreen(
 ) {
     val context = LocalContext.current
     // On a charger it stays up as a dashboard; on battery, only while it's being used.
-    app.nectarlink.android.ui.KeepScreenOn(
-        app.nectarlink.android.ui.rememberCharging() || app.nectarlink.android.ui.rememberTouchedRecently(),
-    )
+    // Both are called every time (see DeckScreen).
+    val charging = app.nectarlink.android.ui.rememberCharging()
+    val touched = app.nectarlink.android.ui.rememberTouchedRecently()
+    app.nectarlink.android.ui.KeepScreenOn(charging || touched)
     DisposableEffect(Unit) {
         val window = (context as? Activity)?.window
         val controller = window?.let { WindowCompat.getInsetsController(it, it.decorView) }
