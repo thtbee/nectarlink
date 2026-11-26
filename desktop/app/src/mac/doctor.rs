@@ -19,7 +19,7 @@ pub struct Network {
 #[derive(Debug, Clone, Default)]
 pub struct Adapters {
     pub local_address: bool,
-    pub vpn: bool,
+    pub vpn: Option<String>,
 }
 
 pub fn firewall(_exe: &Path) -> Result<Firewall, String> {
@@ -31,7 +31,7 @@ pub fn networks() -> Result<Vec<Network>, String> {
 }
 
 pub fn adapters() -> Adapters {
-    Adapters { local_address: true, vpn: false }
+    Adapters { local_address: true, vpn: None }
 }
 
 pub fn fix_firewall(_exe: &Path) -> Result<bool, String> {

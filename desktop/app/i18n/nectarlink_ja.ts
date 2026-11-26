@@ -2985,11 +2985,6 @@
         <translation>USBケーブルにはadbが必要です</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="217"/>
-        <source>A VPN is on</source>
-        <translation>VPNがオンになっています</translation>
-    </message>
-    <message>
         <location filename="rust_strings.h" line="218"/>
         <source>A firewall rule blocks incoming NectarLink connections. Allow it, and your phone can connect.</source>
         <translation>ファイアウォールのルールがNectarLinkからの接続をブロックしています。これを許可すると、スマートフォンが接続できるようになります。</translation>
@@ -3298,6 +3293,11 @@
         <location filename="rust_strings.h" line="1"/>
         <source>Over Bluetooth</source>
         <translation>Bluetooth 経由</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>A VPN is on: %1</source>
+        <translation>VPNがオンになっています：%1</translation>
     </message>
 </context>
 <context>

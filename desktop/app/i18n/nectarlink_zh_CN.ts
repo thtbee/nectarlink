@@ -3000,11 +3000,6 @@
         <translation>USB 数据线连接需要 adb</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="217"/>
-        <source>A VPN is on</source>
-        <translation>VPN 已开启</translation>
-    </message>
-    <message>
         <location filename="rust_strings.h" line="218"/>
         <source>A firewall rule blocks incoming NectarLink connections. Allow it, and your phone can connect.</source>
         <translation>一条防火墙规则阻止了传入的 NectarLink 连接。允许后，手机即可连接。</translation>
@@ -3314,6 +3309,11 @@
         <location filename="rust_strings.h" line="1"/>
         <source>Over Bluetooth</source>
         <translation>通过蓝牙</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>A VPN is on: %1</source>
+        <translation>VPN 已开启：%1</translation>
     </message>
 </context>
 <context>

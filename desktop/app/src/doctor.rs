@@ -59,7 +59,8 @@ pub struct AdbFact {
 #[derive(Debug, Clone, Default)]
 pub struct Facts {
     pub local_address: bool,
-    pub vpn: bool,
+    /// The name of a VPN that's up.
+    pub vpn: Option<String>,
     /// Connected networks: name, and whether it's private or domain.
     pub networks: Vec<(String, bool)>,
     /// `None` when the firewall couldn't be read.
@@ -311,11 +312,11 @@ pub fn diagnose(facts: &Facts, now_secs: i64) -> Vec<Check> {
         }
     }
 
-    if facts.vpn {
+    if let Some(name) = &facts.vpn {
         checks.push(check(
             "vpn",
             Outcome::Warn,
-            tr!("Doctor", "A VPN is on"),
+            tr!("Doctor", "A VPN is on: %1", name),
             tr!("Doctor", "VPNs often keep devices on your network from reaching this PC. If your phone can't connect, try \
              turning it off."),
             None,
@@ -584,7 +585,7 @@ mod tests {
     fn facts() -> Facts {
         Facts {
             local_address: true,
-            vpn: false,
+            vpn: None,
             networks: vec![("Home".into(), true)],
             firewall: Some(windows_checks::Firewall { on: true, allowed: true, blocked: false }),
             devices: vec![device_fact("Pixel", LinkState::Online { path: ConnectionPath::Lan, rtt_ms: 4 })],
@@ -645,7 +646,7 @@ mod tests {
         let mut f = facts();
         f.networks = vec![("Cafe".into(), false)];
         f.firewall = Some(windows_checks::Firewall { on: true, allowed: true, blocked: true });
-        f.vpn = true;
+        f.vpn = Some("Tailscale".into());
         f.devices = vec![device_fact("Phone", LinkState::Offline { last_seen: Some(1_000) })];
         let checks = diagnose(&f, 1_000 + 3 * 3600);
         assert_eq!(
@@ -660,6 +661,7 @@ mod tests {
         );
         assert_eq!(checks[0].fix, Some("firewall"));
         assert_eq!(checks[1].fix, Some("network-settings"));
+        assert_eq!(checks[2].title, "A VPN is on: Tailscale", "it says which one");
         assert!(checks[3].detail.starts_with("Last seen 3 hours ago."), "{}", checks[3].detail);
         assert_eq!(checks[3].fix, Some("reconnect"));
     }

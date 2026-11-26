@@ -2985,11 +2985,6 @@
         <translation>A conexão por cabo USB precisa do adb</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="217"/>
-        <source>A VPN is on</source>
-        <translation>Uma VPN está ativa</translation>
-    </message>
-    <message>
         <location filename="rust_strings.h" line="218"/>
         <source>A firewall rule blocks incoming NectarLink connections. Allow it, and your phone can connect.</source>
         <translation>Uma regra do firewall está bloqueando conexões de entrada do NectarLink. Permita-as para que o celular consiga se conectar.</translation>
@@ -3299,6 +3294,11 @@
         <location filename="rust_strings.h" line="1"/>
         <source>Over Bluetooth</source>
         <translation>Por Bluetooth</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>A VPN is on: %1</source>
+        <translation>Uma VPN está ativa: %1</translation>
     </message>
 </context>
 <context>

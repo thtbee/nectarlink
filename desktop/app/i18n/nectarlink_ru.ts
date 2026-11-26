@@ -2985,11 +2985,6 @@
         <translation>Для USB-кабеля нужен adb</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="217"/>
-        <source>A VPN is on</source>
-        <translation>Включён VPN</translation>
-    </message>
-    <message>
         <location filename="rust_strings.h" line="218"/>
         <source>A firewall rule blocks incoming NectarLink connections. Allow it, and your phone can connect.</source>
         <translation>Правило брандмауэра блокирует входящие подключения NectarLink. Разрешите их, и телефон сможет подключиться.</translation>
@@ -3299,6 +3294,11 @@
         <location filename="rust_strings.h" line="1"/>
         <source>Over Bluetooth</source>
         <translation>По Bluetooth</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>A VPN is on: %1</source>
+        <translation>Включён VPN: %1</translation>
     </message>
 </context>
 <context>

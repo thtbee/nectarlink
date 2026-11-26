@@ -25,10 +25,16 @@ pub struct Network {
     pub trusted: bool,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Adapters {
     pub local_address: bool,
-    pub vpn: bool,
+    /// The name of a VPN interface that's up.
+    pub vpn: Option<String>,
+}
+
+/// Whether an interface named `name` (lowercase) is a VPN's.
+fn is_vpn(name: &str) -> bool {
+    ["tun", "tap", "wg", "tailscale", "nordlynx", "ppp", "zt"].iter().any(|p| name.starts_with(p))
 }
 
 pub fn active_node_port() -> u16 {
@@ -357,9 +363,9 @@ pub fn parse_nmcli_active_networks(active_stdout: &str, zones: &HashMap<String, 
     list
 }
 
-fn interfaces_with_ipv4() -> (Vec<String>, bool) {
+fn interfaces_with_ipv4() -> (Vec<String>, Option<String>) {
     let mut ipv4_ifaces = Vec::new();
-    let mut vpn = false;
+    let mut vpn = None;
     let mut ifap: *mut libc::ifaddrs = std::ptr::null_mut();
 
     // SAFETY: `getifaddrs` allocates and populates a linked list freed by `freeifaddrs`.
@@ -383,15 +389,8 @@ fn interfaces_with_ipv4() -> (Vec<String>, bool) {
                 if lower == "lo" {
                     continue;
                 }
-                let is_vpn = lower.starts_with("tun")
-                    || lower.starts_with("tap")
-                    || lower.starts_with("wg")
-                    || lower.starts_with("tailscale")
-                    || lower.starts_with("nordlynx")
-                    || lower.starts_with("ppp")
-                    || lower.starts_with("zt");
-                if is_vpn {
-                    vpn = true;
+                if is_vpn(&lower) {
+                    vpn.get_or_insert_with(|| name.to_string());
                     continue;
                 }
                 if !ifa.ifa_addr.is_null() && i32::from((*ifa.ifa_addr).sa_family) == libc::AF_INET {
@@ -441,23 +440,17 @@ pub fn adapters() -> Adapters {
     let (ipv4_ifaces, mut vpn) = interfaces_with_ipv4();
     let local_address = !ipv4_ifaces.is_empty();
 
-    if !vpn && let Ok(entries) = fs::read_dir("/sys/class/net") {
+    if vpn.is_none()
+        && let Ok(entries) = fs::read_dir("/sys/class/net")
+    {
         for entry in entries.flatten() {
-            let name = entry.file_name().to_string_lossy().to_ascii_lowercase();
+            let name = entry.file_name().to_string_lossy().into_owned();
             let state = fs::read_to_string(entry.path().join("operstate"))
                 .unwrap_or_default()
                 .trim()
                 .to_ascii_lowercase();
-            if (state == "up" || state == "unknown")
-                && (name.starts_with("tun")
-                    || name.starts_with("tap")
-                    || name.starts_with("wg")
-                    || name.starts_with("tailscale")
-                    || name.starts_with("nordlynx")
-                    || name.starts_with("ppp")
-                    || name.starts_with("zt"))
-            {
-                vpn = true;
+            if (state == "up" || state == "unknown") && is_vpn(&name.to_ascii_lowercase()) {
+                vpn = Some(name);
                 break;
             }
         }
@@ -713,6 +706,16 @@ pub fn open_network_settings() -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn vpn_interfaces_by_name() {
+        for name in ["tun0", "wg0", "tailscale0", "nordlynx", "ppp0", "ztabcdef", "tap1"] {
+            assert!(is_vpn(name), "{name}");
+        }
+        for name in ["wlan0", "eth0", "enp3s0", "docker0", "virbr0"] {
+            assert!(!is_vpn(name), "{name}");
+        }
+    }
 
     #[test]
     fn parses_ufw_inactive_active_allowed_and_blocked() {

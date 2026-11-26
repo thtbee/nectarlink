@@ -2985,11 +2985,6 @@
         <translation>Cáp USB cần adb</translation>
     </message>
     <message>
-        <location filename="rust_strings.h" line="217"/>
-        <source>A VPN is on</source>
-        <translation>VPN đang bật</translation>
-    </message>
-    <message>
         <location filename="rust_strings.h" line="218"/>
         <source>A firewall rule blocks incoming NectarLink connections. Allow it, and your phone can connect.</source>
         <translation>Một quy tắc tường lửa đang chặn các kết nối NectarLink đến. Hãy cho phép, điện thoại của bạn sẽ kết nối được.</translation>
@@ -3299,6 +3294,11 @@
         <location filename="rust_strings.h" line="1"/>
         <source>Over Bluetooth</source>
         <translation>Qua Bluetooth</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>A VPN is on: %1</source>
+        <translation>VPN đang bật: %1</translation>
     </message>
 </context>
 <context>

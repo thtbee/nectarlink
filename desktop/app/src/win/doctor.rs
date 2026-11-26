@@ -146,17 +146,30 @@ pub fn networks() -> windows::core::Result<Vec<Network>> {
     })
 }
 
-/// What the network adapters say: whether one has a local address, and
-/// whether a VPN is up.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+/// What the network adapters say: whether one has a local address, and the
+/// name of a VPN that's up.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Adapters {
     pub local_address: bool,
-    pub vpn: bool,
+    pub vpn: Option<String>,
+}
+
+const IF_TYPE_PPP: u32 = 23;
+const IF_TYPE_TUNNEL: u32 = 131;
+
+/// Whether an adapter that's up, of interface type `kind` and with
+/// `description` (lowercase), is a VPN. Windows' own IPv6 transition tunnels
+/// (Teredo, IP-HTTPS, 6to4, ISATAP) and a PPPoE internet connection are
+/// tunnel or PPP adapters too, but not VPNs (#662).
+fn is_vpn(kind: u32, description: &str) -> bool {
+    let builtin = ["teredo", "ip-https", "6to4", "isatap", "pppoe"].iter().any(|w| description.contains(w));
+    let named = ["vpn", "wireguard", "tap-windows", "openvpn", "tailscale", "zerotier"]
+        .iter()
+        .any(|w| description.contains(w));
+    named || (!builtin && (kind == IF_TYPE_PPP || kind == IF_TYPE_TUNNEL))
 }
 
 pub fn adapters() -> Adapters {
-    const IF_TYPE_PPP: u32 = 23;
-    const IF_TYPE_TUNNEL: u32 = 131;
     const IF_TYPE_SOFTWARE_LOOPBACK: u32 = 24;
     let mut found = Adapters::default();
     let mut size: u32 = 32 * 1024;
@@ -189,16 +202,14 @@ pub fn adapters() -> Adapters {
         let mut adapter = buffer.as_ptr().cast::<IP_ADAPTER_ADDRESSES_LH>();
         while let Some(a) = adapter.as_ref() {
             let up = a.OperStatus.0 == 1;
-            let description = a.Description.to_string().unwrap_or_default().to_lowercase();
+            let description = a.Description.to_string().unwrap_or_default();
             let kind = a.IfType;
             if up && kind != IF_TYPE_SOFTWARE_LOOPBACK {
-                let vpn_like = kind == IF_TYPE_PPP
-                    || kind == IF_TYPE_TUNNEL
-                    || ["vpn", "wireguard", "tap-windows", "openvpn", "tailscale", "zerotier"]
-                        .iter()
-                        .any(|word| description.contains(word));
-                if vpn_like {
-                    found.vpn = true;
+                if is_vpn(kind, &description.to_lowercase()) {
+                    if found.vpn.is_none() {
+                        let name = a.FriendlyName.to_string().unwrap_or_default();
+                        found.vpn = Some(if name.trim().is_empty() { description } else { name });
+                    }
                 } else {
                     let mut unicast = a.FirstUnicastAddress;
                     while let Some(u) = unicast.as_ref() {
@@ -295,5 +306,20 @@ mod tests {
         firewall(&exe).expect("firewall rules");
         networks().expect("networks");
         let _ = adapters();
+    }
+
+    #[test]
+    fn windows_own_tunnels_arent_vpns() {
+        assert!(is_vpn(IF_TYPE_TUNNEL, "wireguard tunnel"));
+        assert!(is_vpn(IF_TYPE_PPP, "wan miniport (ikev2)"));
+        assert!(is_vpn(6, "tailscale tunnel"));
+        assert!(is_vpn(53, "tap-windows adapter v9"));
+        // #662: not VPNs, though Windows calls them tunnels or PPP.
+        assert!(!is_vpn(IF_TYPE_TUNNEL, "teredo tunneling pseudo-interface"));
+        assert!(!is_vpn(IF_TYPE_TUNNEL, "microsoft ip-https platform adapter"));
+        assert!(!is_vpn(IF_TYPE_TUNNEL, "microsoft 6to4 adapter"));
+        assert!(!is_vpn(IF_TYPE_TUNNEL, "microsoft isatap adapter"));
+        assert!(!is_vpn(IF_TYPE_PPP, "wan miniport (pppoe)"));
+        assert!(!is_vpn(71, "intel(r) wi-fi 6e ax211 160mhz"));
     }
 }

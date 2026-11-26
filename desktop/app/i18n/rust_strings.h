@@ -233,7 +233,7 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Doctor", "%1 minutes ago"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "%1 · %2 ms"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "A USB cable needs adb"), // desktop/app/src/doctor.rs
-    QT_TRANSLATE_NOOP("Doctor", "A VPN is on"), // desktop/app/src/doctor.rs
+    QT_TRANSLATE_NOOP("Doctor", "A VPN is on: %1"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "A firewall rule blocks incoming NectarLink connections. Allow it, and your phone can connect."), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "Calls and alerts can't play sound yet"), // desktop/app/src/linux/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "Connect it to the same Wi-Fi or wired network as your phone."), // desktop/app/src/doctor.rs

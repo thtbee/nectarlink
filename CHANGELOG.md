@@ -594,6 +594,10 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **The PC's Doctor no longer warns about a VPN for Windows' own tunnels** (Teredo,
+  IP-HTTPS, 6to4, ISATAP) or a PPPoE internet connection, and when it does warn, it names the
+  adapter it means. Thanks to [@Tuna321](https://github.com/Tuna321)
+  ([#662](https://github.com/thtbee/nectarlink/issues/662)).
 - **The Open and Show in folder buttons on the PC's notifications are in your language** for
   received files, recordings and screenshots, not always in English. Thanks to
   [@yiriyangguang](https://github.com/yiriyangguang) ([#659](https://github.com/thtbee/nectarlink/issues/659)).
