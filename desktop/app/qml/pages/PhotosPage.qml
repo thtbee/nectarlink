@@ -1269,19 +1269,23 @@ Item {
                 id: playOverlayBtn
                 anchors.centerIn: parent
                 visible: page.viewedItem !== null && !!page.viewedItem.isVideo
+                readonly property bool busy: Photos.saving && page.viewedItem !== null && Photos.busyItem === page.viewedItem.id
+                enabled: !Photos.saving
                 width: 76; height: 76
                 radius: 38
                 color: Qt.rgba(0, 0, 0, 0.68)
                 border.width: 2
                 border.color: "#ffffff"
-                scale: playTap.pressed ? Theme.pressScale : 1
+                opacity: enabled || busy ? 1 : 0.45
+                scale: playTap.pressed && enabled ? Theme.pressScale : 1
                 Behavior on scale { enabled: !Theme.reduceMotion; SpringAnimation { spring: Theme.springSnappy; damping: Theme.dampingSnappy } }
                 activeFocusOnTab: true
                 Accessible.role: Accessible.Button
                 Accessible.name: qsTr("Play video")
-                Accessible.onPressAction: if (page.viewedItem) Photos.openItem(page.viewedItem.id)
+                Accessible.onPressAction: if (playOverlayBtn.enabled && page.viewedItem) Photos.openItem(page.viewedItem.id)
                 Keys.onPressed: (event) => {
-                    if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                    if (playOverlayBtn.enabled
+                        && (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space)) {
                         if (page.viewedItem)
                             Photos.openItem(page.viewedItem.id)
                         event.accepted = true
@@ -1298,13 +1302,21 @@ Item {
                 }
                 Icon {
                     anchors.centerIn: parent
+                    visible: !playOverlayBtn.busy
                     width: 30; height: 30
                     path: Icons.play
                     color: "#ffffff"
                 }
-                HoverHandler { cursorShape: Qt.PointingHandCursor }
+                Spinner {
+                    anchors.centerIn: parent
+                    visible: playOverlayBtn.busy
+                    width: 28; height: 28
+                    color: "#ffffff"
+                }
+                HoverHandler { cursorShape: playOverlayBtn.enabled ? Qt.PointingHandCursor : Qt.ArrowCursor }
                 TapHandler {
                     id: playTap
+                    enabled: playOverlayBtn.enabled
                     onTapped: if (page.viewedItem) Photos.openItem(page.viewedItem.id)
                 }
             }

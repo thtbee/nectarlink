@@ -1453,38 +1453,70 @@ pub fn ensure_full(id: String) {
     });
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum OpenAction {
+    Cached(PathBuf),
+    Fetch(DeviceId),
+    Busy,
+}
+
+fn prepare_open(id: &str) -> OpenAction {
+    let already_pending = state(|s| {
+        s.pending.values().any(|intent| matches!(intent, Intent::Open { item_id: Some(item) } if item == id))
+    });
+    gallery_state(|s| {
+        if let Some(existing) = s.full_files.get(id).filter(|p| p.exists()).cloned() {
+            return OpenAction::Cached(existing);
+        }
+        if s.saving || already_pending {
+            return OpenAction::Busy;
+        }
+        let Some(device) = s.device else {
+            return OpenAction::Busy;
+        };
+        s.saving = true;
+        s.busy_item = Some(id.to_owned());
+        OpenAction::Fetch(device)
+    })
+}
+
+fn clear_open_busy(id: &str) {
+    gallery_state(|s| {
+        s.saving = false;
+        if s.busy_item.as_deref() == Some(id) {
+            s.busy_item = None;
+        }
+    });
+}
+
 /// Opens `id` in the Windows Photos app (or default video player), downloading
 /// it first if needed.
 pub fn open_item(id: String) {
     if id.is_empty() {
         return;
     }
-    if let Some(existing) = gallery_state(|s| s.full_files.get(&id).filter(|p| p.exists()).cloned()) {
-        crate::transfers::open(&existing);
-        return;
-    }
-    let Some(device) = gallery_state(|s| {
-        s.saving = true;
-        s.busy_item = Some(id.clone());
-        s.device
-    }) else {
-        return;
-    };
-    gallery_changed();
-    let Some(node) = core_host::node() else { return };
-    core_host::spawn(async move {
-        match node.fetch_photo(device, id.clone()).await {
-            Ok(transfer) => asked(transfer, Intent::Open { item_id: Some(id) }),
-            Err(e) => {
-                gallery_state(|s| {
-                    s.saving = false;
-                    s.busy_item = None;
-                });
+    match prepare_open(&id) {
+        OpenAction::Cached(existing) => crate::transfers::open(&existing),
+        OpenAction::Fetch(device) => {
+            gallery_changed();
+            let Some(node) = core_host::node() else {
+                clear_open_busy(&id);
                 gallery_changed();
-                show_photo_error(&e);
-            }
+                return;
+            };
+            core_host::spawn(async move {
+                match node.fetch_photo(device, id.clone()).await {
+                    Ok(transfer) => asked(transfer, Intent::Open { item_id: Some(id) }),
+                    Err(e) => {
+                        clear_open_busy(&id);
+                        gallery_changed();
+                        show_photo_error(&e);
+                    }
+                }
+            });
         }
-    });
+        OpenAction::Busy => {}
+    }
 }
 
 /// Opens the most recent photo from `device` in the default viewer, using a
@@ -2333,5 +2365,49 @@ mod tests {
 
         let empty_ready = GalleryState { device: Some(dev), status: Status::Ready, ..Default::default() };
         assert!(!should_skip_reload(&empty_ready, dev));
+    }
+
+    #[test]
+    fn open_item_deduplicates_in_flight_requests_and_reuses_cached_file() {
+        let _guard = TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let dev = DeviceId([4u8; 32]);
+        let dir = tempfile::tempdir().unwrap();
+        let cached = dir.path().join("VID_0001.mp4");
+        std::fs::write(&cached, b"video-bytes").unwrap();
+
+        state(|s| *s = State::default());
+        gallery_state(|s| {
+            *s = GalleryState::default();
+        });
+
+        // No device selected: must not stick in `saving`.
+        assert_eq!(prepare_open("video:1"), OpenAction::Busy);
+        assert!(gallery_state(|s| !s.saving && s.busy_item.is_none()));
+
+        gallery_state(|s| s.device = Some(dev));
+        assert_eq!(prepare_open("video:1"), OpenAction::Fetch(dev));
+        assert!(gallery_state(|s| s.saving && s.busy_item.as_deref() == Some("video:1")));
+
+        // Repeated clicks while downloading are ignored.
+        assert_eq!(prepare_open("video:1"), OpenAction::Busy);
+
+        // Even if `saving` cleared (e.g. after switching devices), a still-pending
+        // open transfer for the same item prevents starting a duplicate fetch.
+        clear_open_busy("video:1");
+        assert!(gallery_state(|s| !s.saving && s.busy_item.is_none()));
+        state(|s| {
+            s.pending.insert("tx-1".into(), Intent::Open { item_id: Some("video:1".into()) });
+        });
+        assert_eq!(prepare_open("video:1"), OpenAction::Busy);
+
+        // Once the file is present locally, opening reuses it without fetching.
+        state(|s| *s = State::default());
+        gallery_state(|s| {
+            s.full_files.insert("video:1".into(), cached.clone());
+        });
+        assert_eq!(prepare_open("video:1"), OpenAction::Cached(cached));
+
+        state(|s| *s = State::default());
+        gallery_state(|s| *s = GalleryState::default());
     }
 }
