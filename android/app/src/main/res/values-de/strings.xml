@@ -1679,4 +1679,6 @@
     <string name="your_reports_reply_sent">Gesendet. Es steht jetzt beim Bericht.</string>
     <string name="your_reports_sending">Wird gesendet</string>
     <string name="your_reports_send">Senden</string>
+    <string name="deck_on">An</string>
+    <string name="deck_off">Aus</string>
 </resources>

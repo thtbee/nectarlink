@@ -103,6 +103,13 @@ pub enum DeckAction {
     Macro {
         steps: Vec<MacroStep>,
     },
+    /// On and off in turn (#640): `on` runs when it's off, `off` when it's
+    /// on. Each is an action that fits in a macro. Whether it's on is kept
+    /// in [`DeckConfig::toggles_on`].
+    Toggle {
+        on: Box<DeckAction>,
+        off: Box<DeckAction>,
+    },
 }
 
 /// Never prints paths, URLs, text snippets, or commands (protocol v0 §11).
@@ -135,6 +142,7 @@ impl DeckAction {
             Self::RestartPc => deck_kinds::RESTART_PC,
             Self::ShutDownPc => deck_kinds::SHUT_DOWN_PC,
             Self::Macro { .. } => deck_kinds::MACRO,
+            Self::Toggle { .. } => deck_kinds::TOGGLE,
         }
     }
 
@@ -143,13 +151,14 @@ impl DeckAction {
         match self {
             Self::RunCommand { .. } => true,
             Self::Macro { steps } => steps.iter().any(|s| s.action.requires_commands_toggle()),
+            Self::Toggle { on, off } => on.requires_commands_toggle() || off.requires_commands_toggle(),
             _ => false,
         }
     }
 
-    /// Whether it can be one step of a macro.
+    /// Whether it can be one step of a macro, or one side of a toggle.
     pub fn fits_in_macro(&self) -> bool {
-        !matches!(self, Self::Macro { .. } | Self::RestartPc | Self::ShutDownPc)
+        !matches!(self, Self::Macro { .. } | Self::Toggle { .. } | Self::RestartPc | Self::ShutDownPc)
     }
 
     /// Validates action parameters.
@@ -174,6 +183,9 @@ impl DeckAction {
                         s.action.fits_in_macro() && s.action.is_valid() && s.delay_ms <= MAX_MACRO_DELAY_MS
                     })
                     && steps.iter().map(|s| s.delay_ms).sum::<u32>() <= MAX_MACRO_TOTAL_DELAY_MS
+            }
+            Self::Toggle { on, off } => {
+                on.fits_in_macro() && on.is_valid() && off.fits_in_macro() && off.is_valid()
             }
             Self::Shortcut { key, mods } => is_valid_shortcut(key, mods),
             Self::OpenUrl { url } => is_valid_http_url(url),
@@ -202,6 +214,7 @@ impl DeckAction {
             Self::Macro { steps } => {
                 steps.iter().map(|s| s.action.summary()).collect::<Vec<_>>().join(", then ")
             }
+            Self::Toggle { on, off } => format!("On: {}. Off: {}", on.summary(), off.summary()),
             Self::Shortcut { key, mods } => format_shortcut(key, mods),
             Self::OpenUrl { url } => url.clone(),
             Self::TypeText { text } => {
@@ -420,6 +433,9 @@ impl DeckPageConfig {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DeckConfig {
     pub pages: Vec<DeckPageConfig>,
+    /// The `toggle` tiles that are on (#640), kept across restarts.
+    #[serde(default, skip_serializing_if = "BTreeSet::is_empty")]
+    pub toggles_on: BTreeSet<String>,
 }
 
 impl DeckConfig {
@@ -465,7 +481,39 @@ impl DeckConfig {
             }
             pages.push(DeckPageConfig { id: page.id, name, tiles });
         }
-        (!pages.is_empty()).then_some(DeckConfig { pages })
+        // Only toggles that are still there.
+        let toggles_on = self
+            .toggles_on
+            .into_iter()
+            .filter(|id| {
+                pages
+                    .iter()
+                    .flat_map(|p| p.tiles.iter())
+                    .any(|t| t.id == *id && matches!(t.action, DeckAction::Toggle { .. }))
+            })
+            .collect();
+        (!pages.is_empty()).then_some(DeckConfig { pages, toggles_on })
+    }
+
+    /// Presses the `toggle` tile `id`: the action to run now (`off` when
+    /// it's on, else `on`), and whether it's on after. `None` for any other tile.
+    pub fn toggle_press(&self, id: &str) -> Option<(DeckAction, bool)> {
+        let DeckAction::Toggle { on, off } = &self.tile(id)?.action else { return None };
+        Some(if self.toggles_on.contains(id) { ((**off).clone(), false) } else { ((**on).clone(), true) })
+    }
+
+    /// Notes whether the `toggle` tile `id` is on now.
+    pub fn set_toggle(&mut self, id: &str, on: bool) {
+        if on {
+            self.toggles_on.insert(id.to_owned());
+        } else {
+            self.toggles_on.remove(id);
+        }
+    }
+
+    /// The `toggle` tiles that are on, for [`DeckState::toggles_on`].
+    pub fn toggles_on_list(&self) -> Vec<String> {
+        self.toggles_on.iter().cloned().collect()
     }
 
     /// Converts to the wire [`DeckLayout`] sent to paired phones.
@@ -508,6 +556,7 @@ impl DeckConfig {
                     tile("lock_pc", DeckAction::LockPc),
                 ],
             }],
+            toggles_on: BTreeSet::new(),
         }
     }
 
@@ -967,6 +1016,7 @@ mod tests {
                     },
                 ],
             }],
+            toggles_on: BTreeSet::new(),
         };
         let saved = serde_json::to_string(&config).unwrap();
         let back: DeckConfig = serde_json::from_str(&saved).unwrap();
@@ -976,6 +1026,73 @@ mod tests {
         assert!(layout.is_valid());
         assert!(deck_kinds::needs_confirmation(&layout.pages[0].tiles[0].kind));
         assert!(!deck_kinds::needs_confirmation(&layout.pages[0].tiles[1].kind));
+    }
+
+    fn toggle_tile(id: &str, on: DeckAction, off: DeckAction) -> DeckTileConfig {
+        DeckTileConfig {
+            id: id.into(),
+            label: "Monitors".into(),
+            icon: deck_icons::TOGGLE.into(),
+            color: deck_colors::GREEN.into(),
+            action: DeckAction::Toggle { on: Box::new(on), off: Box::new(off) },
+        }
+    }
+
+    fn deck_with(tiles: Vec<DeckTileConfig>) -> DeckConfig {
+        DeckConfig {
+            pages: vec![DeckPageConfig { id: "p".into(), name: "Main".into(), tiles }],
+            toggles_on: BTreeSet::new(),
+        }
+    }
+
+    #[test]
+    fn a_toggle_runs_on_then_off_in_turn_and_keeps_where_it_is() {
+        let on = DeckAction::RunCommand { command: "niri msg action power-on-monitors".into() };
+        let off = DeckAction::RunCommand { command: "niri msg action power-off-monitors".into() };
+        let mut deck = deck_with(vec![toggle_tile("mon", on.clone(), off.clone())]);
+        assert!(deck.is_valid());
+
+        let (run, after) = deck.toggle_press("mon").unwrap();
+        assert_eq!((run, after), (on.clone(), true));
+        deck.set_toggle("mon", after);
+        assert_eq!(deck.toggles_on_list(), vec!["mon".to_owned()]);
+        let (run, after) = deck.toggle_press("mon").unwrap();
+        assert_eq!((run, after), (off, false));
+        deck.set_toggle("mon", after);
+        assert!(deck.toggles_on_list().is_empty());
+
+        // Kept in deck.json, and only for toggles that are still there.
+        deck.set_toggle("mon", true);
+        deck.set_toggle("gone", true);
+        let back: DeckConfig = serde_json::from_str(&serde_json::to_string(&deck).unwrap()).unwrap();
+        assert_eq!(back.sanitized().unwrap().toggles_on_list(), vec!["mon".to_owned()]);
+        // Any other tile isn't a toggle.
+        assert!(DeckConfig::default_deck().toggle_press("play_pause").is_none());
+    }
+
+    #[test]
+    fn a_toggle_sides_are_plain_actions_and_commands_need_the_toggle() {
+        let command = DeckAction::RunCommand { command: "echo on".into() };
+        let toggle = |on, off| DeckAction::Toggle { on: Box::new(on), off: Box::new(off) };
+        assert!(toggle(DeckAction::MicMute, DeckAction::MicMute).is_valid());
+        assert!(!toggle(DeckAction::ShutDownPc, DeckAction::MicMute).is_valid());
+        assert!(!toggle(DeckAction::MicMute, toggle(DeckAction::MicMute, DeckAction::MicMute)).is_valid());
+        let with_command = toggle(command, DeckAction::MicMute);
+        assert!(with_command.requires_commands_toggle());
+        assert!(!with_command.fits_in_macro());
+        let wire =
+            toggle_tile("t", DeckAction::MicMute, DeckAction::RunCommand { command: "x".into() }).to_wire();
+        assert_eq!(wire.kind, deck_kinds::TOGGLE);
+        assert!(wire.needs_commands && wire.is_valid());
+    }
+
+    #[test]
+    fn a_phone_reads_which_toggles_are_on() {
+        let state = DeckState { toggles_on: vec!["mon".into()], ..DeckState::default() };
+        let back: DeckState = serde_json::from_str(&serde_json::to_string(&state).unwrap()).unwrap();
+        assert!(back.is_valid() && back.is_on("mon") && !back.is_on("other"));
+        // None on: left out, so older phones see what they always did.
+        assert!(!serde_json::to_string(&DeckState::default()).unwrap().contains("toggles_on"));
     }
 
     #[test]

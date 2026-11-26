@@ -33,7 +33,7 @@ class CoreStateTest {
         val speaker = app.nectarlink.core.AudioOutputDevice(PHONE_SPEAKER_OUTPUT, "Phone speaker (NectarLink)", false)
         val headphones = app.nectarlink.core.AudioOutputDevice("hp", "Headphones", true)
         fun deck(vararg outputs: app.nectarlink.core.AudioOutputDevice) =
-            app.nectarlink.core.DeckState(playing = false, volume = 50u, muted = false, micMuted = null, outputDevices = outputs.toList())
+            app.nectarlink.core.DeckState(playing = false, volume = 50u, muted = false, micMuted = null, outputDevices = outputs.toList(), togglesOn = emptyList())
         val online = CoreState()
             .reduce(Event.DeviceAdded(pc("a", "Desk", 10)))
             .reduce(Event.LinkChanged("a", Link.Online(relayed = false, usb = false, rttMs = 5u)))
@@ -162,6 +162,7 @@ class CoreStateTest {
             muted = false,
             micMuted = true,
             outputDevices = outputs,
+            togglesOn = listOf("mon"),
         )
         val state = CoreState()
             .reduce(Event.DeviceAdded(pc("a", "Desk", 10)))
@@ -172,6 +173,7 @@ class CoreStateTest {
         assertEquals(false, ds.muted)
         assertEquals(2, ds.outputDevices.size)
         assertEquals("Speakers (Realtek Audio)", ds.outputDevices.first { it.isDefault }.name)
+        assertEquals(listOf("mon"), ds.togglesOn)
     }
 
     @Test

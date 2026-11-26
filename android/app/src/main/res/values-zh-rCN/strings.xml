@@ -1537,4 +1537,6 @@
     <string name="your_reports_reply_sent">已发送，现在已附在报告上。</string>
     <string name="your_reports_sending">正在发送</string>
     <string name="your_reports_send">发送</string>
+    <string name="deck_on">开</string>
+    <string name="deck_off">关</string>
 </resources>

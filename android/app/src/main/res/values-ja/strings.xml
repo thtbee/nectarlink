@@ -1669,6 +1669,8 @@
     <string name="your_reports_reply_sent">送信しました。レポートに追加されました。</string>
     <string name="your_reports_sending">送信中</string>
     <string name="your_reports_send">送信</string>
+    <string name="deck_on">オン</string>
+    <string name="deck_off">オフ</string>
 </resources>
 
 

@@ -27,6 +27,10 @@ change things that need a step from you, and its notes say so.
   Storage & Privacy on the PC and About on the phone, stops it. On a PC,
   `NECTARLINK_NO_DAILY_COUNT=1` turns it off for packagers
   ([#534](https://github.com/thtbee/nectarlink/issues/534)).
+- **On / off tiles in Deck.** One tile with two actions, one to turn something on and one to
+  turn it off, run in turn with each press. The tile on the phone stays lit while it's on, like
+  the mute tiles, and the PC remembers it after a restart. Thanks to
+  [@M-P-A](https://github.com/M-P-A) ([#640](https://github.com/thtbee/nectarlink/issues/640)).
 - **Deck macros, and Restart and Shut down tiles.** A **Macro** tile runs up to 16 actions in a
   row, with a wait of up to 10 seconds after each. **Restart PC** and **Shut down PC** tiles
   ask on the phone first. A macro with a shell command needs **Run Deck shell commands**, like a

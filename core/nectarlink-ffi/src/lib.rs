@@ -930,6 +930,8 @@ pub struct DeckState {
     pub muted: bool,
     pub mic_muted: Option<bool>,
     pub output_devices: Vec<AudioOutputDevice>,
+    /// The `toggle` tiles that are on, by ID (#640).
+    pub toggles_on: Vec<String>,
 }
 
 impl From<core::DeckState> for DeckState {
@@ -940,6 +942,7 @@ impl From<core::DeckState> for DeckState {
             muted: s.muted,
             mic_muted: s.mic_muted,
             output_devices: s.output_devices.into_iter().map(Into::into).collect(),
+            toggles_on: s.toggles_on,
         }
     }
 }

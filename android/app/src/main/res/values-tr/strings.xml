@@ -1678,6 +1678,8 @@
     <string name="your_reports_reply_sent">Gönderildi. Artık raporda.</string>
     <string name="your_reports_sending">Gönderiliyor</string>
     <string name="your_reports_send">Gönder</string>
+    <string name="deck_on">Açık</string>
+    <string name="deck_off">Kapalı</string>
 </resources>
 
 

@@ -4041,6 +4041,8 @@ pub mod deck {
     pub const MAX_LABEL_BYTES: usize = 64;
     /// Maximum active audio output devices in a `DeckState`.
     pub const MAX_OUTPUT_DEVICES: usize = 32;
+    /// Maximum `toggle` tiles on at once in a `DeckState`: every tile of every page.
+    pub const MAX_TOGGLES_ON: usize = MAX_PAGES * MAX_TILES_PER_PAGE;
     /// Maximum bytes in an audio endpoint ID.
     pub const MAX_DEVICE_ID_BYTES: usize = 256;
     /// Maximum UTF-8 bytes in an audio endpoint friendly name.
@@ -4071,6 +4073,9 @@ pub mod deck_kinds {
     pub const SHUT_DOWN_PC: &str = "shut_down_pc";
     /// Several actions in a row, with pauses between them (#490).
     pub const MACRO: &str = "macro";
+    /// On and off in turn: one action turns it on, another off, and the
+    /// tile shows which it is (`DeckState::toggles_on`, #640).
+    pub const TOGGLE: &str = "toggle";
 
     /// Kinds a phone asks about before pressing: they end what's running on the PC.
     pub fn needs_confirmation(kind: &str) -> bool {
@@ -4097,6 +4102,7 @@ pub mod deck_kinds {
         RESTART_PC,
         SHUT_DOWN_PC,
         MACRO,
+        TOGGLE,
     ];
 
     /// Default icon for an action kind.
@@ -4122,6 +4128,7 @@ pub mod deck_kinds {
             RESTART_PC => RESTART,
             SHUT_DOWN_PC => POWER,
             MACRO => BOLT,
+            TOGGLE => super::deck_icons::TOGGLE,
             _ => SPARKLE,
         }
     }
@@ -4145,6 +4152,7 @@ pub mod deck_kinds {
             RESTART_PC => AMBER,
             SHUT_DOWN_PC => RED,
             MACRO => VIOLET,
+            TOGGLE => GREEN,
             _ => AMBER,
         }
     }
@@ -4171,6 +4179,7 @@ pub mod deck_kinds {
             RESTART_PC => "Restart",
             SHUT_DOWN_PC => "Shut down",
             MACRO => "Macro",
+            TOGGLE => "On / off",
             _ => "Action",
         }
     }
@@ -4201,6 +4210,8 @@ pub mod deck_icons {
     pub const POWER: &str = "power";
     pub const RESTART: &str = "restart";
     pub const BOLT: &str = "bolt";
+    /// A switch: for on/off tiles (#640).
+    pub const TOGGLE: &str = "toggle";
 
     pub const ALL: &[&str] = &[
         PLAY,
@@ -4226,6 +4237,7 @@ pub mod deck_icons {
         POWER,
         RESTART,
         BOLT,
+        TOGGLE,
     ];
 }
 
@@ -4530,6 +4542,9 @@ pub struct DeckState {
     pub mic_muted: Option<bool>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub output_devices: Vec<AudioOutputDevice>,
+    /// The `toggle` tiles that are on, by ID (#640). Left out when none are.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub toggles_on: Vec<String>,
 }
 
 impl DeckState {
@@ -4537,6 +4552,8 @@ impl DeckState {
         self.volume <= 100
             && self.output_devices.len() <= deck::MAX_OUTPUT_DEVICES
             && self.output_devices.iter().all(AudioOutputDevice::is_valid)
+            && self.toggles_on.len() <= deck::MAX_TOGGLES_ON
+            && self.toggles_on.iter().all(|id| is_valid_deck_id(id))
     }
 
     pub fn sanitized(mut self) -> Option<Self> {
@@ -4547,7 +4564,14 @@ impl DeckState {
             .filter_map(AudioOutputDevice::sanitized)
             .take(deck::MAX_OUTPUT_DEVICES)
             .collect();
+        self.toggles_on.retain(|id| is_valid_deck_id(id));
+        self.toggles_on.truncate(deck::MAX_TOGGLES_ON);
         Some(self)
+    }
+
+    /// Whether the `toggle` tile `id` is on.
+    pub fn is_on(&self, id: &str) -> bool {
+        self.toggles_on.iter().any(|t| t == id)
     }
 
     /// Friendly name of the default audio output device, if reported.
@@ -6647,6 +6671,7 @@ mod tests {
                     is_default: false,
                 },
             ],
+            toggles_on: vec!["mon".into()],
         };
         assert!(state.is_valid());
         assert_eq!(state.default_output_name(), Some("Speakers (Realtek Audio)"));

@@ -189,6 +189,8 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("ContinuityCamera", "Take a photo on %1…"), // desktop/app/src/continuity_camera.rs
     QT_TRANSLATE_NOOP("CoreHost", "Dropped %1 queued item(s) for %2 (device unpaired)."), // desktop/app/src/core_host.rs
     QT_TRANSLATE_NOOP("Deck", "%1 steps"), // desktop/app/src/bridge/deck.rs
+    QT_TRANSLATE_NOOP("Deck", "%1: %2"), // desktop/app/src/deck.rs
+    QT_TRANSLATE_NOOP("Deck", "%1: restart, shut down, macros and toggles can't be used here."), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "1 step"), // desktop/app/src/bridge/deck.rs
     QT_TRANSLATE_NOOP("Deck", "A macro can have up to %1 steps."), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "A macro can wait 30 seconds in all."), // desktop/app/src/deck.rs
@@ -198,6 +200,7 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Deck", "Asks on the phone first"), // desktop/app/src/bridge/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Choose a key for the shortcut."), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Choose an application (.exe or .lnk) on this PC."), // desktop/app/src/deck.rs
+    QT_TRANSLATE_NOOP("Deck", "Choose what turning it on does, and what turning it off does."), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Enter a command to run on this PC."), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Enter an application path (/usr/bin/..., .desktop, or .AppImage)."), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Enter an http:// or https:// web address."), // desktop/app/src/deck.rs
@@ -205,12 +208,17 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Deck", "Invalid action configuration."), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Invalid tile properties."), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Media key"), // desktop/app/src/bridge/deck.rs
+    QT_TRANSLATE_NOOP("Deck", "Off"), // desktop/app/src/bridge/deck.rs
+    QT_TRANSLATE_NOOP("Deck", "On"), // desktop/app/src/bridge/deck.rs
+    QT_TRANSLATE_NOOP("Deck", "On / off"), // desktop/app/src/bridge/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Page not found."), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Step %1: %2"), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Step %1: restart, shut down and macros can't be steps."), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Step %1: wait at most 10 seconds."), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "This page already has the maximum number of tiles (24)."), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Tile not found."), // desktop/app/src/deck.rs
+    QT_TRANSLATE_NOOP("Deck", "Turning off"), // desktop/app/src/deck.rs
+    QT_TRANSLATE_NOOP("Deck", "Turning on"), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Use a single key (a-z, 0-9, f1-f12, enter, tab, space, escape, arrows, etc.)."), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Web address must start with http:// or https://."), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Doctor", "%1 Open NectarLink on the phone and keep both on the same network. If the phone asks to run in the background, allow it."), // desktop/app/src/doctor.rs

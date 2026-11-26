@@ -2349,6 +2349,46 @@
         <source>Web address must start with http:// or https://.</source>
         <translation>Веб-адрес должен начинаться с http:// или https://.</translation>
     </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Choose what turning it on does, and what turning it off does.</source>
+        <translation>Выберите, что делает включение и что делает выключение.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>%1: %2</source>
+        <translation>%1: %2</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>%1: restart, shut down, macros and toggles can&apos;t be used here.</source>
+        <translation>%1: перезагрузку, выключение, макросы и переключатели здесь использовать нельзя.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Turning on</source>
+        <translation>Включение</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Turning off</source>
+        <translation>Выключение</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>On / off</source>
+        <translation>Вкл. / выкл.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>On</source>
+        <translation>Вкл.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Off</source>
+        <translation>Выкл.</translation>
+    </message>
 </context>
 <context>
     <name>DeckPage</name>
@@ -2827,6 +2867,41 @@
         <location filename="../qml/pages/DeckPage.qml" line="1076"/>
         <source>Reset</source>
         <translation>Сбросить</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>On / off (two actions in turn)</source>
+        <translation>Вкл. / выкл. (два действия по очереди)</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Each press runs one, then the other the next time. The tile on the phone shows whether it&apos;s on.</source>
+        <translation>Каждое нажатие выполняет одно действие, а в следующий раз — другое. Плитка на телефоне показывает, включено ли.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Turning on: %1</source>
+        <translation>Включение: %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Turning off: %1</source>
+        <translation>Выключение: %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Choose another action</source>
+        <translation>Выбрать другое действие</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Choose what turning it on does:</source>
+        <translation>Выберите, что делает включение:</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Choose what turning it off does:</source>
+        <translation>Выберите, что делает выключение:</translation>
     </message>
 </context>
 <context>
