@@ -46,6 +46,7 @@ mod notifications;
 mod obs;
 mod palette;
 mod pc_audio_stream;
+mod pc_battery;
 mod pc_mirror;
 mod pc_notifications;
 mod pc_storage;

@@ -570,6 +570,9 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **A laptop's battery now shows on the phone**: on the PC's card, in the PC widget and on the
+  Desk clock. The phone could show it, but the PC never sent it. Thanks to
+  [@M-P-A](https://github.com/M-P-A) ([#636](https://github.com/thtbee/nectarlink/issues/636)).
 - **Moving a call to the PC no longer stops at "No microphone"** when Windows' default
   communications microphone is off or missing: it uses the default microphone instead. When
   Windows' privacy settings keep NectarLink off the microphone, it now says so and where to

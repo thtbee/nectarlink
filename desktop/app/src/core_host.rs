@@ -311,6 +311,7 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
         node.update_power(nectarlink_core::PowerLevel::Basic, post_start_caps).await;
     }
     node.set_wake_info(wake.info.clone()).await;
+    crate::pc_battery::spawn(node.clone());
     // Subscribe before reading the initial state so no event is missed.
     let mut events = node.events();
     let devices = node.paired_devices().unwrap_or_else(|e| {
