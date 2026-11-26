@@ -594,6 +594,9 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **The phone's check for banking apps keeps its slow pace once the screen turns off**, instead
+  of looking once more straight away after a recent unlock. Thanks to
+  [@aihehye](https://github.com/aihehye) ([#592](https://github.com/thtbee/nectarlink/pull/592)).
 - **The PC's Doctor no longer warns about a VPN for Windows' own tunnels** (Teredo,
   IP-HTTPS, 6to4, ISATAP) or a PPPoE internet connection, and when it does warn, it names the
   adapter it means. Thanks to [@Tuna321](https://github.com/Tuna321)

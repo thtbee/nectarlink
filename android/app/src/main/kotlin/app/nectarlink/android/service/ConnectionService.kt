@@ -220,7 +220,10 @@ class ConnectionService : LifecycleService() {
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
                 val action = intent.action
-                if (action == Intent.ACTION_SCREEN_OFF) return setDiscoveryLock(false)
+                if (action == Intent.ACTION_SCREEN_OFF) {
+                    screenWake.tryReceive()
+                    return setDiscoveryLock(false)
+                }
                 if (action != Intent.ACTION_SCREEN_ON && action != Intent.ACTION_USER_PRESENT) return
                 setDiscoveryLock(true)
                 screenWake.trySend(Unit)
