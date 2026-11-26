@@ -598,6 +598,10 @@ change things that need a step from you, and its notes say so.
   media in Windows' media controls, and could then send it on to phones as if it played on the PC,
   showing on the phone that plays it and on any other. Thanks to
   [@FlootingDream](https://github.com/FlootingDream) ([#653](https://github.com/thtbee/nectarlink/issues/653)).
+- **The phone's hotspot switch works from the PC with Elevated** on current Android. It tried
+  shell commands that Android doesn't have, so nothing happened; it now asks Android's tethering
+  service, as Settings does. Thanks to [@johnzhang0707](https://github.com/johnzhang0707)
+  ([#615](https://github.com/thtbee/nectarlink/issues/615)).
 - **The phone's check for banking apps keeps its slow pace once the screen turns off**, instead
   of looking once more straight away after a recent unlock. Thanks to
   [@aihehye](https://github.com/aihehye) ([#592](https://github.com/thtbee/nectarlink/pull/592)).

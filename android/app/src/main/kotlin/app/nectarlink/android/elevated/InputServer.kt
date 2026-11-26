@@ -1121,6 +1121,8 @@ object InputServer {
         }
 
         private fun setHotspot(enable: Boolean) {
+            if (ShellTethering.set(enable)) return
+            // Older Android or ROMs without the tethering service.
             val candidates = if (enable) {
                 listOf(
                     arrayOf("cmd", "connectivity", "start-tethering", "wifi"),
