@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-License-Identifier: MPL-2.0
 //! The session over Bluetooth, for when a phone and a PC reach each other no
 //! other way: no shared network, no mobile data, no cable.
 //!
