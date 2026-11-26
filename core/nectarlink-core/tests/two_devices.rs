@@ -9230,14 +9230,32 @@ async fn a_bluetooth_link_carries_light_messages_only() {
     let link: SocketAddr = ("127.0.0.1".parse::<std::net::IpAddr>().unwrap(), port).into();
     let connected = with_timeout("connect over Bluetooth", pc.node.connect_bluetooth(link)).await;
     assert_eq!(connected.unwrap(), phone_id);
-    wait_for(&mut pc, "the phone is online over Bluetooth", |e| match e {
-        NodeEvent::LinkChanged {
-            device,
-            link: LinkState::Online { path: ConnectionPath::Bluetooth, .. },
-        } if *device == phone_id => Some(()),
-        _ => None,
-    })
-    .await;
+    // What the link did, to tell on a failure whether it went elsewhere
+    // (another path between two nodes on one machine) or never came up.
+    let mut seen = Vec::new();
+    let deadline = tokio::time::Instant::now() + WAIT;
+    loop {
+        let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
+        match tokio::time::timeout(remaining, pc.events.recv()).await {
+            Ok(Ok(NodeEvent::LinkChanged { device, link })) if device == phone_id => {
+                if matches!(link, LinkState::Online { path: ConnectionPath::Bluetooth, .. }) {
+                    break;
+                }
+                seen.push(format!("{link:?}"));
+            }
+            Ok(Ok(_)) => {}
+            Ok(Err(tokio::sync::broadcast::error::RecvError::Lagged(n))) => seen.push(format!("lagged {n}")),
+            Ok(Err(e)) => panic!("event stream ended: {e}"),
+            Err(_) => panic!(
+                "timed out waiting for the phone online over Bluetooth; its link went: {seen:?}; now: {:?}",
+                pc.node
+                    .paired_devices()
+                    .ok()
+                    .and_then(|d| d.into_iter().find(|d| d.id == phone_id))
+                    .map(|d| d.link)
+            ),
+        }
+    }
     assert!(pc.node.bluetooth_wanted().is_empty(), "an online phone doesn't need a link");
     assert!(
         matches!(pc.node.connect_bluetooth(link).await, Err(Error::Denied)),
