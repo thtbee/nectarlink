@@ -16,6 +16,14 @@ change things that need a step from you, and its notes say so.
   on the phone, a page each to swipe through, with play and pause, previous and next, the
   position, and the volume and output of where it plays. Thanks to
   [@doodoobug-dot](https://github.com/doodoobug-dot) ([#536](https://github.com/thtbee/nectarlink/issues/536)).
+- **Stay connected over Bluetooth when there's no network (Windows, Linux, Android).**
+  Pair the phone and the PC in the system's Bluetooth settings once, then turn on
+  **Bluetooth when there's no network** on both (Settings › Connection on the PC,
+  Settings on the phone). With no Wi-Fi, data or cable between them, they keep
+  notifications, texts, calls (without their sound), clipboard text and quick settings
+  going over Bluetooth, and switch back to Wi-Fi when it's there. Thanks to
+  [@unaibenidorm](https://github.com/unaibenidorm) ([#313](https://github.com/thtbee/nectarlink/issues/313))
+  and [@lukee12zakk](https://github.com/lukee12zakk) ([#182](https://github.com/thtbee/nectarlink/issues/182)).
 - **Read and answer replies to your reports in the app.** When someone answers a problem report
   you sent, the notification shows what they wrote, and you can reply right in it. **Your
   reports**, in Settings under Report a problem on the PC and on the phone's Report a problem

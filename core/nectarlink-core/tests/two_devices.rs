@@ -9195,3 +9195,71 @@ async fn report_parts_come_at_once_and_logs_only_when_shared() {
     // An answer with no request behind it does nothing.
     with_timeout("unasked", phone.node.diag_log_answer(pc_id, true)).await.unwrap();
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_bluetooth_link_carries_light_messages_only() {
+    use nectarlink_core::ConnectionPath;
+    // The phone and PC are paired, then both come back on new ports with no
+    // network discovery, so neither reaches the other any more. A Bluetooth
+    // link, which each platform pipes into the core on loopback, carries the
+    // session: a ring goes through, a phone storage listing doesn't.
+    let mut pc = device("Desktop BT", DeviceKind::Desktop).await;
+    let mut phone = start_usb_device("Pixel BT", DeviceKind::Phone, None, &["storage.read"]).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+
+    let (TestDevice { node: pc_node, dir: pc_dir, .. }, TestDevice { node: phone_node, dir: phone_dir, .. }) =
+        (pc, phone);
+    pc_node.shutdown().await;
+    phone_node.shutdown().await;
+    let mut pc = start_usb_device_in(pc_dir, "Desktop BT", DeviceKind::Desktop, None, &[]).await;
+    let phone = start_usb_device_in(phone_dir, "Pixel BT", DeviceKind::Phone, None, &["storage.read"]).await;
+    assert!(
+        pc.node.bluetooth_wanted().iter().any(|(id, name)| *id == phone_id && name == "Pixel BT"),
+        "an offline paired phone is one Bluetooth would help"
+    );
+
+    let port = phone.node.start_bluetooth_listener().expect("the Bluetooth listener is up");
+    assert_eq!(phone.node.start_bluetooth_listener(), Some(port), "it's opened once");
+    let link: SocketAddr = ("127.0.0.1".parse::<std::net::IpAddr>().unwrap(), port).into();
+    let connected = with_timeout("connect over Bluetooth", pc.node.connect_bluetooth(link)).await;
+    assert_eq!(connected.unwrap(), phone_id);
+    wait_for(&mut pc, "the phone is online over Bluetooth", |e| match e {
+        NodeEvent::LinkChanged {
+            device,
+            link: LinkState::Online { path: ConnectionPath::Bluetooth, .. },
+        } if *device == phone_id => Some(()),
+        _ => None,
+    })
+    .await;
+    assert!(pc.node.bluetooth_wanted().is_empty(), "an online phone doesn't need a link");
+    assert!(
+        matches!(pc.node.connect_bluetooth(link).await, Err(Error::Denied)),
+        "a second link to a connected phone is refused"
+    );
+
+    with_timeout("ring over Bluetooth", pc.node.ring(phone_id, true)).await.expect("a ring is light");
+    assert!(
+        matches!(
+            with_timeout("list storage", phone.node.storage_list(pc_id, "")).await,
+            Err(Error::Unsupported)
+        ),
+        "listing storage isn't sent over Bluetooth"
+    );
+
+    pc.node.shutdown().await;
+    phone.node.shutdown().await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_bluetooth_link_from_an_unpaired_pc_goes_nowhere() {
+    let pc = start_usb_device("Desktop BT", DeviceKind::Desktop, None, &[]).await;
+    let phone = start_usb_device("Pixel BT", DeviceKind::Phone, None, &[]).await;
+    let port = phone.node.start_bluetooth_listener().expect("the Bluetooth listener is up");
+    let link: SocketAddr = ("127.0.0.1".parse::<std::net::IpAddr>().unwrap(), port).into();
+    assert!(matches!(pc.node.connect_bluetooth(link).await, Err(Error::NotPaired | Error::Network(_))));
+    assert!(pc.node.paired_devices().unwrap().is_empty());
+    assert!(phone.node.paired_devices().unwrap().is_empty());
+    pc.node.shutdown().await;
+    phone.node.shutdown().await;
+}

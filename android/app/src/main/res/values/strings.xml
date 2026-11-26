@@ -36,6 +36,7 @@
     <string name="link_online_rtt">Connected · %1$d ms</string>
     <string name="link_usb">On USB</string>
     <string name="link_usb_rtt">On USB · %1$d ms</string>
+    <string name="link_bluetooth">On Bluetooth</string>
     <string name="link_away">Connected while away</string>
     <string name="link_connecting">Connecting…</string>
     <string name="link_offline_seen">Offline · seen %1$s</string>
@@ -1469,6 +1470,8 @@
     <string name="settings_usb_only_body">Connect to PCs only through a USB cable: no Wi-Fi, mobile data or local discovery</string>
     <string name="usb_only_tile_label">USB only</string>
     <string name="settings_mobile_data_body">Stay connected over LTE/5G or relay when away from Wi-Fi</string>
+    <string name="settings_bluetooth_link_title">Bluetooth when there\'s no network</string>
+    <string name="settings_bluetooth_link_body">A PC paired with this phone in Bluetooth settings stays connected without Wi-Fi or data, for notifications, texts, calls and the clipboard</string>
     <string name="settings_background_clipboard_title">Background clipboard access</string>
     <string name="settings_guide_card_body">Browse every feature, check live requirements, or jump straight to its controls.</string>
     <string name="settings_walkthrough_body">Reopen the setup guide for permissions, pairing, and power levels.</string>

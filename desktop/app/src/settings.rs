@@ -813,6 +813,9 @@ pub struct Settings {
     /// Use phones' USB debugging (adb) for USB features; off, never ask (#439).
     #[serde(default = "default_true", alias = "usb_debugging")]
     pub usb_debugging: bool,
+    /// Reach paired phones over Bluetooth when nothing else does (#313).
+    #[serde(default)]
+    pub bluetooth_link: bool,
     /// How many days notification history is kept: 1, 3, 7 or 30 (#442).
     #[serde(default = "default_history_days", alias = "notification_history_days")]
     pub notification_history_days: u32,
@@ -1040,6 +1043,7 @@ impl Default for Settings {
             keep_popups_paused: false,
             popups_paused: false,
             usb_debugging: true,
+            bluetooth_link: false,
             notification_history_days: 1,
             mirror_quality: String::new(),
             mirror_fps: 60,
@@ -1126,6 +1130,7 @@ impl Settings {
         set_sync_passwords(self.sync_passwords);
         set_keep_popups_paused(self.keep_popups_paused);
         set_usb_debugging(self.usb_debugging);
+        crate::win::bluetooth_link::set_enabled(self.bluetooth_link);
         crate::state::set_history_days(self.notification_history_days);
         set_mirror_quality(&self.mirror_quality);
         set_mirror_fps(self.mirror_fps);
@@ -1405,6 +1410,7 @@ mod tests {
             keep_popups_paused: true,
             popups_paused: true,
             usb_debugging: false,
+            bluetooth_link: true,
             notification_history_days: 7,
             mirror_quality: "sharper".into(),
             mirror_fps: 120,

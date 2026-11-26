@@ -3254,6 +3254,11 @@
         <source>just now</source>
         <translation>щойно</translation>
     </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Over Bluetooth</source>
+        <translation>Через Bluetooth</translation>
+    </message>
 </context>
 <context>
     <name>DoctorSheet</name>
@@ -6070,6 +6075,11 @@ What it needs
         <location filename="../qml/pages/HomePage.qml" line="2807"/>
         <source>Set a custom name for this phone on your PC. Leave blank to use &quot;%1&quot;.</source>
         <translation>Задайте власну назву цього телефона на ПК. Залиште порожнім, щоб використовувати «%1».</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="1"/>
+        <source>Bluetooth: notifications, texts and calls</source>
+        <translation>Bluetooth: сповіщення, повідомлення й дзвінки</translation>
     </message>
 </context>
 <context>
@@ -11730,6 +11740,13 @@ What it needs
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>Move the mouse past that edge of the screen to use it on that PC, and type there with this keyboard. Move it back, or press Ctrl+Alt+Esc, to return. That PC asks the first time, or turn on Remote mouse, keyboard &amp; Deck for this PC there.</source>
         <translation>Відведіть мишу за цей край екрана, щоб керувати тим ПК і друкувати там цією клавіатурою. Повернутися можна, відвівши мишу назад, або клавішами Ctrl+Alt+Esc. Той ПК запитає першого разу, або ввімкніть там «Віддалена миша, клавіатура й Deck» для цього ПК.</translation>
+        <source>Bluetooth when there&apos;s no network</source>
+        <translation>Bluetooth, коли немає мережі</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>A phone paired with this PC in Bluetooth settings stays connected without Wi-Fi or data, for notifications, texts, calls and the clipboard. Turn it on in the phone&apos;s Settings too.</source>
+        <translation>Телефон, спарений із цим ПК у налаштуваннях Bluetooth, лишається на зв’язку без Wi-Fi і мобільних даних: для сповіщень, повідомлень, дзвінків і буфера обміну. Увімкніть це й у налаштуваннях телефона.</translation>
     </message>
 </context>
 <context>

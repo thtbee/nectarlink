@@ -36,6 +36,7 @@
     <string name="link_online_rtt">Połączono · %1$d ms</string>
     <string name="link_usb">Przez USB</string>
     <string name="link_usb_rtt">Przez USB · %1$d ms</string>
+    <string name="link_bluetooth">Przez Bluetooth</string>
     <string name="link_away">Połączono poza siecią lokalną</string>
     <string name="link_connecting">Łączenie…</string>
     <string name="link_offline_seen">Offline · ostatnio widziano %1$s</string>
@@ -1483,6 +1484,8 @@
     <string name="usb_only_tile_label">Tylko USB</string>
     <string name="settings_theme_artwork_color">Kolor okładki multimediów</string>
     <string name="settings_mobile_data_body">Utrzymuj połączenie przez LTE/5G lub serwer pośredniczący poza zasięgiem Wi-Fi</string>
+    <string name="settings_bluetooth_link_title">Bluetooth, gdy nie ma sieci</string>
+    <string name="settings_bluetooth_link_body">Komputer sparowany z tym telefonem w ustawieniach Bluetooth pozostaje połączony bez Wi-Fi i danych komórkowych: powiadomienia, SMS-y, połączenia i schowek</string>
     <string name="settings_background_clipboard_title">Dostęp do schowka w tle</string>
     <string name="settings_guide_card_body">Poznaj wszystkie funkcje, sprawdź aktualne wymagania lub przejdź od razu do ich ustawień.</string>
     <string name="settings_walkthrough_body">Otwórz ponownie przewodnik konfiguracji uprawnień, parowania i poziomów zasilania.</string>

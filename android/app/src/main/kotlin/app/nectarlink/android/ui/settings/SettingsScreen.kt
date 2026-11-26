@@ -150,6 +150,7 @@ fun SettingsScreen(
     onToggleLocalSend: (Boolean) -> Unit = {},
     onToggleAwayMode: (Boolean) -> Unit = {},
     onToggleUsbOnly: (Boolean) -> Unit = {},
+    onToggleBluetoothLink: (Boolean) -> Unit = {},
     onOpenRelaySettings: () -> Unit = {},
     onOpenWalkthrough: () -> Unit = {},
     onOpenFeaturesGuide: () -> Unit = {},
@@ -810,6 +811,38 @@ fun SettingsScreen(
                             onCheckedChange = onToggleUsbOnly,
                             colors = app.nectarlink.android.ui.theme.nectarSwitchColors(),
                             modifier = Modifier.semantics { contentDescription = usbOnlyTitle },
+                        )
+                    }
+                    SettingRowDivider()
+                    // A PC reaches the phone over Bluetooth when nothing else does (#313).
+                    val bluetoothTitle = stringResource(R.string.settings_bluetooth_link_title)
+                    val askBluetooth = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+                        if (granted) onToggleBluetoothLink(true)
+                    }
+                    val bluetoothContext = LocalContext.current
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                            Text(bluetoothTitle, style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                stringResource(R.string.settings_bluetooth_link_body),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Switch(
+                            checked = state.bluetoothLink,
+                            onCheckedChange = { on ->
+                                val permission = app.nectarlink.android.bluetooth.BluetoothLink.permission
+                                if (on && permission != null &&
+                                    !app.nectarlink.android.bluetooth.BluetoothLink.hasPermission(bluetoothContext)
+                                ) {
+                                    askBluetooth.launch(permission)
+                                } else {
+                                    onToggleBluetoothLink(on)
+                                }
+                            },
+                            colors = app.nectarlink.android.ui.theme.nectarSwitchColors(),
+                            modifier = Modifier.semantics { contentDescription = bluetoothTitle },
                         )
                     }
                     SettingRowDivider()

@@ -851,6 +851,7 @@ fn main() -> ExitCode {
     core_host::spawn(async {
         if let Some(node) = core_host::wait_for_node().await {
             win::ble_beacon::start(node.device_id());
+            win::bluetooth_link::start(node);
         }
     });
     core_host::host().hub.update(|s| {

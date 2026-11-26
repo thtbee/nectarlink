@@ -3310,6 +3310,11 @@
         <source>just now</source>
         <translation>gerade eben</translation>
     </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Over Bluetooth</source>
+        <translation>Über Bluetooth</translation>
+    </message>
 </context>
 <context>
     <name>DoctorSheet</name>
@@ -6128,6 +6133,11 @@ Voraussetzungen
         <location filename="../qml/pages/HomePage.qml" line="2807"/>
         <source>Set a custom name for this phone on your PC. Leave blank to use &quot;%1&quot;.</source>
         <translation>Legen Sie einen benutzerdefinierten Namen für dieses Telefon auf Ihrem PC fest. Leer lassen, um &quot;%1&quot; zu verwenden.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="1"/>
+        <source>Bluetooth: notifications, texts and calls</source>
+        <translation>Bluetooth: Benachrichtigungen, SMS und Anrufe</translation>
     </message>
 </context>
 <context>
@@ -11812,6 +11822,13 @@ Voraussetzungen
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>Move the mouse past that edge of the screen to use it on that PC, and type there with this keyboard. Move it back, or press Ctrl+Alt+Esc, to return. That PC asks the first time, or turn on Remote mouse, keyboard &amp; Deck for this PC there.</source>
         <translation>Bewege die Maus über diesen Bildschirmrand, um sie an jenem PC zu nutzen und dort mit dieser Tastatur zu tippen. Zurück geht es mit der Maus oder mit Strg+Alt+Esc. Jener PC fragt beim ersten Mal, oder schalte dort Remote-Maus, -Tastatur &amp; Deck für diesen PC ein.</translation>
+        <source>Bluetooth when there&apos;s no network</source>
+        <translation>Bluetooth, wenn kein Netzwerk da ist</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>A phone paired with this PC in Bluetooth settings stays connected without Wi-Fi or data, for notifications, texts, calls and the clipboard. Turn it on in the phone&apos;s Settings too.</source>
+        <translation>Ein Handy, das in den Bluetooth-Einstellungen mit diesem PC gekoppelt ist, bleibt ohne WLAN oder mobile Daten verbunden, für Benachrichtigungen, SMS, Anrufe und die Zwischenablage. Schalte es auch in den Einstellungen des Handys ein.</translation>
     </message>
 </context>
 <context>

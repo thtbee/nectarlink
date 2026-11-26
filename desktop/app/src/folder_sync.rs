@@ -726,7 +726,9 @@ fn keep_phone_date(path: &Path, modified_ms: i64) {
 /// Whether a sync may use this connection. Only the relay is held back: a USB
 /// cable and the local network cost no data.
 fn link_allows_sync(link: &LinkState, wifi_only: bool) -> bool {
-    !(wifi_only && matches!(link, LinkState::Online { path: ConnectionPath::Relay, .. }))
+    // Over Bluetooth no files go (#313).
+    !matches!(link, LinkState::Online { path: ConnectionPath::Bluetooth, .. })
+        && !(wifi_only && matches!(link, LinkState::Online { path: ConnectionPath::Relay, .. }))
 }
 
 /// Whether "Sync on Wi-Fi only" lets `device` sync right now. An offline phone
@@ -1086,6 +1088,7 @@ mod tests {
         assert!(link_allows_sync(&on(ConnectionPath::Usb), true));
         assert!(link_allows_sync(&LinkState::Connecting, true));
         assert!(link_allows_sync(&on(ConnectionPath::Relay), false));
+        assert!(!link_allows_sync(&on(ConnectionPath::Bluetooth), false));
     }
 
     #[test]

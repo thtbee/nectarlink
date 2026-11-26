@@ -1167,11 +1167,13 @@ Item {
                                 onClicked: AppController.runDoctor()
                                 iconPath: !home.online ? Icons.unlink
                                           : home.path === "usb" ? Icons.usb
+                                          : home.path === "bluetooth" ? Icons.bluetooth
                                           : home.path === "relay" ? Icons.globe
                                           : (home.wifiBars < 0 && home.cellBars >= 0 ? Icons.signal : Icons.wifi)
                                 text: home.online
                                       ? (home.path === "relay"
                                          ? (home.rttMs >= 1 ? qsTr("Away · %1 ms").arg(home.rttMs) : qsTr("Away"))
+                                         : home.path === "bluetooth" ? qsTr("Bluetooth: notifications, texts and calls")
                                          : (home.path === "usb"
                                             ? (home.rttMs >= 1 ? qsTr("USB · %1 ms").arg(home.rttMs) : qsTr("USB"))
                                             : (home.wifiBars >= 0

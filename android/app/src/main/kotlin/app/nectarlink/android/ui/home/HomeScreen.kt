@@ -3249,6 +3249,7 @@ private fun TransferRow(
 private fun linkText(link: Link): String = when (link) {
     is Link.Online -> when {
         link.relayed -> stringResource(R.string.link_away)
+        link.bluetooth -> stringResource(R.string.link_bluetooth)
         link.usb -> if (link.rttMs >= 1u) stringResource(R.string.link_usb_rtt, link.rttMs.toInt()) else stringResource(R.string.link_usb)
         link.rttMs >= 1u -> stringResource(R.string.link_online_rtt, link.rttMs.toInt())
         else -> stringResource(R.string.link_online)

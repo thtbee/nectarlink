@@ -19,6 +19,9 @@ pub enum ConnectionPath {
     Usb,
     /// Through a relay server (away mode).
     Relay,
+    /// Over Bluetooth, when nothing else reaches the device: only light
+    /// messages go over it (see [`crate::bluetooth::allows`]).
+    Bluetooth,
 }
 
 /// Connection state of a paired device.

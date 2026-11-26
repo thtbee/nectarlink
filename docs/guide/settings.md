@@ -188,6 +188,7 @@ Provides network diagnostics, **Connect over mobile data**, Wake-on-LAN readines
 | :--- | :--- | :--- |
 | **Connection Doctor** | **Check** button | Runs a live check of Windows Firewall rules, network profile type (Public vs Private), active VPN interfaces, and suspected Wi-Fi AP isolation, and fixes firewall or network profile issues with one click. |
 | **Connect over mobile data** | **Off** | Allows this PC and paired phones to stay connected over LTE/5G or across separate networks via end-to-end encrypted relay packets when direct LAN/USB is unavailable. |
+| **Bluetooth when there's no network** | **Off** | With a phone also paired in Windows' or Linux's Bluetooth settings, keeps notifications, texts, calls (without their sound), clipboard text and quick settings going over Bluetooth when there's no Wi-Fi, data or cable. Files, mirroring, the webcam and other heavy features wait for a network. Turn it on on the phone too. Not on Mac yet. |
 | **Use USB debugging** | **On** | Connects, pairs, installs the app and starts Elevated over a USB cable. Off, NectarLink never asks a phone on a cable for USB debugging. Applies when NectarLink restarts. |
 | **Wake from your phone** | Read-only status indicator (`Ready`, `Off in Windows`, `Check settings`, `No adapter`) | Inspects your active Windows network adapter and tells you whether Wake on LAN is enabled in Device Manager so your phone can wake this PC from sleep. |
 | **Local automation API** | **Off** (default port `53320`) | Starts the loopback-only HTTP/JSON server (`127.0.0.1:<port>`) for PowerToys, AutoHotkey, and scripts, and writes the 256-bit Bearer token to `%LOCALAPPDATA%\Nectarlink\api-token.json`. |
@@ -238,6 +239,7 @@ On Android, tap **Settings** in the floating bottom dock. You can view all setti
 | **Browse this phone's storage in File Explorer** | **Off** (per PC) | Allows that specific PC to mount this phone's shared storage (or selected folders) inside Windows File Explorer. |
 | **Pair another PC** | Button | Opens the pairing screen to scan a QR code or pair nearby with another PC. |
 | **Connect over mobile data** | **Off** | Allows this phone to stay connected to paired PCs over LTE/5G or across different networks when away from Wi-Fi. |
+| **Bluetooth when there's no network** | **Off** | Lets a PC also paired in the phone's Bluetooth settings reach it over Bluetooth when there's no network, for notifications, texts, calls (without their sound), clipboard text and quick settings. Needs the Nearby devices permission. |
 | **Only on networks where a PC was found** | **Off** | The phone looks for your PCs by itself only on Wi-Fi where it has reached one directly before (it learns these as it goes; **Forget them** clears the list). On other networks a PC can still reach the phone. Networks are told apart by their router and address range, so the phone needs no location permission. |
 | **Stop looking after** | **Never** | With no PC reachable for 15 minutes, 1 hour or 4 hours, the phone stops looking until the network changes or you open NectarLink. Its notification says so. |
 

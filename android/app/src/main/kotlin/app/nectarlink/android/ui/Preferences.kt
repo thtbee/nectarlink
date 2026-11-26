@@ -234,6 +234,7 @@ class Preferences(context: Context) {
         internal const val BACKGROUND_SERVICE_ENABLED = "background_service_enabled"
         private const val AWAY_MODE = "away_mode"
         private const val USB_ONLY = "usb_only"
+        private const val BLUETOOTH_LINK = "bluetooth_link"
         private const val WALKTHROUGH_COMPLETED = "walkthrough_completed"
         private const val WALKTHROUGH_STEP = "walkthrough_step"
         private const val WHATS_NEW_GUIDE_DISMISSED = "whats_new_guide_dismissed"
@@ -326,6 +327,18 @@ class Preferences(context: Context) {
             context.applicationContext
                 .getSharedPreferences("appearance", Context.MODE_PRIVATE)
                 .getBoolean(AWAY_MODE, false)
+
+        /** Whether PCs may reach this phone over Bluetooth when nothing else does (#313). */
+        fun isBluetoothLinkEnabled(context: Context): Boolean =
+            context.applicationContext
+                .getSharedPreferences("appearance", Context.MODE_PRIVATE)
+                .getBoolean(BLUETOOTH_LINK, false)
+
+        fun setBluetoothLinkEnabled(context: Context, enabled: Boolean) {
+            context.applicationContext
+                .getSharedPreferences("appearance", Context.MODE_PRIVATE)
+                .edit { putBoolean(BLUETOOTH_LINK, enabled) }
+        }
 
         fun setAwayModeEnabled(context: Context, enabled: Boolean) {
             context.applicationContext

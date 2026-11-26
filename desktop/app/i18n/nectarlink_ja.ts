@@ -3294,6 +3294,11 @@
         <source>just now</source>
         <translation>たった今</translation>
     </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Over Bluetooth</source>
+        <translation>Bluetooth 経由</translation>
+    </message>
 </context>
 <context>
     <name>DoctorSheet</name>
@@ -6106,6 +6111,11 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
         <location filename="../qml/pages/HomePage.qml" line="2807"/>
         <source>Set a custom name for this phone on your PC. Leave blank to use &quot;%1&quot;.</source>
         <translation>PC上でこのスマートフォンにカスタム名を設定します。空欄のままにすると「%1」が使用されます。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="1"/>
+        <source>Bluetooth: notifications, texts and calls</source>
+        <translation>Bluetooth: 通知、メッセージ、通話</translation>
     </message>
 </context>
 <context>
@@ -11743,6 +11753,13 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>Move the mouse past that edge of the screen to use it on that PC, and type there with this keyboard. Move it back, or press Ctrl+Alt+Esc, to return. That PC asks the first time, or turn on Remote mouse, keyboard &amp; Deck for this PC there.</source>
         <translation>画面のその端の先へマウスを動かすと、その PC でマウスを使い、このキーボードで入力できます。戻すにはマウスを戻すか Ctrl+Alt+Esc を押します。初回はその PC で確認されます。その PC でこの PC のリモートマウス、キーボード＆デッキ をオンにしても使えます。</translation>
+        <source>Bluetooth when there&apos;s no network</source>
+        <translation>ネットワークがないときは Bluetooth</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>A phone paired with this PC in Bluetooth settings stays connected without Wi-Fi or data, for notifications, texts, calls and the clipboard. Turn it on in the phone&apos;s Settings too.</source>
+        <translation>Bluetooth 設定でこの PC とペアリングしたスマートフォンは、Wi-Fi やモバイルデータがなくても通知、メッセージ、通話、クリップボードのために接続されたままになります。スマートフォンの設定でもオンにしてください。</translation>
     </message>
 </context>
 <context>

@@ -3295,6 +3295,11 @@
         <source>just now</source>
         <translation>vừa xong</translation>
     </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Over Bluetooth</source>
+        <translation>Qua Bluetooth</translation>
+    </message>
 </context>
 <context>
     <name>DoctorSheet</name>
@@ -6107,6 +6112,11 @@ Nó cần gì
         <location filename="../qml/pages/HomePage.qml" line="2807"/>
         <source>Set a custom name for this phone on your PC. Leave blank to use &quot;%1&quot;.</source>
         <translation>Đặt tên tùy chỉnh cho điện thoại này trên PC của bạn. Để trống để dùng &quot;%1&quot;.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="1"/>
+        <source>Bluetooth: notifications, texts and calls</source>
+        <translation>Bluetooth: thông báo, tin nhắn và cuộc gọi</translation>
     </message>
 </context>
 <context>
@@ -11760,6 +11770,13 @@ Nó cần gì
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>Move the mouse past that edge of the screen to use it on that PC, and type there with this keyboard. Move it back, or press Ctrl+Alt+Esc, to return. That PC asks the first time, or turn on Remote mouse, keyboard &amp; Deck for this PC there.</source>
         <translation>Đưa chuột vượt qua cạnh màn hình đó để dùng chuột trên PC kia và gõ ở đó bằng bàn phím này. Đưa chuột trở lại hoặc nhấn Ctrl+Alt+Esc để quay về. PC kia sẽ hỏi lần đầu, hoặc bật Chuột, bàn phím và Deck từ xa cho PC này ở đó.</translation>
+        <source>Bluetooth when there&apos;s no network</source>
+        <translation>Bluetooth khi không có mạng</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>A phone paired with this PC in Bluetooth settings stays connected without Wi-Fi or data, for notifications, texts, calls and the clipboard. Turn it on in the phone&apos;s Settings too.</source>
+        <translation>Điện thoại đã ghép nối với máy tính này trong cài đặt Bluetooth vẫn kết nối khi không có Wi-Fi hay dữ liệu, cho thông báo, tin nhắn, cuộc gọi và bộ nhớ tạm. Hãy bật cả trong cài đặt của điện thoại.</translation>
     </message>
 </context>
 <context>

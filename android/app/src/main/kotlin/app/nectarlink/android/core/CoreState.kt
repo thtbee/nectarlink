@@ -257,6 +257,8 @@ data class CoreState(
     val awayMode: Boolean = false,
     /** Whether PCs are reached only through a USB cable: no Wi-Fi, mobile data, relay or local discovery. */
     val usbOnly: Boolean = false,
+    /** Whether PCs may reach this phone over Bluetooth when nothing else does (#313). */
+    val bluetoothLink: Boolean = false,
     /** Whether the phone has Wi-Fi, Ethernet, USB or a VPN; without one (and without
      *  [awayMode]) it waits for one rather than trying to reach PCs (#397). */
     val hasNetwork: Boolean = true,
@@ -373,6 +375,7 @@ data class CoreState(
                 if (oldLink is Link.Online && newLink is Link.Online &&
                     oldLink.relayed == newLink.relayed &&
                     oldLink.usb == newLink.usb &&
+                    oldLink.bluetooth == newLink.bluetooth &&
                     (oldLink.rttMs >= 1u) == (newLink.rttMs >= 1u) &&
                     kotlin.math.abs(oldLink.rttMs.toInt() - newLink.rttMs.toInt()) < 3 &&
                     prev.wakeState == WakeState.Idle

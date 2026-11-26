@@ -4066,6 +4066,20 @@ Item {
                                 onToggled: function(v) { Preferences.usbDebugging = v }
                             }
                         }
+                        Divider { width: parent.width; visible: Qt.platform.os !== "osx" }
+                        // #313: a phone paired over Bluetooth stays reachable without Wi-Fi or data.
+                        ListRow {
+                            width: parent.width
+                            visible: Qt.platform.os !== "osx"
+                            iconPath: Icons.bluetooth
+                            title: qsTr("Bluetooth when there's no network")
+                            description: qsTr("A phone paired with this PC in Bluetooth settings stays connected without Wi-Fi or data, for notifications, texts, calls and the clipboard. Turn it on in the phone's Settings too.")
+                            Toggle {
+                                label: qsTr("Bluetooth when there's no network")
+                                checked: Preferences.bluetoothLink
+                                onToggled: function(v) { Preferences.bluetoothLink = v }
+                            }
+                        }
                         Divider { width: parent.width; visible: Qt.platform.os === "linux" }
                         ListRow {
                             width: parent.width

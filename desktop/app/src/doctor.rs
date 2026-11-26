@@ -451,6 +451,7 @@ pub fn diagnose(facts: &Facts, now_secs: i64) -> Vec<Check> {
                     ConnectionPath::Lan => tr!("Doctor", "On this network"),
                     ConnectionPath::Usb => tr!("Doctor", "On USB"),
                     ConnectionPath::Relay => tr!("Doctor", "While away"),
+                    ConnectionPath::Bluetooth => tr!("Doctor", "Over Bluetooth"),
                 };
                 check(
                     &id,

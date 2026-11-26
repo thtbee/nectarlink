@@ -3295,6 +3295,11 @@
         <source>just now</source>
         <translation>agora mesmo</translation>
     </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Over Bluetooth</source>
+        <translation>Por Bluetooth</translation>
+    </message>
 </context>
 <context>
     <name>DoctorSheet</name>
@@ -6113,6 +6118,11 @@ O que precisa
         <location filename="../qml/pages/HomePage.qml" line="2807"/>
         <source>Set a custom name for this phone on your PC. Leave blank to use &quot;%1&quot;.</source>
         <translation>Defina um nome para identificar este celular no PC. Deixe em branco para usar “%1”.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="1"/>
+        <source>Bluetooth: notifications, texts and calls</source>
+        <translation>Bluetooth: notificações, mensagens e chamadas</translation>
     </message>
 </context>
 <context>
@@ -11781,6 +11791,13 @@ O que precisa
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>Move the mouse past that edge of the screen to use it on that PC, and type there with this keyboard. Move it back, or press Ctrl+Alt+Esc, to return. That PC asks the first time, or turn on Remote mouse, keyboard &amp; Deck for this PC there.</source>
         <translation>Mova o mouse além dessa borda da tela para usá-lo naquele PC e digitar lá com este teclado. Para voltar, mova-o de volta ou pressione Ctrl+Alt+Esc. Aquele PC pergunta na primeira vez, ou ative lá Mouse, teclado e Deck remotos para este PC.</translation>
+        <source>Bluetooth when there&apos;s no network</source>
+        <translation>Bluetooth quando não há rede</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>A phone paired with this PC in Bluetooth settings stays connected without Wi-Fi or data, for notifications, texts, calls and the clipboard. Turn it on in the phone&apos;s Settings too.</source>
+        <translation>Um celular pareado com este PC nas configurações de Bluetooth continua conectado sem Wi-Fi ou dados, para notificações, mensagens, chamadas e a área de transferência. Ative também nas configurações do celular.</translation>
     </message>
 </context>
 <context>

@@ -53,7 +53,7 @@ pub use nectarlink_adb::DEFAULT_ADB_ADDR;
 
 const MAGIC: &[u8; 4] = b"NLQU";
 const MAX_HELLO_BYTES: usize = 4096;
-const HELLO_TIMEOUT: Duration = Duration::from_secs(3);
+pub(crate) const HELLO_TIMEOUT: Duration = Duration::from_secs(3);
 const ADB_RETRY_DELAY: Duration = Duration::from_secs(2);
 /// How often, at most, the adb server is started while adb can't be reached.
 const ADB_START_EVERY: Duration = Duration::from_secs(60);
@@ -162,7 +162,12 @@ struct UsbHello {
     usb_only: bool,
 }
 
-async fn write_hello(stream: &mut TcpStream, id: &DeviceId, name: &str, usb_only: bool) -> Result<()> {
+pub(crate) async fn write_hello(
+    stream: &mut TcpStream,
+    id: &DeviceId,
+    name: &str,
+    usb_only: bool,
+) -> Result<()> {
     let hello = UsbHello { v: 1, id: id.to_string(), name: name.to_owned(), usb_only };
     let payload = serde_json::to_vec(&hello).map_err(|e| Error::Internal(e.to_string()))?;
     if payload.is_empty() || payload.len() > MAX_HELLO_BYTES {
@@ -178,7 +183,7 @@ async fn write_hello(stream: &mut TcpStream, id: &DeviceId, name: &str, usb_only
     Ok(())
 }
 
-async fn read_hello(stream: &mut TcpStream) -> Result<(DeviceId, String, bool)> {
+pub(crate) async fn read_hello(stream: &mut TcpStream) -> Result<(DeviceId, String, bool)> {
     let mut magic = [0u8; 4];
     stream.read_exact(&mut magic).await.map_err(|e| Error::Network(e.to_string()))?;
     if &magic != MAGIC {
@@ -200,7 +205,7 @@ async fn read_hello(stream: &mut TcpStream) -> Result<(DeviceId, String, bool)> 
     Ok((peer_id, name, hello.usb_only))
 }
 
-async fn exchange_hello(
+pub(crate) async fn exchange_hello(
     stream: &mut TcpStream,
     local_id: &DeviceId,
     local_name: &str,
@@ -618,7 +623,7 @@ async fn run_forwarded_session(
 /// on `stream`. Pre-initializes the local UDP peer target to `default_target`
 /// (`127.0.0.1:<iroh_port>`) and updates it whenever a local UDP datagram
 /// arrives.
-async fn relay_tcp_udp(
+pub(crate) async fn relay_tcp_udp(
     stream: TcpStream,
     udp: UdpSocket,
     default_target: SocketAddr,

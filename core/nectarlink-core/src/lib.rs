@@ -7,6 +7,7 @@
 //! `docs/architecture/core-api.md` for the design.
 
 mod actions;
+pub mod bluetooth;
 mod call_audio;
 mod calls;
 pub mod clip_kind;

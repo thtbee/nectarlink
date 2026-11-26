@@ -263,6 +263,7 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Doctor", "On public networks Windows keeps other devices from finding this PC. If it's your home or work network, set it to Private."), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "On public networks the firewall keeps other devices from finding this PC. If it's your home or work network, open network settings and set its firewall zone to Home or Trusted."), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "On this network"), // desktop/app/src/doctor.rs
+    QT_TRANSLATE_NOOP("Doctor", "Over Bluetooth"), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "Phone as webcam is ready"), // desktop/app/src/linux/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "Phone as webcam needs one more step"), // desktop/app/src/linux/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "Phone storage can open in your file manager"), // desktop/app/src/linux/doctor.rs

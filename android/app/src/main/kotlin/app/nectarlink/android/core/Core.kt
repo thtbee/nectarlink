@@ -178,6 +178,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     private val storage = PhoneStorage(this.context) { path ->
         enqueueNotificationOp { it.storageChanged(path) }
     }
+    private val bluetoothLink = app.nectarlink.android.bluetooth.BluetoothLink(this.context)
     private val toggles = PhoneToggles(
         this.context,
         onChanged = { state ->
@@ -514,6 +515,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                     localsendEnabled = lsEnabled,
                     awayMode = initialAwayMode,
                     usbOnly = initialUsbOnly,
+                    bluetoothLink = app.nectarlink.android.ui.Preferences.isBluetoothLinkEnabled(context),
                     localsendPeers = lsPeers,
                 )
             }
@@ -528,6 +530,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 it.copy(status = CoreStatus.Ready(started.deviceId()))
             }
             NotificationListener.instance?.refreshActive()
+            startBluetoothLink(started)
             refreshDataRetention()
             app.nectarlink.android.clipboard.DirectShareTargets.sync(context, _state.value.devices)
             app.nectarlink.android.widget.Widgets.refreshAll(context, _state.value)
@@ -699,6 +702,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 runJob = null
                 runScope = null
 
+                bluetoothLink.stop()
                 activeNode?.let { shutdownAndCloseNode(it) }
                 _state.value.devices.forEach { pcMedia.update(it.id, "", emptyList()) }
                 runCatching { Elevated.stop() }
@@ -1785,6 +1789,24 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             updateLocalSendMulticast(_state.value.localsendEnabled)
         }
         onDialing { applyDialing() }
+    }
+
+    /** Lets PCs reach this phone over Bluetooth when nothing else does, or stops it (#313). */
+    fun setBluetoothLink(enabled: Boolean) {
+        app.nectarlink.android.ui.Preferences.setBluetoothLinkEnabled(context, enabled)
+        _state.update { it.copy(bluetoothLink = enabled) }
+        scope.launch(Dispatchers.IO) {
+            startJob?.join()
+            val running = node
+            if (enabled && running != null) startBluetoothLink(running) else bluetoothLink.stop()
+        }
+    }
+
+    private fun startBluetoothLink(node: NectarlinkNode) {
+        if (!app.nectarlink.android.ui.Preferences.isBluetoothLinkEnabled(context)) return
+        if (!app.nectarlink.android.bluetooth.BluetoothLink.hasPermission(context)) return
+        val port = runCatching { node.startBluetoothListener() }.getOrNull() ?: return
+        bluetoothLink.start(port.toInt())
     }
 
     internal fun onScreenInteractiveChanged(interactive: Boolean) {

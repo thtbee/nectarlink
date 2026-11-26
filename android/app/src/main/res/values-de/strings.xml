@@ -36,6 +36,7 @@
     <string name="link_online_rtt">Verbunden · %1$d ms</string>
     <string name="link_usb">Über USB</string>
     <string name="link_usb_rtt">Über USB · %1$d ms</string>
+    <string name="link_bluetooth">Über Bluetooth</string>
     <string name="link_away">Unterwegs verbunden</string>
     <string name="link_connecting">Wird verbunden…</string>
     <string name="link_offline_seen">Offline · zuletzt gesehen %1$s</string>
@@ -1467,6 +1468,8 @@
     <string name="usb_only_tile_label">Nur USB</string>
     <string name="settings_theme_artwork_color">Farbe aus Mediencover</string>
     <string name="settings_mobile_data_body">Unterwegs ohne WLAN über LTE/5G oder Relay verbunden bleiben</string>
+    <string name="settings_bluetooth_link_title">Bluetooth, wenn kein Netzwerk da ist</string>
+    <string name="settings_bluetooth_link_body">Ein PC, der in den Bluetooth-Einstellungen mit diesem Handy gekoppelt ist, bleibt ohne WLAN oder mobile Daten verbunden, für Benachrichtigungen, SMS, Anrufe und die Zwischenablage</string>
     <string name="settings_background_clipboard_title">Hintergrundzugriff auf Zwischenablage</string>
     <string name="settings_guide_card_body">Durchsuche alle Funktionen, prüfe aktuelle Voraussetzungen oder springe direkt zu den Einstellungen.</string>
     <string name="settings_walkthrough_body">Öffne den Einrichtungsassistenten für Berechtigungen, Kopplung und Funktionsstufen erneut.</string>
