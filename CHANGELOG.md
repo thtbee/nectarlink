@@ -594,6 +594,9 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **Clicking Play on a phone video in Photos more than once downloads it once.** The button shows
+  that it's fetching and waits. Thanks to [@SolomonNumb1](https://github.com/SolomonNumb1)
+  ([#666](https://github.com/thtbee/nectarlink/pull/666)).
 - **The mouse no longer gets lost on the phone with Beside this PC.** It stays on the PC while a
   game or other app is in full screen or holds the cursor, so pushing against the edge in a game
   doesn't take the mouse and keyboard away. Going back, the PC checks with the phone as the mouse
