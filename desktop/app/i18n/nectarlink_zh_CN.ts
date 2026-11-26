@@ -2364,6 +2364,46 @@
         <source>Web address must start with http:// or https://.</source>
         <translation>网址必须以 http:// 或 https:// 开头。</translation>
     </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Choose what turning it on does, and what turning it off does.</source>
+        <translation>选择开启和关闭时各要做的事。</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>%1: %2</source>
+        <translation>%1：%2</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>%1: restart, shut down, macros and toggles can&apos;t be used here.</source>
+        <translation>%1：此处不能使用重启、关机、宏和开关。</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Turning on</source>
+        <translation>开启</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Turning off</source>
+        <translation>关闭</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>On / off</source>
+        <translation>开 / 关</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>On</source>
+        <translation>开</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Off</source>
+        <translation>关</translation>
+    </message>
 </context>
 <context>
     <name>DeckPage</name>
@@ -2842,6 +2882,41 @@
         <location filename="../qml/pages/DeckPage.qml" line="1076"/>
         <source>Reset</source>
         <translation>重置</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>On / off (two actions in turn)</source>
+        <translation>开 / 关（两个操作轮流）</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Each press runs one, then the other the next time. The tile on the phone shows whether it&apos;s on.</source>
+        <translation>每次按下运行其中一个，下次运行另一个。手机上的磁贴会显示是否已开启。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Turning on: %1</source>
+        <translation>开启：%1</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Turning off: %1</source>
+        <translation>关闭：%1</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Choose another action</source>
+        <translation>选择其他操作</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Choose what turning it on does:</source>
+        <translation>选择开启时要做的事：</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Choose what turning it off does:</source>
+        <translation>选择关闭时要做的事：</translation>
     </message>
 </context>
 <context>

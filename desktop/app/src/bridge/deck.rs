@@ -37,6 +37,8 @@ struct UiTile {
     win: bool,
     status: String,
     subtitle: String,
+    /// A toggle tile that's on (#640).
+    on: bool,
 }
 
 #[derive(Serialize)]
@@ -102,27 +104,26 @@ fn action_fields(action: &DeckAction) -> (String, bool, bool, bool, bool, String
         }
         DeckAction::Macro { steps } => {
             // The steps as the editor edits them, in the param field.
-            let editor: Vec<deck::EditorStep> = steps
-                .iter()
-                .map(|s| {
-                    let (param, ctrl, alt, shift, win, _) = action_fields(&s.action);
-                    deck::EditorStep {
-                        kind: s.action.kind().into(),
-                        param,
-                        ctrl,
-                        alt,
-                        shift,
-                        win,
-                        delay: s.delay_ms,
-                    }
-                })
-                .collect();
+            let editor: Vec<deck::EditorStep> =
+                steps.iter().map(|s| editor_step(&s.action, s.delay_ms)).collect();
             let json = serde_json::to_string(&editor).unwrap_or_else(|_| "[]".into());
             let count =
                 if steps.len() == 1 { tr!("Deck", "1 step") } else { tr!("Deck", "%1 steps", steps.len()) };
             (json, false, false, false, false, count)
         }
+        DeckAction::Toggle { on, off } => {
+            // On then off, as the editor edits them (#640).
+            let editor = [editor_step(on, 0), editor_step(off, 0)];
+            let json = serde_json::to_string(&editor).unwrap_or_else(|_| "[]".into());
+            (json, false, false, false, false, tr!("Deck", "On / off"))
+        }
     }
+}
+
+/// An action as one entry of the editor's list (a macro step, a toggle's side).
+fn editor_step(action: &DeckAction, delay: u32) -> deck::EditorStep {
+    let (param, ctrl, alt, shift, win, _) = action_fields(action);
+    deck::EditorStep { kind: action.kind().into(), param, ctrl, alt, shift, win, delay }
 }
 
 impl cxx_qt::Initialize for qobject::DeckController {
@@ -153,7 +154,12 @@ impl qobject::DeckController {
                         } else {
                             raw_subtitle
                         };
-                        let status = st.tile_status(&kind).unwrap_or_default();
+                        let on = st.is_on(&t.id);
+                        let status = if kind == deck_kinds::TOGGLE {
+                            if on { tr!("Deck", "On") } else { tr!("Deck", "Off") }
+                        } else {
+                            st.tile_status(&kind).unwrap_or_default()
+                        };
                         UiTile {
                             id: t.id.clone(),
                             label: t.label.clone(),
@@ -167,6 +173,7 @@ impl qobject::DeckController {
                             win,
                             status,
                             subtitle,
+                            on,
                         }
                     })
                     .collect(),

@@ -35,7 +35,9 @@ Item {
             currentPageIndex = Math.max(0, pagesList.length - 1)
     }
 
-    function iconPathFor(name, kind) {
+    function iconPathFor(name, kind, on) {
+        if (kind === "toggle" && name === "toggle")
+            return on ? Icons.toggleOn : Icons.toggleOff
         if (kind === "media_play_pause" && DeckController.playing)
             return Icons.pause
         if (kind === "mic_mute" && DeckController.micState === 1)
@@ -71,6 +73,7 @@ Item {
         case "bolt": return Icons.bolt
         case "star": return Icons.star
         case "power": return Icons.power
+        case "toggle": return Icons.toggleOff
         case "restart": return Icons.refresh
         case "music": return Icons.music
         case "folder": return Icons.folder
@@ -80,7 +83,8 @@ Item {
         }
     }
 
-    function isTileHighlighted(kind) {
+    function isTileHighlighted(kind, on) {
+        if (kind === "toggle") return !!on
         if (kind === "media_play_pause") return DeckController.playing
         if (kind === "volume_mute") return DeckController.muted
         if (kind === "mic_mute") return DeckController.micState === 1
@@ -93,7 +97,7 @@ Item {
         "mic_off", "lock", "desktop", "switch_window",
         "screenshot", "shortcut", "globe", "text",
         "app", "terminal", "bolt", "star",
-        "power", "restart"
+        "power", "restart", "toggle"
     ]
 
     readonly property var actionChoices: [
@@ -114,12 +118,13 @@ Item {
         { id: "launch_app",       group: qsTr("Apps"),   label: Qt.platform.os === "linux" ? qsTr("Launch application (.desktop / binary)") : qsTr("Launch application (.exe / .lnk)") },
         { id: "run_command",      group: qsTr("Apps"),   label: qsTr("Run shell command") },
         { id: "macro",            group: qsTr("Custom"), label: qsTr("Macro (several actions)") },
+        { id: "toggle",           group: qsTr("Custom"), label: qsTr("On / off (two actions in turn)") },
         // Not on macOS yet: the Mac app doesn't restart or shut down the Mac.
         { id: "restart_pc",       group: qsTr("Power"),  label: qsTr("Restart PC"), hidden: Qt.platform.os === "osx" },
         { id: "shut_down_pc",     group: qsTr("Power"),  label: qsTr("Shut down PC"), hidden: Qt.platform.os === "osx" }
     ]
     // What a macro step can be: the plain actions (#490).
-    readonly property var stepChoices: actionChoices.filter(c => c.id !== "macro" && c.id !== "restart_pc" && c.id !== "shut_down_pc")
+    readonly property var stepChoices: actionChoices.filter(c => c.id !== "macro" && c.id !== "toggle" && c.id !== "restart_pc" && c.id !== "shut_down_pc")
     function choiceLabel(kind) {
         const c = actionChoices.find(x => x.id === kind)
         return c ? c.label : kind
@@ -155,7 +160,7 @@ Item {
         editorSheet.modShift = !!tile.shift
         editorSheet.modWin = !!tile.win
         let steps = []
-        if (tile.kind === "macro") {
+        if (tile.kind === "macro" || tile.kind === "toggle") {
             try { steps = JSON.parse(tile.param || "[]") } catch (e) { steps = [] }
         }
         editorSheet.macroSteps = steps
@@ -397,7 +402,7 @@ Item {
 
                         readonly property bool isBeingDragged: page.draggedTileIndex === index
                         readonly property bool isDropTarget: page.draggedTileIndex >= 0 && page.dropTargetIndex === index
-                        readonly property bool highlighted: page.isTileHighlighted(modelData.kind)
+                        readonly property bool highlighted: page.isTileHighlighted(modelData.kind, modelData.on)
 
                         Rectangle {
                             id: tileCard
@@ -432,7 +437,7 @@ Item {
                                     Icon {
                                         anchors.centerIn: parent
                                         width: 18; height: 18
-                                        path: page.iconPathFor(tileSlot.modelData.icon, tileSlot.modelData.kind)
+                                        path: page.iconPathFor(tileSlot.modelData.icon, tileSlot.modelData.kind, tileSlot.modelData.on)
                                         color: tileSlot.highlighted
                                             ? Theme.primaryContainerContent
                                             : (Theme.graphite ? Theme.surfaceContent : Theme.secondaryContainerContent)
@@ -637,13 +642,24 @@ Item {
         property bool modWin: false
         property string errorText: ""
         // A macro's steps while it's edited; saved as JSON in paramValue (#490).
+        // An on/off tile's two actions too (#640): always two places, on then
+        // off, null until chosen.
         property var macroSteps: []
+        readonly property bool isToggle: actionKind === "toggle"
+        // The on/off place to fill next, or -1 when both are chosen.
+        readonly property int toggleGap: !isToggle ? -1 : (!macroSteps[0] ? 0 : (!macroSteps[1] ? 1 : -1))
 
         function setSteps(steps) { macroSteps = steps; paramValue = JSON.stringify(steps) }
         function addStep(kind) {
+            const step = { kind: kind, param: kind === "shortcut" ? "c" : kind === "open_url" ? "https://" : "",
+                           ctrl: kind === "shortcut", alt: false, shift: false, win: false, delay: 0 }
             const steps = macroSteps.slice()
-            steps.push({ kind: kind, param: kind === "shortcut" ? "c" : kind === "open_url" ? "https://" : "",
-                         ctrl: kind === "shortcut", alt: false, shift: false, win: false, delay: 0 })
+            if (isToggle) {
+                while (steps.length < 2) steps.push(null)
+                steps[toggleGap] = step
+            } else {
+                steps.push(step)
+            }
             setSteps(steps)
         }
         function changeStep(i, field, value) {
@@ -664,7 +680,10 @@ Item {
         }
         function removeStep(i) {
             const steps = macroSteps.slice()
-            steps.splice(i, 1)
+            if (isToggle)
+                steps[i] = null
+            else
+                steps.splice(i, 1)
             setSteps(steps)
         }
 
@@ -693,6 +712,8 @@ Item {
             }
             if (kind === "macro")
                 setSteps(macroSteps)
+            else if (kind === "toggle")
+                setSteps(macroSteps.length === 2 ? macroSteps : [null, null])
         }
 
         Column {
@@ -884,17 +905,20 @@ Item {
             }
 
             // A macro's steps (#490): each an action, then a wait before the next.
+            // An on/off tile's two actions use the same rows (#640).
             Column {
                 width: parent.width
                 spacing: 6
-                visible: editorSheet.actionKind === "macro"
+                visible: editorSheet.actionKind === "macro" || editorSheet.isToggle
 
                 Txt {
                     width: parent.width
                     wrapMode: Text.WordWrap
                     role: "bodySmall"
                     muted: true
-                    text: qsTr("The steps run in order. Up to 16, with up to 10 seconds of waiting after each and 30 in all.")
+                    text: editorSheet.isToggle
+                        ? qsTr("Each press runs one, then the other the next time. The tile on the phone shows whether it's on.")
+                        : qsTr("The steps run in order. Up to 16, with up to 10 seconds of waiting after each and 30 in all.")
                 }
 
                 Repeater {
@@ -903,11 +927,14 @@ Item {
                         id: stepRow
                         required property var modelData
                         required property int index
-                        readonly property string kind: modelData.kind
+                        // An on/off place not chosen yet has no row.
+                        readonly property bool chosen: !!modelData
+                        readonly property string kind: chosen ? modelData.kind : ""
                         readonly property bool hasParam: kind === "shortcut" || kind === "open_url"
                             || kind === "type_text" || kind === "launch_app" || kind === "run_command"
+                        visible: chosen
                         width: parent.width
-                        height: stepCol.implicitHeight + 16
+                        height: chosen ? stepCol.implicitHeight + 16 : 0
                         radius: Theme.radiusSm
                         color: Theme.surfaceContainerHigh
 
@@ -926,18 +953,24 @@ Item {
                                     anchors.verticalCenter: parent.verticalCenter
                                     elide: Text.ElideRight
                                     role: "label"
-                                    text: qsTr("%1. %2").arg(stepRow.index + 1).arg(page.choiceLabel(stepRow.kind))
+                                    text: !editorSheet.isToggle
+                                        ? qsTr("%1. %2").arg(stepRow.index + 1).arg(page.choiceLabel(stepRow.kind))
+                                        : stepRow.index === 0
+                                            ? qsTr("Turning on: %1").arg(page.choiceLabel(stepRow.kind))
+                                            : qsTr("Turning off: %1").arg(page.choiceLabel(stepRow.kind))
                                 }
                                 Row {
                                     id: stepButtons
                                     spacing: 0
                                     IconButton {
+                                        visible: !editorSheet.isToggle
                                         iconPath: Icons.chevronUp
                                         label: qsTr("Move step up")
                                         enabled: stepRow.index > 0
                                         onClicked: editorSheet.moveStep(stepRow.index, -1)
                                     }
                                     IconButton {
+                                        visible: !editorSheet.isToggle
                                         iconPath: Icons.chevronDown
                                         label: qsTr("Move step down")
                                         enabled: stepRow.index < editorSheet.macroSteps.length - 1
@@ -945,7 +978,7 @@ Item {
                                     }
                                     IconButton {
                                         iconPath: Icons.close
-                                        label: qsTr("Remove step")
+                                        label: editorSheet.isToggle ? qsTr("Choose another action") : qsTr("Remove step")
                                         onClicked: editorSheet.removeStep(stepRow.index)
                                     }
                                 }
@@ -1015,7 +1048,7 @@ Item {
                                 Row {
                                     id: waitBox
                                     spacing: 6
-                                    visible: stepRow.index < editorSheet.macroSteps.length - 1
+                                    visible: !editorSheet.isToggle && stepRow.index < editorSheet.macroSteps.length - 1
                                     Txt {
                                         anchors.verticalCenter: parent.verticalCenter
                                         role: "bodySmall"
@@ -1063,13 +1096,15 @@ Item {
                 }
 
                 Txt {
-                    visible: editorSheet.macroSteps.length < 16
-                    text: editorSheet.macroSteps.length === 0 ? qsTr("Add a step:") : qsTr("Add another step:")
+                    visible: editorSheet.isToggle ? editorSheet.toggleGap >= 0 : editorSheet.macroSteps.length < 16
+                    text: editorSheet.isToggle
+                        ? (editorSheet.toggleGap === 0 ? qsTr("Choose what turning it on does:") : qsTr("Choose what turning it off does:"))
+                        : editorSheet.macroSteps.length === 0 ? qsTr("Add a step:") : qsTr("Add another step:")
                     role: "bodySmall"
                     muted: true
                 }
                 Flow {
-                    visible: editorSheet.macroSteps.length < 16
+                    visible: editorSheet.isToggle ? editorSheet.toggleGap >= 0 : editorSheet.macroSteps.length < 16
                     width: parent.width
                     spacing: 6
                     Repeater {
@@ -1083,7 +1118,7 @@ Item {
                     }
                 }
                 Txt {
-                    visible: editorSheet.macroSteps.some(s => s.kind === "run_command")
+                    visible: editorSheet.macroSteps.some(s => s && s.kind === "run_command")
                     width: parent.width
                     wrapMode: Text.WordWrap
                     role: "bodySmall"

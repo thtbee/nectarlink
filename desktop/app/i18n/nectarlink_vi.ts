@@ -2349,6 +2349,46 @@
         <source>Web address must start with http:// or https://.</source>
         <translation>Địa chỉ web phải bắt đầu bằng http:// hoặc https://.</translation>
     </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Choose what turning it on does, and what turning it off does.</source>
+        <translation>Chọn việc khi bật và việc khi tắt.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>%1: %2</source>
+        <translation>%1: %2</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>%1: restart, shut down, macros and toggles can&apos;t be used here.</source>
+        <translation>%1: không dùng được khởi động lại, tắt máy, macro và bật/tắt ở đây.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Turning on</source>
+        <translation>Khi bật</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Turning off</source>
+        <translation>Khi tắt</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>On / off</source>
+        <translation>Bật / tắt</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>On</source>
+        <translation>Bật</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Off</source>
+        <translation>Tắt</translation>
+    </message>
 </context>
 <context>
     <name>DeckPage</name>
@@ -2827,6 +2867,41 @@
         <location filename="../qml/pages/DeckPage.qml" line="1076"/>
         <source>Reset</source>
         <translation>Đặt lại</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>On / off (two actions in turn)</source>
+        <translation>Bật / tắt (hai thao tác luân phiên)</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Each press runs one, then the other the next time. The tile on the phone shows whether it&apos;s on.</source>
+        <translation>Mỗi lần nhấn chạy một thao tác, lần sau chạy thao tác còn lại. Ô trên điện thoại cho biết đang bật hay không.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Turning on: %1</source>
+        <translation>Khi bật: %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Turning off: %1</source>
+        <translation>Khi tắt: %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Choose another action</source>
+        <translation>Chọn thao tác khác</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Choose what turning it on does:</source>
+        <translation>Chọn việc khi bật:</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Choose what turning it off does:</source>
+        <translation>Chọn việc khi tắt:</translation>
     </message>
 </context>
 <context>

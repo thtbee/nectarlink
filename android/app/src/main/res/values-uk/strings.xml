@@ -1694,6 +1694,8 @@
     <string name="your_reports_reply_sent">Надіслано. Відповідь тепер у звіті.</string>
     <string name="your_reports_sending">Надсилання</string>
     <string name="your_reports_send">Надіслати</string>
+    <string name="deck_on">Увімк.</string>
+    <string name="deck_off">Вимк.</string>
 </resources>
 
 

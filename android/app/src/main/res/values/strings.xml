@@ -1680,6 +1680,8 @@
     <string name="your_reports_reply_sent">Sent. It\'s on the report now.</string>
     <string name="your_reports_sending">Sending</string>
     <string name="your_reports_send">Send</string>
+    <string name="deck_on">On</string>
+    <string name="deck_off">Off</string>
 </resources>
 
 

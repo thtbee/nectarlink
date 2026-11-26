@@ -221,6 +221,7 @@ fun DeckScreen(
         muted = false,
         micMuted = false,
         outputDevices = emptyList(),
+        togglesOn = emptyList(),
     )
     val pages = layout.pages.ifEmpty { fallbackDefaultLayout(context).pages }
     val pagerState = rememberPagerState(pageCount = { pages.size })
@@ -588,7 +589,9 @@ private fun tilePalette(
 }
 
 @Composable
-private fun liveBadgeText(kind: String, state: DeckState): String? = when (kind) {
+private fun liveBadgeText(tile: DeckTile, state: DeckState): String? = when (tile.kind) {
+    // On and off in turn (#640).
+    "toggle" -> stringResource(if (tile.id in state.togglesOn) R.string.deck_on else R.string.deck_off)
     "media_play_pause" -> stringResource(if (state.playing) R.string.deck_playing else R.string.deck_paused)
     "volume_mute" ->
         if (state.muted) stringResource(R.string.deck_muted)
@@ -602,7 +605,8 @@ private fun liveBadgeText(kind: String, state: DeckState): String? = when (kind)
     else -> null
 }
 
-private fun isLiveHighlighted(kind: String, state: DeckState): Boolean = when (kind) {
+private fun isLiveHighlighted(tile: DeckTile, state: DeckState): Boolean = when (tile.kind) {
+    "toggle" -> tile.id in state.togglesOn
     "media_play_pause" -> state.playing
     "volume_mute" -> state.muted
     "mic_mute" -> state.micMuted == true
@@ -613,6 +617,7 @@ private fun effectiveIcon(tile: DeckTile, state: DeckState): String = when {
     tile.kind == "media_play_pause" && state.playing -> "pause"
     tile.kind == "mic_mute" && state.micMuted == true -> "mic_off"
     tile.kind == "volume_mute" && state.muted -> "volume_off"
+    tile.kind == "toggle" && tile.icon == "toggle" && tile.id in state.togglesOn -> "toggle_on"
     else -> tile.icon
 }
 
@@ -625,8 +630,8 @@ private fun DeckTileButton(
     onPress: () -> Unit,
 ) {
     val reducedMotion = LocalReducedMotion.current
-    val badge = liveBadgeText(tile.kind, liveState)
-    val highlighted = isLiveHighlighted(tile.kind, liveState)
+    val badge = liveBadgeText(tile, liveState)
+    val highlighted = isLiveHighlighted(tile, liveState)
     val palette = tilePalette(tile.color, highlighted)
     val iconName = effectiveIcon(tile, liveState)
 
@@ -977,6 +982,21 @@ private fun DrawScope.drawDeckIcon(name: String, color: Color, scratchPath: Path
             scratchPath.lineTo(sx(16.5f), sy(5.2f))
             scratchPath.lineTo(sx(13.4f), sy(6.6f))
             drawPath(scratchPath, color = color, style = stroke)
+        }
+        // A switch, its knob filled on the right when on (#640).
+        "toggle", "toggle_on" -> {
+            drawRoundRect(
+                color = color,
+                topLeft = pt(2f, 7f),
+                size = Size(sx(20f), sy(10f)),
+                cornerRadius = CornerRadius(sx(5f), sy(5f)),
+                style = stroke,
+            )
+            if (name == "toggle_on") {
+                drawCircle(color = color, radius = sx(3f), center = pt(17f, 12f))
+            } else {
+                drawCircle(color = color, radius = sx(3f), center = pt(7f, 12f), style = stroke)
+            }
         }
         "spark", "bolt" -> {
             scratchPath.rewind()

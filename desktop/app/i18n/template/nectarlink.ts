@@ -2281,6 +2281,46 @@
         <source>Web address must start with http:// or https://.</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <location filename="../rust_strings.h" line="1"/>
+        <source>Choose what turning it on does, and what turning it off does.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rust_strings.h" line="1"/>
+        <source>%1: %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rust_strings.h" line="1"/>
+        <source>%1: restart, shut down, macros and toggles can&apos;t be used here.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rust_strings.h" line="1"/>
+        <source>Turning on</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rust_strings.h" line="1"/>
+        <source>Turning off</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rust_strings.h" line="1"/>
+        <source>On / off</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rust_strings.h" line="1"/>
+        <source>On</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rust_strings.h" line="1"/>
+        <source>Off</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>DeckPage</name>
@@ -2758,6 +2798,41 @@
     <message>
         <location filename="../../qml/pages/DeckPage.qml" line="1076"/>
         <source>Reset</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/DeckPage.qml" line="1"/>
+        <source>On / off (two actions in turn)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/DeckPage.qml" line="1"/>
+        <source>Each press runs one, then the other the next time. The tile on the phone shows whether it&apos;s on.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/DeckPage.qml" line="1"/>
+        <source>Turning on: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/DeckPage.qml" line="1"/>
+        <source>Turning off: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/DeckPage.qml" line="1"/>
+        <source>Choose another action</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/DeckPage.qml" line="1"/>
+        <source>Choose what turning it on does:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/DeckPage.qml" line="1"/>
+        <source>Choose what turning it off does:</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

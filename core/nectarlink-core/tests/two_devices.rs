@@ -4847,6 +4847,7 @@ async fn deck_layout_and_state_arrive_press_runs_action_and_respects_toggles_and
         muted: false,
         mic_muted: Some(false),
         output_devices: Vec::new(),
+        toggles_on: Vec::new(),
     };
     pc.node.set_deck_state(initial_state.clone()).await.unwrap();
 
@@ -4911,6 +4912,7 @@ async fn deck_layout_and_state_arrive_press_runs_action_and_respects_toggles_and
         muted: true,
         mic_muted: Some(true),
         output_devices: Vec::new(),
+        toggles_on: Vec::new(),
     };
     pc.node.set_deck_state(updated_state.clone()).await.unwrap();
     let got_updated = wait_for(&mut phone, "updated deck state", |e| match e {
@@ -5351,6 +5353,7 @@ async fn pc_audio_volume_mute_output_devices_and_smart_clipboard_context_chips_f
                 is_default: false,
             },
         ],
+        toggles_on: Vec::new(),
     };
     pc.node.set_deck_state(initial_state.clone()).await.unwrap();
 

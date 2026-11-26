@@ -1607,4 +1607,6 @@
     <string name="your_reports_reply_sent">Đã gửi. Câu trả lời đã có trong báo cáo.</string>
     <string name="your_reports_sending">Đang gửi</string>
     <string name="your_reports_send">Gửi</string>
+    <string name="deck_on">Bật</string>
+    <string name="deck_off">Tắt</string>
 </resources>

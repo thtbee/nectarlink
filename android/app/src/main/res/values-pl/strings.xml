@@ -1696,6 +1696,8 @@
     <string name="your_reports_reply_sent">Wysłano. Jest już przy zgłoszeniu.</string>
     <string name="your_reports_sending">Wysyłanie</string>
     <string name="your_reports_send">Wyślij</string>
+    <string name="deck_on">Wł.</string>
+    <string name="deck_off">Wył.</string>
 </resources>
 
 

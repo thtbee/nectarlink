@@ -82,6 +82,7 @@ DeckState = {
   muted:           bool,                 // PC speaker is muted (`volume_*` tiles and phone audio bar)
   mic_muted?:      bool,                 // default PC microphone is muted (`mic_mute` tiles); omitted when no capture device exists
   output_devices?: [AudioOutputDevice],  // active PC playback endpoints (0..=32)
+  toggles_on?:     [text],               // IDs of the "toggle" tiles that are on (0..=192); omitted when none are
 }
 
 AudioOutputDevice = {
@@ -162,6 +163,7 @@ Errors for `pc.audio.set`:
     - `"launch_app"` (`.exe` or `.lnk` picked on the PC, launched via `ShellExecuteW` without arguments)
     - `"run_command"` (command written on the PC; requires the per-device `commands` toggle)
     - `"macro"` (1..=16 steps run in order, each one of the kinds above except `"macro"`, with a pause of up to 10 s after it and 30 s in all; the PC answers the press at once and runs the steps after; `needs_commands` when a step runs a command)
-  - Power: `"restart_pc"`, `"shut_down_pc"`. A phone asks the user before it sends the press. Neither can be a macro step.
-- **Icons (`icon`):** `"play"`, `"pause"`, `"skip_next"`, `"skip_previous"`, `"volume_up"`, `"volume_down"`, `"volume_off"`, `"mic"`, `"mic_off"`, `"lock"`, `"desktop"`, `"switch_window"`, `"screenshot"`, `"shortcut"`, `"globe"`, `"text"`, `"app"`, `"terminal"`, `"sparkle"`, `"star"`, `"power"`, `"restart"`, `"bolt"`.
+    - `"toggle"` (on and off in turn, #640: one action turns it on, another turns it off, each one of the parameterized or plain kinds above except `"macro"`; a press runs the side for the tile's state and, when that ran, turns the tile over. The PC keeps which toggles are on across restarts and reports them in `deck.state` `toggles_on`, so a phone shows the tile lit while it's on; `needs_commands` when a side runs a command. A phone that doesn't know the kind drops the tile.)
+  - Power: `"restart_pc"`, `"shut_down_pc"`. A phone asks the user before it sends the press. Neither can be a macro step or a side of a toggle.
+- **Icons (`icon`):** `"play"`, `"pause"`, `"skip_next"`, `"skip_previous"`, `"volume_up"`, `"volume_down"`, `"volume_off"`, `"mic"`, `"mic_off"`, `"lock"`, `"desktop"`, `"switch_window"`, `"screenshot"`, `"shortcut"`, `"globe"`, `"text"`, `"app"`, `"terminal"`, `"sparkle"`, `"star"`, `"power"`, `"restart"`, `"bolt"`, `"toggle"`.
 - **Colors (`color`):** `"amber"`, `"coral"`, `"red"`, `"teal"`, `"green"`, `"blue"`, `"violet"`, `"slate"`.

@@ -1679,6 +1679,8 @@
     <string name="your_reports_reply_sent">Enviado. Já está no relatório.</string>
     <string name="your_reports_sending">Enviando</string>
     <string name="your_reports_send">Enviar</string>
+    <string name="deck_on">Ligado</string>
+    <string name="deck_off">Desligado</string>
 </resources>
 
 
