@@ -8,6 +8,8 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **A setup video.** The README shows the whole setup in 74 seconds: installing the phone app,
+  pairing by QR code, Assist and Elevated. Thanks to [@aihehye](https://github.com/aihehye) ([#641](https://github.com/thtbee/nectarlink/discussions/641)).
 - **The Mac app lives in the menu bar when its window is closed.** With **Stay in system tray**
   on, closing the window also takes NectarLink out of the Dock and Cmd+Tab, leaving the menu
   bar icon; opening it from there, or a ringing call, brings the Dock icon back. The menu bar

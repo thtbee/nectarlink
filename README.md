@@ -93,6 +93,10 @@ for the details.
 
 The [user guide](docs/guide/README.md) walks through every step and feature.
 
+The whole setup in 74 seconds: installing the phone app, pairing by QR code, Assist and Elevated, and the connected Home on both:
+
+https://github.com/user-attachments/assets/8561261f-bf59-4257-85b5-9ecde4827dd8
+
 ## What it does
 
 **Stay on top of your phone**
