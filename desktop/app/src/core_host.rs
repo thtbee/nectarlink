@@ -270,10 +270,12 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
     let host = host();
     let wake = crate::win::wol::query_wake_status();
     let config = || {
+        let settings = crate::settings::Settings::load(&data_dir);
+        // The core can start before the settings are applied: its name is read here.
+        crate::settings::set_own_name(settings.own_name.clone());
         let mut config = NodeConfig::new(&data_dir, this_device(), env!("CARGO_PKG_VERSION"));
         config.downloads_dir = Some(downloads_dir());
         config.adb_server = adb_enabled().then_some(nectarlink_core::DEFAULT_ADB_ADDR);
-        let settings = crate::settings::Settings::load(&data_dir);
         config.away_mode = settings.away_mode;
         #[cfg(target_os = "linux")]
         {
@@ -513,9 +515,35 @@ pub fn downloads_dir() -> PathBuf {
     dirs::download_dir().unwrap_or_else(|| host().data_dir.join("received")).join("Nectarlink")
 }
 
+/// This PC's hostname, its name unless the user gave it another (#648).
+pub fn host_name() -> String {
+    hostname::get().ok().and_then(|h| h.into_string().ok()).unwrap_or_else(|| "PC".into())
+}
+
+/// The name this PC goes by: the one the user gave it, or its hostname.
+pub fn own_name() -> String {
+    let given = crate::settings::own_name();
+    let given = given.trim();
+    if given.is_empty() { host_name() } else { given.to_owned() }
+}
+
+/// Tells connected devices this PC's name now, and shows it here (#648).
+pub fn rename_this_pc() {
+    let name = this_device().name;
+    host().hub.update(|s| match &mut s.status {
+        Some(CoreStatus::Ready { name: shown, .. }) if *shown != name => {
+            *shown = name.clone();
+            Changes::STATUS
+        }
+        _ => Changes::NONE,
+    });
+    let Some(node) = node() else { return };
+    spawn(async move { node.update_device_info(this_device()).await });
+}
+
 /// How this PC presents itself to phones.
 fn this_device() -> DeviceInfo {
-    let name = hostname::get().ok().and_then(|h| h.into_string().ok()).unwrap_or_else(|| "PC".into());
+    let name = own_name();
     DeviceInfo {
         name,
         kind: if crate::win::is_laptop() { DeviceKind::Laptop } else { DeviceKind::Desktop },

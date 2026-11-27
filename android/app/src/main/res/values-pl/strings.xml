@@ -1711,6 +1711,9 @@
     <string name="pc_radio_wifi_off_title">Wyłączyć Wi-Fi komputera %1$s?</string>
     <string name="pc_radio_wifi_off_text">Jeśli ten telefon łączy się z komputerem przez Wi-Fi, połączenie zostanie przerwane i trzeba będzie włączyć Wi-Fi na komputerze.</string>
     <string name="pc_radio_wifi_off_confirm">Wyłącz</string>
+    <string name="settings_own_name">Nazwa tego telefonu</string>
+    <string name="settings_own_name_change">Zmień</string>
+    <string name="settings_own_name_hint">Jak ten telefon wyświetla się na twoich komputerach. Zostaw puste, aby użyć %1$s.</string>
 </resources>
 
 

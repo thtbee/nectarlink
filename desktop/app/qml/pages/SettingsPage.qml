@@ -1213,6 +1213,54 @@ Item {
 
                         Divider { width: parent.width }
 
+                        // This PC's own name on the phones and PCs it's paired with (#648).
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.laptop
+                            title: qsTr("This PC's name")
+                            description: qsTr("How this PC shows on your phones and other PCs. Leave it empty to use the computer's name, %1.").arg(Preferences.hostName())
+                            Rectangle {
+                                width: 200
+                                height: 32
+                                radius: Theme.radiusSm
+                                color: Theme.surfaceContainerHighest
+                                border.width: ownNameInput.activeFocus ? 2 : 1
+                                border.color: ownNameInput.activeFocus ? Theme.primary : Theme.outlineVariant
+                                TextInput {
+                                    id: ownNameInput
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 8
+                                    anchors.rightMargin: 8
+                                    verticalAlignment: TextInput.AlignVCenter
+                                    color: Theme.surfaceContent
+                                    selectionColor: Theme.primaryContainer
+                                    selectedTextColor: Theme.primaryContainerContent
+                                    font.pixelSize: 12
+                                    clip: true
+                                    maximumLength: 64
+                                    text: Preferences.ownName
+                                    Accessible.name: qsTr("This PC's name")
+                                    onEditingFinished: {
+                                        const name = text.trim()
+                                        if (name !== Preferences.ownName)
+                                            Preferences.ownName = name
+                                        text = Qt.binding(() => Preferences.ownName)
+                                    }
+                                    Txt {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: parent.width
+                                        elide: Text.ElideRight
+                                        visible: ownNameInput.text.length === 0 && !ownNameInput.activeFocus
+                                        role: "bodySmall"
+                                        muted: true
+                                        text: Preferences.hostName()
+                                    }
+                                }
+                            }
+                        }
+
+                        Divider { width: parent.width }
+
                         // Row 1: Start with Windows | Stay in system tray
                         Item {
                             id: startupPairRow

@@ -1704,4 +1704,7 @@
     <string name="pc_radio_wifi_off_title">¿Desactivar el Wi-Fi de %1$s?</string>
     <string name="pc_radio_wifi_off_text">Si este teléfono llega al PC por Wi-Fi, perderán la conexión y tendrás que volver a activar el Wi-Fi en el PC.</string>
     <string name="pc_radio_wifi_off_confirm">Desactivar</string>
+    <string name="settings_own_name">Nombre de este teléfono</string>
+    <string name="settings_own_name_change">Cambiar</string>
+    <string name="settings_own_name_hint">Cómo aparece este teléfono en tus PC. Déjalo vacío para usar %1$s.</string>
 </resources>

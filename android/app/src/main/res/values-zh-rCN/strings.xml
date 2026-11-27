@@ -1552,4 +1552,7 @@
     <string name="pc_radio_wifi_off_title">关闭 %1$s 的 WLAN？</string>
     <string name="pc_radio_wifi_off_text">如果这部手机通过 WLAN 连接电脑，连接会断开，需要在电脑上重新打开 WLAN。</string>
     <string name="pc_radio_wifi_off_confirm">关闭</string>
+    <string name="settings_own_name">此手机的名称</string>
+    <string name="settings_own_name_change">更改</string>
+    <string name="settings_own_name_hint">此手机在你的电脑上显示的名称。留空则使用 %1$s。</string>
 </resources>

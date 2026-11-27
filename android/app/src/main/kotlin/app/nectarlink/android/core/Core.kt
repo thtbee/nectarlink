@@ -3127,6 +3127,21 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     // ---- Phone storage (File Explorer on PC) ----
 
     /** Turns phone storage access in File Explorer on or off for `pcId` (off by default). */
+    /**
+     * Gives this phone a name of its own on the PCs it's paired with, or ""
+     * to go by Android's (#648). Connected PCs get it at once.
+     */
+    fun setOwnName(name: String) {
+        val clean = name.trim().take(OWN_NAME_MAX)
+        app.nectarlink.android.ui.Preferences.setOwnName(context, clean)
+        scope.launch(Dispatchers.IO) {
+            startJob?.join()
+            val running = node ?: return@launch
+            runCatching { running.updateDeviceInfo(deviceInfo(context, _state.value.activeMediaColor)) }
+                .onFailure { Log.w(TAG, "can't send the new device name", it) }
+        }
+    }
+
     /** Stops reconnecting to a paired PC by itself ("Stop reconnecting"), or starts again. */
     fun setReconnect(pcId: String, on: Boolean) {
         _state.update { it.reduce(Event.ReconnectChanged(pcId, on)) }
@@ -3311,6 +3326,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         /** See `ClipboardPeers`: the core refuses that device's clipboard when off. */
         const val CLIPBOARD_RECEIVE_TOGGLE = "clipboard_receive"
         const val TAG = "Nectarlink"
+        /** Longest name a device gives itself (the core keeps 64). */
+        const val OWN_NAME_MAX = 64
         /** How long a PC may be away before its running tasks come off this phone. */
         const val TASKS_AWAY_MS = 30 * 60_000L
         /** Offered while notification access is granted (docs/protocol/capabilities.md). */

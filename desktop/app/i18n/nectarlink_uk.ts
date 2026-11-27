@@ -11763,6 +11763,16 @@ What it needs
         <source>A phone paired with this PC in Bluetooth settings stays connected without Wi-Fi or data, for notifications, texts, calls and the clipboard. Turn it on in the phone&apos;s Settings too.</source>
         <translation>Телефон, спарений із цим ПК у налаштуваннях Bluetooth, лишається на зв’язку без Wi-Fi і мобільних даних: для сповіщень, повідомлень, дзвінків і буфера обміну. Увімкніть це й у налаштуваннях телефона.</translation>
     </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>This PC&apos;s name</source>
+        <translation>Назва цього ПК</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>How this PC shows on your phones and other PCs. Leave it empty to use the computer&apos;s name, %1.</source>
+        <translation>Як цей ПК показується на ваших телефонах та інших ПК. Залиште порожнім, щоб використовувати назву комп’ютера, %1.</translation>
+    </message>
 </context>
 <context>
     <name>Setup</name>

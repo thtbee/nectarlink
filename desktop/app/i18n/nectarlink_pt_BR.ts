@@ -11814,6 +11814,16 @@ O que precisa
         <source>A phone paired with this PC in Bluetooth settings stays connected without Wi-Fi or data, for notifications, texts, calls and the clipboard. Turn it on in the phone&apos;s Settings too.</source>
         <translation>Um celular pareado com este PC nas configurações de Bluetooth continua conectado sem Wi-Fi ou dados, para notificações, mensagens, chamadas e a área de transferência. Ative também nas configurações do celular.</translation>
     </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>This PC&apos;s name</source>
+        <translation>Nome deste PC</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>How this PC shows on your phones and other PCs. Leave it empty to use the computer&apos;s name, %1.</source>
+        <translation>Como este PC aparece nos seus celulares e outros PCs. Deixe em branco para usar o nome do computador, %1.</translation>
+    </message>
 </context>
 <context>
     <name>Setup</name>

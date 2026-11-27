@@ -1684,6 +1684,9 @@
     <string name="pc_radio_wifi_off_title">%1$s の Wi-Fi をオフにしますか?</string>
     <string name="pc_radio_wifi_off_text">このスマートフォンが Wi-Fi で PC につながっている場合は接続が切れ、PC で Wi-Fi をオンに戻す必要があります。</string>
     <string name="pc_radio_wifi_off_confirm">オフにする</string>
+    <string name="settings_own_name">このスマートフォンの名前</string>
+    <string name="settings_own_name_change">変更</string>
+    <string name="settings_own_name_hint">PC でのこのスマートフォンの表示名です。空欄にすると %1$s を使います。</string>
 </resources>
 
 

@@ -11836,6 +11836,16 @@ Neler gerekir
         <source>A phone paired with this PC in Bluetooth settings stays connected without Wi-Fi or data, for notifications, texts, calls and the clipboard. Turn it on in the phone&apos;s Settings too.</source>
         <translation>Bluetooth ayarlarında bu bilgisayarla eşlenen bir telefon, Wi-Fi veya veri olmadan bildirimler, mesajlar, aramalar ve pano için bağlı kalır. Bunu telefonun ayarlarında da açın.</translation>
     </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>This PC&apos;s name</source>
+        <translation>Bu bilgisayarın adı</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>How this PC shows on your phones and other PCs. Leave it empty to use the computer&apos;s name, %1.</source>
+        <translation>Bu bilgisayarın telefonlarınızda ve diğer bilgisayarlarda nasıl görüneceği. Bilgisayar adını (%1) kullanmak için boş bırakın.</translation>
+    </message>
 </context>
 <context>
     <name>Setup</name>

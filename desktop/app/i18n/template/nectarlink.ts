@@ -11426,6 +11426,16 @@ What it needs
         <source>A phone paired with this PC in Bluetooth settings stays connected without Wi-Fi or data, for notifications, texts, calls and the clipboard. Turn it on in the phone&apos;s Settings too.</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1"/>
+        <source>This PC&apos;s name</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1"/>
+        <source>How this PC shows on your phones and other PCs. Leave it empty to use the computer&apos;s name, %1.</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>Setup</name>

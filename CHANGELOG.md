@@ -8,6 +8,10 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Give your PC and phone a name of their own.** In Settings › General on the PC (**This PC's
+  name**) and Settings › Devices on the phone (**This phone's name**). Paired devices show it at once;
+  leave it empty to go back to the computer's or Android's name. Thanks to
+  [@zubair1511983](https://github.com/zubair1511983) ([#648](https://github.com/thtbee/nectarlink/issues/648)).
 - **One mouse and keyboard for two PCs.** Set another paired PC **Beside this PC** on the left
   or right, and the mouse goes over that edge of the screen onto it, with the keyboard typing
   there, no phone needed. The other PC asks first. From Windows, to Windows or Linux. Thanks to

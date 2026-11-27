@@ -1695,6 +1695,9 @@
     <string name="pc_radio_wifi_off_title">Turn off %1$s\'s Wi-Fi?</string>
     <string name="pc_radio_wifi_off_text">If this phone reaches the PC over Wi-Fi, they\'ll lose the connection, and you\'ll need to turn Wi-Fi back on at the PC.</string>
     <string name="pc_radio_wifi_off_confirm">Turn off</string>
+    <string name="settings_own_name">This phone\'s name</string>
+    <string name="settings_own_name_change">Change</string>
+    <string name="settings_own_name_hint">How this phone shows on your PCs. Leave it empty to use %1$s.</string>
 </resources>
 
 

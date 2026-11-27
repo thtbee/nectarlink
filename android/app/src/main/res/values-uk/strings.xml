@@ -1709,6 +1709,9 @@
     <string name="link_bluetooth">Через Bluetooth</string>
     <string name="settings_bluetooth_link_title">Bluetooth, коли немає мережі</string>
     <string name="settings_bluetooth_link_body">ПК, спарений із цим телефоном у налаштуваннях Bluetooth, лишається на зв’язку без Wi-Fi і мобільних даних: для сповіщень, повідомлень, дзвінків і буфера обміну</string>
+    <string name="settings_own_name">Назва цього телефона</string>
+    <string name="settings_own_name_change">Змінити</string>
+    <string name="settings_own_name_hint">Як цей телефон показується на ваших ПК. Залиште порожнім, щоб використовувати %1$s.</string>
 </resources>
 
 

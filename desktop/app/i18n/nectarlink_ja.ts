@@ -11776,6 +11776,16 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
         <source>A phone paired with this PC in Bluetooth settings stays connected without Wi-Fi or data, for notifications, texts, calls and the clipboard. Turn it on in the phone&apos;s Settings too.</source>
         <translation>Bluetooth 設定でこの PC とペアリングしたスマートフォンは、Wi-Fi やモバイルデータがなくても通知、メッセージ、通話、クリップボードのために接続されたままになります。スマートフォンの設定でもオンにしてください。</translation>
     </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>This PC&apos;s name</source>
+        <translation>この PC の名前</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>How this PC shows on your phones and other PCs. Leave it empty to use the computer&apos;s name, %1.</source>
+        <translation>スマートフォンや他の PC でのこの PC の表示名です。空欄にするとコンピューター名 %1 を使います。</translation>
+    </message>
 </context>
 <context>
     <name>Setup</name>
