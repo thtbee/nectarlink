@@ -8,6 +8,9 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Nectar Island on the Mac.** The pill for calls, transfers and new notifications sits just
+  below the menu bar, on every Space, and stays when another app is in front or NectarLink has no
+  window open. It doesn't show over full-screen apps.
 - **Unlock KDE Plasma with the phone.** On Linux, NectarLink's PAM module can now run in the
   lock screen's `kde-fingerprint` service, so the phone asks for your fingerprint each time the
   PC locks and unlocks it when you approve. It's one line in `/etc/pam.d/kde-fingerprint`; see

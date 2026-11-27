@@ -202,9 +202,22 @@ pub fn reduce_motion() -> bool {
     if let Some(out) = output { String::from_utf8_lossy(&out.stdout).trim() == "1" } else { false }
 }
 
-/// Primary display work area in physical pixels.
+#[allow(unsafe_code)]
+unsafe extern "C" {
+    /// `mac_window.mm`: the primary screen's work area; false without a screen.
+    pub(crate) fn nl_mac_work_area(x: *mut i32, y: *mut i32, width: *mut i32, height: *mut i32) -> bool;
+    /// `mac_window.mm`: makes the window titled `title` an overlay (above
+    /// others, on every Space, kept when the app isn't active).
+    pub(crate) fn nl_mac_style_overlay_window(title: *const std::ffi::c_char);
+}
+
+/// The primary display's work area, the screen minus the menu bar and the
+/// Dock, in physical pixels: `(left, top, width, height)`.
+#[allow(unsafe_code)]
 pub fn work_area() -> Option<(i32, i32, i32, i32)> {
-    None
+    let (mut x, mut y, mut w, mut h) = (0, 0, 0, 0);
+    // SAFETY: writes four integers through the pointers to our own locals.
+    unsafe { nl_mac_work_area(&mut x, &mut y, &mut w, &mut h) }.then_some((x, y, w, h))
 }
 
 /// How far this PC's time zone is from UTC at `at_ms` (Unix milliseconds).
@@ -240,6 +253,19 @@ pub(crate) fn reg_string(_root: u32, _key: &str, _value: &str) -> Option<String>
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn work_area_is_inside_the_screen_when_there_is_one() {
+        // No screen on a headless runner: nothing to check then.
+        if let Some((x, y, w, h)) = work_area() {
+            assert!(x >= 0 && y >= 0 && w > 0 && h > 0, "{x},{y} {w}x{h}");
+        }
+    }
+
+    #[test]
+    fn styling_a_window_that_isnt_there_does_nothing() {
+        tray::apply_no_activate_style_by_title("no such window");
+    }
 
     #[test]
     fn free_space_returns_some_on_system_drive() {

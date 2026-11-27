@@ -453,6 +453,7 @@ fn main() {
         );
     } else if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("macos") {
         build_macos_audio_loopback();
+        build_macos_window();
         println!("cargo:rustc-link-lib=framework=AppKit");
         println!("cargo:rustc-link-lib=framework=CoreGraphics");
         println!("cargo:rustc-link-lib=framework=CoreAudio");
@@ -491,6 +492,15 @@ fn build_linux_video_codec() {
     build.compile("nectarlink_linux_video_codec");
     println!("cargo::rustc-link-lib=dl");
     println!("cargo::rustc-cfg=linux_ffmpeg_video");
+}
+
+fn build_macos_window() {
+    println!("cargo::rerun-if-changed=cpp/mac_window.mm");
+    cc::Build::new()
+        .file("cpp/mac_window.mm")
+        .flag("-fobjc-arc")
+        .flag("-std=c++17")
+        .compile("nectarlink_mac_window");
 }
 
 fn build_macos_audio_loopback() {

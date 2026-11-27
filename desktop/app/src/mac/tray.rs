@@ -152,7 +152,15 @@ pub fn update_hotkeys(_photo_spec: &str, _scan_spec: &str, _palette_spec: &str, 
 #[allow(dead_code)]
 pub fn record_foreground_window() {}
 
-pub fn apply_no_activate_style_by_title(_title: &str) {}
+/// Makes the window titled `title` an overlay: above other windows, on every
+/// Space, and still shown when NectarLink isn't the active app. Runs on the
+/// Qt thread, once the window is up.
+#[allow(unsafe_code)]
+pub fn apply_no_activate_style_by_title(title: &str) {
+    let Ok(title) = std::ffi::CString::new(title) else { return };
+    // SAFETY: a NUL-terminated string that outlives the call.
+    unsafe { super::nl_mac_style_overlay_window(title.as_ptr()) };
+}
 
 pub fn focus_window(_hwnd: isize) -> bool {
     false
