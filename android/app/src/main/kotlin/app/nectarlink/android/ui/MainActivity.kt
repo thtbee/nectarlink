@@ -25,6 +25,8 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBars
@@ -165,6 +167,7 @@ class MainActivity : ComponentActivity() {
             handleRecordIntent(intent)
             handleWebcamIntent(intent)
             handleReportsIntent(intent)
+            handleChatIntent(intent)
         }
 
         setContent {
@@ -284,6 +287,14 @@ class MainActivity : ComponentActivity() {
         handleRecordIntent(intent)
         handleWebcamIntent(intent)
         handleReportsIntent(intent)
+        handleChatIntent(intent)
+    }
+
+    /** A note's notification: the chat with that device opens. */
+    private fun handleChatIntent(intent: Intent?) {
+        val id = intent?.getStringExtra(app.nectarlink.android.chat.ChatNotifications.EXTRA_OPEN_CHAT) ?: return
+        intent.removeExtra(app.nectarlink.android.chat.ChatNotifications.EXTRA_OPEN_CHAT)
+        app.nectarlink.android.chat.ChatNotifications.requestOpen(id)
     }
 
     /** A notification about a sent report: Your reports opens at it. */
@@ -390,6 +401,7 @@ private sealed interface ScreenRoute {
     data class Deck(val pcId: String) : ScreenRoute
     data class Desk(val pcId: String) : ScreenRoute
     data class Remote(val pcId: String) : ScreenRoute
+    data class Chat(val deviceId: String) : ScreenRoute
     data object Main : ScreenRoute
 }
 
@@ -454,6 +466,14 @@ private fun App(
     var deskPcId by rememberSaveable { mutableStateOf<String?>(null) }
     var recordPcId by rememberSaveable { mutableStateOf<String?>(null) }
     var webcamPcId by rememberSaveable { mutableStateOf<String?>(null) }
+    var chatDeviceId by rememberSaveable { mutableStateOf<String?>(null) }
+    val chatAsked by app.nectarlink.android.chat.ChatNotifications.open.collectAsStateWithLifecycle()
+    LaunchedEffect(chatAsked) {
+        chatAsked?.let {
+            chatDeviceId = it
+            app.nectarlink.android.chat.ChatNotifications.opened()
+        }
+    }
     var webcamAutoStart by rememberSaveable { mutableStateOf(false) }
     var webcamInitialHeight by rememberSaveable { mutableStateOf<Int?>(null) }
     var webcamInitialCamera by rememberSaveable { mutableStateOf<String?>(null) }
@@ -570,6 +590,7 @@ private fun App(
     val deskDevice = deskPcId?.let { state.device(it) }
     val recordDevice = recordPcId?.let { state.device(it) }
     val webcamDevice = webcamPcId?.let { state.device(it) }
+    val chatDevice = chatDeviceId?.let { state.device(it) }
     LaunchedEffect(remoteDevice?.id) {
         onActiveRemoteChanged(remoteDevice?.id)
     }
@@ -596,6 +617,7 @@ private fun App(
         yourReports != null -> ScreenRoute.YourReports(yourReports.orEmpty())
         reportOpen -> ScreenRoute.Report
         pairing || state.pairing != PairingState.Idle -> ScreenRoute.Pairing
+        chatDevice != null -> ScreenRoute.Chat(chatDevice.id)
         webcamDevice != null -> ScreenRoute.Webcam(webcamDevice.id)
         recordDevice != null -> ScreenRoute.Recorder(recordDevice.id)
         deckDevice != null -> ScreenRoute.Deck(deckDevice.id)
@@ -778,6 +800,24 @@ private fun App(
             ScreenRoute.Pairing -> {
                 BackHandler(enabled = pairing || state.devices.isNotEmpty()) { core.resetPairing(); pairing = false }
                 PairingScreen(state, actions, cancellable = pairing || state.devices.isNotEmpty()) { pairing = false }
+            }
+            is ScreenRoute.Chat -> {
+                val dev = state.device(route.deviceId) ?: return@AnimatedContent
+                BackHandler { chatDeviceId = null }
+                Scaffold(
+                    snackbarHost = { SnackbarHost(snackbar) },
+                ) { padding ->
+                    app.nectarlink.android.ui.chat.ChatScreen(
+                        device = dev,
+                        core = core,
+                        onBack = { chatDeviceId = null },
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(padding)
+                            .consumeWindowInsets(padding)
+                            .imePadding(),
+                    )
+                }
             }
             is ScreenRoute.Webcam -> {
                 val dev = state.device(route.pcId) ?: return@AnimatedContent
@@ -1021,6 +1061,9 @@ private fun App(
                                     },
                                     onRecord = { id ->
                                         recordPcId = id
+                                    },
+                                    onChat = { id ->
+                                        chatDeviceId = id
                                     },
                                     onWebcam = { id ->
                                         webcamAutoStart = false

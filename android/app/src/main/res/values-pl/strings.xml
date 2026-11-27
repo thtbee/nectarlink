@@ -1722,6 +1722,30 @@
     <string name="settings_own_name">Nazwa tego telefonu</string>
     <string name="settings_own_name_change">Zmień</string>
     <string name="settings_own_name_hint">Jak ten telefon wyświetla się na twoich komputerach. Zostaw puste, aby użyć %1$s.</string>
+    <string name="action_chat">Czat</string>
+    <string name="channel_chat">Czat</string>
+    <string name="chat_you">Ty</string>
+    <string name="chat_empty">Wpisz notatkę, a pojawi się na urządzeniu %1$s.</string>
+    <string name="chat_composer_hint">Notatka</string>
+    <string name="chat_composer_label">Notatka do: %1$s</string>
+    <string name="chat_send">Wyślij</string>
+    <string name="chat_save">Zapisz</string>
+    <string name="chat_editing">Edytowanie notatki</string>
+    <string name="chat_offline">Połącz się z urządzeniem %1$s, aby wysyłać notatki.</string>
+    <string name="chat_too_old">Zaktualizuj NectarLink na urządzeniu %1$s, aby wysyłać notatki.</string>
+    <string name="chat_too_long">Notatka może mieć do %1$d znaków.</string>
+    <string name="chat_not_connected">Urządzenie %1$s nie jest połączone.</string>
+    <string name="chat_action_copy">Kopiuj</string>
+    <string name="chat_action_edit">Edytuj</string>
+    <string name="chat_action_delete">Usuń</string>
+    <string name="chat_delete_title">Usunąć tę notatkę?</string>
+    <string name="chat_delete_text">Zostanie usunięta także na urządzeniu %1$s.</string>
+    <string name="chat_delete_text_offline">Urządzenie %1$s nie jest połączone, więc tam zostanie.</string>
+    <string name="chat_note_mine">Ty, %1$s: %2$s</string>
+    <string name="chat_note_from">%1$s, %2$s: %3$s</string>
+    <string name="chat_note_options">Opcje notatki</string>
+    <string name="chat_earlier">Wcześniejsze notatki</string>
+    <string name="timeline_filter_notes">Notatki</string>
 </resources>
 
 
