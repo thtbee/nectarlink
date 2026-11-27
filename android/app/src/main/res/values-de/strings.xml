@@ -1694,4 +1694,5 @@
     <string name="pc_radio_wifi_off_title">WLAN von %1$s ausschalten?</string>
     <string name="pc_radio_wifi_off_text">Wenn dieses Handy den PC über WLAN erreicht, bricht die Verbindung ab, und du musst das WLAN am PC wieder einschalten.</string>
     <string name="pc_radio_wifi_off_confirm">Ausschalten</string>
+    <string name="home_device_page">%1$s, %2$d von %3$d. Für die anderen wischen.</string>
 </resources>

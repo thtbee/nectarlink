@@ -1693,6 +1693,7 @@
     <string name="pc_radio_wifi_off_title">%1$s cihazının Wi-Fi\'ı kapatılsın mı?</string>
     <string name="pc_radio_wifi_off_text">Bu telefon bilgisayara Wi-Fi ile bağlanıyorsa bağlantı kopar ve Wi-Fi\'ı bilgisayardan yeniden açmanız gerekir.</string>
     <string name="pc_radio_wifi_off_confirm">Kapat</string>
+    <string name="home_device_page">%1$s, %2$d/%3$d. Diğerleri için kaydırın.</string>
 </resources>
 
 

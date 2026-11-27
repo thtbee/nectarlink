@@ -1622,4 +1622,5 @@
     <string name="pc_radio_wifi_off_title">Tắt Wi-Fi của %1$s?</string>
     <string name="pc_radio_wifi_off_text">Nếu điện thoại này kết nối với PC qua Wi-Fi, kết nối sẽ bị ngắt và bạn cần bật lại Wi-Fi trên PC.</string>
     <string name="pc_radio_wifi_off_confirm">Tắt</string>
+    <string name="home_device_page">%1$s, %2$d trên %3$d. Vuốt để xem các thiết bị khác.</string>
 </resources>
