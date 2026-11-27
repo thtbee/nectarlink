@@ -392,6 +392,19 @@ impl Session {
         })
     }
 
+    /// Ends the USB tunnel to this peer, if it has one, so the watcher opens a new one.
+    pub(crate) fn recycle_usb_tunnel(&self) {
+        if !self.has_usb_tunnel() {
+            return;
+        }
+        let token =
+            self.usb_peers.lock().unwrap_or_else(|e| e.into_inner()).get(&self.peer).map(|(_, t)| t.clone());
+        if let Some(token) = token {
+            tracing::info!(peer = %self.peer.short(), "closing the USB tunnel of a dead session");
+            token.cancel();
+        }
+    }
+
     pub(crate) fn uses_usb_bridge_port(&self, port: u16) -> bool {
         self.usb_peers
             .lock()
@@ -1073,6 +1086,11 @@ async fn probe(session: &Arc<Session>, shared: &Weak<Shared>, started: Instant) 
             if !alive && received_bytes(session) <= received {
                 tracing::info!(peer = %session.peer.short(), error = %e, "heartbeat timed out; closing dead session");
                 session.close(CLOSE_NORMAL, b"heartbeat timeout");
+                // A session that died over a cable usually died with the tunnel (adb's
+                // forward stalled, the phone's app was frozen). Nothing is sent through
+                // it once the session is gone, so its silence check never fires and the
+                // reconnect keeps dialing into it: close it so a fresh one is opened.
+                session.recycle_usb_tunnel();
                 return false;
             }
             true
