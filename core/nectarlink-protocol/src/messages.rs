@@ -92,6 +92,8 @@ pub mod types {
     pub const SMS_CHANGED: &str = "sms.changed";
     pub const SMS_SIMS: &str = "sms.sims";
     pub const SMS_MARK_READ: &str = "sms.mark_read";
+    pub const SMS_MARK_UNREAD: &str = "sms.mark_unread";
+    pub const SMS_DELETE: &str = "sms.delete";
     pub const MIRROR_START: &str = "mirror.start";
     pub const MIRROR_STOP: &str = "mirror.stop";
     pub const MIRROR_POWER: &str = "mirror.power";
@@ -2340,6 +2342,14 @@ pub mod sms {
     /// Offered by phones that mark a conversation's texts read in the phone's
     /// own messages when a PC asks (`sms.mark_read`).
     pub const MARK_READ: &str = "sms.mark_read";
+    /// Offered by phones that mark a conversation's latest received text
+    /// unread in the phone's own messages when a PC asks (`sms.mark_unread`).
+    pub const MARK_UNREAD: &str = "sms.mark_unread";
+    /// Offered by phones that delete a conversation or messages from the
+    /// phone's own messages when a PC asks (`sms.delete`).
+    pub const DELETE: &str = "sms.delete";
+    /// Most messages one `sms.delete` names.
+    pub const MAX_DELETE: usize = 100;
     /// Most conversations or messages in one answer.
     pub const MAX_PAGE: u32 = 100;
     /// A text sent from a PC: at most this many bytes.
@@ -2570,6 +2580,50 @@ impl SmsMarkRead {
     /// A conversation is the phone's number for it: digits only.
     pub fn is_valid(&self) -> bool {
         (1..=18).contains(&self.thread.len()) && self.thread.bytes().all(|b| b.is_ascii_digit())
+    }
+}
+
+/// A message's id as `sms.messages` lists it: `sms:` for a text, `mms:` for a
+/// picture message, then its number in digits.
+fn is_message_id(id: &str) -> bool {
+    let digits = id.strip_prefix("sms:").or_else(|| id.strip_prefix("mms:")).unwrap_or_default();
+    (1..=18).contains(&digits.len()) && digits.bytes().all(|b| b.is_ascii_digit())
+}
+
+/// Body of `sms.mark_unread`: mark this conversation's latest received text
+/// unread, or the received text `message` (an id from `sms.messages`) names.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SmsMarkUnread {
+    pub thread: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+}
+
+impl SmsMarkUnread {
+    /// Numbers only: nothing but digits (and `mms:`) reaches the phone's shell.
+    pub fn is_valid(&self) -> bool {
+        SmsMarkRead { thread: self.thread.clone() }.is_valid()
+            && self.message.as_deref().is_none_or(is_message_id)
+    }
+}
+
+/// Body of `sms.delete`: delete a conversation, or only the messages named,
+/// from the phone's own messages. Not undoable.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SmsDelete {
+    pub thread: String,
+    /// Message ids from `sms.messages`; none: the whole conversation.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub messages: Vec<String>,
+}
+
+impl SmsDelete {
+    /// Numbers only, and not a long list: nothing but digits (and `mms:`)
+    /// reaches the phone's shell.
+    pub fn is_valid(&self) -> bool {
+        SmsMarkRead { thread: self.thread.clone() }.is_valid()
+            && self.messages.len() <= sms::MAX_DELETE
+            && self.messages.iter().all(|id| is_message_id(id))
     }
 }
 
@@ -5460,6 +5514,64 @@ name"
         for bad in ["", "12a", "-1", "1 OR 1=1", "1;reboot", "1234567890123456789", "١٢٣"] {
             assert!(!mark(bad).is_valid(), "{bad:?}");
         }
+    }
+
+    #[test]
+    fn marking_unread_and_deleting_name_numbers_alone() {
+        let unread = |thread: &str, message: Option<&str>| SmsMarkUnread {
+            thread: thread.into(),
+            message: message.map(Into::into),
+        };
+        assert!(unread("128", None).is_valid());
+        assert!(unread("128", Some("sms:77")).is_valid());
+        assert!(unread("128", Some("mms:77")).is_valid());
+        for bad in [
+            "",
+            "77",
+            "7 OR 1=1",
+            "mms:",
+            "mms:x",
+            "sms:7 OR 1=1",
+            "-1",
+            "sms:7;reboot",
+            "mms:1234567890123456789",
+            "mms:mms:7",
+        ] {
+            assert!(!unread("128", Some(bad)).is_valid(), "{bad:?}");
+        }
+        assert!(!unread("1 OR 1=1", None).is_valid());
+
+        let delete = |thread: &str, messages: &[&str]| SmsDelete {
+            thread: thread.into(),
+            messages: messages.iter().map(|m| m.to_string()).collect(),
+        };
+        assert!(delete("128", &[]).is_valid());
+        assert!(delete("128", &["sms:1", "mms:2"]).is_valid());
+        assert!(!delete("1;2", &[]).is_valid());
+        assert!(!delete("128", &["sms:1", "mms:2) OR (1=1"]).is_valid());
+        assert!(!delete("128", &["1"]).is_valid());
+        let many: Vec<String> = (1..=sms::MAX_DELETE + 1).map(|n| format!("sms:{n}")).collect();
+        assert!(delete("128", &[]).messages.is_empty());
+        assert!(!SmsDelete { thread: "128".into(), messages: many.clone() }.is_valid());
+        assert!(SmsDelete { thread: "128".into(), messages: many[..sms::MAX_DELETE].to_vec() }.is_valid());
+    }
+
+    #[test]
+    fn marking_unread_and_deleting_round_trip_on_the_wire() {
+        use crate::Envelope;
+        let unread = SmsMarkUnread { thread: "3".into(), message: None };
+        let env = Envelope::new(types::SMS_MARK_UNREAD, &unread).unwrap().with_id(1);
+        let back = Envelope::from_cbor(&env.to_cbor()).unwrap();
+        assert_eq!(back.expect_body::<SmsMarkUnread>(types::SMS_MARK_UNREAD).unwrap(), unread);
+        // Without `messages`, a whole conversation; the field may be missing on the wire.
+        let whole =
+            Envelope::new(types::SMS_DELETE, &SmsDelete { thread: "3".into(), messages: vec![] }).unwrap();
+        let ciborium::Value::Map(fields) = whole.b.clone().unwrap() else { panic!("not a map") };
+        assert_eq!(fields.len(), 1);
+        let some = SmsDelete { thread: "3".into(), messages: vec!["sms:1".into(), "mms:2".into()] };
+        let env = Envelope::new(types::SMS_DELETE, &some).unwrap();
+        let back = Envelope::from_cbor(&env.to_cbor()).unwrap();
+        assert_eq!(back.expect_body::<SmsDelete>(types::SMS_DELETE).unwrap(), some);
     }
 
     #[test]
