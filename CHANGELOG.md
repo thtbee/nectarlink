@@ -8,6 +8,10 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Unlock KDE Plasma with the phone.** On Linux, NectarLink's PAM module can now run in the
+  lock screen's `kde-fingerprint` service, so the phone asks for your fingerprint each time the
+  PC locks and unlocks it when you approve. It's one line in `/etc/pam.d/kde-fingerprint`; see
+  [Unlock a Linux session with your Android fingerprint](docs/guide/linux-phone-unlock.md#kde-plasma).
 - **Swipe between your devices on the phone's Home.** With two or more paired devices, their cards
   sit side by side, PCs first: swipe to go from one to the next, with dots for where you are.
   Thanks to [@kedar284](https://github.com/kedar284) ([#651](https://github.com/thtbee/nectarlink/issues/651)).
