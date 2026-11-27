@@ -8,6 +8,10 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Unlock KDE Plasma with the phone.** On Linux, NectarLink's PAM module can now run in the
+  lock screen's `kde-fingerprint` service, so the phone asks for your fingerprint each time the
+  PC locks and unlocks it when you approve. It's one line in `/etc/pam.d/kde-fingerprint`; see
+  [Unlock a Linux session with your Android fingerprint](docs/guide/linux-phone-unlock.md#kde-plasma).
 - **Now playing shows the time you want.** The time on the right of Now playing on the PC's Home
   can show what's left, the whole length, or both: click it to switch, or pick in Settings ›
   General. Thanks to [@jed84](https://github.com/jed84) ([#658](https://github.com/thtbee/nectarlink/issues/658)).
