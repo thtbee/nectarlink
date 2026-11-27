@@ -351,6 +351,7 @@ fn apps_json(s: &AppState) -> String {
     .to_string()
 }
 
+#[allow(clippy::too_many_arguments)]
 fn make_row(
     s: &AppState,
     view: &NotificationView,

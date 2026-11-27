@@ -204,22 +204,6 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "setIslandClickThrough"]
         fn set_island_click_through(self: &AppController, on: bool);
-        /// Clips the Island window's mouse-hit shape to its visible pill and card.
-        #[qinvokable]
-        #[cxx_name = "setIslandInputRegion"]
-        fn set_island_input_region(
-            self: &AppController,
-            x1: i32,
-            y1: i32,
-            w1: i32,
-            h1: i32,
-            r1: i32,
-            x2: i32,
-            y2: i32,
-            w2: i32,
-            h2: i32,
-            r2: i32,
-        );
         /// The mouse x in physical screen pixels, or -1 when unavailable.
         #[qinvokable]
         #[cxx_name = "cursorX"]
@@ -2388,23 +2372,6 @@ impl qobject::AppController {
 
     pub fn set_island_click_through(&self, on: bool) {
         win::tray::set_island_click_through(on);
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    pub fn set_island_input_region(
-        &self,
-        x1: i32,
-        y1: i32,
-        w1: i32,
-        h1: i32,
-        r1: i32,
-        x2: i32,
-        y2: i32,
-        w2: i32,
-        h2: i32,
-        r2: i32,
-    ) {
-        win::tray::set_island_input_region(x1, y1, w1, h1, r1, x2, y2, w2, h2, r2);
     }
 
     pub fn cursor_x(&self) -> i32 {

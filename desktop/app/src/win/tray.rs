@@ -18,8 +18,8 @@ use windows::{
     Win32::{
         Foundation::{HWND, LPARAM, LRESULT, POINT, WPARAM},
         Graphics::Gdi::{
-            BI_RGB, BITMAPINFO, BITMAPINFOHEADER, CombineRgn, CreateBitmap, CreateDIBSection,
-            CreateRoundRectRgn, DIB_RGB_COLORS, DeleteObject, HBITMAP, RGN_OR, SetWindowRgn,
+            BI_RGB, BITMAPINFO, BITMAPINFOHEADER, CreateBitmap, CreateDIBSection, DIB_RGB_COLORS,
+            DeleteObject, HBITMAP,
         },
         System::{
             LibraryLoader::GetModuleHandleW,
@@ -415,78 +415,6 @@ pub fn set_island_click_through(on: bool) {
                 Ok(next) if !next.0.is_null() => cur = next,
                 _ => break,
             }
-        }
-    }
-}
-
-/// Clips the Island window's visible and mouse-hit shape to the pill and, when
-/// open, the card under it. Transparent margins around them no longer take
-/// clicks from the window underneath. Coordinates are physical window pixels.
-pub fn set_island_input_region(
-    x1: i32,
-    y1: i32,
-    w1: i32,
-    h1: i32,
-    r1: i32,
-    x2: i32,
-    y2: i32,
-    w2: i32,
-    h2: i32,
-    r2: i32,
-) {
-    if w1 <= 0 || h1 <= 0 {
-        return;
-    }
-    // SAFETY: Enumerates top-level windows in Z-order; the region is created
-    // and owned by this call, and SetWindowRgn takes it over on success.
-    unsafe {
-        let self_pid = GetCurrentProcessId();
-        let mut cur = match GetTopWindow(None) {
-            Ok(h) => h,
-            Err(_) => return,
-        };
-        let mut island = None;
-        for _ in 0..256 {
-            let mut pid: u32 = 0;
-            GetWindowThreadProcessId(cur, Some(&mut pid));
-            let title = window_title(cur);
-            if pid == self_pid && title.contains("Nectar") && !title.contains("NectarLink") {
-                island = Some(cur);
-                break;
-            }
-            match GetWindow(cur, GW_HWNDNEXT) {
-                Ok(next) if !next.0.is_null() => cur = next,
-                _ => break,
-            }
-        }
-        let Some(hwnd) = island else { return };
-        let region = CreateRoundRectRgn(
-            x1,
-            y1,
-            x1.saturating_add(w1),
-            y1.saturating_add(h1),
-            r1.max(0).saturating_mul(2),
-            r1.max(0).saturating_mul(2),
-        );
-        if region.0.is_null() {
-            return;
-        }
-        if w2 > 0 && h2 > 0 {
-            let card = CreateRoundRectRgn(
-                x2,
-                y2,
-                x2.saturating_add(w2),
-                y2.saturating_add(h2),
-                r2.max(0).saturating_mul(2),
-                r2.max(0).saturating_mul(2),
-            );
-            if !card.0.is_null() {
-                let _ = CombineRgn(Some(region), Some(region), Some(card), RGN_OR);
-                let _ = DeleteObject(card.into());
-            }
-        }
-        if SetWindowRgn(hwnd, Some(region), true) == 0 {
-            let _ = DeleteObject(region.into());
         }
     }
 }

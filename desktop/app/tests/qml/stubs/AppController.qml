@@ -34,7 +34,6 @@ QtObject {
     function doctorFix(id) {}
     // Windows-only Island helpers; the tests run off screen with no window.
     function setIslandClickThrough(on) {}
-    function setIslandInputRegion(x1, y1, w1, h1, r1, x2, y2, w2, h2, r2) {}
     function keepIslandVisible() {}
     function cursorX() { return 0 }
     function cursorY() { return 0 }
