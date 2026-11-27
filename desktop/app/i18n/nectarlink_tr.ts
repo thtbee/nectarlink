@@ -6678,6 +6678,18 @@ Neler gerekir
         <source>Paste into active window</source>
         <translation>Etkin pencereye yapıştır</translation>
     </message>
+    <message numerus="yes">
+        <location filename="../qml/MainWindow.qml" line="1"/>
+        <source>Device: %1. Switch device, %n new on the others</source>
+        <translation>
+            <numerusform>Cihaz: %1. Cihaz değiştir, diğerlerinde %n yeni</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow.qml" line="1"/>
+        <source>Device: %1. Switch device</source>
+        <translation>Cihaz: %1. Cihaz değiştir</translation>
+    </message>
 </context>
 <context>
     <name>Media</name>
@@ -11848,6 +11860,9 @@ Neler gerekir
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>Move the mouse past that edge of the screen to use it on that PC, and type there with this keyboard. Move it back, or press Ctrl+Alt+Esc, to return. That PC asks the first time, or turn on Remote mouse, keyboard &amp; Deck for this PC there.</source>
         <translation>Fareyi ekranın o kenarından öteye götürerek o bilgisayarda kullanın ve bu klavyeyle orada yazın. Geri dönmek için fareyi geri götürün ya da Ctrl+Alt+Esc&apos;ye basın. O bilgisayar ilk seferde sorar veya orada bu bilgisayar için Uzaktan fare, klavye ve Deck&apos;i açın.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>Bluetooth when there&apos;s no network</source>
         <translation>Ağ yokken Bluetooth</translation>
     </message>
@@ -11890,6 +11905,16 @@ Neler gerekir
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>Both</source>
         <translation>İkisi</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Mark texts read on the phone</source>
+        <translation>Mesajları telefonda da okundu olarak işaretle</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Reading a conversation here marks it read on the phone too, in its messaging app.</source>
+        <translation>Burada okunan bir konuşma, telefondaki mesajlaşma uygulamasında da okundu olarak işaretlenir.</translation>
     </message>
 </context>
 <context>
@@ -13820,6 +13845,41 @@ Neler gerekir
         <location filename="../qml/components/NewPill.qml" line="1"/>
         <source>New</source>
         <translation>Yeni</translation>
+    </message>
+</context>
+<context>
+    <name>DeviceMenu</name>
+    <message>
+        <location filename="../qml/components/DeviceMenu.qml" line="1"/>
+        <source>Devices</source>
+        <translation>Cihazlar</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/DeviceMenu.qml" line="1"/>
+        <source>offline</source>
+        <translation>çevrimdışı</translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../qml/components/DeviceMenu.qml" line="1"/>
+        <source>%n new</source>
+        <translation>
+            <numerusform>%n yeni</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location filename="../qml/components/DeviceMenu.qml" line="1"/>
+        <source>Pair a new device</source>
+        <translation>Yeni cihaz eşleştir</translation>
+    </message>
+</context>
+<context>
+    <name>NavItem</name>
+    <message numerus="yes">
+        <location filename="../qml/components/NavItem.qml" line="1"/>
+        <source>%1, %n new</source>
+        <translation>
+            <numerusform>%1, %n yeni</numerusform>
+        </translation>
     </message>
 </context>
 </TS>

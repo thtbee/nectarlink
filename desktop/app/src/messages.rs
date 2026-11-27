@@ -1118,14 +1118,10 @@ fn load_messages(before: Option<i64>) {
                         // The latest page replaces what was there, keeping
                         // older pages already read.
                         let oldest = page.last().map(|m| m.date).unwrap_or(i64::MAX);
-                        // A text that failed to send is on no phone's list:
-                        // it stays, marked, rather than vanish.
-                        let failed: Vec<SmsMessage> = s
-                            .messages
-                            .iter()
-                            .filter(|m| m.id.starts_with("local:") && m.status.as_deref() == Some("failed"))
-                            .cloned()
-                            .collect();
+                        // Texts sent from here that the phone doesn't list
+                        // yet stay, marked: a failed one is on no phone's
+                        // list, and some phones store a sent one late or never.
+                        let failed = unlisted_local(&s.messages, &page);
                         let older: Vec<SmsMessage> = s
                             .messages
                             .drain(..)
@@ -1592,6 +1588,12 @@ pub fn send_to(to: Vec<String>, body: String) {
         changed();
         match result {
             Ok(()) => {
+                state(|s| {
+                    if let Some(m) = s.messages.iter_mut().find(|m| m.id == local_id) {
+                        m.status = Some("sent".into());
+                    }
+                });
+                changed();
                 // The phone also says so when it has stored it; this is sooner.
                 tokio::time::sleep(std::time::Duration::from_millis(600)).await;
                 reload_after_send(&to);
@@ -1599,6 +1601,26 @@ pub fn send_to(to: Vec<String>, body: String) {
             Err(e) => crate::bridge::app::show_message(send_problem(&e)),
         }
     });
+}
+
+/// How far apart a text sent from here and the phone's stored copy may be dated.
+const SENT_MATCH_MS: i64 = 10 * 60 * 1000;
+
+/// The texts sent from here (`local:` ones) that `page`, the phone's latest
+/// list, doesn't have: failed ones always, and sent or pending ones until an
+/// outgoing text with the same body shows up near the same time.
+fn unlisted_local(messages: &[SmsMessage], page: &[SmsMessage]) -> Vec<SmsMessage> {
+    messages
+        .iter()
+        .filter(|m| m.id.starts_with("local:"))
+        .filter(|m| {
+            m.status.as_deref() == Some("failed")
+                || !page.iter().any(|p| {
+                    p.outgoing && p.body.trim() == m.body.trim() && (p.date - m.date).abs() <= SENT_MATCH_MS
+                })
+        })
+        .cloned()
+        .collect()
 }
 
 /// A new conversation's first message while it's being sent.
@@ -1868,6 +1890,43 @@ fn open_pending() {
 
 #[cfg(test)]
 mod tests {
+    fn text(id: &str, body: &str, date: i64, outgoing: bool, status: Option<&str>) -> super::SmsMessage {
+        super::SmsMessage {
+            id: id.into(),
+            thread: "1".into(),
+            address: "+100".into(),
+            body: body.into(),
+            date,
+            outgoing,
+            status: status.map(Into::into),
+            parts: Vec::new(),
+            sim: None,
+        }
+    }
+
+    #[test]
+    fn a_text_sent_from_here_stays_until_the_phone_lists_it() {
+        let shown = vec![
+            text("local:1000:1", "on my way", 1_000, true, Some("sent")),
+            text("local:2000:2", "not this one", 2_000, true, Some("failed")),
+            text("7", "hi", 500, false, None),
+        ];
+        // The phone hasn't stored it yet (or never will): both stay.
+        let kept = super::unlisted_local(&shown, &[text("7", "hi", 500, false, None)]);
+        assert_eq!(kept.iter().map(|m| m.id.as_str()).collect::<Vec<_>>(), ["local:1000:1", "local:2000:2"]);
+        // Its stored copy arrived, dated a little later: only the failed one stays.
+        let page =
+            vec![text("8", " on my way", 4_000, true, Some("sent")), text("7", "hi", 500, false, None)];
+        let kept = super::unlisted_local(&shown, &page);
+        assert_eq!(kept.iter().map(|m| m.id.as_str()).collect::<Vec<_>>(), ["local:2000:2"]);
+        // An incoming text with the same words, or one sent long before, isn't its copy.
+        let page = vec![
+            text("9", "on my way", 1_500, false, None),
+            text("10", "on my way", 1_000 - super::SENT_MATCH_MS - 1, true, Some("sent")),
+        ];
+        assert_eq!(super::unlisted_local(&shown, &page).len(), 2);
+    }
+
     fn sms_thread(id: &str, name: &str, number: &str, snippet: &str, date: i64) -> super::SmsThread {
         super::SmsThread {
             id: id.into(),

@@ -57,13 +57,24 @@ internal object CallAudio {
                 val chunk = ByteArray(CHUNK_BYTES)
                 runCatching {
                     val input = client.getInputStream()
+                    // A read can end between the two bytes of a sample: the odd byte waits
+                    // at the front of the next read, or every sample after it would be off by one.
+                    var kept = 0
                     while (true) {
-                        val n = input.read(chunk)
+                        val n = input.read(chunk, kept, chunk.size - kept)
                         if (n <= 0) break
+                        val total = kept + n
+                        val whole = total - total % 2
                         // Never waits: what the call can't take now is dropped, so the PC's
                         // voice stays within the track's buffer (about 80 ms) of live, even
                         // when the PC's microphone runs a little fast or is switched.
-                        if (playing.write(chunk, 0, n - n % 2, AudioTrack.WRITE_NON_BLOCKING) < 0) break
+                        if (whole > 0 &&
+                            playing.write(chunk, 0, whole, AudioTrack.WRITE_NON_BLOCKING) < 0
+                        ) {
+                            break
+                        }
+                        kept = total - whole
+                        if (kept > 0) chunk[0] = chunk[whole]
                     }
                 }
                 // The PC stopped: the downlink below ends with the connection.
