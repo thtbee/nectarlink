@@ -11,6 +11,9 @@ change things that need a step from you, and its notes say so.
 - **Pick which of the PC's players Now playing controls.** With several players running on the PC,
   their names sit in a row on the PC's Now playing card: click one to control it. Thanks to
   [@jed84](https://github.com/jed84) ([#665](https://github.com/thtbee/nectarlink/issues/665)).
+- **Fold the sections of a PC's card on the phone.** Tap a section's title on Home (Screen, Camera
+  & Input, Quick Transfer & Clipboard, System & Power) to fold it away; the phone remembers, on
+  every PC's card. Thanks to [@yiriyangguang](https://github.com/yiriyangguang) ([#659](https://github.com/thtbee/nectarlink/issues/659)).
 - **An app you hide on the PC stays on the phone.** Its notifications and chats aren't sent to
   that PC at all any more, not only hidden there, and showing the app again brings them back.
   Thanks to [@jed84](https://github.com/jed84) and [@aihehye](https://github.com/aihehye)
