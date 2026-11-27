@@ -41,6 +41,7 @@ mod media;
 mod media_file;
 mod messages;
 mod mirror;
+mod new_settings;
 mod notification_store;
 mod notifications;
 mod obs;
@@ -903,6 +904,14 @@ fn main() -> ExitCode {
     );
     let updated_from = updater::note_running_version(&data_dir);
     nectarlink_core::whats_new::note_start(&data_dir, updated_from.is_some());
+    // A new install has seen every new setting; an update shows them (#656).
+    {
+        let mut saved = settings::Settings::load(&data_dir);
+        if let Some(seen) = new_settings::first_start(&saved.seen_new_settings, updated_from.is_some()) {
+            saved.seen_new_settings = seen;
+            let _ = saved.save(&data_dir);
+        }
+    }
     if updated_from.is_some() {
         let mut saved = settings::Settings::load(&data_dir);
         let now =

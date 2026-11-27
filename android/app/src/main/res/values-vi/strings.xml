@@ -1622,4 +1622,15 @@
     <string name="pc_radio_wifi_off_title">Tắt Wi-Fi của %1$s?</string>
     <string name="pc_radio_wifi_off_text">Nếu điện thoại này kết nối với PC qua Wi-Fi, kết nối sẽ bị ngắt và bạn cần bật lại Wi-Fi trên PC.</string>
     <string name="pc_radio_wifi_off_confirm">Tắt</string>
+    <string name="home_device_page">%1$s, %2$d trên %3$d. Vuốt để xem các thiết bị khác.</string>
+    <string name="channel_device_control">Điều khiển từ điện thoại khác</string>
+    <string name="device_control_request_title">%1$s muốn điều khiển thiết bị này</string>
+    <string name="device_control_request_text">Cho phép thiết bị đó di chuyển con trỏ ở đây và gõ bằng bàn phím của nó. Bạn có thể tắt trong Cài đặt › Thiết bị.</string>
+    <string name="device_control_toggle">Cho phép điều khiển thiết bị này</string>
+    <string name="device_control_toggle_hint">%1$s có thể dùng bàn di chuột và bàn phím của nó trên thiết bị này. Cần Elevated ở đây.</string>
+    <string name="peer_control">Điều khiển</string>
+    <string name="remote_unsupported_device_text">Bật Elevated trên %1$s để điều khiển nó từ điện thoại này.</string>
+    <string name="settings_own_name">Tên của điện thoại này</string>
+    <string name="settings_own_name_change">Đổi</string>
+    <string name="settings_own_name_hint">Tên điện thoại này hiển thị trên các máy tính của bạn. Để trống để dùng %1$s.</string>
 </resources>

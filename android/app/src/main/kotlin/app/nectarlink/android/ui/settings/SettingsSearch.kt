@@ -25,6 +25,7 @@ internal val SETTINGS_SEARCH_INDEX: List<SettingsSearchEntry> = listOf(
     SettingsSearchEntry("appearance", R.string.settings_dynamic_color),
     SettingsSearchEntry("appearance", R.string.settings_home_card_color),
     SettingsSearchEntry("devices", R.string.settings_devices),
+    SettingsSearchEntry("devices", R.string.settings_own_name),
     SettingsSearchEntry("devices", R.string.storage_pc_toggle),
     SettingsSearchEntry("devices", R.string.mic_pc_toggle),
     SettingsSearchEntry("devices", R.string.unlock_pc_toggle),

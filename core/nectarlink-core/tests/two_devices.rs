@@ -1614,7 +1614,18 @@ async fn usb_only_closes_a_lan_session_refuses_new_ones_and_lets_the_pc_back_whe
     assert!(!phone.node.usb_only());
     wait_online(&mut phone, pc_id).await;
     wait_online(&mut pc, phone_id).await;
-    with_timeout("ring after USB only is off", pc.node.ring(phone_id, true)).await.expect("ring works again");
+    // Both sides dial once USB only is off, so the first session can be the
+    // duplicate that closes right after it comes up: ring over the one that stays.
+    with_timeout("ring after USB only is off", async {
+        loop {
+            match pc.node.ring(phone_id, true).await {
+                Err(Error::Offline) => wait_online(&mut pc, phone_id).await,
+                result => break result,
+            }
+        }
+    })
+    .await
+    .expect("ring works again");
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

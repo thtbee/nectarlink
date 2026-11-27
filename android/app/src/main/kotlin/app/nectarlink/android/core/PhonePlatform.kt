@@ -259,6 +259,11 @@ internal class PhonePlatform(
         Elevated.pointerStop()
     }
 
+    // Another phone using this tablet as its touchpad and keyboard target (#651);
+    // the core lets in only a device this one allowed.
+    override fun deviceInput(peer: String, input: app.nectarlink.core.DeviceInput): Boolean =
+        app.nectarlink.android.elevated.DeviceControl.handle(input)
+
     // Real events when Elevated runs; gestures through the accessibility service otherwise.
     override fun mirrorInput(pcId: String, session: UInt, requested: MirrorInputEvent) {
         lastMirrorInput = pcId to session

@@ -1694,4 +1694,15 @@
     <string name="pc_radio_wifi_off_title">WLAN von %1$s ausschalten?</string>
     <string name="pc_radio_wifi_off_text">Wenn dieses Handy den PC über WLAN erreicht, bricht die Verbindung ab, und du musst das WLAN am PC wieder einschalten.</string>
     <string name="pc_radio_wifi_off_confirm">Ausschalten</string>
+    <string name="home_device_page">%1$s, %2$d von %3$d. Für die anderen wischen.</string>
+    <string name="channel_device_control">Steuerung von einem anderen Telefon</string>
+    <string name="device_control_request_title">%1$s möchte dieses Gerät steuern</string>
+    <string name="device_control_request_text">Erlaube ihm, hier einen Zeiger zu bewegen und mit seiner Tastatur zu tippen. Du kannst das unter Einstellungen › Geräte ausschalten.</string>
+    <string name="device_control_toggle">Darf dieses Gerät steuern</string>
+    <string name="device_control_toggle_hint">%1$s kann dieses Gerät mit Touchpad und Tastatur bedienen. Braucht hier Elevated.</string>
+    <string name="peer_control">Steuern</string>
+    <string name="remote_unsupported_device_text">Schalte Elevated auf %1$s ein, um es von diesem Telefon aus zu steuern.</string>
+    <string name="settings_own_name">Name dieses Telefons</string>
+    <string name="settings_own_name_change">Ändern</string>
+    <string name="settings_own_name_hint">So erscheint dieses Telefon auf deinen PCs. Leer lassen, um %1$s zu verwenden.</string>
 </resources>

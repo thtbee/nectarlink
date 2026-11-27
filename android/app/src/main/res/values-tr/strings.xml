@@ -1693,6 +1693,17 @@
     <string name="pc_radio_wifi_off_title">%1$s cihazının Wi-Fi\'ı kapatılsın mı?</string>
     <string name="pc_radio_wifi_off_text">Bu telefon bilgisayara Wi-Fi ile bağlanıyorsa bağlantı kopar ve Wi-Fi\'ı bilgisayardan yeniden açmanız gerekir.</string>
     <string name="pc_radio_wifi_off_confirm">Kapat</string>
+    <string name="home_device_page">%1$s, %2$d/%3$d. Diğerleri için kaydırın.</string>
+    <string name="channel_device_control">Başka bir telefondan kontrol</string>
+    <string name="device_control_request_title">%1$s bu cihazı kontrol etmek istiyor</string>
+    <string name="device_control_request_text">Burada bir işaretçi hareket ettirmesine ve klavyesiyle yazmasına izin verin. Ayarlar › Cihazlar\'dan kapatabilirsiniz.</string>
+    <string name="device_control_toggle">Bu cihazı kontrol etmesine izin ver</string>
+    <string name="device_control_toggle_hint">%1$s bu cihazı dokunmatik yüzeyi ve klavyesiyle kullanabilir. Burada Elevated gerekir.</string>
+    <string name="peer_control">Kontrol et</string>
+    <string name="remote_unsupported_device_text">Bu telefondan kontrol etmek için %1$s üzerinde Elevated\'ı açın.</string>
+    <string name="settings_own_name">Bu telefonun adı</string>
+    <string name="settings_own_name_change">Değiştir</string>
+    <string name="settings_own_name_hint">Bu telefonun bilgisayarlarınızda nasıl görüneceği. %1$s kullanmak için boş bırakın.</string>
 </resources>
 
 

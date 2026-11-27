@@ -22,8 +22,17 @@ Rectangle {
         case "enablePath": return qsTr("Connect over mobile data")
         case "enableToggle": return qsTr("Off")
         case "updateApp": return qsTr("Update app")
-        default: return s.state === "unsupported" ? qsTr("Unavailable") : ""
+        default: return s.state === "unsupported" ? unsupportedLabel(s.reason || "") : ""
         }
+    }
+    // The core's UnsupportedReason, e.g. "windows:22000" or "android:11".
+    function unsupportedLabel(reason) {
+        const [kind, needs] = reason.split(":")
+        if (kind === "windows")
+            return needs === "22000" ? qsTr("Needs Windows 11") : qsTr("Needs a newer Windows")
+        if (kind === "android" && needs)
+            return qsTr("Needs Android %1").arg(needs)
+        return qsTr("Unavailable")
     }
     readonly property string label: shortLabel
     readonly property string shownLabel: shortLabel

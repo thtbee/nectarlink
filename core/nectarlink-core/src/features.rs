@@ -661,6 +661,14 @@ pub const ANDROID_PAIR_FEATURES: &[FeatureDef] = &[
         requires: &[peer("link.open")],
         partial: None,
     },
+    // This device as a touchpad and keyboard for the other one, where it
+    // takes input (Elevated there) and lets this device in (#651).
+    FeatureDef {
+        id: "pair.control",
+        group: FeatureGroup::Input,
+        requires: &[peer(crate::remote::INPUT_INJECT)],
+        partial: None,
+    },
 ];
 /// What two PCs do for each other (#432), from this PC's side: the other
 /// one's battery, ringing it, and sending it the clipboard and files. Like
@@ -1607,6 +1615,29 @@ mod tests {
             MatrixInputs { local: &tablet, peer: &phone, paths: &paths, toggles: &off },
         );
         assert!(matches!(no_clip.state("pair.clipboard"), Some(FeatureState::Locked { .. })));
+
+        // Control (#651): only a tablet that takes input (Elevated there).
+        assert!(matches!(on_phone.state("pair.control"), Some(FeatureState::Locked { .. })));
+        let elevated_tablet = facts(
+            DeviceKind::Tablet,
+            "android",
+            "15",
+            PowerLevel::Elevated,
+            &[
+                "device.ring",
+                "device.battery",
+                "notify.show",
+                "clip.write",
+                "files.transfer",
+                "link.open",
+                "input.inject",
+            ],
+        );
+        let controls = compute(
+            DeviceId([2; 32]),
+            MatrixInputs { local: &phone, peer: &elevated_tablet, paths: &paths, toggles: &toggles },
+        );
+        assert_eq!(controls.state("pair.control"), Some(FeatureState::Available));
     }
 
     #[test]

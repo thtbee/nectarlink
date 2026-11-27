@@ -12,6 +12,9 @@ Item {
     property string title
     property string description
     property bool stackBelow: false
+    // A key from new_settings.rs: a "New" pill by the title while it's unseen (#656).
+    property string newKey
+    readonly property bool isNew: newKey.length > 0 && Preferences.newSettings.indexOf("\"" + newKey + "\"") >= 0
     default property alias trailing: trailingSlot.data
 
     readonly property bool stackTrailing: stackBelow || (trailingSlot.childrenRect.width > row.width * 0.52 && row.width > 0)
@@ -37,13 +40,25 @@ Item {
         anchors.rightMargin: row.stackTrailing ? 0 : 16
         y: row.stackTrailing ? 12 : Math.round((row.height - height) / 2)
         spacing: 2
-        Txt {
+        Item {
             width: parent.width
-            text: row.title
-            role: "title"
-            size: 14
-            wrapMode: Text.WordWrap
-            elide: Text.ElideNone
+            height: titleText.height
+            Txt {
+                id: titleText
+                width: Math.min(implicitWidth, parent.width - (newPill.visible ? newPill.width + 8 : 0))
+                text: row.title
+                role: "title"
+                size: 14
+                wrapMode: Text.WordWrap
+                elide: Text.ElideNone
+            }
+            NewPill {
+                id: newPill
+                visible: row.isNew
+                anchors.left: titleText.right
+                anchors.leftMargin: 8
+                y: Math.max(0, Math.round((titleText.font.pixelSize * 1.3 - height) / 2))
+            }
         }
         Txt {
             visible: row.description.length > 0

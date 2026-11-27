@@ -6480,6 +6480,21 @@ Neler gerekir
         <source>This feature is turned off for this phone in Settings › Devices.</source>
         <translation>Bu özellik bu telefon için Ayarlar › Cihazlar bölümünde kapalı.</translation>
     </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="32"/>
+        <source>Needs Windows 11</source>
+        <translation>Windows 11 gerekir</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="32"/>
+        <source>Needs a newer Windows</source>
+        <translation>Daha yeni bir Windows gerekir</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="34"/>
+        <source>Needs Android %1</source>
+        <translation>Android %1 gerekir</translation>
+    </message>
 </context>
 <context>
     <name>MainWindow</name>
@@ -11843,6 +11858,16 @@ Neler gerekir
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>This PC&apos;s name</source>
+        <translation>Bu bilgisayarın adı</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>How this PC shows on your phones and other PCs. Leave it empty to use the computer&apos;s name, %1.</source>
+        <translation>Bu bilgisayarın telefonlarınızda ve diğer bilgisayarlarda nasıl görüneceği. Bilgisayar adını (%1) kullanmak için boş bırakın.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>Now playing time</source>
         <translation>Şimdi çalıyor süresi</translation>
     </message>
@@ -13787,6 +13812,14 @@ Neler gerekir
         <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
         <source>Close</source>
         <translation>Kapat</translation>
+    </message>
+</context>
+<context>
+    <name>NewPill</name>
+    <message>
+        <location filename="../qml/components/NewPill.qml" line="1"/>
+        <source>New</source>
+        <translation>Yeni</translation>
     </message>
 </context>
 </TS>

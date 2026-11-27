@@ -1566,4 +1566,15 @@
     <string name="pc_radio_wifi_off_title">Выключить Wi-Fi на %1$s?</string>
     <string name="pc_radio_wifi_off_text">Если телефон подключён к ПК по Wi-Fi, связь прервётся, и Wi-Fi придётся включить на самом ПК.</string>
     <string name="pc_radio_wifi_off_confirm">Выключить</string>
+    <string name="home_device_page">%1$s, %2$d из %3$d. Проведите, чтобы увидеть остальные.</string>
+    <string name="channel_device_control">Управление с другого телефона</string>
+    <string name="device_control_request_title">%1$s хочет управлять этим устройством</string>
+    <string name="device_control_request_text">Разрешите ему двигать здесь указатель и печатать со своей клавиатуры. Это можно отключить в «Настройки › Устройства».</string>
+    <string name="device_control_toggle">Разрешить управлять этим устройством</string>
+    <string name="device_control_toggle_hint">%1$s сможет управлять этим устройством своим тачпадом и клавиатурой. Нужен Elevated на этом устройстве.</string>
+    <string name="peer_control">Управлять</string>
+    <string name="remote_unsupported_device_text">Включите Elevated на %1$s, чтобы управлять им с этого телефона.</string>
+    <string name="settings_own_name">Имя этого телефона</string>
+    <string name="settings_own_name_change">Изменить</string>
+    <string name="settings_own_name_hint">Как этот телефон отображается на ваших ПК. Оставьте пустым, чтобы использовать %1$s.</string>
 </resources>

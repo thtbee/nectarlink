@@ -124,7 +124,9 @@ and `pair.ring` (the other device's battery, and ringing it),
 `pair.notifications` (its notifications shown here: it offers
 `notify.mirror` and this device `notify.show`, toggle `notifications`),
 `pair.clipboard`, `pair.files` and `pair.links` (sending it the clipboard,
-files and links). Their requirements name the other device (`Peer`) and
+files and links), and `pair.control` (this device as the other one's
+touchpad and keyboard: it offers `input.inject`, with Elevated there, and
+lets this one in with its `remote_input` toggle). Their requirements name the other device (`Peer`) and
 this one (`Here`) rather than a role. Every other pair has them
 Unsupported, as two Android devices have the PC features.
 

@@ -6484,6 +6484,21 @@ What it needs
         <source>This feature is turned off for this phone in Settings › Devices.</source>
         <translation>此功能已在设置 › 设备中对该手机关闭。</translation>
     </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="32"/>
+        <source>Needs Windows 11</source>
+        <translation>需要 Windows 11</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="32"/>
+        <source>Needs a newer Windows</source>
+        <translation>需要更新版本的 Windows</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="34"/>
+        <source>Needs Android %1</source>
+        <translation>需要 Android %1</translation>
+    </message>
 </context>
 <context>
     <name>MainWindow</name>
@@ -11847,6 +11862,16 @@ What it needs
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>This PC&apos;s name</source>
+        <translation>此电脑的名称</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>How this PC shows on your phones and other PCs. Leave it empty to use the computer&apos;s name, %1.</source>
+        <translation>此电脑在你的手机和其他电脑上显示的名称。留空则使用计算机名 %1。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>Now playing time</source>
         <translation>正在播放的时间</translation>
     </message>
@@ -13795,6 +13820,14 @@ What it needs
         <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
         <source>Close</source>
         <translation>关闭</translation>
+    </message>
+</context>
+<context>
+    <name>NewPill</name>
+    <message>
+        <location filename="../qml/components/NewPill.qml" line="1"/>
+        <source>New</source>
+        <translation>新增</translation>
     </message>
 </context>
 </TS>

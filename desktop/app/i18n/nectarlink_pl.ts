@@ -6490,6 +6490,21 @@ Wymagania
         <source>This feature is turned off for this phone in Settings › Devices.</source>
         <translation>Ta funkcja jest wyłączona dla tego telefonu w Ustawienia › Urządzenia.</translation>
     </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="32"/>
+        <source>Needs Windows 11</source>
+        <translation>Wymaga Windows 11</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="32"/>
+        <source>Needs a newer Windows</source>
+        <translation>Wymaga nowszego Windows</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="34"/>
+        <source>Needs Android %1</source>
+        <translation>Wymaga Androida %1</translation>
+    </message>
 </context>
 <context>
     <name>MainWindow</name>
@@ -11857,6 +11872,16 @@ Wymagania
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>This PC&apos;s name</source>
+        <translation>Nazwa tego komputera</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>How this PC shows on your phones and other PCs. Leave it empty to use the computer&apos;s name, %1.</source>
+        <translation>Jak ten komputer wyświetla się na twoich telefonach i innych komputerach. Zostaw puste, aby użyć nazwy komputera, %1.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>Now playing time</source>
         <translation>Czas w W trakcie odtwarzania</translation>
     </message>
@@ -13805,6 +13830,14 @@ Wymagania
         <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
         <source>Close</source>
         <translation>Zamknij</translation>
+    </message>
+</context>
+<context>
+    <name>NewPill</name>
+    <message>
+        <location filename="../qml/components/NewPill.qml" line="1"/>
+        <source>New</source>
+        <translation>Nowe</translation>
     </message>
 </context>
 </TS>

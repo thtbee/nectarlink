@@ -233,6 +233,19 @@ class Preferences(context: Context) {
         private const val HIDE_FROM_RECENTS = "hide_from_recents"
         internal const val BACKGROUND_SERVICE_ENABLED = "background_service_enabled"
         private const val AWAY_MODE = "away_mode"
+        private const val OWN_NAME = "own_name"
+
+        /** The name the user gave this phone, or "" for Android's (#648). */
+        fun ownName(context: Context): String =
+            context.applicationContext
+                .getSharedPreferences("appearance", Context.MODE_PRIVATE)
+                .getString(OWN_NAME, "").orEmpty()
+
+        fun setOwnName(context: Context, name: String) {
+            context.applicationContext
+                .getSharedPreferences("appearance", Context.MODE_PRIVATE)
+                .edit { putString(OWN_NAME, name) }
+        }
         private const val USB_ONLY = "usb_only"
         private const val BLUETOOTH_LINK = "bluetooth_link"
         private const val WALKTHROUGH_COMPLETED = "walkthrough_completed"
