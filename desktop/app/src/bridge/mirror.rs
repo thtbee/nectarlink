@@ -465,6 +465,22 @@ impl qobject::Mirror {
     pub fn start_app(&self, device: &QString, pkg: &QString, label: &QString) {
         let pkg = String::from(pkg);
         if let (Some(device), true) = (super::parse_device(device), nectarlink_core::is_package_name(&pkg)) {
+            // Wireless debugging may have gone off since the app list was
+            // loaded. Opening one then would reach a helper that isn't there
+            // (and, on some phones, crash the app). Keep the window closed and
+            // say what to do instead.
+            let ready = crate::core_host::host().hub.read(|s| {
+                s.matrices.get(&device).and_then(|m| m.state("mirroring.app_windows")).is_some_and(|state| {
+                    matches!(state, FeatureState::Available | FeatureState::Partial { .. })
+                })
+            });
+            if !ready {
+                crate::bridge::app::show_message(tr!(
+                    "Apps",
+                    "Wireless debugging isn't ready. Turn it on in NectarLink on the phone, then try again."
+                ));
+                return;
+            }
             mirror::start_app(device, pkg, String::from(label));
         }
     }
