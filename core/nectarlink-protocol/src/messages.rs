@@ -2383,6 +2383,11 @@ pub struct SmsThread {
     /// Unread messages.
     #[serde(default)]
     pub unread: u32,
+    /// Of the unread, the new ones the phone hasn't shown as seen yet (those with a
+    /// notification, as against a conversation that is only left unread). Missing from a
+    /// phone that doesn't tell them apart: every unread one counts then.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fresh: Option<u32>,
     /// The contact's photo (one-person conversations), a JPEG.
     #[serde(default, skip_serializing_if = "Option::is_none", with = "serde_bytes")]
     pub photo: Option<Vec<u8>>,

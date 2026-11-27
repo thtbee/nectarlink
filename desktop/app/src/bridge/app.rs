@@ -3518,14 +3518,11 @@ fn watch_home(device: Option<DeviceId>) {
 }
 
 pub(crate) fn update_home_sms(device: DeviceId, threads: &[nectarlink_core::SmsThread]) {
-    // What was deleted on this PC doesn't count; marked unread counts one.
+    // What was deleted on this PC doesn't count, nor does what is only unread (bold in the list):
+    // the new texts, which the phone has a notification for, do.
     let local = crate::messages_local::read(device);
     let unread_of = |t: &nectarlink_core::SmsThread| {
-        if local.thread_hidden(&t.id, t.date) {
-            0
-        } else {
-            t.unread.max(u32::from(local.is_marked_unread(&t.id)))
-        }
+        if local.thread_hidden(&t.id, t.date) { 0 } else { t.fresh.map_or(t.unread, |f| f.min(t.unread)) }
     };
     let changed = home_store(|s| {
         let entry = s.devices.entry(device).or_default();

@@ -359,6 +359,7 @@ impl Platform for RecordingPlatform {
             snippet: format!("text {i}"),
             date: 1_790_000_000_000 - i64::from(i),
             unread: i % 2,
+            fresh: None,
             photo: None,
         };
         Ok((0..5).map(thread).take(limit as usize).collect())

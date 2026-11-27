@@ -484,8 +484,10 @@ pub fn view() -> View {
                     continue;
                 }
                 let mut json = thread_json(t, s.photos.get(&t.id));
+                // Read here: nothing new to badge. The phone still calls it unread (it is, until
+                // read there or the read state is synced), so it stays bold.
                 if s.seen.get(&t.id).is_some_and(|seen| *seen >= t.date) {
-                    json["unread"] = json!(0);
+                    json["fresh"] = json!(0);
                 }
                 mark_thread(&mut json, &local, &t.id, t.date);
                 combined.push((t.date, t.id.clone(), json));
@@ -659,6 +661,9 @@ fn thread_json(t: &SmsThread, photo: Option<&PathBuf>) -> Value {
         "snippet": t.snippet,
         "date": t.date,
         "unread": t.unread,
+        // The new ones, with a notification on the phone: what the badge counts. The rest of
+        // the unread are only shown bold. A phone that doesn't tell them apart counts all.
+        "fresh": t.fresh.map_or(t.unread, |f| f.min(t.unread)),
         "group": t.addresses.len() > 1,
         "photo": photo.map(|p| crate::icons::file_url(p)).unwrap_or_default(),
         "isChat": false,
@@ -679,6 +684,7 @@ fn chat_thread_json(t: &ChatThreadRecord, photo: Option<&PathBuf>, app_icon: Opt
         "snippet": t.snippet,
         "date": t.updated_ms,
         "unread": t.unread,
+        "fresh": t.unread,
         "group": t.is_group,
         "photo": photo.map(|p| crate::icons::file_url(p)).unwrap_or_default(),
         "isChat": true,
@@ -2342,6 +2348,7 @@ mod tests {
             snippet: snippet.into(),
             date,
             unread: 0,
+            fresh: None,
             photo: None,
         }
     }
@@ -2493,6 +2500,7 @@ mod tests {
             snippet: String::new(),
             date: 0,
             unread: 0,
+            fresh: None,
             photo: None,
         }
     }
@@ -2502,6 +2510,22 @@ mod tests {
         assert_eq!(title_of(&thread(&["+1555"], &["Sam"])), "Sam");
         assert_eq!(title_of(&thread(&["+1555", "+1666"], &["Sam", ""])), "Sam, +1666");
         assert_eq!(title_of(&thread(&["+1555"], &[])), "+1555");
+    }
+
+    #[test]
+    fn the_badge_counts_the_new_texts_and_the_rest_are_only_unread() {
+        let mut t = thread(&["+1555"], &["Sam"]);
+        t.unread = 3;
+        // A phone that doesn't tell them apart: all of them.
+        assert_eq!(thread_json(&t, None)["fresh"], 3);
+        t.fresh = Some(1);
+        let json = thread_json(&t, None);
+        assert_eq!((json["unread"].as_u64(), json["fresh"].as_u64()), (Some(3), Some(1)));
+        t.fresh = Some(0);
+        assert_eq!(thread_json(&t, None)["fresh"], 0);
+        // Never more than the unread.
+        t.fresh = Some(9);
+        assert_eq!(thread_json(&t, None)["fresh"], 3);
     }
 
     #[test]

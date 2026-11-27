@@ -101,11 +101,6 @@ impl Local {
         self.unread.contains(thread)
     }
 
-    /// The conversations marked unread.
-    pub fn marked_unread(&self) -> impl Iterator<Item = &str> {
-        self.unread.iter().map(String::as_str)
-    }
-
     /// Forgets what newer messages made stale, given the conversations as listed
     /// now (`(id, latest message date)`), so a deleted latest message stays
     /// blanked only until a newer one arrives. Whether anything changed.
@@ -270,7 +265,6 @@ mod tests {
         local.mark_unread("7");
         local.mark_unread("chat:a:b");
         assert!(local.is_marked_unread("7"));
-        assert_eq!(local.marked_unread().collect::<Vec<_>>(), ["7", "chat:a:b"]);
         assert!(local.clear_unread("7"));
         assert!(!local.clear_unread("7"));
         assert!(!local.is_marked_unread("7"));

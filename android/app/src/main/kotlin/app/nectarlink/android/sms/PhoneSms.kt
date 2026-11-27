@@ -109,6 +109,7 @@ internal class PhoneSms(context: Context, private val onChange: () -> Unit) {
                             snippet = snippet,
                             date = c.getLong(1),
                             unread = if (c.getInt(4) == 0) unreadIn(id) else 0u,
+                            fresh = if (c.getInt(4) == 0) unreadIn(id, unseenOnly = true) else 0u,
                             photo = people.singleOrNull()?.let(contacts::photo),
                         ),
                     )
@@ -149,11 +150,17 @@ internal class PhoneSms(context: Context, private val onChange: () -> Unit) {
         return found.names.filter { it.isNotBlank() } + found.addresses
     }
 
-    private fun unreadIn(thread: Long): UInt =
+    /**
+     * The texts of a conversation not read yet; with [unseenOnly], only the new ones the phone
+     * hasn't shown as seen (the ones its messaging app has a notification for). The others, left
+     * unread or marked so, are only unread.
+     */
+    private fun unreadIn(thread: Long, unseenOnly: Boolean = false): UInt =
         resolver.query(
             Telephony.Sms.CONTENT_URI,
             arrayOf(Telephony.Sms._ID),
-            "${Telephony.Sms.THREAD_ID} = ? AND ${Telephony.Sms.READ} = 0",
+            "${Telephony.Sms.THREAD_ID} = ? AND ${Telephony.Sms.READ} = 0" +
+                if (unseenOnly) " AND ${Telephony.Sms.SEEN} = 0" else "",
             arrayOf(thread.toString()),
             null,
         )?.use { it.count.toUInt() } ?: 0u

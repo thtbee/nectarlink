@@ -59,7 +59,7 @@ class InputServerCommandsTest {
         assertEquals(
             listOf(
                 allow,
-                listOf("content", "update", "--uri", "content://sms/42", "--bind", "read:i:0", "--bind", "seen:i:0"),
+                listOf("content", "update", "--uri", "content://sms/42", "--bind", "read:i:0"),
                 back,
             ),
             InputServer.smsUnreadCommands(false, 42, "ignore").map { it.toList() },

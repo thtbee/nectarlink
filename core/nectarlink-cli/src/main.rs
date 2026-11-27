@@ -2039,6 +2039,7 @@ impl Platform for TerminalPlatform {
                     snippet: body.clone(),
                     date: *date,
                     unread: u32::from(*incoming),
+                    fresh: None,
                     photo: None,
                 }),
             }

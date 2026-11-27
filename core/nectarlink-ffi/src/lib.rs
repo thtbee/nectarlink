@@ -1397,6 +1397,9 @@ pub struct SmsThread {
     /// Unix milliseconds.
     pub date: i64,
     pub unread: u32,
+    /// Of the unread, the new ones not yet seen on the phone (with a notification); None when
+    /// the phone can't tell them from the others.
+    pub fresh: Option<u32>,
     /// The contact's photo (one-person conversations): a JPEG of at most 16 KB.
     pub photo: Option<Vec<u8>>,
 }
@@ -3409,6 +3412,7 @@ impl core::Platform for PlatformAdapter {
                 snippet: t.snippet,
                 date: t.date,
                 unread: t.unread,
+                fresh: t.fresh,
                 photo: t.photo,
             })
             .collect())

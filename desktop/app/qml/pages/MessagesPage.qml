@@ -1389,6 +1389,9 @@ Item {
         // Only the phone's own SMS app can mark texts read, so the one being
         // read here would otherwise keep its unread look.
         readonly property int unread: selected ? 0 : thread.unread
+        // The new ones, which the phone has a notification for: the badge counts those, and
+        // the others (left or marked unread) are only bold.
+        readonly property int fresh: selected ? 0 : thread.fresh === undefined ? thread.unread : thread.fresh
         height: 72
         activeFocusOnTab: true
         Accessible.role: Accessible.ListItem
@@ -1502,7 +1505,7 @@ Item {
                     width: Math.min(implicitWidth, parent.width - when.width - (appTag.visible ? appTag.width + 12 : 8))
                     text: row.thread.title
                     role: "body"
-                    weight: row.unread > 0 ? 650 : 500
+                    weight: row.unread > 0 ? 850 : 500
                     elide: Text.ElideRight
                 }
                 Rectangle {
@@ -1550,6 +1553,7 @@ Item {
                     }
                     role: "bodySmall"
                     muted: row.unread === 0
+                    weight: row.unread > 0 ? 650 : 400
                     maximumLineCount: 1
                     elide: Text.ElideRight
                 }
@@ -1557,7 +1561,7 @@ Item {
                     id: badge
                     anchors.right: parent.right
                     anchors.verticalCenter: snippet.verticalCenter
-                    visible: row.unread > 0
+                    visible: row.fresh > 0
                     width: Math.max(20, count.implicitWidth + 10)
                     height: 20
                     radius: 10
@@ -1565,7 +1569,7 @@ Item {
                     Txt {
                         id: count
                         anchors.centerIn: parent
-                        text: row.unread
+                        text: row.fresh
                         role: "label"
                         size: 11
                         color: Theme.primaryContent

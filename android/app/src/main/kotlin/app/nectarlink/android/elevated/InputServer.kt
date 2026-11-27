@@ -235,7 +235,7 @@ object InputServer {
         arrayOf("appops", "set", "com.android.shell", "WRITE_SMS", "allow"),
         arrayOf(
             "content", "update", "--uri", "content://${if (mms) "mms" else "sms"}/$id",
-            "--bind", "read:i:0", "--bind", "seen:i:0",
+            "--bind", "read:i:0",
         ),
         arrayOf("appops", "set", "com.android.shell", "WRITE_SMS", previousMode),
     )

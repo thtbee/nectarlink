@@ -69,6 +69,7 @@ thread = {
   ? snippet: text,        // The latest message's text, or a description like "Picture"
   date: int,              // The latest message, in Unix milliseconds
   ? unread: uint,
+  ? fresh: uint,          // Of the unread, the new ones not yet seen on the phone (with a notification); absent: all of them
   ? photo: bytes,         // One-person conversations: the contact's photo, a JPEG of at most 16 KiB
 }
 
