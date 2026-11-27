@@ -69,7 +69,7 @@ jobs:
           name=$(awk '/^\[workspace.metadata.release\]/{f=1;next} /^\[/{f=0} f && /^name = /{print $3}' source/Cargo.toml | tr -d '"')
           title="NectarLink ${GITHUB_REF_NAME#v}${name:+ $name}"
           cd files
-          sha256sum *.exe *.dmg *.deb *.rpm *.AppImage *.tar.gz *.apk install.sh > SHA256SUMS.txt
+          sha256sum *.exe *.dmg *.deb *.rpm *.AppImage *.AppImage.zsync *.tar.gz *.apk install.sh > SHA256SUMS.txt
           cat SHA256SUMS.txt
           # The notes: this version's section of CHANGELOG.md ("## <version> ..."),
           # with its wrapped lines joined, or GitHub's generated notes when
@@ -77,5 +77,5 @@ jobs:
           awk -v v="${GITHUB_REF_NAME#v}" '$1=="##" && $2==v {f=1; next} f && /^## / {exit} f' \
             ../source/CHANGELOG.md | awk -f ../source/.github/scripts/unwrap-notes.awk > notes.md || true
           if [ -s notes.md ]; then notes=(--notes-file notes.md); else notes=(--generate-notes); fi
-          gh release create "${{ github.ref_name }}" *.exe *.dmg *.deb *.rpm *.AppImage *.tar.gz *.apk *-symbols.zip install.sh SHA256SUMS.txt \
+          gh release create "${{ github.ref_name }}" *.exe *.dmg *.deb *.rpm *.AppImage *.AppImage.zsync *.tar.gz *.apk *-symbols.zip install.sh SHA256SUMS.txt \
             --repo "${{ github.repository }}" --draft "${notes[@]}" --title "$title"

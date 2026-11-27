@@ -6688,6 +6688,20 @@ Wymagania
         <source>Paste into active window</source>
         <translation>Wklej do aktywnego okna</translation>
     </message>
+    <message numerus="yes">
+        <location filename="../qml/MainWindow.qml" line="1"/>
+        <source>Device: %1. Switch device, %n new on the others</source>
+        <translation>
+            <numerusform>Urządzenie: %1. Przełącz urządzenie, na pozostałych %n nowy</numerusform>
+            <numerusform>Urządzenie: %1. Przełącz urządzenie, na pozostałych %n nowe</numerusform>
+            <numerusform>Urządzenie: %1. Przełącz urządzenie, na pozostałych %n nowych</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow.qml" line="1"/>
+        <source>Device: %1. Switch device</source>
+        <translation>Urządzenie: %1. Przełącz urządzenie</translation>
+    </message>
 </context>
 <context>
     <name>Media</name>
@@ -11862,6 +11876,9 @@ Wymagania
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>Move the mouse past that edge of the screen to use it on that PC, and type there with this keyboard. Move it back, or press Ctrl+Alt+Esc, to return. That PC asks the first time, or turn on Remote mouse, keyboard &amp; Deck for this PC there.</source>
         <translation>Przesuń mysz za tę krawędź ekranu, aby używać jej na tamtym komputerze i pisać tam tą klawiaturą. Wróć, przesuwając ją z powrotem lub naciskając Ctrl+Alt+Esc. Tamten komputer pyta za pierwszym razem; możesz też włączyć tam Zdalna mysz, klawiatura i Deck dla tego komputera.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>Bluetooth when there&apos;s no network</source>
         <translation>Bluetooth, gdy nie ma sieci</translation>
     </message>
@@ -11904,6 +11921,16 @@ Wymagania
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>Both</source>
         <translation>Oba</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Mark texts read on the phone</source>
+        <translation>Oznaczaj wiadomości jako przeczytane na telefonie</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Reading a conversation here marks it read on the phone too, in its messaging app.</source>
+        <translation>Przeczytanie rozmowy tutaj oznacza ją jako przeczytaną także w aplikacji do wiadomości na telefonie.</translation>
     </message>
 </context>
 <context>
@@ -13838,6 +13865,45 @@ Wymagania
         <location filename="../qml/components/NewPill.qml" line="1"/>
         <source>New</source>
         <translation>Nowe</translation>
+    </message>
+</context>
+<context>
+    <name>DeviceMenu</name>
+    <message>
+        <location filename="../qml/components/DeviceMenu.qml" line="1"/>
+        <source>Devices</source>
+        <translation>Urządzenia</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/DeviceMenu.qml" line="1"/>
+        <source>offline</source>
+        <translation>offline</translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../qml/components/DeviceMenu.qml" line="1"/>
+        <source>%n new</source>
+        <translation>
+            <numerusform>%n nowy</numerusform>
+            <numerusform>%n nowe</numerusform>
+            <numerusform>%n nowych</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location filename="../qml/components/DeviceMenu.qml" line="1"/>
+        <source>Pair a new device</source>
+        <translation>Sparuj nowe urządzenie</translation>
+    </message>
+</context>
+<context>
+    <name>NavItem</name>
+    <message numerus="yes">
+        <location filename="../qml/components/NavItem.qml" line="1"/>
+        <source>%1, %n new</source>
+        <translation>
+            <numerusform>%1, %n nowy</numerusform>
+            <numerusform>%1, %n nowe</numerusform>
+            <numerusform>%1, %n nowych</numerusform>
+        </translation>
     </message>
 </context>
 </TS>

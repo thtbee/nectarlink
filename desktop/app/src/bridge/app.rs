@@ -2332,7 +2332,7 @@ impl qobject::AppController {
             let json = compute_shelf_items_json(idx);
             self.as_mut().set_shelf_items(QString::from(&json));
             self.as_mut().set_shelf_open(true);
-            win::tray::apply_no_activate_style_by_title("NectarLink Shelf");
+            win::tray::apply_no_activate_style_by_title(&shelf_title());
         }
     }
 
@@ -2354,8 +2354,8 @@ impl qobject::AppController {
     }
 
     pub fn style_shelf_window(&self) {
-        win::tray::apply_no_activate_style_by_title("NectarLink Shelf");
-        win::tray::apply_no_activate_style_by_title("Nectar Island");
+        win::tray::apply_no_activate_style_by_title(&shelf_title());
+        win::tray::apply_no_activate_style_by_title(&crate::i18n::translate("IslandWindow", "Nectar Island"));
     }
 
     pub fn start_shelf_drag(&self, kind: &QString, id_or_path: &QString, text: &QString) -> bool {
@@ -3770,6 +3770,12 @@ fn refresh_home_if_needed(device: DeviceId, force_sms: bool, force_calls: bool, 
 }
 
 /// Flattens a feature state for QML.
+/// The Shelf window's title as its QML shows it: windows are found by title,
+/// so in another language the English one isn't there.
+fn shelf_title() -> String {
+    crate::i18n::translate("ShelfWindow", "NectarLink Shelf")
+}
+
 fn feature_state_map(state: Option<FeatureState>) -> QMap<QMapPair_QString_QVariant> {
     let mut map = QMap::<QMapPair_QString_QVariant>::default();
     let mut put = |key: &str, value: QVariant| map.insert(QString::from(key), value);

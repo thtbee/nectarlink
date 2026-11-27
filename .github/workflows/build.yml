@@ -243,6 +243,18 @@ jobs:
             dnf install -y -q --nogpgcheck /dist/*.rpm >/dev/null
             nectarlink-desktop --version'
           APPIMAGE_EXTRACT_AND_RUN=1 ./dist/*.AppImage --version
+          # The AppImage says where its updates are, and its .zsync is there (#672).
+          info=$(./dist/*.AppImage --appimage-updateinformation)
+          echo "update information: $info"
+          case "$VERSION" in
+            *+canary*) want="|canary|" ;;
+            *-*) want="" ;;
+            *) want="|latest|" ;;
+          esac
+          if [ -n "$want" ]; then
+            case "$info" in gh-releases-zsync\|*"$want"Nectarlink-\*-x86_64.AppImage.zsync) ;; *) echo "unexpected update information"; exit 1 ;; esac
+            test -s dist/*.AppImage.zsync
+          fi
           mkdir -p /tmp/tarball && tar -xzf dist/*.tar.gz -C /tmp/tarball
           /tmp/tarball/*/nectarlink-desktop --version
       - name: Check that install.sh installs and removes each package
@@ -277,6 +289,7 @@ jobs:
             dist/*.deb
             dist/*.rpm
             dist/*.AppImage
+            dist/*.AppImage.zsync
             dist/*.tar.gz
             dist/install.sh
 

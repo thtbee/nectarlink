@@ -6651,6 +6651,18 @@ Nó cần gì
         <source>Paste into active window</source>
         <translation>Dán vào cửa sổ đang hoạt động</translation>
     </message>
+    <message numerus="yes">
+        <location filename="../qml/MainWindow.qml" line="1"/>
+        <source>Device: %1. Switch device, %n new on the others</source>
+        <translation>
+            <numerusform>Thiết bị: %1. Đổi thiết bị, %n mục mới trên các thiết bị khác</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow.qml" line="1"/>
+        <source>Device: %1. Switch device</source>
+        <translation>Thiết bị: %1. Đổi thiết bị</translation>
+    </message>
 </context>
 <context>
     <name>Media</name>
@@ -11805,6 +11817,9 @@ Nó cần gì
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>Move the mouse past that edge of the screen to use it on that PC, and type there with this keyboard. Move it back, or press Ctrl+Alt+Esc, to return. That PC asks the first time, or turn on Remote mouse, keyboard &amp; Deck for this PC there.</source>
         <translation>Đưa chuột vượt qua cạnh màn hình đó để dùng chuột trên PC kia và gõ ở đó bằng bàn phím này. Đưa chuột trở lại hoặc nhấn Ctrl+Alt+Esc để quay về. PC kia sẽ hỏi lần đầu, hoặc bật Chuột, bàn phím và Deck từ xa cho PC này ở đó.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>Bluetooth when there&apos;s no network</source>
         <translation>Bluetooth khi không có mạng</translation>
     </message>
@@ -11847,6 +11862,16 @@ Nó cần gì
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>Both</source>
         <translation>Cả hai</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Mark texts read on the phone</source>
+        <translation>Đánh dấu tin nhắn đã đọc trên điện thoại</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Reading a conversation here marks it read on the phone too, in its messaging app.</source>
+        <translation>Đọc một cuộc trò chuyện ở đây cũng đánh dấu đã đọc trên điện thoại, trong ứng dụng nhắn tin của nó.</translation>
     </message>
 </context>
 <context>
@@ -13750,6 +13775,41 @@ Nó cần gì
         <location filename="../qml/components/NewPill.qml" line="1"/>
         <source>New</source>
         <translation>Mới</translation>
+    </message>
+</context>
+<context>
+    <name>DeviceMenu</name>
+    <message>
+        <location filename="../qml/components/DeviceMenu.qml" line="1"/>
+        <source>Devices</source>
+        <translation>Thiết bị</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/DeviceMenu.qml" line="1"/>
+        <source>offline</source>
+        <translation>ngoại tuyến</translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../qml/components/DeviceMenu.qml" line="1"/>
+        <source>%n new</source>
+        <translation>
+            <numerusform>%n mục mới</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location filename="../qml/components/DeviceMenu.qml" line="1"/>
+        <source>Pair a new device</source>
+        <translation>Ghép nối thiết bị mới</translation>
+    </message>
+</context>
+<context>
+    <name>NavItem</name>
+    <message numerus="yes">
+        <location filename="../qml/components/NavItem.qml" line="1"/>
+        <source>%1, %n new</source>
+        <translation>
+            <numerusform>%1, %n mục mới</numerusform>
+        </translation>
     </message>
 </context>
 </TS>

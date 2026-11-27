@@ -114,6 +114,24 @@ static LAST_REPORTED: Mutex<Option<u64>> = Mutex::new(None);
 /// (such as the Android emulator's QEMU clipboard pipe) immediately echoes the
 /// same plain text without rich formats, we preserve the rich formats.
 static LAST_WRITTEN_RICH: Mutex<Option<WrittenRich>> = Mutex::new(None);
+/// Whether anything takes what's copied now (#688). Until it says yes, a copy
+/// isn't read: the clipboard stays free for the app that wrote it.
+static WANTED: OnceLock<fn() -> bool> = OnceLock::new();
+
+/// Sets what [`start`]'s watcher asks before it opens the clipboard for a copy.
+pub fn set_wanted(wanted: fn() -> bool) {
+    let _ = WANTED.set(wanted);
+}
+
+/// A rich text NectarLink wrote in the last 2 s, which a bridge may echo back
+/// as plain text: then the copy is read to put the formats back.
+fn rich_echo_possible() -> bool {
+    LAST_WRITTEN_RICH
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .as_ref()
+        .is_some_and(|(at, ..)| at.elapsed() < Duration::from_secs(2))
+}
 
 fn fingerprint(clip: &Clip) -> Option<u64> {
     let mut hasher = DefaultHasher::new();
@@ -196,6 +214,10 @@ fn on_clipboard_changed(hwnd: HWND) {
     // What NectarLink wrote (a phone's text) isn't sent back.
     // SAFETY: GetClipboardOwner has no preconditions.
     if unsafe { GetClipboardOwner() }.is_ok_and(|owner| owner == hwnd) {
+        return;
+    }
+    // Nothing takes it: leave the clipboard alone, unopened (#688).
+    if !WANTED.get().is_none_or(|wanted| wanted()) && !rich_echo_possible() {
         return;
     }
     let clip = read_with(Some(hwnd), true);

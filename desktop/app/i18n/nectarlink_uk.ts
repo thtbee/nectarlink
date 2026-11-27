@@ -11775,6 +11775,9 @@ What it needs
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>Move the mouse past that edge of the screen to use it on that PC, and type there with this keyboard. Move it back, or press Ctrl+Alt+Esc, to return. That PC asks the first time, or turn on Remote mouse, keyboard &amp; Deck for this PC there.</source>
         <translation>Відведіть мишу за цей край екрана, щоб керувати тим ПК і друкувати там цією клавіатурою. Повернутися можна, відвівши мишу назад, або клавішами Ctrl+Alt+Esc. Той ПК запитає першого разу, або ввімкніть там «Віддалена миша, клавіатура й Deck» для цього ПК.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>Bluetooth when there&apos;s no network</source>
         <translation>Bluetooth, коли немає мережі</translation>
     </message>

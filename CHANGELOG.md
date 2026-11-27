@@ -13,6 +13,15 @@ change things that need a step from you, and its notes say so.
   bar icon; opening it from there, or a ringing call, brings the Dock icon back. The menu bar
   icon is now one color, white or black to match the menu bar, as the Mac's own icons are;
   **Tray icon** in Settings › General turns the color tile back on.
+- **Unlock KDE Plasma with the phone.** On Linux, NectarLink's PAM module can now run in the
+  lock screen's `kde-fingerprint` service, so the phone asks for your fingerprint each time the
+  PC locks and unlocks it when you approve. It's one line in `/etc/pam.d/kde-fingerprint`; see
+  [Unlock a Linux session with your Android fingerprint](docs/guide/linux-phone-unlock.md#kde-plasma).
+- **The AppImage tells AppImage managers where its updates are.** It carries update information
+  for AppImageUpdate, and each release comes with a `.zsync` file, so tools like AppManager and
+  AppImageUpdate find and download only what changed. Releases follow releases; Nightlies keep
+  updating through NectarLink itself. Thanks to [@xmha97](https://github.com/xmha97) and [@shuvashish76](https://github.com/shuvashish76)
+  ([#672](https://github.com/thtbee/nectarlink/issues/672)).
 - **Swipe between your devices on the phone's Home.** With two or more paired devices, their cards
   sit side by side, PCs first: swipe to go from one to the next, with dots for where you are.
   Thanks to [@kedar284](https://github.com/kedar284) ([#651](https://github.com/thtbee/nectarlink/issues/651)).
@@ -617,6 +626,20 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **Your voice from the PC stays clear on a phone call.** When the phone got the PC's microphone
+  in pieces that split a sample, the rest of the call's sound from the PC turned to noise.
+  Thanks to [@farfromrefug](https://github.com/farfromrefug) ([#693](https://github.com/thtbee/nectarlink/pull/693)).
+- **Pairing fits a phone held sideways.** In landscape or a short window, the QR scanner, the code
+  and the list of nearby PCs ran off the screen; wide windows now show two panes and short ones
+  scroll. Thanks to [@aihehye](https://github.com/aihehye) ([#529](https://github.com/thtbee/nectarlink/issues/529), [#690](https://github.com/thtbee/nectarlink/pull/690)).
+- **NectarLink leaves the Windows clipboard alone when it isn't sending it.** It read every copy,
+  whole screenshots included, even with clipboard sharing off, and could keep Snipping Tool from
+  saving a screenshot. Thanks to [@Snoopiam](https://github.com/Snoopiam) ([#688](https://github.com/thtbee/nectarlink/issues/688)).
+- **A text sent from the PC stays in the conversation** until the phone lists it. Some phones
+  store a sent text late or not at all, and it vanished from the PC though it had gone out.
+- **The PC's device menu and a few settings are translated again.** The device switcher on the left
+  rail, Mark texts read on the phone, the Beside this PC hint and Bluetooth when there's no network
+  showed in English in every language.
 - **A feature Windows 10 can't run says it needs Windows 11** instead of only *Unavailable*, such
   as Phone as webcam, and one that needs a newer Android says which version.
 - **The phone's volume buttons work for the phone while it plays something itself,** with
