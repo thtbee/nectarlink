@@ -1484,6 +1484,8 @@ impl qobject::Preferences {
             comb_motion: p.comb_motion,
             close_to_tray: p.close_to_tray,
             tray_one_colour: p.tray_one_colour,
+            // Whatever is saved now is the choice, not the old default.
+            tray_icon_default_applied: true,
             auto_clipboard: p.auto_clipboard,
             clipboard_history: p.clipboard_history,
             suggest_clipboard_actions: p.suggest_clipboard_actions,

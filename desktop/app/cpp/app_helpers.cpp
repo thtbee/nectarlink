@@ -605,7 +605,13 @@ void mac_set_dock_visible(bool visible)
         return;
     // NSApplicationActivationPolicyRegular = 0, NSApplicationActivationPolicyAccessory = 1.
     reinterpret_cast<bool (*)(id, SEL, long)>(objc_msgSend)(app, sel_registerName("setActivationPolicy:"), visible ? 0 : 1);
-    if (visible)
+    if (!visible)
+        return;
+    // `activate` from macOS 14 on; `activateIgnoringOtherApps:` is deprecated there.
+    const SEL activate = sel_registerName("activate");
+    if (reinterpret_cast<bool (*)(id, SEL, SEL)>(objc_msgSend)(app, sel_registerName("respondsToSelector:"), activate))
+        reinterpret_cast<void (*)(id, SEL)>(objc_msgSend)(app, activate);
+    else
         reinterpret_cast<void (*)(id, SEL, bool)>(objc_msgSend)(app, sel_registerName("activateIgnoringOtherApps:"), true);
 }
 #else
