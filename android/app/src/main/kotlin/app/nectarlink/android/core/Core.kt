@@ -280,6 +280,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     private val _queuedNotices = MutableSharedFlow<OfflineQueuedNotice>(extraBufferCapacity = 8)
     private val _clipSuggestions = MutableSharedFlow<ClipSuggestionNotice>(extraBufferCapacity = 4)
     private val _reportLogs = MutableSharedFlow<String>(extraBufferCapacity = 4)
+    private val _timelineRevision = MutableStateFlow(0)
+    private val _chatUnsupported = MutableStateFlow<Set<String>>(emptySet())
     @Volatile private var node: NectarlinkNode? = null
     @Volatile private var startJob: Job? = null
     @Volatile private var runJob: Job? = null
@@ -1038,6 +1040,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 if (event.link is Link.Online) {
                     wakeTimers.remove(event.id)?.cancel()
                     taskTimers.remove(event.id)?.cancel()
+                    // Maybe updated while away: it may take notes now.
+                    _chatUnsupported.update { it - event.id }
                     retryWaitingRecordings(event.id)
                     // Plugged into a PC with USB debugging allowed: it can start Elevated.
                     if (!Elevated.running) scope.launch(Dispatchers.IO) { Elevated.startOverUsb() }
@@ -1054,6 +1058,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 wakeTimers.remove(event.id)?.cancel()
                 taskTimers.remove(event.id)?.cancel()
                 app.nectarlink.android.notifications.TaskNotifications.cancelRunning(context, event.id)
+                app.nectarlink.android.chat.ChatNotifications.cancel(context, event.id)
+                _chatUnsupported.update { it - event.id }
                 // Paired again later, it asks again until chosen again.
                 PcAutoStart.set(context, event.id, false)
                 scope.launch(Dispatchers.Default) {
@@ -1082,6 +1088,13 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 refreshTimeline()
             }
             is Event.TimelineChanged -> scope.launch(Dispatchers.IO) { refreshTimeline() }
+            // Also on the timeline (TimelineChanged follows); a notification unless its chat is open.
+            is Event.ChatReceived -> app.nectarlink.android.chat.ChatNotifications.show(
+                context,
+                event.id,
+                _state.value.nameOf(event.id).orEmpty(),
+                event.text,
+            )
             is Event.LocalSendChanged -> scope.launch(Dispatchers.IO) { syncLocalSendState() }
             is Event.QueueChanged -> refreshSendQueue()
             is Event.QueueDroppedOnUnpair -> {
@@ -2175,6 +2188,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 timelineRetentionDays = retention?.maxDays ?: it.timelineRetentionDays,
             )
         }
+        _timelineRevision.update { it + 1 }
         refreshDataRetention()
     }
 
@@ -2187,6 +2201,90 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     ): TimelinePage? = withContext(Dispatchers.IO) {
         startJob?.join()
         runCatching { node?.timelinePage(kind, deviceId, search, offset, limit) }.getOrNull()
+    }
+
+    // ---- Chat (#698) ----
+
+    /** Changes each time the timeline was read again after a change: what's on it may differ. */
+    val timelineRevision: StateFlow<Int> = _timelineRevision.asStateFlow()
+
+    /** Devices whose app turned a note down as unknown, until they connect again. */
+    val chatUnsupported: StateFlow<Set<String>> = _chatUnsupported.asStateFlow()
+
+    /**
+     * Whether [deviceId]'s app takes notes, from what it offered when it last
+     * connected; true when that can't be told (no core yet).
+     */
+    fun chatOffered(deviceId: String): Boolean =
+        runCatching { node?.peerOffers(deviceId, CHAT_CAPABILITY) }.getOrNull() ?: true
+
+    /** The newest [limit] notes of the chat with [deviceId] (newest first), and whether there are more. */
+    suspend fun chatEntries(deviceId: String, limit: Int): Pair<List<TimelineEntry>, Boolean>? =
+        withContext(Dispatchers.IO) {
+            startJob?.join()
+            val currentNode = node ?: return@withContext null
+            val items = ArrayList<TimelineEntry>()
+            var hasMore = true
+            while (hasMore && items.size < limit) {
+                val pageSize = minOf(CHAT_PAGE, limit - items.size).toUInt()
+                val page = runCatching {
+                    currentNode.timelinePage(TimelineKind.MESSAGE, deviceId, null, items.size.toUInt(), pageSize)
+                }.getOrNull() ?: return@withContext null
+                items += page.items
+                hasMore = page.hasMore && page.items.isNotEmpty()
+            }
+            items to hasMore
+        }
+
+    /** Sends a note to [deviceId]; false (with a message, or the composer saying why) if it wasn't. */
+    suspend fun sendChat(deviceId: String, text: String): Boolean = withContext(Dispatchers.IO) {
+        startJob?.join()
+        val currentNode = node ?: return@withContext false
+        try {
+            currentNode.sendChat(deviceId, text)
+            true
+        } catch (e: NectarlinkException) {
+            onChatFailed(deviceId, e)
+            false
+        }
+    }
+
+    /** Changes a note this phone sent [deviceId]; false (with a message) if it couldn't. */
+    suspend fun editChat(deviceId: String, noteId: String, text: String): Boolean = withContext(Dispatchers.IO) {
+        startJob?.join()
+        val currentNode = node ?: return@withContext false
+        try {
+            currentNode.editChat(deviceId, noteId, text)
+            true
+        } catch (e: NectarlinkException) {
+            onChatFailed(deviceId, e)
+            false
+        }
+    }
+
+    /** Deletes a note in the chat with [deviceId], here and there. */
+    fun deleteChat(deviceId: String, noteId: String) {
+        scope.launch(Dispatchers.IO) {
+            startJob?.join()
+            val currentNode = node ?: return@launch
+            try {
+                currentNode.deleteChat(deviceId, noteId)
+            } catch (e: NectarlinkException) {
+                // Already gone: the chat shows that once it reads the timeline again.
+                if (e !is NectarlinkException.NotFound) _messages.tryEmit(describe(e))
+            }
+        }
+    }
+
+    private fun onChatFailed(deviceId: String, e: NectarlinkException) {
+        when (e) {
+            // The composer says so from now on.
+            is NectarlinkException.Unsupported -> _chatUnsupported.update { it + deviceId }
+            is NectarlinkException.Offline -> _messages.tryEmit(
+                context.getString(R.string.chat_not_connected, _state.value.nameOf(deviceId).orEmpty()),
+            )
+            else -> _messages.tryEmit(describe(e))
+        }
     }
 
     fun setTimelineRetentionDays(days: UInt) {
@@ -2374,7 +2472,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                         }
                     }
                 }
-                TimelineKind.SESSION -> Unit
+                TimelineKind.SESSION, TimelineKind.MESSAGE -> Unit
             }
         }
     }
@@ -3373,6 +3471,10 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         const val OWN_NAME_MAX = 64
         /** How long a PC may be away before its running tasks come off this phone. */
         const val TASKS_AWAY_MS = 30 * 60_000L
+        /** The most notes the core gives in one page (`MAX_TIMELINE_PAGE_LIMIT`). */
+        const val CHAT_PAGE = 250
+        /** What a device that takes notes offers (`chat.messages` in the protocol). */
+        const val CHAT_CAPABILITY = "chat.messages"
         /** Offered while notification access is granted (docs/protocol/capabilities.md). */
         val NOTIFICATION_CAPABILITIES = listOf("notify.mirror", "notify.reply", "notify.live")
         /** Sharing this phone's players, which also needs notification access. */

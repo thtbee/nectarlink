@@ -1705,6 +1705,30 @@
     <string name="settings_own_name">Nome deste celular</string>
     <string name="settings_own_name_change">Alterar</string>
     <string name="settings_own_name_hint">Como este celular aparece nos seus PCs. Deixe em branco para usar %1$s.</string>
+    <string name="action_chat">Chat</string>
+    <string name="channel_chat">Chat</string>
+    <string name="chat_you">Você</string>
+    <string name="chat_empty">Digite uma nota e ela aparece em %1$s.</string>
+    <string name="chat_composer_hint">Nota</string>
+    <string name="chat_composer_label">Nota para %1$s</string>
+    <string name="chat_send">Enviar</string>
+    <string name="chat_save">Salvar</string>
+    <string name="chat_editing">Editando nota</string>
+    <string name="chat_offline">Conecte %1$s para enviar notas.</string>
+    <string name="chat_too_old">Atualize o NectarLink em %1$s para enviar notas.</string>
+    <string name="chat_too_long">Uma nota pode ter até %1$d caracteres.</string>
+    <string name="chat_not_connected">%1$s não está conectado.</string>
+    <string name="chat_action_copy">Copiar</string>
+    <string name="chat_action_edit">Editar</string>
+    <string name="chat_action_delete">Excluir</string>
+    <string name="chat_delete_title">Excluir esta nota?</string>
+    <string name="chat_delete_text">Ela também é excluída em %1$s.</string>
+    <string name="chat_delete_text_offline">%1$s não está conectado, então ela continua lá.</string>
+    <string name="chat_note_mine">Você, %1$s: %2$s</string>
+    <string name="chat_note_from">%1$s, %2$s: %3$s</string>
+    <string name="chat_note_options">Opções da nota</string>
+    <string name="chat_earlier">Notas anteriores</string>
+    <string name="timeline_filter_notes">Notas</string>
 </resources>
 
 

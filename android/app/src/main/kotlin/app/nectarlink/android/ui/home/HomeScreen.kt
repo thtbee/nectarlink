@@ -199,6 +199,8 @@ fun HomeScreen(
     onDesk: (pcId: String) -> Unit = {},
     onRecord: (pcId: String) -> Unit,
     onWebcam: (pcId: String) -> Unit = {},
+    /** Opens the chat with a paired device (#698). */
+    onChat: (deviceId: String) -> Unit = {},
     updater: AppUpdater,
     onSendFiles: (pcId: String, uris: List<Uri>) -> Unit,
     onSendFolder: (pcId: String, tree: Uri) -> Unit,
@@ -379,6 +381,7 @@ fun HomeScreen(
                 onRing = onRing,
                 onSendFiles = onSendFiles,
                 onRemote = onRemote,
+                onChat = onChat,
             )
         } else {
             Box(
@@ -411,6 +414,7 @@ fun HomeScreen(
                     onSetPcAudio = onSetPcAudio,
                     onSetPcRadio = onSetPcRadio,
                     onBrowsePcFiles = { browseFilesPcId = it },
+                    onChat = onChat,
                     micOn = micStreamingTo == device.id,
                     onToggleMic = { on -> if (on) onStartMic(device.id) else onStopMic() },
                 )
@@ -932,6 +936,10 @@ fun HomeScreen(
             onDelete = onDeleteTimelineEntry,
             onClearAll = onClearTimeline,
             loadClipImage = loadClipboardHistoryImage,
+            onOpenChat = { id ->
+                showTimeline = false
+                onChat(id)
+            },
             onDismiss = { showTimeline = false },
         )
     }
@@ -1487,6 +1495,7 @@ private fun PeerCard(
     onRing: (String, Boolean) -> Unit,
     onSendFiles: (String, List<Uri>) -> Unit,
     onRemote: (String) -> Unit,
+    onChat: (String) -> Unit,
 ) {
     val context = LocalContext.current
     val pickFiles = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
@@ -1557,6 +1566,16 @@ private fun PeerCard(
             Spacer(Modifier.width(6.dp))
             ButtonLabel(stringResource(R.string.action_send_clipboard))
         }
+        // Notes between the two (#698); the history reads while it's away too.
+        FilledTonalButton(
+            contentPadding = CardButtonPadding,
+            onClick = { onChat(device.id) },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Icon(painter = painterResource(R.drawable.ic_chat), contentDescription = null, modifier = Modifier.size(15.dp))
+            Spacer(Modifier.width(6.dp))
+            ButtonLabel(stringResource(R.string.action_chat))
+        }
         // This phone as the tablet's touchpad and keyboard (#651), once it takes input.
         if (device.has("pair.control")) {
             FilledTonalButton(
@@ -1597,6 +1616,7 @@ private fun PcCard(
     onSetPcRadio: (String, Boolean?, Boolean?) -> Unit,
     onBrowsePcFiles: (String) -> Unit = {},
     onDesk: (String) -> Unit = {},
+    onChat: (String) -> Unit = {},
     /** Whether this phone's microphone streams to this PC now. */
     micOn: Boolean = false,
     onToggleMic: (Boolean) -> Unit = {},
@@ -1942,6 +1962,21 @@ private fun PcCard(
                                 }
                             }
                         }
+                    }
+                    // Notes between the two (#698); the history reads while it's away too.
+                    FilledTonalButton(
+                        contentPadding = CardButtonPadding,
+                        colors = tonal,
+                        onClick = { onChat(device.id) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_chat),
+                            contentDescription = null,
+                            modifier = Modifier.size(15.dp),
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        ButtonLabel(stringResource(R.string.action_chat))
                     }
                 }
 
@@ -3360,7 +3395,7 @@ private fun TimelineCard(
     val shownTitle = if (isClipText && !revealLatest) {
         stringResource(R.string.clipboard_preview_hidden)
     } else {
-        latest.title
+        timelineTitle(latest)
     }
     Column(
         modifier = Modifier
@@ -3426,6 +3461,7 @@ private fun TimelineDialog(
     onDelete: (Long) -> Unit,
     onClearAll: () -> Unit,
     loadClipImage: suspend (String) -> ByteArray?,
+    onOpenChat: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var search by remember { mutableStateOf("") }
@@ -3455,6 +3491,7 @@ private fun TimelineDialog(
         TimelineKind.PHOTO to stringResource(R.string.timeline_filter_photos),
         TimelineKind.RECORDING to stringResource(R.string.timeline_filter_recordings),
         TimelineKind.SESSION to stringResource(R.string.timeline_filter_sessions),
+        TimelineKind.MESSAGE to stringResource(R.string.timeline_filter_notes),
     )
 
     AlertDialog(
@@ -3556,6 +3593,7 @@ private fun TimelineDialog(
                                         onResend = { onResend(entry) },
                                         onDelete = { onDelete(entry.id) },
                                         loadClipImage = loadClipImage,
+                                        onOpenChat = { onOpenChat(entry.deviceId) },
                                     )
                                 }
                             }
@@ -3607,8 +3645,10 @@ private fun TimelineRow(
     onResend: () -> Unit,
     onDelete: () -> Unit,
     loadClipImage: suspend (String) -> ByteArray?,
+    onOpenChat: () -> Unit,
 ) {
     val context = LocalContext.current
+    val isNote = entry.kind == TimelineKind.MESSAGE
     val direction = if (entry.incoming) {
         stringResource(R.string.clipboard_history_from, entry.deviceName)
     } else {
@@ -3634,7 +3674,8 @@ private fun TimelineRow(
                 append(" · ")
                 append(DateUtils.formatElapsedTime(entry.durationSecs.toLong()))
             }
-            if (entry.detail.isNotEmpty()) {
+            // A note's text is its title, not a detail (#698).
+            if (entry.detail.isNotEmpty() && !isNote) {
                 append(" · ")
                 append(entry.detail)
             }
@@ -3667,14 +3708,14 @@ private fun TimelineRow(
     }
     val canCopy = when (entry.kind) {
         TimelineKind.CLIP -> entry.clipAvailable && entry.refId != null
-        TimelineKind.LINK -> true
+        TimelineKind.LINK, TimelineKind.MESSAGE -> true
         else -> false
     }
     val canSendAgain = devicePaired && when (entry.kind) {
         TimelineKind.CLIP -> entry.clipAvailable && entry.refId != null
         TimelineKind.LINK -> true
         TimelineKind.FILE, TimelineKind.PHOTO, TimelineKind.RECORDING -> targetExists
-        TimelineKind.SESSION -> false
+        TimelineKind.SESSION, TimelineKind.MESSAGE -> false
     }
 
     Surface(
@@ -3693,7 +3734,7 @@ private fun TimelineRow(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                entry.title,
+                timelineTitle(entry),
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
@@ -3742,6 +3783,7 @@ private fun TimelineRow(
                         when (entry.kind) {
                             TimelineKind.CLIP -> entry.refId?.let(onCopyClip)
                             TimelineKind.LINK -> PhoneClipboard.write(context, entry.target.ifEmpty { entry.title })
+                            TimelineKind.MESSAGE -> PhoneClipboard.write(context, entry.detail)
                             else -> Unit
                         }
                     }) {
@@ -3753,6 +3795,11 @@ private fun TimelineRow(
                         Text(stringResource(R.string.timeline_action_send_again))
                     }
                 }
+                if (isNote && devicePaired) {
+                    TextButton(onClick = onOpenChat) {
+                        Text(stringResource(R.string.action_chat))
+                    }
+                }
                 TextButton(onClick = onDelete) {
                     Text(stringResource(R.string.timeline_action_remove))
                 }
@@ -3760,6 +3807,10 @@ private fun TimelineRow(
         }
     }
 }
+
+/** What a timeline entry shows as its title: a note's text, which it keeps in `detail` (#698). */
+internal fun timelineTitle(entry: TimelineEntry): String =
+    if (entry.kind == TimelineKind.MESSAGE) entry.detail else entry.title
 
 private fun openTimelineTarget(context: android.content.Context, entry: TimelineEntry) {
     runCatching {
