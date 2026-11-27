@@ -66,8 +66,22 @@ for qm in "${STAGE_DIR}"/translations/nectarlink_*.qm; do
     fi
 done
 
-install -m 0644 "${SCRIPT_DIR}/nectarlink.desktop" "${APPDIR}/usr/share/applications/nectarlink.desktop"
-install -m 0644 "${SCRIPT_DIR}/nectarlink.desktop" "${APPDIR}/nectarlink.desktop"
+# The AppImage's own desktop entry also names it for AppImage managers (#672);
+# the .deb and .rpm keep the plain one.
+awk -v version="${VERSION}" -v arch="${ARCH}" '
+    { print }
+    /^\[Desktop Entry\]$/ { in_entry = 1; next }
+    in_entry && /^StartupWMClass=/ {
+        print "X-AppImage-Name=NectarLink"
+        print "X-AppImage-Version=" version
+        print "X-AppImage-Arch=" arch
+        print "X-AppImage-Homepage=https://github.com/thtbee/nectarlink"
+        print "X-AppImage-UpdateURL=https://github.com/thtbee/nectarlink"
+        in_entry = 0
+    }
+' "${SCRIPT_DIR}/nectarlink.desktop" > "${STAGE_DIR}/nectarlink.desktop"
+install -m 0644 "${STAGE_DIR}/nectarlink.desktop" "${APPDIR}/usr/share/applications/nectarlink.desktop"
+install -m 0644 "${STAGE_DIR}/nectarlink.desktop" "${APPDIR}/nectarlink.desktop"
 install -m 0644 "${SCRIPT_DIR}/org.nectarlink.desktop.metainfo.xml" "${APPDIR}/usr/share/metainfo/org.nectarlink.desktop.metainfo.xml"
 
 if [[ -f "${REPO_ROOT}/assets/brand/icon.svg" ]]; then
@@ -187,5 +201,32 @@ runtime_args=()
 if [[ -n "${APPIMAGE_RUNTIME:-}" ]]; then
     runtime_args=(--runtime-file "${APPIMAGE_RUNTIME}")
 fi
-ARCH="${ARCH}" appimagetool "${runtime_args[@]}" "${APPDIR}" "${OUT_APPIMAGE}"
+# Update information (#672): AppImageUpdate and AppImage managers look for a
+# newer build of the same channel in GitHub Releases, by its .zsync file.
+# Releases follow the latest release and canaries the one canary release.
+# Nightlies get none: GitHub's newest pre-release is usually the canary, so
+# "latest-pre" would move a Nightly onto canaries. The app's own updater
+# keeps Nightlies current.
+REPOSITORY="${GITHUB_REPOSITORY:-thtbee/nectarlink}"
+case "${VERSION}" in
+    *+canary*) update_tag="canary" ;;
+    *-*) update_tag="" ;;
+    *) update_tag="latest" ;;
+esac
+update_args=()
+if [[ -n "${update_tag}" ]]; then
+    UPDATE_INFO="gh-releases-zsync|${REPOSITORY%%/*}|${REPOSITORY#*/}|${update_tag}|Nectarlink-*-${ARCH}.AppImage.zsync"
+    update_args=(-u "${UPDATE_INFO}")
+fi
+rm -f "${OUT_APPIMAGE}.zsync"
+ARCH="${ARCH}" appimagetool "${runtime_args[@]}" "${update_args[@]}" "${APPDIR}" "${OUT_APPIMAGE}"
+# appimagetool (1.9) writes the .zsync beside it; an older one may need
+# zsyncmake, and the workflow checks it's there.
+if [[ -n "${update_tag}" && ! -f "${OUT_APPIMAGE}.zsync" ]]; then
+    if command -v zsyncmake >/dev/null 2>&1; then
+        (cd "${OUT_DIR}" && zsyncmake -u "$(basename "${OUT_APPIMAGE}")" -o "$(basename "${OUT_APPIMAGE}").zsync" "$(basename "${OUT_APPIMAGE}")")
+    else
+        echo "warning: zsyncmake not found; no .zsync for ${OUT_APPIMAGE}" >&2
+    fi
+fi
 echo "Built ${OUT_APPIMAGE}"

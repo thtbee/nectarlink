@@ -12,6 +12,11 @@ change things that need a step from you, and its notes say so.
   lock screen's `kde-fingerprint` service, so the phone asks for your fingerprint each time the
   PC locks and unlocks it when you approve. It's one line in `/etc/pam.d/kde-fingerprint`; see
   [Unlock a Linux session with your Android fingerprint](docs/guide/linux-phone-unlock.md#kde-plasma).
+- **The AppImage tells AppImage managers where its updates are.** It carries update information
+  for AppImageUpdate, and each release comes with a `.zsync` file, so tools like AppManager and
+  AppImageUpdate find and download only what changed. Releases follow releases; Nightlies keep
+  updating through NectarLink itself. Thanks to [@xmha97](https://github.com/xmha97) and [@shuvashish76](https://github.com/shuvashish76)
+  ([#672](https://github.com/thtbee/nectarlink/issues/672)).
 - **Swipe between your devices on the phone's Home.** With two or more paired devices, their cards
   sit side by side, PCs first: swipe to go from one to the next, with dots for where you are.
   Thanks to [@kedar284](https://github.com/kedar284) ([#651](https://github.com/thtbee/nectarlink/issues/651)).
