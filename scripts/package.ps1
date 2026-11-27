@@ -9,9 +9,13 @@
      uses (windeployqt), the Microsoft C++ runtime, and the license notices.
   3. Packs the folder into target\package\Nectarlink-<version>-x64-setup.exe
      with NSIS (unless -StageOnly).
+  4. Signs the staged executables and the installer when NECTARLINK_SIGN_PFX
+     and NECTARLINK_SIGN_PASSWORD name a code-signing certificate. Both are
+     read from the environment; with neither set the build stays unsigned.
 
   Needs Qt (qmake on PATH, or QT_ROOT_DIR / -QtRoot) and, for the
-  installer, NSIS (makensis on PATH or in its usual folder).
+  installer, NSIS (makensis on PATH or in its usual folder). Signing also
+  needs signtool.exe from the Windows SDK and a timestamp server.
 
 .EXAMPLE
   .\scripts\package.ps1
@@ -39,6 +43,44 @@ function Invoke-Native([string]$what, [scriptblock]$command) {
     try { & $command 2>&1 | ForEach-Object { Write-Host "$_" } }
     finally { $ErrorActionPreference = $saved }
     if ($LASTEXITCODE -ne 0) { throw "$what failed (exit code $LASTEXITCODE)" }
+}
+
+# ---- Optional Authenticode signing ----
+# SmartScreen's "unknown publisher" warning ("Windows protected your PC") only
+# goes away with a trusted OV/EV code-signing certificate; a self-signed one
+# does not help. The path and password come from the environment so no
+# credential is ever written into the repository:
+#   $env:NECTARLINK_SIGN_PFX       path to the .pfx
+#   $env:NECTARLINK_SIGN_PASSWORD  its password
+# With neither set the build is unsigned, as before. With only one set the
+# build stops rather than quietly produce an unsigned installer.
+$signPfx = $env:NECTARLINK_SIGN_PFX
+$signPassword = $env:NECTARLINK_SIGN_PASSWORD
+$signTool = $null
+if ($signPfx -or $signPassword) {
+    if (-not $signPfx -or -not $signPassword) {
+        throw "set both NECTARLINK_SIGN_PFX and NECTARLINK_SIGN_PASSWORD, or neither"
+    }
+    if (-not (Test-Path -LiteralPath $signPfx)) { throw "NECTARLINK_SIGN_PFX not found: $signPfx" }
+    $signTool = (Get-Command signtool.exe -ErrorAction SilentlyContinue).Source
+    if (-not $signTool) {
+        $signTool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" -ErrorAction SilentlyContinue |
+            Sort-Object { [version]$_.Directory.Parent.Name } -Descending | Select-Object -First 1
+        if ($signTool) { $signTool = $signTool.FullName }
+    }
+    if (-not $signTool) { throw "signtool.exe isn't installed (Windows SDK), so the build can't be signed" }
+}
+
+# Signs each file with the configured certificate; does nothing without one.
+function Sign-IfConfigured([string[]]$files) {
+    if (-not $signPfx) { return }
+    foreach ($file in $files) {
+        Write-Host "Signing $(Split-Path -Leaf $file)"
+        Invoke-Native "signing $file" {
+            & $signTool sign /f $signPfx /p $signPassword /fd SHA256 `
+                /tr 'http://timestamp.digicert.com' /td SHA256 $file
+        }
+    }
 }
 
 # ---- Version, from the workspace manifest ----
@@ -275,6 +317,16 @@ if ($makeappx) {
     Write-Warning "makeappx isn't installed (Windows SDK), so the package manifest isn't checked"
 }
 
+# Sign the app's own binaries before the installer packs them: the installer
+# compresses what is in the stage folder, so anything added afterwards would
+# not be inside it. Qt's own DLLs keep the signatures Qt ships them with.
+Sign-IfConfigured -files @(
+    (Join-Path $stage 'nectarlink-desktop.exe'),
+    (Join-Path $stage 'nectarlink-agent.exe'),
+    (Join-Path $stage 'nectarlink_vcam.dll'),
+    (Join-Path $stage 'nectarlink_credprov.dll')
+)
+
 $size = (Get-ChildItem $stage -Recurse -File | Measure-Object Length -Sum).Sum / 1MB
 Write-Host ("Staged {0:N1} MB in {1}" -f $size, $stage)
 if ($StageOnly) { return }
@@ -289,4 +341,8 @@ Invoke-Native "makensis" {
     & $makensis /V2 "/DVERSION=$numeric" "/DBUILD=$build" "/DDISPLAY_VERSION=$version" "/DARCH=$Arch" "/DSTAGE=$stage" `
         "/DICON=$($icon.FullName)" "/DOUTFILE=$out" (Join-Path $root 'desktop\installer\nectarlink.nsi')
 }
+# The signature goes on the finished installer, which is the file SmartScreen
+# and Windows check. NSIS's CRCCheck covers the installer data only and stops
+# before appended data (Source/exehead/fileform.c), so signing does not break it.
+Sign-IfConfigured -files @($out)
 Write-Host ("Installer: {0} ({1:N1} MB)" -f $out, ((Get-Item $out).Length / 1MB))

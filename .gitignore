@@ -63,3 +63,6 @@ aqtinstall.log
 # Nix build outputs
 result
 result-*
+
+# Local tool state
+.mimosa/
