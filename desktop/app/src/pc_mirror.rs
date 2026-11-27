@@ -3640,7 +3640,7 @@ mod imp {
             use windows::Win32::Graphics::{
                 Direct3D::D3D_DRIVER_TYPE_UNKNOWN,
                 Direct3D11::{
-                    D3D11_BIND_SHADER_RESOURCE, D3D11_CREATE_DEVICE_BGRA_SUPPORT,
+                    D3D11_BIND_RENDER_TARGET, D3D11_BIND_SHADER_RESOURCE, D3D11_CREATE_DEVICE_BGRA_SUPPORT,
                     D3D11_CREATE_DEVICE_VIDEO_SUPPORT, D3D11_SDK_VERSION, D3D11_SUBRESOURCE_DATA,
                     D3D11_USAGE_DEFAULT, D3D11CreateDevice, ID3D11Multithread,
                 },
@@ -3707,7 +3707,9 @@ mod imp {
                             Format: DXGI_FORMAT_B8G8R8A8_UNORM,
                             SampleDesc: DXGI_SAMPLE_DESC { Count: 1, Quality: 0 },
                             Usage: D3D11_USAGE_DEFAULT,
-                            BindFlags: D3D11_BIND_SHADER_RESOURCE.0 as u32,
+                            // As the capture textures are: NVIDIA's video processor
+                            // takes nothing else.
+                            BindFlags: (D3D11_BIND_SHADER_RESOURCE.0 | D3D11_BIND_RENDER_TARGET.0) as u32,
                             CPUAccessFlags: 0,
                             MiscFlags: 0,
                         },
