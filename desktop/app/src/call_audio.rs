@@ -201,9 +201,21 @@ pub(crate) fn recorder_with(
     })
 }
 
+/// What stands for a recording off Windows and macOS: never made, but it has a
+/// type of its own (not `()`) and a drop, like a real recorder.
+#[cfg(not(any(windows, target_os = "macos")))]
+pub(crate) struct NoRecorder;
+
+#[cfg(not(any(windows, target_os = "macos")))]
+impl Drop for NoRecorder {
+    fn drop(&mut self) {}
+}
+
 /// There's no recording off Windows and macOS.
 #[cfg(not(any(windows, target_os = "macos")))]
-pub(crate) fn recorder_with(_on_pcm: impl FnMut(u64, Vec<u8>) + Send + 'static) -> Result<(), MicError> {
+pub(crate) fn recorder_with(
+    _on_pcm: impl FnMut(u64, Vec<u8>) + Send + 'static,
+) -> Result<NoRecorder, MicError> {
     Err(MicError::Other("not on this system".into()))
 }
 
