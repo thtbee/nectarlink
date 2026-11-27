@@ -119,6 +119,7 @@ QtObject {
     }
 
     function showMain() {
+        AppController.setDockVisible(true)
         trayTrimTimer.stop()
         if (!mainLoader.active || !mainLoader.item) {
             mainLoader.active = false
@@ -135,6 +136,8 @@ QtObject {
             Qt.quit()
             return
         }
+        // On macOS the Dock icon goes too: the menu bar icon is all that's left.
+        AppController.setDockVisible(false)
         // Unload after the close event has finished.
         Qt.callLater(() => {
             if (mainLoader.item)
@@ -151,10 +154,12 @@ QtObject {
         app.syncMirrorWindows()
         app.syncShelfWindow()
         app.syncIslandWindow()
-        if (!startMinimized)
+        if (!startMinimized) {
             showMain()
-        else
+        } else {
+            AppController.setDockVisible(false)
             trayTrimTimer.restart()
+        }
     }
 
     // Qt follows the system color scheme unless told otherwise; the window

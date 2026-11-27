@@ -11873,6 +11873,11 @@ Nó cần gì
         <source>Reading a conversation here marks it read on the phone too, in its messaging app.</source>
         <translation>Đọc một cuộc trò chuyện ở đây cũng đánh dấu đã đọc trên điện thoại, trong ứng dụng nhắn tin của nó.</translation>
     </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>One color turns white or black to match the menu bar.</source>
+        <translation>Một màu sẽ chuyển sang trắng hoặc đen cho hợp với thanh menu.</translation>
+    </message>
 </context>
 <context>
     <name>Setup</name>

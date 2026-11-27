@@ -8,6 +8,13 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **The Mac app lives in the menu bar when its window is closed.** With **Stay in system tray**
+  on, closing the window also takes NectarLink out of the Dock and Cmd+Tab, leaving the menu
+  bar icon; opening it from there, or a ringing call, brings the Dock icon back. The menu bar
+  icon is now one color, white or black to match the menu bar, as the Mac's own icons are;
+  **Tray icon** in Settings › General turns the color tile back on (a Mac that already ran
+  NectarLink moves to the one-color icon once). Thanks to
+  [@farfromrefug](https://github.com/farfromrefug) ([#685](https://github.com/thtbee/nectarlink/pull/685)).
 - **Unlock KDE Plasma with the phone.** On Linux, NectarLink's PAM module can now run in the
   lock screen's `kde-fingerprint` service, so the phone asks for your fingerprint each time the
   PC locks and unlocks it when you approve. It's one line in `/etc/pam.d/kde-fingerprint`; see

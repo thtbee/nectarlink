@@ -11895,6 +11895,11 @@ O que precisa
         <source>Reading a conversation here marks it read on the phone too, in its messaging app.</source>
         <translation>Ler uma conversa aqui também a marca como lida no app de mensagens do celular.</translation>
     </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>One color turns white or black to match the menu bar.</source>
+        <translation>Uma cor fica branca ou preta para combinar com a barra de menus.</translation>
+    </message>
 </context>
 <context>
     <name>Setup</name>

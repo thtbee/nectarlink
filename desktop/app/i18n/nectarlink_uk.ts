@@ -11821,6 +11821,11 @@ What it needs
         <source>Both</source>
         <translation>Обидва</translation>
     </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>One color turns white or black to match the menu bar.</source>
+        <translation>Одноколірний значок стає білим або чорним під колір рядка меню.</translation>
+    </message>
 </context>
 <context>
     <name>Setup</name>

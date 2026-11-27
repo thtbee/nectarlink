@@ -11932,6 +11932,11 @@ Wymagania
         <source>Reading a conversation here marks it read on the phone too, in its messaging app.</source>
         <translation>Przeczytanie rozmowy tutaj oznacza ją jako przeczytaną także w aplikacji do wiadomości na telefonie.</translation>
     </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>One color turns white or black to match the menu bar.</source>
+        <translation>Jeden kolor zmienia się na biały lub czarny, pasując do paska menu.</translation>
+    </message>
 </context>
 <context>
     <name>Setup</name>

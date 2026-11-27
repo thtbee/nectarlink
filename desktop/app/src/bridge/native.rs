@@ -88,6 +88,10 @@ pub mod ffi {
         #[allow(dead_code)]
         fn mac_clipboard_write_text(text: &str, is_private: bool) -> bool;
 
+        /// Shows or hides the Dock icon (macOS; does nothing elsewhere).
+        #[allow(dead_code)]
+        fn mac_set_dock_visible(visible: bool);
+
         #[allow(dead_code)]
         fn mac_local_offset_ms(at_ms: i64) -> i64;
 

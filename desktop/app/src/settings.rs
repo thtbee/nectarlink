@@ -163,6 +163,12 @@ fn default_close_to_tray() -> bool {
     true
 }
 
+/// The menu bar's icons are one colour, black or white; the others keep the
+/// coloured tile unless asked.
+fn default_tray_one_colour() -> bool {
+    cfg!(target_os = "macos")
+}
+
 fn default_webcam_camera() -> String {
     "back".to_owned()
 }
@@ -629,9 +635,15 @@ pub struct Settings {
     #[serde(default = "default_close_to_tray", alias = "close_to_tray")]
     pub close_to_tray: bool,
     /// The tray icon in one colour, white or black to match the taskbar
-    /// (#479), instead of the coloured tile.
-    #[serde(default, alias = "tray_one_colour")]
+    /// (#479) or the menu bar, instead of the coloured tile. On by default
+    /// on macOS.
+    #[serde(default = "default_tray_one_colour", alias = "tray_one_colour")]
     pub tray_one_colour: bool,
+    /// The one-color menu bar icon has been made the default for this Mac's
+    /// settings (see [`Settings::move_tray_icon_default`]). False in a file that
+    /// predates it, which holds `trayOneColour: false` only because every field is saved.
+    #[serde(default)]
+    pub tray_icon_default_applied: bool,
     /// Send what's copied on this PC to connected phones.
     #[serde(alias = "auto_clipboard", alias = "clipboard_sync")]
     pub auto_clipboard: bool,
@@ -1001,7 +1013,8 @@ impl Default for Settings {
             backdrop: true,
             comb_motion: true,
             close_to_tray: default_close_to_tray(),
-            tray_one_colour: false,
+            tray_one_colour: default_tray_one_colour(),
+            tray_icon_default_applied: true,
             auto_clipboard: true,
             clipboard_history: true,
             suggest_clipboard_actions: true,
@@ -1143,7 +1156,7 @@ impl Settings {
     }
 
     pub fn apply_runtime(&self) {
-        #[cfg(any(windows, target_os = "linux"))]
+        #[cfg(any(windows, target_os = "linux", target_os = "macos"))]
         crate::win::tray::set_one_colour(self.tray_one_colour);
         set_clipboard_auto_copy_received_files(self.clipboard_auto_copy_received_files);
         set_open_shared_files(self.open_shared_files);
@@ -1214,11 +1227,26 @@ impl Settings {
             }
         };
         match serde_json::from_str::<Settings>(&text) {
-            Ok(settings) => settings.sanitized(),
+            Ok(mut settings) => {
+                settings.move_tray_icon_default();
+                settings.sanitized()
+            }
             Err(e) => {
                 tracing::warn!(error = %e, "settings file is corrupt; using defaults");
                 let _ = fs::rename(&path, path.with_extension("json.corrupt"));
                 Settings::default()
+            }
+        }
+    }
+
+    /// Settings saves every field, so a Mac that ran NectarLink before the one-color menu bar icon
+    /// became the default has `trayOneColour: false` in its file without having chosen it. Once,
+    /// on macOS, that is moved to the default; a choice made afterwards is kept.
+    fn move_tray_icon_default(&mut self) {
+        if !self.tray_icon_default_applied {
+            self.tray_icon_default_applied = true;
+            if cfg!(target_os = "macos") {
+                self.tray_one_colour = default_tray_one_colour();
             }
         }
     }
@@ -1370,6 +1398,7 @@ mod tests {
             comb_motion: false,
             close_to_tray: false,
             tray_one_colour: true,
+            tray_icon_default_applied: true,
             auto_clipboard: false,
             clipboard_history: false,
             suggest_clipboard_actions: false,
@@ -1513,6 +1542,8 @@ mod tests {
         assert_eq!(s.color_mode, ColorMode::Dark);
         assert!(!s.backdrop);
         assert!(!s.close_to_tray);
+        // A file saved before the setting existed takes the platform's default.
+        assert_eq!(s.tray_one_colour, cfg!(target_os = "macos"));
         assert!(s.auto_clipboard);
         assert!(!s.local_api_enabled);
         assert_eq!(s.local_api_port, 53320);
@@ -1766,6 +1797,25 @@ mod tests {
         }
         fs::write(dir.path().join(FILE_NAME), "{}").unwrap();
         assert_eq!(Settings::load(dir.path()).ui_scale, 100);
+    }
+
+    #[test]
+    fn a_saved_color_tile_moves_to_the_menu_bar_default_once_on_a_mac() {
+        let dir = tempfile::tempdir().unwrap();
+        // Saved before the default changed: every field was written, this one included.
+        fs::write(dir.path().join(FILE_NAME), r#"{"trayOneColour": false}"#).unwrap();
+        let s = Settings::load(dir.path());
+        assert_eq!(s.tray_one_colour, cfg!(target_os = "macos"));
+        assert!(s.tray_icon_default_applied);
+        // The choice made afterwards, saved with the marker, is kept.
+        fs::write(dir.path().join(FILE_NAME), r#"{"trayOneColour": false, "trayIconDefaultApplied": true}"#)
+            .unwrap();
+        assert!(!Settings::load(dir.path()).tray_one_colour);
+        // No file: the default, already moved.
+        let fresh = tempfile::tempdir().unwrap();
+        let d = Settings::load(fresh.path());
+        assert_eq!(d.tray_one_colour, cfg!(target_os = "macos"));
+        assert!(d.tray_icon_default_applied);
     }
 
     #[test]

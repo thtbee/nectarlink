@@ -11920,6 +11920,11 @@ What it needs
         <source>Reading a conversation here marks it read on the phone too, in its messaging app.</source>
         <translation>在这里读过的对话，在手机的短信应用里也会标为已读。</translation>
     </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>One color turns white or black to match the menu bar.</source>
+        <translation>单色图标会随菜单栏变为白色或黑色。</translation>
+    </message>
 </context>
 <context>
     <name>Setup</name>
