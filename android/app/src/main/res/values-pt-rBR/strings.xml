@@ -1694,6 +1694,7 @@
     <string name="pc_radio_wifi_off_title">Desligar o Wi-Fi de %1$s?</string>
     <string name="pc_radio_wifi_off_text">Se este celular se conecta ao PC por Wi-Fi, a conexão vai cair e você vai precisar religar o Wi-Fi no PC.</string>
     <string name="pc_radio_wifi_off_confirm">Desligar</string>
+    <string name="home_device_page">%1$s, %2$d de %3$d. Deslize para ver os outros.</string>
 </resources>
 
 

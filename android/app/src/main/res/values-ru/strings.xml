@@ -1566,4 +1566,5 @@
     <string name="pc_radio_wifi_off_title">Выключить Wi-Fi на %1$s?</string>
     <string name="pc_radio_wifi_off_text">Если телефон подключён к ПК по Wi-Fi, связь прервётся, и Wi-Fi придётся включить на самом ПК.</string>
     <string name="pc_radio_wifi_off_confirm">Выключить</string>
+    <string name="home_device_page">%1$s, %2$d из %3$d. Проведите, чтобы увидеть остальные.</string>
 </resources>

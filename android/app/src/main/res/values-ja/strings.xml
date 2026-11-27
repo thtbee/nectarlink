@@ -1684,6 +1684,7 @@
     <string name="pc_radio_wifi_off_title">%1$s の Wi-Fi をオフにしますか?</string>
     <string name="pc_radio_wifi_off_text">このスマートフォンが Wi-Fi で PC につながっている場合は接続が切れ、PC で Wi-Fi をオンに戻す必要があります。</string>
     <string name="pc_radio_wifi_off_confirm">オフにする</string>
+    <string name="home_device_page">%1$s（%3$d 台中 %2$d 台目）。スワイプで他の端末へ。</string>
 </resources>
 
 
