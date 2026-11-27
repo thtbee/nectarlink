@@ -72,9 +72,23 @@ const IDLE_TIMEOUT: Duration = Duration::from_secs(15);
 /// How often this device asks the LAN who's there (mDNS). Answers to others'
 /// queries go out at once either way, so only a device showing a nearby list
 /// (pairing) needs to ask often; asking every 700 ms all the time kept phones
-/// awake (`Node::set_discovery_fast`).
+/// awake (`Node::set_discovery_fast`). While the Android screen is off,
+/// periodic announcements/queries slow further to [`MDNS_SCREEN_OFF`] without
+/// stopping LAN discovery (`Node::set_screen_interactive`).
 const MDNS_FAST: Duration = Duration::from_millis(700);
 const MDNS_SLOW: Duration = Duration::from_secs(30);
+const MDNS_SCREEN_OFF: Duration = Duration::from_secs(300);
+
+/// Base mDNS query/announcement cadence for the current state.
+fn mdns_cadence(fast: bool, screen_interactive: bool) -> Duration {
+    if fast {
+        MDNS_FAST
+    } else if screen_interactive {
+        MDNS_SLOW
+    } else {
+        MDNS_SCREEN_OFF
+    }
+}
 /// How long opening a stream the PC asked for (its screen, an app window)
 /// waits for the connection to come back if it just dropped or was replaced.
 const STREAM_RECONNECT_WAIT: Duration = Duration::from_secs(10);
@@ -171,9 +185,16 @@ pub(crate) struct Shared {
     /// The newest build this device heard of, per channel (`announce_update`),
     /// for peers that connect later.
     update_hints: Mutex<HashMap<String, String>>,
-    /// The running mDNS's task and whether it asks often (`install_mdns`);
-    /// `None` without LAN discovery.
-    lan_discovery: Mutex<Option<(CancellationToken, bool)>>,
+    /// The running mDNS's task and its current query/announcement cadence
+    /// (`install_mdns_locked`); `None` without LAN discovery.
+    lan_discovery: Mutex<Option<(CancellationToken, Duration)>>,
+    /// Whether the UI wants fast mDNS polling (nearby pairing screen open).
+    discovery_fast: std::sync::atomic::AtomicBool,
+    /// Whether the Android screen is interactive (on). When `false`, periodic
+    /// mDNS announcements/queries slow to [`MDNS_SCREEN_OFF`].
+    screen_interactive: std::sync::atomic::AtomicBool,
+    /// Serializes starting, stopping, and cadence-swapping mDNS.
+    mdns_switch: Mutex<()>,
     /// LAN discovery should be running (it may have failed to start, #466).
     lan_wanted: std::sync::atomic::AtomicBool,
     /// A task is trying to start LAN discovery again.
@@ -331,6 +352,13 @@ impl Shared {
         crate::diag::health::observe(&event);
         // No subscribers is fine; events are a UI convenience.
         let _ = self.events.send(event);
+    }
+
+    pub(crate) fn desired_mdns_cadence(&self) -> (bool, Duration) {
+        use std::sync::atomic::Ordering::Relaxed;
+        let fast = self.discovery_fast.load(Relaxed);
+        let interactive = self.screen_interactive.load(Relaxed);
+        (fast, mdns_cadence(fast, interactive))
     }
 
     pub(crate) fn peer_name(&self, peer: &DeviceId) -> String {
@@ -2055,6 +2083,9 @@ impl Node {
             paired_localsend: Mutex::new(HashMap::new()),
             update_hints: Mutex::new(HashMap::new()),
             lan_discovery: Mutex::new(None),
+            discovery_fast: std::sync::atomic::AtomicBool::new(false),
+            screen_interactive: std::sync::atomic::AtomicBool::new(true),
+            mdns_switch: Mutex::new(()),
             lan_wanted: std::sync::atomic::AtomicBool::new(false),
             lan_retrying: std::sync::atomic::AtomicBool::new(false),
             incoming_turns: Mutex::new(HashMap::new()),
@@ -2505,14 +2536,29 @@ impl Node {
     /// screen (pairing), and rarely otherwise, which keeps phones asleep.
     /// No-op without LAN discovery.
     pub fn set_discovery_fast(&self, fast: bool) {
-        let running = lock(&self.shared.lan_discovery).as_ref().map(|(_, f)| *f);
-        if running.is_none_or(|f| f == fast) {
-            return;
-        }
-        let _runtime = self.shared.runtime.enter();
-        if let Err(e) = install_mdns(&self.shared, fast) {
+        self.shared.discovery_fast.store(fast, std::sync::atomic::Ordering::Relaxed);
+        if let Err(e) = apply_mdns_cadence(&self.shared, fast) {
             tracing::warn!(error = %e, fast, "can't change how often mDNS asks");
         }
+    }
+
+    /// Tells the core whether the device screen is interactive (on).
+    ///
+    /// When `false` (Android screen off), LAN discovery stays alive so incoming
+    /// peer queries are still answered immediately and lookups remain intact,
+    /// while periodic mDNS announcements/queries slow from [`MDNS_SLOW`] to
+    /// [`MDNS_SCREEN_OFF`]. Turning the screen back on restores [`MDNS_SLOW`]
+    /// right away.
+    pub fn set_screen_interactive(&self, interactive: bool) {
+        self.shared.screen_interactive.store(interactive, std::sync::atomic::Ordering::Relaxed);
+        if let Err(e) = apply_mdns_cadence(&self.shared, false) {
+            tracing::warn!(error = %e, interactive, "can't change mDNS screen-off cadence");
+        }
+    }
+
+    /// Whether the device screen is currently reported as interactive.
+    pub fn screen_interactive(&self) -> bool {
+        self.shared.screen_interactive.load(std::sync::atomic::Ordering::Relaxed)
     }
 
     pub fn discovered_devices(&self) -> Vec<DiscoveredDevice> {
@@ -5161,15 +5207,19 @@ async fn apply_internet_services(shared: &Arc<Shared>) {
             retry_lan_discovery(shared);
         }
     }
-    let running = lock(&shared.lan_discovery).as_ref().map(|(_, fast)| *fast);
-    let lookups = match running {
-        // Swapping mDNS clears the lookups and puts back what Away mode allows.
-        Some(fast) => install_mdns(shared, fast),
-        None => shared.endpoint.address_lookup().map_err(crate::error::net).and_then(|lookups| {
-            lookups.clear();
-            lookups.add(shared.memory.clone());
-            if on { add_internet_lookups(&shared.endpoint) } else { Ok(()) }
-        }),
+    let lookups = {
+        let _switch = lock(&shared.mdns_switch);
+        if lock(&shared.lan_discovery).is_some() {
+            // Swapping mDNS clears the lookups and puts back what Away mode allows.
+            let (_, cadence) = shared.desired_mdns_cadence();
+            install_mdns_locked(shared, cadence, false)
+        } else {
+            shared.endpoint.address_lookup().map_err(crate::error::net).and_then(|lookups| {
+                lookups.clear();
+                lookups.add(shared.memory.clone());
+                if on { add_internet_lookups(&shared.endpoint) } else { Ok(()) }
+            })
+        }
     };
     if let Err(e) = lookups {
         tracing::warn!(error = %e, "can't update address lookups");
@@ -5184,6 +5234,7 @@ async fn apply_internet_services(shared: &Arc<Shared>) {
 /// Stops mDNS, leaving only the lookups that need no network. Nearby devices
 /// are forgotten: nothing keeps them fresh any more.
 fn stop_lan_discovery(shared: &Arc<Shared>) {
+    let _switch = lock(&shared.mdns_switch);
     let Some((cancel, _)) = lock(&shared.lan_discovery).take() else { return };
     cancel.cancel();
     let gone: Vec<DeviceId> = lock(&shared.discovered).drain().map(|(id, _)| id).collect();
@@ -5291,7 +5342,11 @@ fn retry_lan_discovery(shared: &Arc<Shared>) {
 }
 
 fn start_lan_discovery(shared: &Arc<Shared>, name: &str) -> Result<()> {
-    install_mdns(shared, false)?;
+    {
+        let _switch = lock(&shared.mdns_switch);
+        let (_, cadence) = shared.desired_mdns_cadence();
+        install_mdns_locked(shared, cadence, false)?;
+    }
     // Announce our name so nearby pairing can show it; truncate safely.
     let mut announced = name.to_owned();
     while announced.len() > UserData::MAX_LENGTH {
@@ -5303,15 +5358,24 @@ fn start_lan_discovery(shared: &Arc<Shared>, name: &str) -> Result<()> {
     Ok(())
 }
 
-/// Starts mDNS, asking the LAN who's there every [`MDNS_FAST`] or
-/// [`MDNS_SLOW`], in place of the one running. iroh can't drop a single
-/// address lookup, so a swap clears them all and puts the others back.
-fn install_mdns(shared: &Arc<Shared>, fast: bool) -> Result<()> {
-    let builder = MdnsAddressLookup::builder().service_name("nectarlink").discovery_cadence(if fast {
-        MDNS_FAST
-    } else {
-        MDNS_SLOW
-    });
+/// Updates the running mDNS instance's cadence if LAN discovery is active and
+/// the desired cadence changed. No-op without LAN discovery.
+fn apply_mdns_cadence(shared: &Arc<Shared>, clear_discovered: bool) -> Result<()> {
+    let _switch = lock(&shared.mdns_switch);
+    let (fast, target) = shared.desired_mdns_cadence();
+    let current = lock(&shared.lan_discovery).as_ref().map(|(_, c)| *c);
+    if current.is_none_or(|c| c == target) {
+        return Ok(());
+    }
+    let _runtime = shared.runtime.enter();
+    install_mdns_locked(shared, target, clear_discovered && fast)
+}
+
+/// Starts mDNS with `cadence`, in place of the one running. iroh can't drop a
+/// single address lookup, so a swap clears them all and puts the others back.
+/// Callers must hold `shared.mdns_switch` and be inside `shared.runtime`.
+fn install_mdns_locked(shared: &Arc<Shared>, cadence: Duration, clear_discovered: bool) -> Result<()> {
+    let builder = MdnsAddressLookup::builder().service_name("nectarlink").discovery_cadence(cadence);
     // Every LAN interface, not just the one the OS picks for multicast, which
     // on a PC is often a Hyper-V, WSL or VPN adapter (#148). Not on phones:
     // mDNS on mobile data would only wake the radio.
@@ -5320,7 +5384,7 @@ fn install_mdns(shared: &Arc<Shared>, fast: bool) -> Result<()> {
     let mdns = builder.build(shared.endpoint.id()).map_err(|e| crate::error::net_chain(&e))?;
     let lookups = shared.endpoint.address_lookup().map_err(crate::error::net)?;
     let cancel = shared.cancel.child_token();
-    let previous = lock(&shared.lan_discovery).replace((cancel.clone(), fast));
+    let previous = lock(&shared.lan_discovery).replace((cancel.clone(), cadence));
     if let Some((old, _)) = previous {
         old.cancel();
         lookups.clear();
@@ -5330,7 +5394,7 @@ fn install_mdns(shared: &Arc<Shared>, fast: bool) -> Result<()> {
         }
         // A nearby list just opened: start it fresh rather than keep what the
         // old mDNS saw, which will never expire now.
-        if fast {
+        if clear_discovered {
             let gone: Vec<DeviceId> = lock(&shared.discovered).drain().map(|(id, _)| id).collect();
             for id in gone {
                 shared.emit(NodeEvent::DiscoveryExpired(id));
@@ -5841,6 +5905,95 @@ mod away_tests {
         node.set_usb_only(false);
         settled(&node).await;
         assert!(running(&node), "mDNS is back once USB only is off");
+        node.shutdown().await;
+    }
+
+    #[test]
+    fn mdns_cadence_follows_pairing_and_screen_interactive_state() {
+        assert_eq!(mdns_cadence(false, true), MDNS_SLOW);
+        assert_eq!(mdns_cadence(false, false), MDNS_SCREEN_OFF);
+        assert_eq!(mdns_cadence(true, true), MDNS_FAST);
+        assert_eq!(mdns_cadence(true, false), MDNS_FAST);
+        assert!(MDNS_SCREEN_OFF > MDNS_SLOW);
+    }
+
+    #[tokio::test]
+    async fn screen_off_does_not_start_mdns_when_lan_discovery_is_disabled() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let node = node(&dir, false).await;
+        assert!(lock(&node.shared.lan_discovery).is_none());
+
+        node.set_screen_interactive(false);
+        assert!(!node.screen_interactive());
+        assert!(lock(&node.shared.lan_discovery).is_none());
+
+        node.set_screen_interactive(true);
+        assert!(node.screen_interactive());
+        assert!(lock(&node.shared.lan_discovery).is_none());
+        node.shutdown().await;
+    }
+
+    #[tokio::test]
+    async fn screen_off_slows_mdns_without_stopping_discovery_and_screen_on_restores_it() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let mut config = NodeConfig::new(
+            dir.path().to_path_buf(),
+            DeviceInfo {
+                name: "Test".into(),
+                kind: DeviceKind::Phone,
+                os: "android".into(),
+                os_ver: "14".into(),
+                model: None,
+                accent: None,
+                screen: None,
+                install_id: None,
+            },
+            "0.0.0-test",
+        );
+        config.localsend_port = 0;
+        let node = Node::start(config, Arc::new(NoopPlatform)).await.unwrap();
+        let cadence = |node: &Node| lock(&node.shared.lan_discovery).as_ref().map(|(_, c)| *c);
+        if cadence(&node).is_none() {
+            node.shutdown().await;
+            return;
+        }
+
+        assert!(node.screen_interactive());
+        assert_eq!(cadence(&node), Some(MDNS_SLOW));
+        assert_eq!(lookups(&node), 2, "memory + mDNS");
+
+        node.set_screen_interactive(false);
+        assert!(!node.screen_interactive());
+        assert_eq!(cadence(&node), Some(MDNS_SCREEN_OFF));
+        assert_eq!(lookups(&node), 2, "mDNS must stay registered while screen is off");
+
+        let screen_off_token = lock(&node.shared.lan_discovery).as_ref().map(|(c, _)| c.clone()).unwrap();
+        node.set_screen_interactive(false);
+        assert!(!screen_off_token.is_cancelled(), "redundant screen-off call must not restart mDNS");
+
+        node.set_screen_interactive(true);
+        assert!(node.screen_interactive());
+        assert!(screen_off_token.is_cancelled(), "screen-on replaces the slow mDNS task");
+        assert_eq!(cadence(&node), Some(MDNS_SLOW));
+        assert_eq!(lookups(&node), 2);
+
+        // Pairing fast mode overrides screen-off, and closing pairing while still
+        // screen-off returns to MDNS_SCREEN_OFF rather than MDNS_SLOW.
+        node.set_screen_interactive(false);
+        assert_eq!(cadence(&node), Some(MDNS_SCREEN_OFF));
+        node.set_discovery_fast(true);
+        assert_eq!(cadence(&node), Some(MDNS_FAST));
+        node.set_discovery_fast(false);
+        assert_eq!(cadence(&node), Some(MDNS_SCREEN_OFF));
+
+        // Toggling USB-only while screen-off resumes mDNS at MDNS_SCREEN_OFF.
+        node.set_usb_only(true);
+        settled(&node).await;
+        assert!(cadence(&node).is_none());
+        node.set_usb_only(false);
+        settled(&node).await;
+        assert_eq!(cadence(&node), Some(MDNS_SCREEN_OFF));
+
         node.shutdown().await;
     }
 

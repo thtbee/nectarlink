@@ -4010,6 +4010,14 @@ impl NectarlinkNode {
         self.node.set_discovery_fast(fast);
     }
 
+    /// Tells the core whether the device screen is interactive (on).
+    ///
+    /// When `false`, LAN discovery stays alive to answer peer queries, while
+    /// periodic mDNS announcements/queries slow down to save battery.
+    pub fn set_screen_interactive(&self, interactive: bool) {
+        self.node.set_screen_interactive(interactive);
+    }
+
     pub fn discovered_devices(&self) -> Vec<DiscoveredDevice> {
         self.node.discovered_devices().into_iter().map(Into::into).collect()
     }

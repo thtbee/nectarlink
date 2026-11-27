@@ -189,7 +189,9 @@ class ConnectionService : LifecycleService() {
 
     override fun onDestroy() {
         unregisterScreenWake()
-        setDiscoveryLock(false)
+        multicastLock?.runCatching { if (isHeld) release() }
+        val interactive = getSystemService(PowerManager::class.java)?.isInteractive != false
+        (application as? NectarlinkApplication)?.core?.onScreenInteractiveChanged(interactive)
         getSystemService(NotificationManager::class.java)?.let {
             it.cancel(ONGOING_ID)
             it.cancel(RINGING_ID)

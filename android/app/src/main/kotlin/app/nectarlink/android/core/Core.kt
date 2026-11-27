@@ -281,6 +281,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     private val _clipSuggestions = MutableSharedFlow<ClipSuggestionNotice>(extraBufferCapacity = 4)
     private val _reportLogs = MutableSharedFlow<String>(extraBufferCapacity = 4)
     @Volatile private var node: NectarlinkNode? = null
+    @Volatile private var screenInteractive: Boolean =
+        this.context.getSystemService(android.os.PowerManager::class.java)?.isInteractive != false
     @Volatile private var startJob: Job? = null
     @Volatile private var runJob: Job? = null
     @Volatile private var runScope: CoroutineScope? = null
@@ -494,6 +496,11 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             synchronized(opsLock) {
                 node = started
                 isRunning = true
+            }
+            val interactive = context.getSystemService(android.os.PowerManager::class.java)?.isInteractive != false
+            screenInteractive = interactive
+            if (!interactive) {
+                runCatching { started.setScreenInteractive(false) }
             }
             withContext(dialing) { applyDialing() }
             val devices = runCatching { started.pairedDevices() }.getOrDefault(emptyList())
@@ -1858,7 +1865,12 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     }
 
     internal fun onScreenInteractiveChanged(interactive: Boolean) {
+        screenInteractive = interactive
         updateLocalSendMulticast(_state.value.localsendEnabled, interactive)
+        scope.launch(discoveryPace) {
+            startJob?.join()
+            runCatching { node?.setScreenInteractive(screenInteractive) }
+        }
     }
 
     private fun updateLocalSendMulticast(
