@@ -125,6 +125,7 @@ internal class GuardedPlatform(context: Context, private val inner: Platform) : 
     override fun pointerEnter(pcId: String, edge: String, y: Float): PointerScreen? = guard("pointerEnter", null) { inner.pointerEnter(pcId, edge, y) }
 
     override fun pointerMove(pcId: String, dx: Int, dy: Int, buttons: UByte, wheel: Byte) = guard("pointerMove", Unit) { inner.pointerMove(pcId, dx, dy, buttons, wheel) }
+    override fun deviceInput(peer: String, input: app.nectarlink.core.DeviceInput): Boolean = guard("deviceInput", false) { inner.deviceInput(peer, input) }
 
     override fun pointerWhere(pcId: String): PointerPosition? = guard("pointerWhere", null) { inner.pointerWhere(pcId) }
 

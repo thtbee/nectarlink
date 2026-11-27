@@ -6119,6 +6119,21 @@ What it needs
         <source>This feature is turned off for this phone in Settings › Devices.</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="32"/>
+        <source>Needs Windows 11</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="32"/>
+        <source>Needs a newer Windows</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="34"/>
+        <source>Needs Android %1</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>MainWindow</name>
@@ -11433,7 +11448,17 @@ What it needs
     </message>
     <message>
         <location filename="../../qml/pages/SettingsPage.qml" line="1"/>
+        <source>This PC&apos;s name</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1"/>
         <source>Now playing time</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/SettingsPage.qml" line="1"/>
+        <source>How this PC shows on your phones and other PCs. Leave it empty to use the computer&apos;s name, %1.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -13349,6 +13374,14 @@ What it needs
     <message>
         <location filename="../../qml/components/YourReportsSheet.qml" line="1"/>
         <source>Close</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>NewPill</name>
+    <message>
+        <location filename="../../qml/components/NewPill.qml" line="1"/>
+        <source>New</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

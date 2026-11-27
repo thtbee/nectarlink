@@ -6448,6 +6448,21 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
         <source>This feature is turned off for this phone in Settings › Devices.</source>
         <translation>この機能は、「設定」＞「デバイス」でこのスマートフォン向けにオフになっています。</translation>
     </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="32"/>
+        <source>Needs Windows 11</source>
+        <translation>Windows 11 が必要</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="32"/>
+        <source>Needs a newer Windows</source>
+        <translation>新しい Windows が必要</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="34"/>
+        <source>Needs Android %1</source>
+        <translation>Android %1 が必要</translation>
+    </message>
 </context>
 <context>
     <name>MainWindow</name>
@@ -11783,6 +11798,16 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>This PC&apos;s name</source>
+        <translation>この PC の名前</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>How this PC shows on your phones and other PCs. Leave it empty to use the computer&apos;s name, %1.</source>
+        <translation>スマートフォンや他の PC でのこの PC の表示名です。空欄にするとコンピューター名 %1 を使います。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>Now playing time</source>
         <translation>再生中の時間表示</translation>
     </message>
@@ -13700,6 +13725,14 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
         <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
         <source>Close</source>
         <translation>閉じる</translation>
+    </message>
+</context>
+<context>
+    <name>NewPill</name>
+    <message>
+        <location filename="../qml/components/NewPill.qml" line="1"/>
+        <source>New</source>
+        <translation>新機能</translation>
     </message>
 </context>
 </TS>

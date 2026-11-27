@@ -6487,6 +6487,21 @@ Voraussetzungen
         <source>This feature is turned off for this phone in Settings › Devices.</source>
         <translation>Diese Funktion ist für dieses Gerät unter Einstellungen › Geräte deaktiviert.</translation>
     </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="32"/>
+        <source>Needs Windows 11</source>
+        <translation>Benötigt Windows 11</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="32"/>
+        <source>Needs a newer Windows</source>
+        <translation>Benötigt ein neueres Windows</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="34"/>
+        <source>Needs Android %1</source>
+        <translation>Benötigt Android %1</translation>
+    </message>
 </context>
 <context>
     <name>MainWindow</name>
@@ -11852,6 +11867,16 @@ Voraussetzungen
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>This PC&apos;s name</source>
+        <translation>Name dieses PCs</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>How this PC shows on your phones and other PCs. Leave it empty to use the computer&apos;s name, %1.</source>
+        <translation>So erscheint dieser PC auf deinen Telefonen und anderen PCs. Leer lassen, um den Computernamen %1 zu verwenden.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>Now playing time</source>
         <translation>Zeit bei Aktuelle Wiedergabe</translation>
     </message>
@@ -13800,6 +13825,14 @@ Voraussetzungen
         <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
         <source>Close</source>
         <translation>Schließen</translation>
+    </message>
+</context>
+<context>
+    <name>NewPill</name>
+    <message>
+        <location filename="../qml/components/NewPill.qml" line="1"/>
+        <source>New</source>
+        <translation>Neu</translation>
     </message>
 </context>
 </TS>

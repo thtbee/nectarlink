@@ -1552,4 +1552,15 @@
     <string name="pc_radio_wifi_off_title">关闭 %1$s 的 WLAN？</string>
     <string name="pc_radio_wifi_off_text">如果这部手机通过 WLAN 连接电脑，连接会断开，需要在电脑上重新打开 WLAN。</string>
     <string name="pc_radio_wifi_off_confirm">关闭</string>
+    <string name="home_device_page">%1$s，第 %2$d 个，共 %3$d 个。滑动查看其他设备。</string>
+    <string name="channel_device_control">来自另一部手机的控制</string>
+    <string name="device_control_request_title">%1$s 想要控制此设备</string>
+    <string name="device_control_request_text">允许它在这里移动指针并用它的键盘输入。可在“设置 › 设备”中关闭。</string>
+    <string name="device_control_toggle">允许它控制此设备</string>
+    <string name="device_control_toggle_hint">%1$s 可以用它的触控板和键盘操作此设备。此设备需要开启 Elevated。</string>
+    <string name="peer_control">控制</string>
+    <string name="remote_unsupported_device_text">在 %1$s 上开启 Elevated，即可从此手机控制它。</string>
+    <string name="settings_own_name">此手机的名称</string>
+    <string name="settings_own_name_change">更改</string>
+    <string name="settings_own_name_hint">此手机在你的电脑上显示的名称。留空则使用 %1$s。</string>
 </resources>

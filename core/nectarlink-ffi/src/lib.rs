@@ -1111,6 +1111,77 @@ impl std::fmt::Debug for MirrorInputEvent {
     }
 }
 
+/// Input from a paired phone using this device as its touchpad and keyboard
+/// target (#651): the part of `remote.input` an Android device takes.
+#[derive(Clone, PartialEq, uniffi::Enum)]
+pub enum DeviceInput {
+    /// Relative pointer motion in logical pixels (`dx` right, `dy` down).
+    Move { dx: f32, dy: f32 },
+    /// `button`: "left", "right" or "middle"; `action`: "down", "up" or "click".
+    Button { button: String, action: String },
+    /// Wheel notches (`dx` right, `dy` vertical, positive down).
+    Scroll { dx: f32, dy: f32 },
+    /// Typed Unicode text.
+    Text { text: String },
+    /// A named key (`remote_keys`) with modifiers ("ctrl", "alt", "shift", "win").
+    Key { key: String, mods: Vec<String> },
+}
+
+/// Never prints typed text (protocol v0 §11).
+impl std::fmt::Debug for DeviceInput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DeviceInput::Move { .. } => f.write_str("Move"),
+            DeviceInput::Button { button, action } => write!(f, "Button({button} {action})"),
+            DeviceInput::Scroll { .. } => f.write_str("Scroll"),
+            DeviceInput::Text { text } => write!(f, "Text({} bytes)", text.len()),
+            DeviceInput::Key { key, mods } => write!(f, "Key({key} {mods:?})"),
+        }
+    }
+}
+
+impl DeviceInput {
+    /// The FFI form of `input`, or `None` for what only a PC takes (slides,
+    /// the laser, a game controller, touchpad gestures).
+    fn from_core(input: core::RemoteInput) -> Option<Self> {
+        Some(match input {
+            core::RemoteInput::Move { dx, dy } => DeviceInput::Move { dx, dy },
+            core::RemoteInput::Button { button, action } => DeviceInput::Button {
+                button: match button {
+                    core::MouseButton::Left => "left",
+                    core::MouseButton::Right => "right",
+                    core::MouseButton::Middle => "middle",
+                }
+                .into(),
+                action: match action {
+                    core::ButtonAction::Down => "down",
+                    core::ButtonAction::Up => "up",
+                    core::ButtonAction::Click => "click",
+                }
+                .into(),
+            },
+            core::RemoteInput::Scroll { dx, dy } => DeviceInput::Scroll { dx, dy },
+            core::RemoteInput::Text { text } => DeviceInput::Text { text },
+            core::RemoteInput::Key { key, mods } => DeviceInput::Key {
+                key,
+                mods: mods
+                    .into_iter()
+                    .map(|m| {
+                        match m {
+                            core::KeyMod::Ctrl => "ctrl",
+                            core::KeyMod::Alt => "alt",
+                            core::KeyMod::Shift => "shift",
+                            core::KeyMod::Win => "win",
+                        }
+                        .to_owned()
+                    })
+                    .collect(),
+            },
+            _ => return None,
+        })
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, uniffi::Enum)]
 pub enum TouchPhase {
     Down,
@@ -3041,6 +3112,9 @@ pub trait Platform: Send + Sync {
     /// A PC asked to delete `path` in this phone's storage (`confirmed`: the
     /// PC user confirmed permanent deletion if trash isn't available).
     fn storage_delete(&self, path: String, confirmed: bool) -> Result<(), StorageFailure>;
+    /// A paired phone this device lets in uses it as its touchpad and
+    /// keyboard target (#651). False when it couldn't take it (no Elevated).
+    fn device_input(&self, peer: String, input: DeviceInput) -> bool;
 }
 
 /// Encrypts the device key at rest (Android: a Keystore key).
@@ -3625,6 +3699,14 @@ impl core::Platform for PlatformAdapter {
     }
     fn storage_delete(&self, path: &str, confirmed: bool) -> Result<(), core::StorageError> {
         Ok(self.0.storage_delete(path.to_owned(), confirmed)?)
+    }
+    fn remote_input(&self, peer: &DeviceId, input: core::RemoteInput) -> Result<(), String> {
+        let input = DeviceInput::from_core(input).ok_or("this device doesn't take that input")?;
+        if self.0.device_input(peer.to_string(), input) {
+            Ok(())
+        } else {
+            Err("this device can't take input now".into())
+        }
     }
     fn mirror_sink(&self, peer: &DeviceId, session: u32) -> Option<Arc<dyn core::MirrorSink>> {
         if session != core::MIRROR_SCREEN {

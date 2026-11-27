@@ -154,9 +154,15 @@ internal fun modelName(manufacturer: String, model: String): String {
 }
 
 /** How this phone presents itself to PCs. */
-fun deviceInfo(context: Context, activeMediaColor: UInt? = null): DeviceInfo {
-    val phoneName = Settings.Global.getString(context.contentResolver, Settings.Global.DEVICE_NAME)
+/** The phone's name in Android's settings (its model when it has none). */
+fun systemDeviceName(context: Context): String =
+    Settings.Global.getString(context.contentResolver, Settings.Global.DEVICE_NAME)
         ?.takeIf { it.isNotBlank() } ?: Build.MODEL
+
+fun deviceInfo(context: Context, activeMediaColor: UInt? = null): DeviceInfo {
+    // The name the user gave it in NectarLink, else Android's (#648).
+    val phoneName = app.nectarlink.android.ui.Preferences.ownName(context).trim().takeIf { it.isNotEmpty() }
+        ?: systemDeviceName(context)
     val name = profileLabel(context)?.let { context.getString(R.string.device_name_in_profile, phoneName, it) }
         ?: phoneName
     val tablet = context.resources.configuration.smallestScreenWidthDp >= 600

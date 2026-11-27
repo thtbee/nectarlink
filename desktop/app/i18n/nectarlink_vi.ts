@@ -6453,6 +6453,21 @@ Nó cần gì
         <source>This feature is turned off for this phone in Settings › Devices.</source>
         <translation>Tính năng này đã bị tắt cho điện thoại này trong Cài đặt › Thiết bị.</translation>
     </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="32"/>
+        <source>Needs Windows 11</source>
+        <translation>Cần Windows 11</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="32"/>
+        <source>Needs a newer Windows</source>
+        <translation>Cần Windows mới hơn</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="34"/>
+        <source>Needs Android %1</source>
+        <translation>Cần Android %1</translation>
+    </message>
 </context>
 <context>
     <name>MainWindow</name>
@@ -11800,6 +11815,16 @@ Nó cần gì
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>This PC&apos;s name</source>
+        <translation>Tên của máy tính này</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>How this PC shows on your phones and other PCs. Leave it empty to use the computer&apos;s name, %1.</source>
+        <translation>Tên máy tính này hiển thị trên điện thoại và các máy tính khác của bạn. Để trống để dùng tên máy, %1.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>Now playing time</source>
         <translation>Thời gian ở Đang phát</translation>
     </message>
@@ -13717,6 +13742,14 @@ Nó cần gì
         <location filename="../qml/components/YourReportsSheet.qml" line="1"/>
         <source>Close</source>
         <translation>Đóng</translation>
+    </message>
+</context>
+<context>
+    <name>NewPill</name>
+    <message>
+        <location filename="../qml/components/NewPill.qml" line="1"/>
+        <source>New</source>
+        <translation>Mới</translation>
     </message>
 </context>
 </TS>

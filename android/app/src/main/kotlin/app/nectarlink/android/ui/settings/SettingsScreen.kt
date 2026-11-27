@@ -584,10 +584,9 @@ fun SettingsScreen(
                     highlighted = pulsingSectionKey == "devices",
                 ) {
                     val context = LocalContext.current
+                    OwnNameSetting()
                     state.devices.forEachIndexed { index, device ->
-                        if (index > 0) {
-                            SettingRowDivider()
-                        }
+                        SettingRowDivider()
                         Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                                 Column(Modifier.weight(1f).padding(end = 12.dp)) {
@@ -632,6 +631,27 @@ fun SettingsScreen(
                                     colors = app.nectarlink.android.ui.theme.nectarSwitchColors(),
                                     modifier = Modifier.semantics { contentDescription = storageToggleTitle },
                                 )
+                            }
+                            // Another phone using this one as its touchpad target (#651): off until allowed.
+                            if (device.isAndroid) {
+                                val controlTitle = stringResource(R.string.device_control_toggle)
+                                val controlCore = (context.applicationContext as app.nectarlink.android.NectarlinkApplication).core
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                                    Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                                        Text(controlTitle, style = MaterialTheme.typography.bodyMedium)
+                                        Text(
+                                            stringResource(R.string.device_control_toggle_hint, device.name),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                    Switch(
+                                        checked = device.controlAllowed,
+                                        onCheckedChange = { controlCore.setControlAllowed(device.id, it) },
+                                        colors = app.nectarlink.android.ui.theme.nectarSwitchColors(),
+                                        modifier = Modifier.semantics { contentDescription = controlTitle },
+                                    )
+                                }
                             }
                             if (!device.isAndroid) {
                                 val micToggleTitle = stringResource(R.string.mic_pc_toggle)
@@ -2226,6 +2246,59 @@ private fun HomeCardColorSetting(seed: String?, onSelect: (String?) -> Unit) {
             },
             dismissButton = {
                 TextButton(onClick = { editingCustomColor = false }) { Text(stringResource(R.string.action_cancel)) }
+            },
+        )
+    }
+}
+
+/** This phone's own name on the PCs it's paired with (#648). */
+@Composable
+private fun OwnNameSetting() {
+    val context = LocalContext.current
+    val core = (context.applicationContext as app.nectarlink.android.NectarlinkApplication).core
+    val systemName = remember { app.nectarlink.android.core.systemDeviceName(context) }
+    var given by remember { mutableStateOf(app.nectarlink.android.ui.Preferences.ownName(context)) }
+    var editing by rememberSaveable { mutableStateOf(false) }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().clickable { editing = true },
+    ) {
+        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+            Text(stringResource(R.string.settings_own_name), style = MaterialTheme.typography.bodyMedium)
+            Text(
+                given.ifBlank { systemName },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        TextButton(onClick = { editing = true }) { Text(stringResource(R.string.settings_own_name_change)) }
+    }
+    if (editing) {
+        var input by rememberSaveable { mutableStateOf(given) }
+        AlertDialog(
+            onDismissRequest = { editing = false },
+            title = { Text(stringResource(R.string.settings_own_name)) },
+            text = {
+                OutlinedTextField(
+                    value = input,
+                    onValueChange = { input = it.take(64) },
+                    placeholder = { Text(systemName) },
+                    supportingText = { Text(stringResource(R.string.settings_own_name_hint, systemName)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        given = input.trim()
+                        core.setOwnName(given)
+                        editing = false
+                    },
+                ) { Text(stringResource(R.string.action_done)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { editing = false }) { Text(stringResource(R.string.action_cancel)) }
             },
         )
     }

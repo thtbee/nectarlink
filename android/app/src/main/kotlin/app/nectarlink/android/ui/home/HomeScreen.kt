@@ -290,8 +290,12 @@ fun HomeScreen(
             GuideHighlightTarget.HOME_PAIR_PC -> if (state.devices.isEmpty()) "no_paired_pc_card" else "home_header"
             GuideHighlightTarget.HOME_PC_CARD,
             GuideHighlightTarget.HOME_PC_AUDIO,
-            -> state.devices.firstOrNull()?.id ?: "no_paired_pc_card"
-            GuideHighlightTarget.HOME_SEND_QUEUE -> if (state.sendQueue.isNotEmpty()) "send_queue" else (state.devices.firstOrNull()?.id ?: "home_header")
+            -> if (state.devices.size > 1) DEVICE_PAGER_KEY else state.devices.firstOrNull()?.id ?: "no_paired_pc_card"
+            GuideHighlightTarget.HOME_SEND_QUEUE -> when {
+                state.sendQueue.isNotEmpty() -> "send_queue"
+                state.devices.size > 1 -> DEVICE_PAGER_KEY
+                else -> state.devices.firstOrNull()?.id ?: "home_header"
+            }
             GuideHighlightTarget.HOME_SETUP_PERMISSIONS -> "permissions_setup_card"
             GuideHighlightTarget.HOME_LOCALSEND -> "localsend_card"
             GuideHighlightTarget.HOME_CLIPBOARD_HISTORY -> "clipboard_history_card"
@@ -327,8 +331,12 @@ fun HomeScreen(
                     add("remote_input_requested")
                 }
                 if (state.devices.none { !it.isAndroid }) add("no_paired_pc_card")
-                state.devices.filter { !it.isAndroid }.forEach { add(it.id) }
-                state.devices.filter { it.isAndroid }.forEach { add(it.id) }
+                add("media_center")
+                if (state.devices.size > 1) {
+                    add(DEVICE_PAGER_KEY)
+                } else {
+                    state.devices.forEach { add(it.id) }
+                }
                 if (state.sendQueue.isNotEmpty()) add("send_queue")
                 if (state.devices.isNotEmpty()) {
                     var missingCount = 0
@@ -357,6 +365,54 @@ fun HomeScreen(
         delay(2200)
         if (pulsingTarget == target) {
             pulsingTarget = null
+        }
+    }
+
+    // One paired device's card: a PC's, or another phone's or tablet's.
+    val deviceCard: @Composable (Device) -> Unit = { device ->
+        if (device.isAndroid) {
+            PeerCard(
+                device = device,
+                ringing = device.id in state.ringingDevices,
+                onRing = onRing,
+                onSendFiles = onSendFiles,
+                onRemote = onRemote,
+            )
+        } else {
+            Box(
+                modifier = Modifier.guideHighlightRing(
+                    highlighted = pulsingTarget == GuideHighlightTarget.HOME_PC_CARD ||
+                        pulsingTarget == GuideHighlightTarget.HOME_PC_AUDIO,
+                ),
+            ) {
+                PcCard(
+                    device = device,
+                    ringing = device.id in state.ringingDevices,
+                    onRing = onRing,
+                    onSendFiles = onSendFiles,
+                    onSendFolder = onSendFolder,
+                    onPower = onPower,
+                    onUnlock = onUnlock,
+                    onHibernate = onHibernate,
+                    onShutdown = onShutdown,
+                    onRestart = onRestart,
+                    onPhoneSoundOnPc = onPhoneSoundOnPc,
+                    soundOnPcNow = mirrorSession.active && mirrorSession.soundOnly && mirrorSession.pcId == device.id,
+                    onStopSound = onStopMirror,
+                    onWake = onWake,
+                    onSetReconnect = onSetReconnect,
+                    onRemote = onRemote,
+                    onDeck = onDeck,
+                    onDesk = onDesk,
+                    onRecord = onRecord,
+                    onWebcam = onWebcam,
+                    onSetPcAudio = onSetPcAudio,
+                    onSetPcRadio = onSetPcRadio,
+                    onBrowsePcFiles = { browseFilesPcId = it },
+                    micOn = micStreamingTo == device.id,
+                    onToggleMic = { on -> if (on) onStartMic(device.id) else onStopMic() },
+                )
+            }
         }
     }
 
@@ -723,50 +779,17 @@ fun HomeScreen(
                 }
             }
         }
-        items(state.devices.filter { !it.isAndroid }, key = { it.id }, contentType = { "pc_card" }) { device ->
-            Box(
-                modifier = Modifier.guideHighlightRing(
-                    highlighted = pulsingTarget == GuideHighlightTarget.HOME_PC_CARD ||
-                        pulsingTarget == GuideHighlightTarget.HOME_PC_AUDIO,
-                ),
-            ) {
-                PcCard(
-                    device = device,
-                    ringing = device.id in state.ringingDevices,
-                    onRing = onRing,
-                    onSendFiles = onSendFiles,
-                    onSendFolder = onSendFolder,
-                    onPower = onPower,
-                    onUnlock = onUnlock,
-                    onHibernate = onHibernate,
-                    onShutdown = onShutdown,
-                    onRestart = onRestart,
-                    onPhoneSoundOnPc = onPhoneSoundOnPc,
-                    soundOnPcNow = mirrorSession.active && mirrorSession.soundOnly && mirrorSession.pcId == device.id,
-                    onStopSound = onStopMirror,
-                    onWake = onWake,
-                    onSetReconnect = onSetReconnect,
-                    onRemote = onRemote,
-                    onDeck = onDeck,
-                    onDesk = onDesk,
-                    onRecord = onRecord,
-                    onWebcam = onWebcam,
-                    onSetPcAudio = onSetPcAudio,
-                    onSetPcRadio = onSetPcRadio,
-                    onBrowsePcFiles = { browseFilesPcId = it },
-                    micOn = micStreamingTo == device.id,
-                    onToggleMic = { on -> if (on) onStartMic(device.id) else onStopMic() },
-                )
+        // The paired devices: PCs first. Two or more swipe from one to the
+        // next instead of stacking down the page (#651).
+        val deviceCards = state.devices.filter { !it.isAndroid } + state.devices.filter { it.isAndroid }
+        if (deviceCards.size > 1) {
+            item(key = DEVICE_PAGER_KEY, contentType = "device_pager") {
+                DevicePager(devices = deviceCards) { device -> deviceCard(device) }
             }
-        }
-        // Another phone or tablet paired with this one.
-        items(state.devices.filter { it.isAndroid }, key = { it.id }, contentType = { "peer_card" }) { device ->
-            PeerCard(
-                device = device,
-                ringing = device.id in state.ringingDevices,
-                onRing = onRing,
-                onSendFiles = onSendFiles,
-            )
+        } else {
+            items(deviceCards, key = { it.id }, contentType = { if (it.isAndroid) "peer_card" else "pc_card" }) { device ->
+                deviceCard(device)
+            }
         }
         if (state.sendQueue.isNotEmpty()) {
             item(key = "send_queue", contentType = "send_queue") {
@@ -1461,6 +1484,7 @@ private fun PeerCard(
     ringing: Boolean,
     onRing: (String, Boolean) -> Unit,
     onSendFiles: (String, List<Uri>) -> Unit,
+    onRemote: (String) -> Unit,
 ) {
     val context = LocalContext.current
     val pickFiles = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
@@ -1530,6 +1554,17 @@ private fun PeerCard(
             Icon(imageVector = ClipboardIcon, contentDescription = null, modifier = Modifier.size(15.dp))
             Spacer(Modifier.width(6.dp))
             ButtonLabel(stringResource(R.string.action_send_clipboard))
+        }
+        // This phone as the tablet's touchpad and keyboard (#651), once it takes input.
+        if (device.has("pair.control")) {
+            FilledTonalButton(
+                contentPadding = CardButtonPadding,
+                enabled = device.online,
+                onClick = { onRemote(device.id) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                ButtonLabel(stringResource(R.string.peer_control))
+            }
         }
     }
 }
@@ -2779,6 +2814,9 @@ private fun previewBitmap(bytes: ByteArray): android.graphics.Bitmap? {
 }
 
 private const val PREVIEW_PX = 720
+
+/** Home's list key for the paired devices' cards when they're in a pager (#651). */
+private const val DEVICE_PAGER_KEY = "device_pager"
 
 @Composable
 private fun LocalSendCard(
@@ -4203,4 +4241,38 @@ private fun queueKindLabel(kind: FfiQueueKind): Int = when (kind) {
     FfiQueueKind.RECORDING -> R.string.queue_kind_recording
     FfiQueueKind.TASK_NOTIFY -> R.string.queue_kind_task_alert
     FfiQueueKind.CAMERA_REQUEST -> R.string.queue_kind_camera_request
+}
+
+/**
+ * Two or more paired devices' cards, side by side: a swipe goes from one to
+ * the next, and dots say which is shown (#651).
+ */
+@Composable
+private fun DevicePager(devices: List<Device>, card: @Composable (Device) -> Unit) {
+    val pager = androidx.compose.foundation.pager.rememberPagerState(pageCount = { devices.size })
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        androidx.compose.foundation.pager.HorizontalPager(
+            state = pager,
+            key = { devices[it].id },
+            pageSpacing = 12.dp,
+            verticalAlignment = Alignment.Top,
+        ) { page -> card(devices[page]) }
+        val current = pager.currentPage.coerceIn(0, devices.size - 1)
+        val pageText = stringResource(R.string.home_device_page, devices[current].name, current + 1, devices.size)
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+            modifier = Modifier.fillMaxWidth().semantics { contentDescription = pageText },
+        ) {
+            repeat(devices.size) { i ->
+                Box(
+                    Modifier
+                        .size(if (i == current) 8.dp else 6.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (i == current) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                        ),
+                )
+            }
+        }
+    }
 }

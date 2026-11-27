@@ -13,6 +13,21 @@ change things that need a step from you, and its notes say so.
   AppImageUpdate find and download only what changed: releases follow releases, Nightlies follow
   Nightlies. Thanks to [@xmha97](https://github.com/xmha97) and [@shuvashish76](https://github.com/shuvashish76)
   ([#672](https://github.com/thtbee/nectarlink/issues/672)).
+- **Swipe between your devices on the phone's Home.** With two or more paired devices, their cards
+  sit side by side, PCs first: swipe to go from one to the next, with dots for where you are.
+  Thanks to [@kedar284](https://github.com/kedar284) ([#651](https://github.com/thtbee/nectarlink/issues/651)).
+- **Use your phone as a touchpad and keyboard for your tablet.** A paired tablet (or another phone)
+  with Elevated shows **Control** on its card on the phone's Home: the touchpad moves a pointer on
+  the tablet, clicks and scrolls, and the keyboard types there, any language and emoji included.
+  The tablet asks the first time; **Let it control this device** in its Settings › Devices turns
+  it off again. Thanks to [@kedar284](https://github.com/kedar284) ([#651](https://github.com/thtbee/nectarlink/issues/651)).
+- **New settings say so.** After an update, the settings it added have a **New** pill, and so
+  does their section in the PC's Settings, until you've looked at that section. A new install
+  starts without them. Thanks to [@jed84](https://github.com/jed84) ([#656](https://github.com/thtbee/nectarlink/issues/656)).
+- **Give your PC and phone a name of their own.** In Settings › General on the PC (**This PC's
+  name**) and Settings › Devices on the phone (**This phone's name**). Paired devices show it at once;
+  leave it empty to go back to the computer's or Android's name. Thanks to
+  [@zubair1511983](https://github.com/zubair1511983) ([#648](https://github.com/thtbee/nectarlink/issues/648)).
 - **Now playing shows the time you want.** The time on the right of Now playing on the PC's Home
   can show what's left, the whole length, or both: click it to switch, or pick in Settings ›
   General. Thanks to [@jed84](https://github.com/jed84) ([#658](https://github.com/thtbee/nectarlink/issues/658)).
@@ -602,6 +617,8 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **A feature Windows 10 can't run says it needs Windows 11** instead of only *Unavailable*, such
+  as Phone as webcam, and one that needs a newer Android says which version.
 - **The phone's volume buttons work for the phone while it plays something itself,** with
   **Volume buttons control your PC** on and the PC playing too. They went to the PC, so the phone's
   own volume couldn't be changed. Thanks to [@Deliond](https://github.com/Deliond)
