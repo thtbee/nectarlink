@@ -13767,4 +13767,12 @@ What it needs
         <translation>关闭</translation>
     </message>
 </context>
+<context>
+    <name>NewPill</name>
+    <message>
+        <location filename="../qml/components/NewPill.qml" line="1"/>
+        <source>New</source>
+        <translation>新增</translation>
+    </message>
+</context>
 </TS>

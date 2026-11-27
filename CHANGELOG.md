@@ -8,6 +8,9 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **New settings say so.** After an update, the settings it added have a **New** pill, and so
+  does their section in the PC's Settings, until you've looked at that section. A new install
+  starts without them. Thanks to [@jed84](https://github.com/jed84) ([#656](https://github.com/thtbee/nectarlink/issues/656)).
 - **One mouse and keyboard for two PCs.** Set another paired PC **Beside this PC** on the left
   or right, and the mouse goes over that edge of the screen onto it, with the keyboard typing
   there, no phone needed. The other PC asks first. From Windows, to Windows or Linux. Thanks to

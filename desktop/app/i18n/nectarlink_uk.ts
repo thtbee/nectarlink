@@ -13659,4 +13659,12 @@ What it needs
         <translation>Закрити</translation>
     </message>
 </context>
+<context>
+    <name>NewPill</name>
+    <message>
+        <location filename="../qml/components/NewPill.qml" line="1"/>
+        <source>New</source>
+        <translation>Нове</translation>
+    </message>
+</context>
 </TS>

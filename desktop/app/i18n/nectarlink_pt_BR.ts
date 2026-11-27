@@ -13710,4 +13710,12 @@ O que precisa
         <translation>Fechar</translation>
     </message>
 </context>
+<context>
+    <name>NewPill</name>
+    <message>
+        <location filename="../qml/components/NewPill.qml" line="1"/>
+        <source>New</source>
+        <translation>Novo</translation>
+    </message>
+</context>
 </TS>

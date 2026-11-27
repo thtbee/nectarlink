@@ -191,6 +191,8 @@ pub mod qobject {
         #[qproperty(i32, walkthrough_step)]
         /// Whether the gentle "What's new" card on Home has been dismissed.
         #[qproperty(bool, whats_new_dismissed)]
+        /// The new settings not looked at yet, as JSON `[{ key, section }]` (#656).
+        #[qproperty(QString, new_settings, cxx_name = "newSettings")]
         /// Whether the card on Home inviting to try Hive has been answered.
         #[qproperty(bool, hive_invite_dismissed)]
         /// Whether the one-time ask for a star on GitHub has been answered.
@@ -234,6 +236,10 @@ pub mod qobject {
         /// `{ code, name }`, each named in its own language.
         #[qinvokable]
         fn languages(self: &Preferences) -> QString;
+        /// The user looked at `section`: its new settings lose their pill (#656).
+        #[qinvokable]
+        #[cxx_name = "markNewSettingsSeen"]
+        fn mark_new_settings_seen(self: Pin<&mut Preferences>, section: &QString);
         /// Saves the main window's monitor name/identifier, screen-relative position, dimensions, and maximized state.
         #[qinvokable]
         fn save_window_geometry(
@@ -484,6 +490,8 @@ pub struct PreferencesRust {
     walkthrough_completed: bool,
     walkthrough_step: i32,
     whats_new_dismissed: bool,
+    new_settings: QString,
+    seen_new_settings: Vec<String>,
     hive_invite_dismissed: bool,
     star_prompt_done: bool,
     star_prompt_updated: bool,
@@ -614,6 +622,9 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_walkthrough_completed(settings.walkthrough_completed);
         self.as_mut().set_walkthrough_step(i32::from(settings.walkthrough_step.min(6)));
         self.as_mut().set_whats_new_dismissed(settings.whats_new_dismissed);
+        self.as_mut().rust_mut().seen_new_settings = settings.seen_new_settings.clone();
+        self.as_mut()
+            .set_new_settings(QString::from(&crate::new_settings::json(&settings.seen_new_settings)));
         self.as_mut().set_hive_invite_dismissed(settings.hive_invite_dismissed);
         self.as_mut().set_star_prompt_done(settings.star_prompt_done);
         self.as_mut().set_star_prompt_updated(settings.star_prompt_updated);
@@ -1107,6 +1118,17 @@ impl qobject::Preferences {
         QString::from(&crate::i18n::languages_json())
     }
 
+    pub fn mark_new_settings_seen(mut self: Pin<&mut Self>, section: &QString) {
+        let section = String::from(section);
+        let seen = crate::new_settings::after_visiting(&self.seen_new_settings, &section);
+        if seen == self.seen_new_settings {
+            return;
+        }
+        self.as_mut().set_new_settings(QString::from(&crate::new_settings::json(&seen)));
+        self.as_mut().rust_mut().seen_new_settings = seen;
+        self.save();
+    }
+
     pub fn save_window_geometry(
         mut self: Pin<&mut Self>,
         screen: &QString,
@@ -1529,6 +1551,7 @@ impl qobject::Preferences {
             walkthrough_completed: p.walkthrough_completed,
             walkthrough_step: p.walkthrough_step.clamp(0, 6) as u8,
             whats_new_dismissed: p.whats_new_dismissed,
+            seen_new_settings: p.seen_new_settings.clone(),
             hive_invite_dismissed: p.hive_invite_dismissed,
             star_prompt_done: p.star_prompt_done,
             star_prompt_updated: p.star_prompt_updated,
