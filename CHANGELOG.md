@@ -621,6 +621,9 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **The PC's device menu and a few settings are translated again.** The device switcher on the left
+  rail, Mark texts read on the phone, the Beside this PC hint and Bluetooth when there's no network
+  showed in English in every language.
 - **A feature Windows 10 can't run says it needs Windows 11** instead of only *Unavailable*, such
   as Phone as webcam, and one that needs a newer Android says which version.
 - **The phone's volume buttons work for the phone while it plays something itself,** with

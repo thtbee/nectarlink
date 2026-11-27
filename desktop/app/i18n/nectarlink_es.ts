@@ -6654,6 +6654,19 @@ Qué necesitas
         <source>Paste into active window</source>
         <translation>Pegar en ventana activa</translation>
     </message>
+    <message numerus="yes">
+        <location filename="../qml/MainWindow.qml" line="1"/>
+        <source>Device: %1. Switch device, %n new on the others</source>
+        <translation>
+            <numerusform>Dispositivo: %1. Cambiar de dispositivo, %n nuevo en los demás</numerusform>
+            <numerusform>Dispositivo: %1. Cambiar de dispositivo, %n nuevos en los demás</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow.qml" line="1"/>
+        <source>Device: %1. Switch device</source>
+        <translation>Dispositivo: %1. Cambiar de dispositivo</translation>
+    </message>
 </context>
 <context>
     <name>Media</name>
@@ -11810,6 +11823,9 @@ Qué necesitas
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>Move the mouse past that edge of the screen to use it on that PC, and type there with this keyboard. Move it back, or press Ctrl+Alt+Esc, to return. That PC asks the first time, or turn on Remote mouse, keyboard &amp; Deck for this PC there.</source>
         <translation>Mueve el ratón más allá de ese borde de la pantalla para usarlo en ese PC y escribir allí con este teclado. Vuelve moviéndolo de nuevo o con Ctrl+Alt+Esc. Ese PC pregunta la primera vez, o activa allí Ratón, teclado y Deck remotos para este PC.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>Bluetooth when there&apos;s no network</source>
         <translation>Bluetooth cuando no hay red</translation>
     </message>
@@ -11852,6 +11868,16 @@ Qué necesitas
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>Both</source>
         <translation>Ambos</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Mark texts read on the phone</source>
+        <translation>Marcar los mensajes como leídos en el teléfono</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Reading a conversation here marks it read on the phone too, in its messaging app.</source>
+        <translation>Al leer una conversación aquí, también se marca como leída en la app de mensajes del teléfono.</translation>
     </message>
 </context>
 <context>
@@ -13755,6 +13781,43 @@ Qué necesitas
         <location filename="../qml/components/NewPill.qml" line="1"/>
         <source>New</source>
         <translation>Nuevo</translation>
+    </message>
+</context>
+<context>
+    <name>DeviceMenu</name>
+    <message>
+        <location filename="../qml/components/DeviceMenu.qml" line="1"/>
+        <source>Devices</source>
+        <translation>Dispositivos</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/DeviceMenu.qml" line="1"/>
+        <source>offline</source>
+        <translation>sin conexión</translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../qml/components/DeviceMenu.qml" line="1"/>
+        <source>%n new</source>
+        <translation>
+            <numerusform>%n nuevo</numerusform>
+            <numerusform>%n nuevos</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location filename="../qml/components/DeviceMenu.qml" line="1"/>
+        <source>Pair a new device</source>
+        <translation>Emparejar un nuevo dispositivo</translation>
+    </message>
+</context>
+<context>
+    <name>NavItem</name>
+    <message numerus="yes">
+        <location filename="../qml/components/NavItem.qml" line="1"/>
+        <source>%1, %n new</source>
+        <translation>
+            <numerusform>%1, %n nuevo</numerusform>
+            <numerusform>%1, %n nuevos</numerusform>
+        </translation>
     </message>
 </context>
 </TS>
