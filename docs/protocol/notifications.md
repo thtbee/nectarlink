@@ -158,6 +158,7 @@ t = "notify.removed"    b = { key: text }
 ```
 t = "notify.sync"                                    // one-way
 t = "notify.hold"      b = { held: bool }            // one-way
+t = "notify.hidden"    b = { apps: [text] }          // one-way
 t = "notify.dismiss"   id = n   b = { key: text }
 t = "notify.action"    id = n   b = { key: text, action: text, reply: text? }
 t = "ok"               re = n
@@ -172,6 +173,14 @@ t = "ok"               re = n
   on reconnecting, and follows `held: false` with `notify.sync`. A phone from
   before this message answers `unsupported`, so a holding PC also drops what
   still arrives.
+- **`notify.hidden`** lists the package names (`Notification.app`, at most 512)
+  whose notifications this PC hides. A PC sends it on connecting and whenever
+  its hidden apps change. The phone remembers the list per peer and omits those
+  apps from `notify.snapshot`, `notify.posted` and `notify.removed` sent to that
+  PC; when the list changes, the phone sends a fresh `notify.snapshot` so newly
+  unhidden notifications appear right away. Older phones silently ignore this
+  one-way message (v0 §3.1), and a PC also drops incoming notifications for
+  hidden apps locally.
 - **`notify.dismiss`** dismisses the notification on the phone. Dismissing
   one that's already gone succeeds. A PC **SHOULD NOT** send it for an `ongoing`
   notification, nor remove one from its list on a "clear all": Android

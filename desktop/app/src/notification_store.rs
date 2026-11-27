@@ -99,6 +99,12 @@ pub fn load(dir: &Path, state: &mut AppState) {
     }
 }
 
+/// Reads the saved hidden package names (`AppRule::Hidden`) from disk.
+pub fn hidden_apps(dir: &Path) -> Vec<String> {
+    let rules: Rules = read(&dir.join(RULES_FILE));
+    rules.apps.into_iter().filter(|(_, entry)| entry.rule == AppRule::Hidden).map(|(app, _)| app).collect()
+}
+
 /// Immediately removes the on-disk notification history file (`notification-history.json`)
 /// and cached notification images in `cache/images/`.
 pub fn clear_disk() {
@@ -234,6 +240,7 @@ mod tests {
         assert_eq!(loaded.app_names.get("com.chat").map(String::as_str), Some("Chat"));
         assert_eq!(loaded.history.len(), 1, "a day old is gone");
         assert_eq!(loaded.history[0].notification.key, "a");
+        assert_eq!(hidden_apps(dir.path()), vec!["com.game".to_owned()]);
     }
 
     #[test]

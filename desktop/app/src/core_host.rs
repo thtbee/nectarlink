@@ -277,6 +277,7 @@ async fn run(data_dir: PathBuf, platform: Arc<dyn Platform>) {
         config.downloads_dir = Some(downloads_dir());
         config.adb_server = adb_enabled().then_some(nectarlink_core::DEFAULT_ADB_ADDR);
         config.away_mode = settings.away_mode;
+        config.hidden_notification_apps = crate::notification_store::hidden_apps(&data_dir);
         #[cfg(target_os = "linux")]
         {
             config.network_interface = Some(settings.network_interface);

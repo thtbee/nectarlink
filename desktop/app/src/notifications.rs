@@ -652,13 +652,28 @@ fn text_notification(device: DeviceId, key: &str) -> Option<crate::messages::Tex
     })
 }
 
+/// Pushes this PC's hidden-app list to all connected phones so they skip
+/// sending notifications from hidden apps (#701).
+pub fn sync_hidden_apps() {
+    let Some(node) = core_host::node() else { return };
+    let hidden: Vec<String> = core_host::host().hub.read(|s| s.hidden_apps().into_iter().collect());
+    core_host::spawn(async move {
+        node.set_hidden_notification_apps(hidden).await;
+    });
+}
+
 /// Sets what an app's notifications do on this PC. Pop-ups it no longer
-/// gets are taken away.
+/// gets are taken away, and connected phones are told when its visibility
+/// (`Hidden` vs shown) changed.
 pub fn set_app_rule(app: &str, rule: AppRule) {
     let hub = &core_host::host().hub;
+    let hidden_changed = hub.read(|s| (s.app_rule(app) == AppRule::Hidden) != (rule == AppRule::Hidden));
     hub.update(|s| s.set_app_rule(app, rule));
     // A hidden app's chats leave the Messages badge, and come back with it (#700).
     crate::badges::publish();
+    if hidden_changed {
+        sync_hidden_apps();
+    }
     if rule == AppRule::Show {
         return;
     }

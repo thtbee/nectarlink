@@ -3,7 +3,7 @@
 //! addresses and capabilities, and per-device settings.
 
 use std::{
-    collections::{BTreeSet, HashMap},
+    collections::{BTreeSet, HashMap, HashSet},
     net::SocketAddr,
     path::{Path, PathBuf},
     sync::{Arc, Mutex, MutexGuard, OnceLock},
@@ -609,6 +609,12 @@ const MIGRATIONS: &[&str] = &[
         enrolled_at INTEGER NOT NULL,
         PRIMARY KEY (peer, user)
     ) STRICT;",
+    // v10: notification app package names hidden by each paired PC (`notify.hidden`).
+    "CREATE TABLE peer_hidden_apps (
+        peer        BLOB NOT NULL REFERENCES peers(id) ON DELETE CASCADE,
+        app         TEXT NOT NULL,
+        PRIMARY KEY (peer, app)
+    ) STRICT;",
 ];
 
 /// One Windows user enrolled to unlock with a phone (ADR 0009).
@@ -693,6 +699,8 @@ pub(crate) struct Store {
     /// flips one. Filled and cleared while `conn` is held, so a write never
     /// leaves an old copy behind.
     toggles: Mutex<HashMap<DeviceId, Arc<HashMap<String, bool>>>>,
+    /// Each paired PC's hidden notification apps (`notify.hidden`), cached in memory.
+    hidden_apps: Mutex<HashMap<DeviceId, Arc<HashSet<String>>>>,
 }
 
 /// On Unix, takes the group's and others' access off NectarLink's data folder
@@ -784,6 +792,7 @@ impl Store {
             data_dir,
             queue_seal: QueueSeal::default(),
             toggles: Mutex::default(),
+            hidden_apps: Mutex::default(),
         })
     }
 
@@ -859,6 +868,10 @@ impl Store {
         self.toggles.lock().unwrap_or_else(|e| e.into_inner())
     }
 
+    fn hidden_apps_cache(&self) -> MutexGuard<'_, HashMap<DeviceId, Arc<HashSet<String>>>> {
+        self.hidden_apps.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
     /// Adds or replaces a paired device.
     pub fn upsert_peer(&self, id: &DeviceId, info: &DeviceInfo, paired_at: i64) -> Result<()> {
         self.upsert_peer_skipping(id, info, paired_at, &[])
@@ -901,6 +914,7 @@ impl Store {
             cleanup_peers(c, Some(id), skip_ids)?;
             // A stale copy of this device may be gone, toggles and all.
             self.toggle_cache().clear();
+            self.hidden_apps_cache().clear();
             Ok(())
         })
     }
@@ -1032,6 +1046,61 @@ impl Store {
         })
     }
 
+    fn cached_hidden_apps(&self, id: &DeviceId) -> Result<Arc<HashSet<String>>> {
+        if let Some(apps) = self.hidden_apps_cache().get(id) {
+            return Ok(apps.clone());
+        }
+        self.with(|c| {
+            let mut stmt = c.prepare_cached("SELECT app FROM peer_hidden_apps WHERE peer = ?1")?;
+            let apps: HashSet<String> = stmt
+                .query_map([id.as_bytes().as_slice()], |r| r.get::<_, String>(0))?
+                .collect::<rusqlite::Result<_>>()?;
+            let apps = Arc::new(apps);
+            self.hidden_apps_cache().insert(*id, apps.clone());
+            Ok(apps)
+        })
+    }
+
+    /// Package names of apps whose notifications `id` asked not to receive.
+    pub fn hidden_notification_apps(&self, id: &DeviceId) -> Result<Arc<HashSet<String>>> {
+        self.cached_hidden_apps(id)
+    }
+
+    /// Whether `id` hides notifications from `app`.
+    pub fn is_notification_app_hidden(&self, id: &DeviceId, app: &str) -> bool {
+        self.cached_hidden_apps(id).is_ok_and(|apps| apps.contains(app))
+    }
+
+    /// Replaces `id`'s hidden notification apps. Returns `Some(unhidden)` with
+    /// any apps that were previously hidden and are now allowed if the set
+    /// changed, or `None` if it was already identical.
+    pub fn set_hidden_notification_apps(
+        &self,
+        id: &DeviceId,
+        apps: &[String],
+    ) -> Result<Option<Vec<String>>> {
+        let next: HashSet<String> = apps.iter().cloned().collect();
+        let current = self.cached_hidden_apps(id)?;
+        if *current == next {
+            return Ok(None);
+        }
+        let unhidden: Vec<String> = current.difference(&next).cloned().collect();
+        self.with(|c| {
+            let tx = c.unchecked_transaction()?;
+            tx.execute("DELETE FROM peer_hidden_apps WHERE peer = ?1", [id.as_bytes().as_slice()])?;
+            {
+                let mut stmt =
+                    tx.prepare_cached("INSERT INTO peer_hidden_apps (peer, app) VALUES (?1, ?2)")?;
+                for app in &next {
+                    stmt.execute(params![id.as_bytes().as_slice(), app])?;
+                }
+            }
+            tx.commit()?;
+            self.hidden_apps_cache().insert(*id, Arc::new(next));
+            Ok(Some(unhidden))
+        })
+    }
+
     /// Keeps `entry` for `peer`, replacing an earlier one for the same user.
     pub fn save_unlock(&self, peer: &DeviceId, entry: &UnlockEntry) -> Result<()> {
         self.with(|c| {
@@ -1121,6 +1190,7 @@ impl Store {
             let removed = c.execute("DELETE FROM peers WHERE id = ?1", [id.as_bytes().as_slice()])? > 0;
             // Its toggles went with it.
             self.toggle_cache().remove(id);
+            self.hidden_apps_cache().remove(id);
             Ok(removed)
         })
     }
@@ -1147,6 +1217,7 @@ impl Store {
         })?;
         // Its toggles went with it.
         self.toggle_cache().remove(id);
+        self.hidden_apps_cache().remove(id);
         let dropped: Vec<(String, QueuePayload)> = rows
             .into_iter()
             .filter_map(|(id, json)| self.queue_seal.payload(&json).map(|p| (id, p)))
@@ -2983,6 +3054,11 @@ fn cleanup_peers(
                 params![winner_id.as_bytes().as_slice(), row.id.as_bytes().as_slice()],
             );
             let _ = conn.execute(
+                "INSERT OR IGNORE INTO peer_hidden_apps (peer, app)
+                 SELECT ?1, app FROM peer_hidden_apps WHERE peer = ?2",
+                params![winner_id.as_bytes().as_slice(), row.id.as_bytes().as_slice()],
+            );
+            let _ = conn.execute(
                 "UPDATE timeline SET device_id = ?1 WHERE device_id = ?2",
                 params![winner_id.as_bytes().as_slice(), row.id.as_bytes().as_slice()],
             );
@@ -3113,10 +3189,32 @@ mod tests {
         store.set_toggle(&id, "photos", true).unwrap();
         assert_eq!(store.toggle(&id, "photos").unwrap(), Some(true));
 
+        assert!(store.hidden_notification_apps(&id).unwrap().is_empty());
+        assert_eq!(
+            store.set_hidden_notification_apps(&id, &["com.whatsapp".into(), "com.signal".into()]).unwrap(),
+            Some(Vec::new())
+        );
+        assert!(store.is_notification_app_hidden(&id, "com.whatsapp"));
+        assert!(store.is_notification_app_hidden(&id, "com.signal"));
+        assert!(!store.is_notification_app_hidden(&id, "com.slack"));
+        // Setting the exact same set reports no change.
+        assert_eq!(
+            store.set_hidden_notification_apps(&id, &["com.signal".into(), "com.whatsapp".into()]).unwrap(),
+            None
+        );
+        // Unhiding returns only the newly unhidden app.
+        assert_eq!(
+            store.set_hidden_notification_apps(&id, &["com.signal".into()]).unwrap(),
+            Some(vec!["com.whatsapp".to_owned()])
+        );
+        assert!(!store.is_notification_app_hidden(&id, "com.whatsapp"));
+        assert!(store.is_notification_app_hidden(&id, "com.signal"));
+
         // Unpairing forgets the device's settings too.
         store.remove_peer(&id).unwrap();
         assert!(store.toggles(&id).unwrap().is_empty());
         assert_eq!(store.toggle(&id, "photos").unwrap(), None);
+        assert!(store.hidden_notification_apps(&id).unwrap().is_empty());
         // Paired again, it starts from the defaults.
         store.upsert_peer(&id, &info("Pixel"), 2).unwrap();
         assert_eq!(store.toggle(&id, "clipboard").unwrap(), None);

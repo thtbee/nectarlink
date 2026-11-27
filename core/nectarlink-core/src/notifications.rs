@@ -15,8 +15,8 @@ use std::{
 use nectarlink_protocol::{
     DeviceId, Envelope, ErrorCode,
     messages::{
-        Notification, NotifyAction, NotifyHold, NotifyKey, NotifySnapshot, notify_limits::SNAPSHOT_ITEMS,
-        types,
+        Notification, NotifyAction, NotifyHidden, NotifyHold, NotifyKey, NotifySnapshot,
+        notify_limits::SNAPSHOT_ITEMS, types,
     },
 };
 
@@ -56,6 +56,11 @@ pub(crate) struct Feed {
     /// On a PC: phones have been asked to hold their notifications, and any
     /// still arriving are dropped.
     holding: std::sync::atomic::AtomicBool,
+    /// On a PC: apps whose notifications this PC hides (dropped locally too,
+    /// and synced to phones via `notify.hidden`).
+    pc_hidden: Mutex<HashSet<String>>,
+    /// Whether `pc_hidden` has been configured (`NodeConfig` or `set_hidden_notification_apps`).
+    pc_hidden_configured: std::sync::atomic::AtomicBool,
     inner: Mutex<FeedState>,
 }
 
@@ -70,8 +75,42 @@ struct FeedState {
 }
 
 impl Feed {
+    pub(crate) fn with_hidden_apps(apps: Vec<String>) -> Self {
+        let clean = NotifyHidden { apps }.sanitized();
+        let configured = !clean.apps.is_empty();
+        Self {
+            holding: std::sync::atomic::AtomicBool::new(false),
+            pc_hidden: Mutex::new(clean.apps.into_iter().collect()),
+            pc_hidden_configured: std::sync::atomic::AtomicBool::new(configured),
+            inner: Mutex::default(),
+        }
+    }
+
     fn is_holding(&self) -> bool {
         self.holding.load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    pub(crate) fn set_pc_hidden_apps(&self, apps: Vec<String>) -> (bool, Vec<String>) {
+        let clean = NotifyHidden { apps }.sanitized();
+        let next: HashSet<String> = clean.apps.iter().cloned().collect();
+        self.pc_hidden_configured.store(true, std::sync::atomic::Ordering::Relaxed);
+        let mut current = self.pc_hidden.lock().unwrap_or_else(|e| e.into_inner());
+        let changed = *current != next;
+        if changed {
+            *current = next;
+        }
+        (changed, clean.apps)
+    }
+
+    fn pc_hidden_apps(&self) -> (bool, Vec<String>) {
+        let configured = self.pc_hidden_configured.load(std::sync::atomic::Ordering::Relaxed);
+        let apps: std::collections::BTreeSet<String> =
+            self.pc_hidden.lock().unwrap_or_else(|e| e.into_inner()).iter().cloned().collect();
+        (configured, apps.into_iter().collect())
+    }
+
+    fn is_pc_hidden(&self, app: &str) -> bool {
+        self.pc_hidden.lock().unwrap_or_else(|e| e.into_inner()).contains(app)
     }
 
     fn lock(&self) -> std::sync::MutexGuard<'_, FeedState> {
@@ -139,10 +178,10 @@ impl Feed {
         Some(n)
     }
 
-    fn remove(&self, key: &str) -> bool {
+    fn remove(&self, key: &str) -> Option<String> {
         let mut state = self.lock();
         state.active = true;
-        state.items.remove(key).is_some()
+        state.items.remove(key).map(|n| n.app)
     }
 
     fn reset(&self, items: Vec<Notification>) {
@@ -158,11 +197,12 @@ impl Feed {
         }
     }
 
-    /// The newest notifications that fit a frame, each app's icon attached
-    /// once unless `session` already got it.
-    fn snapshot(&self, session: &Session) -> NotifySnapshot {
+    /// The newest notifications that fit a frame (excluding `hidden` apps),
+    /// each app's icon attached once unless `session` already got it.
+    fn snapshot(&self, session: &Session, hidden: &HashSet<String>) -> NotifySnapshot {
         let state = self.lock();
-        let mut items: Vec<&Notification> = state.items.values().collect();
+        let mut items: Vec<&Notification> =
+            state.items.values().filter(|n| !hidden.contains(&n.app)).collect();
         items.sort_by(|a, b| {
             b.live
                 .is_some()
@@ -278,7 +318,8 @@ impl Shared {
     }
 
     /// Sends this phone's notifications to one PC: everything when the
-    /// user allows it, an empty list (which clears the PC) when not.
+    /// user allows it (excluding apps that PC hides), an empty list (which
+    /// clears the PC) when not.
     pub(crate) async fn send_notification_snapshot(&self, session: &Arc<Session>) {
         if !self.notifications.is_active()
             || !self.shows_notifications(&session.peer)
@@ -287,7 +328,8 @@ impl Shared {
             return;
         }
         let snapshot = if self.notifications_allowed(&session.peer) {
-            self.notifications.snapshot(session)
+            let hidden = self.store.hidden_notification_apps(&session.peer).unwrap_or_default();
+            self.notifications.snapshot(session, &hidden)
         } else {
             session.sent_icons().clear();
             NotifySnapshot { items: Vec::new() }
@@ -322,9 +364,39 @@ impl Shared {
         }
     }
 
+    /// Tells a peer that just connected which apps this PC hides.
+    pub(crate) async fn send_hidden_notifications(&self, session: &Arc<Session>) {
+        let (configured, apps) = self.notifications.pc_hidden_apps();
+        let is_desktop =
+            role_of(&self.local.read().unwrap_or_else(|e| e.into_inner()).device) == Some(Role::Desktop);
+        if !configured && !is_desktop {
+            return;
+        }
+        if let Ok(env) = Envelope::new(types::NOTIFY_HIDDEN, &NotifyHidden { apps }) {
+            let _ = session.send(env).await;
+        }
+    }
+
+    /// On a PC: updates the apps whose notifications this PC hides and syncs
+    /// the list to every connected phone.
+    pub(crate) async fn set_hidden_notification_apps(&self, apps: Vec<String>) {
+        let (changed, apps) = self.notifications.set_pc_hidden_apps(apps);
+        if !changed {
+            return;
+        }
+        if let Ok(env) = Envelope::new(types::NOTIFY_HIDDEN, &NotifyHidden { apps }) {
+            for session in self.live_sessions() {
+                let _ = session.send(env.clone()).await;
+            }
+        }
+    }
+
     pub(crate) async fn notification_posted(&self, notification: Notification) {
         let Some(n) = self.notifications.post(notification) else { return };
         for session in self.notification_targets() {
+            if self.store.is_notification_app_hidden(&session.peer, &n.app) {
+                continue;
+            }
             if let Ok(env) =
                 Envelope::new(types::NOTIFY_POSTED, &self.notifications.for_session(&n, &session))
             {
@@ -334,11 +406,14 @@ impl Shared {
     }
 
     pub(crate) async fn notification_removed(&self, key: String) {
-        if !self.notifications.remove(&key) {
+        let Some(app) = self.notifications.remove(&key) else {
             return;
-        }
+        };
         let Ok(env) = Envelope::new(types::NOTIFY_REMOVED, &NotifyKey { key }) else { return };
         for session in self.notification_targets() {
+            if self.store.is_notification_app_hidden(&session.peer, &app) {
+                continue;
+            }
             let _ = session.send(env.clone()).await;
         }
     }
@@ -363,6 +438,7 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
                     .items
                     .into_iter()
                     .filter_map(Notification::sanitized)
+                    .filter(|n| !shared.notifications.is_pc_hidden(&n.app))
                     .take(SNAPSHOT_ITEMS)
                     .collect();
                 let mut changed_thread = None;
@@ -384,6 +460,7 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
             if shared.notifications_allowed(&peer)
                 && !shared.notifications.is_holding()
                 && let Some(notification) = env.body::<Notification>()?.sanitized()
+                && !shared.notifications.is_pc_hidden(&notification.app)
             {
                 let cached_icon =
                     shared.notifications.peer_icon(peer, &notification.app, notification.icon.as_deref());
@@ -415,6 +492,21 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
         types::NOTIFY_HOLD => {
             let NotifyHold { held } = env.body()?;
             session.hold_notifications(held);
+        }
+        types::NOTIFY_HIDDEN => {
+            let NotifyHidden { apps } = env.body::<NotifyHidden>()?.sanitized();
+            if let Ok(Some(unhidden)) = shared.store.set_hidden_notification_apps(&peer, &apps) {
+                {
+                    let mut sent = session.sent_icons();
+                    for app in &unhidden {
+                        sent.remove(app);
+                    }
+                    for app in &apps {
+                        sent.remove(app);
+                    }
+                }
+                shared.send_notification_snapshot(session).await;
+            }
         }
         types::NOTIFY_DISMISS => {
             let NotifyKey { key } = env.body()?;
@@ -493,3 +585,25 @@ async fn run_blocking(
 
 /// Per-session record of which apps' icons were sent.
 pub(crate) type SentIcons = Mutex<HashSet<String>>;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn feed_tracks_pc_hidden_apps_and_sanitizes_updates() {
+        let feed = Feed::with_hidden_apps(vec![" com.whatsapp ".into(), String::new()]);
+        assert!(feed.is_pc_hidden("com.whatsapp"));
+        assert!(!feed.is_pc_hidden("com.signal"));
+        assert_eq!(feed.pc_hidden_apps(), (true, vec!["com.whatsapp".to_owned()]));
+
+        // Unchanged set reports false.
+        assert_eq!(
+            feed.set_pc_hidden_apps(vec!["com.whatsapp".into()]),
+            (false, vec!["com.whatsapp".into()])
+        );
+        // Changed set reports true.
+        assert_eq!(feed.set_pc_hidden_apps(Vec::new()), (true, Vec::new()));
+        assert!(!feed.is_pc_hidden("com.whatsapp"));
+    }
+}

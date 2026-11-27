@@ -47,6 +47,8 @@ pub mod types {
     pub const NOTIFY_SYNC: &str = "notify.sync";
     /// PC to phone: send nothing until told otherwise, or carry on.
     pub const NOTIFY_HOLD: &str = "notify.hold";
+    /// PC to phone: package names of apps whose notifications this PC hides.
+    pub const NOTIFY_HIDDEN: &str = "notify.hidden";
 
     pub const CLIP_SET: &str = "clip.set";
     pub const NOTIFY_DISMISS: &str = "notify.dismiss";
@@ -598,6 +600,7 @@ pub mod notify_limits {
     pub const CONVERSATION_MESSAGES: usize = 25;
     pub const SENDER_CHARS: usize = 128;
     pub const AVATAR_BYTES: usize = 16 * 1024;
+    pub const HIDDEN_APPS: usize = 512;
 }
 
 fn default_live_v() -> u32 {
@@ -973,6 +976,32 @@ pub struct NotifySnapshot {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NotifyHold {
     pub held: bool,
+}
+
+/// Body of `notify.hidden`: package names of apps whose notifications this PC hides.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct NotifyHidden {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub apps: Vec<String>,
+}
+
+impl NotifyHidden {
+    /// Trims package names, drops blanks, caps each entry and the list length,
+    /// and returns a sorted deduplicated list.
+    pub fn sanitized(self) -> Self {
+        let mut set = std::collections::BTreeSet::new();
+        for raw in self.apps {
+            let mut app = raw.trim().to_owned();
+            truncate_chars(&mut app, notify_limits::TITLE_CHARS);
+            if !app.is_empty() {
+                set.insert(app);
+                if set.len() >= notify_limits::HIDDEN_APPS {
+                    break;
+                }
+            }
+        }
+        Self { apps: set.into_iter().collect() }
+    }
 }
 
 /// Body of `notify.removed` and `notify.dismiss`.
@@ -5986,6 +6015,30 @@ mod tests {
     }
 
     #[test]
+    fn notify_hidden_sanitizes_and_round_trips() {
+        let dirty = NotifyHidden {
+            apps: vec![
+                " com.whatsapp ".into(),
+                String::new(),
+                "   ".into(),
+                "com.whatsapp".into(),
+                "com.signal".into(),
+            ],
+        };
+        let clean = dirty.sanitized();
+        assert_eq!(clean.apps, vec!["com.signal", "com.whatsapp"]);
+
+        let env = Envelope::new(types::NOTIFY_HIDDEN, &clean).unwrap();
+        let back: NotifyHidden = Envelope::from_cbor(&env.to_cbor()).unwrap().body().unwrap();
+        assert_eq!(back, clean);
+
+        let too_many = NotifyHidden {
+            apps: (0..notify_limits::HIDDEN_APPS + 50).map(|i| format!("com.app.{i:04}")).collect(),
+        };
+        assert_eq!(too_many.sanitized().apps.len(), notify_limits::HIDDEN_APPS);
+    }
+
+    #[test]
     fn file_offers_are_validated() {
         let offer = |id: &str, names: &[&str]| FilesOffer {
             id: id.into(),
@@ -7181,6 +7234,8 @@ mod tests {
                 2 => try_decode!(
                     Notification,
                     NotificationLive,
+                    NotifyHidden,
+                    NotifyHold,
                     NotifySnapshot,
                     NotifyKey,
                     NotifyAction,

@@ -2044,6 +2044,241 @@ async fn notification_toggles_are_honored_on_both_devices() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn hidden_notification_apps_are_not_sent_and_unhiding_resyncs() {
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let phone_id = phone.node.device_id();
+    grant_notification_access(&phone).await;
+
+    phone
+        .node
+        .notifications_reset(vec![
+            note("wa-1", "com.whatsapp", "Maya", true),
+            note("sig-1", "com.signal", "Alex", true),
+        ])
+        .await;
+    let initial = wait_for(&mut pc, "initial snapshot", |e| match e {
+        NodeEvent::NotificationsReset { device, items } if *device == phone_id && items.len() == 2 => {
+            Some(items.clone())
+        }
+        _ => None,
+    })
+    .await;
+    assert_eq!(initial.len(), 2);
+
+    // Hide WhatsApp on the PC: the phone resends a filtered snapshot without it.
+    pc.node.set_hidden_notification_apps(vec!["com.whatsapp".into()]).await;
+    let filtered = wait_for(&mut pc, "filtered snapshot after hide", |e| match e {
+        NodeEvent::NotificationsReset { device, items }
+            if *device == phone_id && items.len() == 1 && items[0].key == "sig-1" =>
+        {
+            Some(items.clone())
+        }
+        _ => None,
+    })
+    .await;
+    assert_eq!(filtered[0].app, "com.signal");
+
+    // While WhatsApp is hidden, neither posts nor removals for it reach the PC.
+    phone.node.notification_posted(note("wa-2", "com.whatsapp", "Sam", true)).await;
+    phone.node.notification_removed("wa-1".into()).await;
+    phone.node.notification_posted(note("sig-2", "com.signal", "Kim", true)).await;
+    phone.node.notification_removed("sig-1".into()).await;
+
+    let mut saw_sig_post = false;
+    let mut saw_sig_remove = false;
+    while !(saw_sig_post && saw_sig_remove) {
+        wait_for(&mut pc, "signal post and removal only", |e| match e {
+            NodeEvent::NotificationPosted { device, notification } if *device == phone_id => {
+                assert_ne!(notification.app, "com.whatsapp", "hidden app post must not be sent by phone");
+                if notification.key == "sig-2" {
+                    saw_sig_post = true;
+                    return Some(());
+                }
+                None
+            }
+            NodeEvent::NotificationRemoved { device, key } if *device == phone_id => {
+                assert_ne!(key, "wa-1", "hidden app removal must not be sent by phone");
+                if key == "sig-1" {
+                    saw_sig_remove = true;
+                    return Some(());
+                }
+                None
+            }
+            _ => None,
+        })
+        .await;
+    }
+
+    // Unhiding re-enables sending immediately and catches the PC up with active
+    // notifications (including the app icon).
+    pc.node.set_hidden_notification_apps(Vec::new()).await;
+    let resynced = wait_for(&mut pc, "resynced snapshot after unhide", |e| match e {
+        NodeEvent::NotificationsReset { device, items }
+            if *device == phone_id && items.iter().any(|n| n.key == "wa-2") =>
+        {
+            Some(items.clone())
+        }
+        _ => None,
+    })
+    .await;
+    let wa = resynced.iter().find(|n| n.key == "wa-2").unwrap();
+    assert!(wa.icon.is_some(), "unhidden app receives its icon on resync");
+    assert!(resynced.iter().any(|n| n.key == "sig-2"));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn hidden_notification_apps_are_filtered_per_pc() {
+    let mut pc_a = device("Desktop A", DeviceKind::Desktop).await;
+    let mut pc_b = device("Desktop B", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc_a, &mut phone).await;
+    pair_qr(&mut pc_b, &mut phone).await;
+    let phone_id = phone.node.device_id();
+    grant_notification_access(&phone).await;
+
+    // Seed an active Signal notification so hiding WhatsApp triggers a
+    // distinguishable filtered snapshot on PC A before we post WhatsApp.
+    phone.node.notifications_reset(vec![note("sig-0", "com.signal", "Init", false)]).await;
+    wait_for(&mut pc_a, "pc_a initial", |e| match e {
+        NodeEvent::NotificationsReset { device, items } if *device == phone_id && items.len() == 1 => {
+            Some(())
+        }
+        _ => None,
+    })
+    .await;
+    wait_for(&mut pc_b, "pc_b initial", |e| match e {
+        NodeEvent::NotificationsReset { device, items } if *device == phone_id && items.len() == 1 => {
+            Some(())
+        }
+        _ => None,
+    })
+    .await;
+
+    pc_a.node.set_hidden_notification_apps(vec!["com.whatsapp".into()]).await;
+    wait_for(&mut pc_a, "pc_a processed notify.hidden", |e| match e {
+        NodeEvent::NotificationsReset { device, items }
+            if *device == phone_id && items.len() == 1 && items[0].key == "sig-0" =>
+        {
+            Some(())
+        }
+        _ => None,
+    })
+    .await;
+
+    phone.node.notification_posted(note("wa-1", "com.whatsapp", "Maya", false)).await;
+    phone.node.notification_posted(note("sig-1", "com.signal", "Alex", false)).await;
+
+    // PC B gets both WhatsApp and Signal.
+    let (mut b_wa, mut b_sig) = (false, false);
+    while !(b_wa && b_sig) {
+        wait_for(&mut pc_b, "pc_b receives both apps", |e| match e {
+            NodeEvent::NotificationPosted { device, notification } if *device == phone_id => {
+                if notification.key == "wa-1" {
+                    b_wa = true;
+                    return Some(());
+                }
+                if notification.key == "sig-1" {
+                    b_sig = true;
+                    return Some(());
+                }
+                None
+            }
+            _ => None,
+        })
+        .await;
+    }
+
+    // PC A gets Signal and never WhatsApp.
+    wait_for(&mut pc_a, "pc_a receives signal only", |e| match e {
+        NodeEvent::NotificationPosted { device, notification } if *device == phone_id => {
+            assert_ne!(notification.app, "com.whatsapp", "pc_a must not receive WhatsApp");
+            (notification.key == "sig-1").then_some(())
+        }
+        _ => None,
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn hidden_notification_apps_resync_across_reconnect_and_filter_on_pc() {
+    use nectarlink_core::{NotificationChatMessage, NotificationConversation};
+
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+    grant_notification_access(&phone).await;
+
+    phone.node.notifications_reset(vec![note("sig-0", "com.signal", "Init", false)]).await;
+    wait_for(&mut pc, "initial", |e| match e {
+        NodeEvent::NotificationsReset { device, items } if *device == phone_id && items.len() == 1 => {
+            Some(())
+        }
+        _ => None,
+    })
+    .await;
+
+    pc.node.set_hidden_notification_apps(vec!["com.whatsapp".into()]).await;
+    wait_for(&mut pc, "hidden synced before restart", |e| match e {
+        NodeEvent::NotificationsReset { device, items }
+            if *device == phone_id && items.len() == 1 && items[0].key == "sig-0" =>
+        {
+            Some(())
+        }
+        _ => None,
+    })
+    .await;
+
+    // Phone restarts; its store remembers the hidden list and the PC also
+    // re-sends `notify.hidden` on reconnect.
+    phone.node.shutdown().await;
+    wait_for(&mut pc, "phone offline", |e| match e {
+        NodeEvent::LinkChanged { device, link: LinkState::Offline { .. } } if *device == phone_id => Some(()),
+        _ => None,
+    })
+    .await;
+    let TestDevice { node: old_node, dir, .. } = phone;
+    drop(old_node);
+    let mut phone = start_in(dir, "Pixel", DeviceKind::Phone).await;
+    grant_notification_access(&phone).await;
+    wait_online(&mut phone, pc_id).await;
+    wait_online(&mut pc, phone_id).await;
+
+    let mut wa_chat = note("wa-chat", "com.whatsapp", "Maya", false);
+    wa_chat.conversation = Some(NotificationConversation {
+        v: 1,
+        title: "Maya".into(),
+        group: false,
+        avatar: None,
+        messages: vec![NotificationChatMessage {
+            sender: Some("Maya".into()),
+            text: "Secret".into(),
+            time: 1_760_000_000_000,
+            self_sent: false,
+            avatar: None,
+        }],
+    });
+    phone.node.notifications_reset(vec![wa_chat, note("sig-1", "com.signal", "Alex", false)]).await;
+    let items = wait_for(&mut pc, "filtered snapshot after reconnect", |e| match e {
+        NodeEvent::NotificationsReset { device, items }
+            if *device == phone_id && items.iter().any(|n| n.key == "sig-1") =>
+        {
+            Some(items.clone())
+        }
+        _ => None,
+    })
+    .await;
+    assert_eq!(items.len(), 1);
+    assert_eq!(items[0].key, "sig-1");
+    assert!(
+        pc.node.chat_threads(phone_id).is_empty(),
+        "hidden messaging notifications must not be stored in chat_threads"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn clipboard_text_goes_both_ways_with_consent() {
     let mut pc = device("Desktop", DeviceKind::Desktop).await;
     let mut phone = device("Pixel", DeviceKind::Phone).await;

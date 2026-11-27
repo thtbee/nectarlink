@@ -55,6 +55,9 @@ pub struct NodeConfig {
     /// How connections pace bulk data (file transfers): the congestion
     /// controller and the flow-control windows.
     pub transport: TransportTuning,
+    /// Package names of apps whose notifications this PC hides, synced to
+    /// phones on connect.
+    pub hidden_notification_apps: Vec<String>,
 }
 
 /// The congestion controller for connections.
@@ -151,6 +154,7 @@ impl NodeConfig {
             private_clip_lifetime: std::time::Duration::from_secs(60),
             adb_server: None,
             transport: TransportTuning::from_env(),
+            hidden_notification_apps: Vec::new(),
         }
     }
 }

@@ -859,6 +859,11 @@ fn main() -> ExitCode {
         notification_store::load(&data_dir, s);
         state::Changes::APPS | state::Changes::HISTORY
     });
+    core_host::spawn(async {
+        if core_host::wait_for_node().await.is_some() {
+            notifications::sync_hidden_apps();
+        }
+    });
     notification_store::start(data_dir.clone());
     std::thread::spawn(notifications::prune_images);
     watch_network();

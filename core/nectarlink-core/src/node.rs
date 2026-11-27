@@ -1544,6 +1544,7 @@ impl Shared {
             }
             shared.send_media_state(&s).await;
             shared.send_held_notifications(&s).await;
+            shared.send_hidden_notifications(&s).await;
             shared.send_notification_snapshot(&s).await;
             shared.send_call_state(&s).await;
             shared.send_toggles_state(&s).await;
@@ -2068,7 +2069,7 @@ impl Node {
             #[cfg(target_os = "linux")]
             relay_connector,
             memory,
-            notifications: Feed::default(),
+            notifications: Feed::with_hidden_apps(config.hidden_notification_apps),
             notification_history: Mutex::new(Vec::new()),
             players: Default::default(),
             rings: Default::default(),
@@ -2491,6 +2492,7 @@ impl Node {
             }
             let _ = session.send(Envelope::empty(types::NOTIFY_SYNC)).await;
             let _ = session.send(Envelope::empty(types::MEDIA_SYNC)).await;
+            self.shared.send_hidden_notifications(&session).await;
             self.shared.send_notification_snapshot(&session).await;
             self.shared.send_media_state(&session).await;
             self.shared.send_toggles_state(&session).await;
@@ -4311,6 +4313,12 @@ impl Node {
     /// up with what they show when it ends.
     pub async fn hold_notifications(&self, held: bool) {
         self.shared.hold_notifications(held).await;
+    }
+
+    /// On a PC: sets the package names of apps whose notifications this PC
+    /// hides and syncs the list to connected phones (`notify.hidden`).
+    pub async fn set_hidden_notification_apps(&self, apps: Vec<String>) {
+        self.shared.set_hidden_notification_apps(apps).await;
     }
 
     pub async fn notification_posted(&self, notification: Notification) {
