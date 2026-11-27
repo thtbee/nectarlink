@@ -183,8 +183,26 @@ Item {
         return mods.join("+") + "+" + keyName
     }
 
-    onActiveChanged: syncSectionSideEffects()
+    // New settings (#656): the sections with some not looked at yet. A
+    // section's lose their pill once the user moves on from it.
+    readonly property var newSections: {
+        let list = []
+        try { list = JSON.parse(Preferences.newSettings || "[]") } catch (e) {}
+        return list.map((n) => n.section)
+    }
+    property string visitedSection: ""
+    function leaveSection() {
+        if (page.visitedSection.length > 0 && page.newSections.indexOf(page.visitedSection) >= 0)
+            Preferences.markNewSettingsSeen(page.visitedSection)
+        page.visitedSection = page.active ? page.currentSection : ""
+    }
+
+    onActiveChanged: {
+        leaveSection()
+        syncSectionSideEffects()
+    }
     onCurrentSectionChanged: {
+        leaveSection()
         contentFlickable.contentY = 0
         syncSectionSideEffects()
         if (!Theme.reduceMotion) {
@@ -199,8 +217,12 @@ Item {
     Component.onCompleted: {
         if (active)
             syncSectionSideEffects()
+        page.visitedSection = active ? currentSection : ""
     }
-    Component.onDestruction: Webcam.setPreviewVisible("settings", false)
+    Component.onDestruction: {
+        Webcam.setPreviewVisible("settings", false)
+        leaveSection()
+    }
 
     Connections {
         target: page.Window.window
@@ -433,7 +455,7 @@ Item {
                     Row {
                         anchors.left: parent.left
                         anchors.leftMargin: 12
-                        anchors.right: navBadge.visible ? navBadge.left : parent.right
+                        anchors.right: navNew.visible ? navNew.left : (navBadge.visible ? navBadge.left : parent.right)
                         anchors.rightMargin: 8
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 12
@@ -452,6 +474,14 @@ Item {
                             color: navItem.fg
                             elide: Text.ElideRight
                         }
+                    }
+
+                    NewPill {
+                        id: navNew
+                        visible: page.newSections.indexOf(navItem.modelData.id) >= 0
+                        anchors.right: navBadge.visible ? navBadge.left : parent.right
+                        anchors.rightMargin: navBadge.visible ? 6 : 10
+                        anchors.verticalCenter: parent.verticalCenter
                     }
 
                     Rectangle {
@@ -564,6 +594,10 @@ Item {
                             size: 12
                             text: compactTab.modelData.title
                             color: compactTab.fg
+                        }
+                        NewPill {
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: page.newSections.indexOf(compactTab.modelData.id) >= 0
                         }
                     }
                     HoverHandler { cursorShape: Qt.PointingHandCursor }
@@ -1218,6 +1252,7 @@ Item {
                             width: parent.width
                             iconPath: Icons.play
                             title: qsTr("Now playing time")
+                            newKey: "media-time"
                             description: qsTr("What the time on the right of Now playing on Home shows. Clicking it there switches too.")
                             Segmented {
                                 options: [
@@ -1599,6 +1634,7 @@ Item {
                             visible: !Preferences.hideMirrorToolbar
                             iconPath: Icons.window
                             title: qsTr("Toolbar beside the picture")
+                            newKey: "toolbar-beside"
                             description: qsTr("Gives the toolbar a strip of the window above or below the phone's picture, so it never covers the app. The window grows by its height.")
                             Toggle {
                                 label: qsTr("Toolbar beside the picture")
@@ -1703,6 +1739,7 @@ Item {
                             width: parent.width
                             iconPath: Icons.messages
                             title: qsTr("Mark texts read on the phone")
+                            newKey: "mark-read-on-phone"
                             description: qsTr("Reading a conversation here marks it read on the phone too, in its messaging app.")
                             Toggle {
                                 label: qsTr("Mark texts read on the phone")
@@ -1929,6 +1966,7 @@ Item {
                                 visible: Qt.platform.os === "windows"
                                 iconPath: Icons.desktop
                                 title: qsTr("Beside this PC")
+                                newKey: "beside-this-pc"
                                 description: deviceCard.isPc
                                     ? qsTr("Move the mouse past that edge of the screen to use it on that PC, and type there with this keyboard. Move it back, or press Ctrl+Alt+Esc, to return. That PC asks the first time, or turn on Remote mouse, keyboard & Deck for this PC there.")
                                     : qsTr("Move the mouse past that edge of the screen to use it on this phone, and type there. Move it back, or press Ctrl+Alt+Esc, to return. Needs Elevated.")
@@ -1958,6 +1996,7 @@ Item {
                                 visible: (Qt.platform.os === "windows" || Qt.platform.os === "linux") && item !== undefined
                                 iconPath: Icons.lock
                                 title: qsTr("Unlock this PC with the phone")
+                                newKey: "unlock-pc"
                                 description: page.toggleDescriptions.unlock
                                 Toggle {
                                     label: qsTr("Unlock this PC with the phone")
@@ -2251,6 +2290,7 @@ Item {
                             width: parent.width
                             iconPath: Icons.bolt
                             title: qsTr("Frame rate")
+                            newKey: "frame-rate"
                             description: Preferences.mirrorFps > 60
                                 ? qsTr("Smoother motion where the phone's screen refreshes that fast. Uses more battery, Wi-Fi and PC.")
                                 : Preferences.mirrorFps < 60
@@ -2708,6 +2748,7 @@ Item {
                             width: parent.width
                             iconPath: Icons.pause
                             title: qsTr("Keep pop-ups paused after a restart")
+                            newKey: "keep-popups-paused"
                             description: qsTr("Pause pop-ups on Home stays on until you resume them, even when NectarLink or the PC restarts.")
                             Toggle {
                                 label: qsTr("Keep pop-ups paused after a restart")
@@ -3696,6 +3737,7 @@ Item {
                             width: parent.width
                             iconPath: Icons.shield
                             title: qsTr("Send an anonymous daily count")
+                            newKey: "daily-count"
                             description: qsTr("Once a day: the app's version, the platform and model, and how often each feature worked or failed. No ID and nothing personal.")
                             Toggle {
                                 label: qsTr("Send an anonymous daily count")
@@ -3818,6 +3860,7 @@ Item {
                             visible: NotificationList.historyEnabled
                             iconPath: Icons.history
                             title: qsTr("Keep notification history for")
+                            newKey: "notification-history"
                             description: qsTr("Notifications that went away stay in the feed's history this long.")
                             Segmented {
                                 options: [
@@ -4074,6 +4117,7 @@ Item {
                             width: parent.width
                             iconPath: Icons.usb
                             title: qsTr("Use USB debugging")
+                            newKey: "usb-debugging"
                             description: Preferences.usbDebugging !== Preferences.usbDebuggingAtStart()
                                 ? qsTr("Applies when NectarLink restarts.")
                                 : Preferences.usbDebugging
@@ -4092,6 +4136,7 @@ Item {
                             visible: Qt.platform.os !== "osx"
                             iconPath: Icons.bluetooth
                             title: qsTr("Bluetooth when there's no network")
+                            newKey: "bluetooth-link"
                             description: qsTr("A phone paired with this PC in Bluetooth settings stays connected without Wi-Fi or data, for notifications, texts, calls and the clipboard. Turn it on in the phone's Settings too.")
                             Toggle {
                                 label: qsTr("Bluetooth when there's no network")
@@ -4217,6 +4262,7 @@ Item {
                             visible: Preferences.localApiEnabled
                             iconPath: Icons.bell
                             title: qsTr("Notifications and messages")
+                            newKey: "api-notifications"
                             description: qsTr("Tools using the API can also read your phones' notifications and conversations. Apps you hide stay hidden.")
                             Toggle {
                                 anchors.verticalCenter: parent.verticalCenter

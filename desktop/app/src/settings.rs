@@ -895,6 +895,8 @@ pub struct Settings {
     /// Whether the gentle "What's new" card on Home has been dismissed.
     #[serde(default, alias = "whats_new_dismissed")]
     pub whats_new_dismissed: bool,
+    /// The new settings already looked at (#656, `new_settings::NEW` keys).
+    pub seen_new_settings: Vec<String>,
     /// Whether the card on Home inviting to try Hive has been answered.
     #[serde(default, alias = "hive_invite_dismissed")]
     pub hive_invite_dismissed: bool,
@@ -1072,6 +1074,7 @@ impl Default for Settings {
             walkthrough_completed: false,
             walkthrough_step: 0,
             whats_new_dismissed: false,
+            seen_new_settings: Vec::new(),
             hive_invite_dismissed: false,
             star_prompt_done: false,
             star_prompt_updated: false,
@@ -1440,6 +1443,7 @@ mod tests {
             walkthrough_completed: true,
             walkthrough_step: 4,
             whats_new_dismissed: true,
+            seen_new_settings: vec!["frame-rate".into()],
             hive_invite_dismissed: true,
             star_prompt_done: true,
             star_prompt_updated: true,

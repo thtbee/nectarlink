@@ -13717,4 +13717,12 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
         <translation>閉じる</translation>
     </message>
 </context>
+<context>
+    <name>NewPill</name>
+    <message>
+        <location filename="../qml/components/NewPill.qml" line="1"/>
+        <source>New</source>
+        <translation>新機能</translation>
+    </message>
+</context>
 </TS>

@@ -13367,4 +13367,12 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
 </context>
+<context>
+    <name>NewPill</name>
+    <message>
+        <location filename="../../qml/components/NewPill.qml" line="1"/>
+        <source>New</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
 </TS>
