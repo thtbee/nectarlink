@@ -195,7 +195,9 @@ t = "ok"               re = n
 
 Errors: `DENIED` when the user turned notifications off for this PC,
 `NOT_FOUND` when the notification or action no longer exists, `UNSUPPORTED`
-when the phone doesn't offer `notify.reply`.
+when the phone doesn't offer `notify.reply` (for `notify.action`) or can't
+dismiss. `notify.dismiss` needs no capability: a PC that forwards its own
+notifications to a phone takes it too, so one cleared on the phone leaves the PC's list.
 
 ## 5. Privacy
 

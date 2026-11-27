@@ -634,6 +634,10 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **The PC's notifications on the phone can be cleared.** One cleared on the phone came back, as
+  the PC never heard of it, and an automation's notice said `call_ringing → pause_pc_media`. It
+  now reads like Settings (Pause PC media, When phone rings) and goes away after a few seconds.
+  Thanks to [@Del235](https://github.com/Del235) ([#705](https://github.com/thtbee/nectarlink/issues/705)).
 - **Notifications you clear on the PC stay cleared** when NectarLink starts again. The phone sends
   what it still shows on reconnect, and cleared ones came back. A new post from the same app shows
   as usual.

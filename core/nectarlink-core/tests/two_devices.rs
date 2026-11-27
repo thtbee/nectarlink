@@ -2005,6 +2005,39 @@ async fn a_held_pc_gets_no_notifications_and_catches_up_afterwards() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn a_phone_clears_a_notification_the_pc_forwarded() {
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+    // The phone shows the PC's notifications.
+    phone.node.update_power(PowerLevel::Basic, vec!["notify.show".into()]).await;
+    with_timeout("phone shows notifications", async {
+        while !pc.node.peer_offers(phone_id, "notify.show") {
+            tokio::time::sleep(Duration::from_millis(25)).await;
+        }
+    })
+    .await;
+    // The PC forwards its own notification; it offers no notification actions.
+    pc.node.notification_posted(note("pc:win:1:1", "pc.windows", "Rule ran", false)).await;
+    wait_for(&mut phone, "the PC's notification", |e| match e {
+        NodeEvent::NotificationPosted { device, notification } if *device == pc_id => {
+            (notification.key == "pc:win:1:1").then_some(())
+        }
+        NodeEvent::NotificationsReset { device, items } if *device == pc_id => {
+            items.iter().any(|n| n.key == "pc:win:1:1").then_some(())
+        }
+        _ => None,
+    })
+    .await;
+    // Cleared on the phone: the PC hears of it, so it can take it out of its list.
+    with_timeout("dismiss", phone.node.dismiss_notification(pc_id, "pc:win:1:1".into()))
+        .await
+        .expect("a dismiss needs no notify.reply");
+    assert_eq!(*pc.platform.dismissed.lock().unwrap(), vec!["pc:win:1:1".to_owned()]);
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn apps_hidden_on_the_pc_keep_their_notifications_on_the_phone() {
     let mut pc = device("Desktop", DeviceKind::Desktop).await;
     let mut phone = device("Pixel", DeviceKind::Phone).await;

@@ -486,7 +486,9 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
         }
         types::NOTIFY_DISMISS => {
             let NotifyKey { key } = env.body()?;
-            let reply = match allowed(shared, &peer) {
+            // Dismissing needs no capability: a PC clears its own forwarded
+            // notifications (#705), and a device that can't answers unsupported.
+            let reply = match toggle_allowed(shared, &peer) {
                 Err(reply) => reply,
                 Ok(()) => {
                     let platform = shared.platform.clone();
@@ -535,6 +537,11 @@ fn allowed(shared: &Shared, peer: &DeviceId) -> std::result::Result<(), Envelope
     if !shared.we_offer("notify.reply") {
         return Err(Envelope::error(ErrorCode::Unsupported, "notification actions are not available"));
     }
+    toggle_allowed(shared, peer)
+}
+
+/// Whether the user lets `peer` have this device's notifications.
+fn toggle_allowed(shared: &Shared, peer: &DeviceId) -> std::result::Result<(), Envelope> {
     if !shared.notifications_allowed(peer) {
         return Err(Envelope::error(ErrorCode::Denied, "notifications are off for this device"));
     }

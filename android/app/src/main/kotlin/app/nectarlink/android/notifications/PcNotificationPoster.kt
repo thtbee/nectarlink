@@ -82,18 +82,18 @@ class PcNotificationPoster(context: Context) {
             .setAutoCancel(true)
             .setSilent(n.silent)
             .setContentIntent(tapIntent)
-        if (fromPeer) {
-            builder.setDeleteIntent(
-                PendingIntent.getBroadcast(
-                    context,
-                    notificationId(deviceId, n.key),
-                    Intent(context, DismissReceiver::class.java)
-                        .putExtra(DismissReceiver.EXTRA_DEVICE, deviceId)
-                        .putExtra(DismissReceiver.EXTRA_KEY, n.key),
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-                ),
-            )
-        }
+        // Cleared here: the PC or phone it came from hears of it, so it doesn't
+        // send it again when they reconnect (#705).
+        builder.setDeleteIntent(
+            PendingIntent.getBroadcast(
+                context,
+                notificationId(deviceId, n.key),
+                Intent(context, DismissReceiver::class.java)
+                    .putExtra(DismissReceiver.EXTRA_DEVICE, deviceId)
+                    .putExtra(DismissReceiver.EXTRA_KEY, n.key),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            ),
+        )
 
         if (body.length > 48) {
             builder.setStyle(NotificationCompat.BigTextStyle().bigText(body))
