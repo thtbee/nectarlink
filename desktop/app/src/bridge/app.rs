@@ -3285,36 +3285,36 @@ fn compute_shelf_items_json(current_device_idx: i32) -> String {
     }
 
     // 4. Current clip (from encrypted local clipboard history, or live Windows clipboard fallback).
-    let current_clip = if let Some(entry) =
-        node.as_ref().and_then(|n| n.clipboard_history(None).into_iter().next())
-    {
-        let (kind, image_data_url) = match entry.kind {
-            ClipboardItemKind::Text => ("text", String::new()),
-            ClipboardItemKind::Image => {
-                ("image", crate::clipboard::thumb_for_clip(&entry.id).unwrap_or_default())
+    let current_clip =
+        if let Some(entry) = node.as_ref().and_then(|n| n.clipboard_history(None).into_iter().next()) {
+            let (kind, image_data_url) = match entry.kind {
+                ClipboardItemKind::Text => ("text", String::new()),
+                ClipboardItemKind::Image => {
+                    ("image", crate::clipboard::thumb_for_clip(&entry.id).unwrap_or_default())
+                }
+            };
+            serde_json::json!({
+                "id": entry.id,
+                "kind": kind,
+                "text": entry.text,
+                "imageDataUrl": image_data_url,
+                "deviceName": entry.device_name,
+                "localPath": "",
+            })
+        } else {
+            // Text only, read again only once something new is copied (#688).
+            match crate::win::clipboard::peek_text() {
+                Some(t) => serde_json::json!({
+                    "id": "",
+                    "kind": "text",
+                    "text": t,
+                    "imageDataUrl": "",
+                    "deviceName": "This PC",
+                    "localPath": "",
+                }),
+                _ => serde_json::Value::Null,
             }
         };
-        serde_json::json!({
-            "id": entry.id,
-            "kind": kind,
-            "text": entry.text,
-            "imageDataUrl": image_data_url,
-            "deviceName": entry.device_name,
-            "localPath": "",
-        })
-    } else {
-        match crate::win::clipboard::read() {
-            crate::win::clipboard::Clip::Text { text: t, .. } if !t.trim().is_empty() => serde_json::json!({
-                "id": "",
-                "kind": "text",
-                "text": t,
-                "imageDataUrl": "",
-                "deviceName": "This PC",
-                "localPath": "",
-            }),
-            _ => serde_json::Value::Null,
-        }
-    };
 
     // 5. Recent received files (up to 5 existing files on disk).
     let mut recent_files: Vec<serde_json::Value> = Vec::new();

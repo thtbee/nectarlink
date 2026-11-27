@@ -114,6 +114,14 @@ pub fn read_private_text() -> Option<String> {
     None
 }
 
+/// The copied text, for a glance at it (the Shelf).
+pub fn peek_text() -> Option<String> {
+    match read() {
+        Clip::Text { text, .. } if !text.trim().is_empty() => Some(text),
+        _ => None,
+    }
+}
+
 pub fn read() -> Clip {
     let mut is_private = false;
     let text = crate::bridge::native::ffi::mac_clipboard_read_text(&mut is_private);
