@@ -3039,6 +3039,15 @@ pub trait Platform: Send + Sync {
     /// (the phone's number for it) read in the phone's own messages. False
     /// if the phone couldn't.
     fn sms_mark_read(&self, thread: String) -> bool;
+    /// A PC asked to mark the latest received text of the conversation
+    /// `thread` (or the received text `message` names) unread in the phone's
+    /// own messages. False if the phone couldn't.
+    fn sms_mark_unread(&self, thread: String, message: Option<String>) -> bool;
+    /// A PC asked, after its user chose to, to delete the conversation
+    /// `thread` (`messages` empty) or just those of its messages (ids from the
+    /// phone's message list) from the phone's own messages. False if the phone
+    /// couldn't delete them all.
+    fn sms_delete(&self, thread: String, messages: Vec<String>) -> bool;
     /// A PC asked for a message's attachment; null when it's gone.
     fn sms_part(&self, id: String) -> Option<SmsPartData>;
     /// A PC asked to change one of this phone's quick settings (`id`: `"dnd"`,
@@ -3476,6 +3485,20 @@ impl core::Platform for PlatformAdapter {
     }
     fn sms_mark_read(&self, thread: &str) -> Result<(), String> {
         if self.0.sms_mark_read(thread.to_owned()) { Ok(()) } else { Err("not marked read".into()) }
+    }
+    fn sms_mark_unread(&self, thread: &str, message: Option<&str>) -> Result<(), String> {
+        if self.0.sms_mark_unread(thread.to_owned(), message.map(str::to_owned)) {
+            Ok(())
+        } else {
+            Err("not marked unread".into())
+        }
+    }
+    fn sms_delete(&self, thread: &str, messages: &[String]) -> Result<(), String> {
+        if self.0.sms_delete(thread.to_owned(), messages.to_vec()) {
+            Ok(())
+        } else {
+            Err("not deleted".into())
+        }
     }
     fn sms_part(&self, id: &str) -> Result<(String, Vec<u8>), String> {
         let part = self.0.sms_part(id.to_owned()).ok_or("it's gone")?;

@@ -490,6 +490,20 @@ pub trait Platform: Send + Sync + 'static {
         Err("this device can't mark texts read".into())
     }
 
+    /// Marks the latest received text of the conversation `thread` (or the
+    /// received text `message` names) unread in the phone's own messages (a PC
+    /// asked; offered as `sms.mark_unread`).
+    fn sms_mark_unread(&self, _thread: &str, _message: Option<&str>) -> Result<(), String> {
+        Err("this device can't mark texts unread".into())
+    }
+
+    /// Deletes the conversation `thread`, or only the messages `messages`
+    /// (ids from `sms_messages`) of it, from the phone's own messages (a PC
+    /// asked, after its user chose to; offered as `sms.delete`).
+    fn sms_delete(&self, _thread: &str, _messages: &[String]) -> Result<(), String> {
+        Err("this device can't delete texts".into())
+    }
+
     /// A picture in a message: its type and bytes.
     fn sms_part(&self, _id: &str) -> Result<(String, Vec<u8>), String> {
         Err("this device has no messages".into())

@@ -3847,6 +3847,27 @@ impl Node {
         crate::sms::mark_read(&self.shared, &session, thread).await
     }
 
+    /// Asks a paired phone to mark a conversation's latest received text (or the
+    /// one `message` names) unread in its own messages. `Unsupported` from a
+    /// phone that doesn't offer it.
+    pub async fn sms_mark_unread(
+        &self,
+        peer: DeviceId,
+        thread: String,
+        message: Option<String>,
+    ) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::sms::mark_unread(&self.shared, &session, thread, message).await
+    }
+
+    /// Asks a paired phone to delete a conversation (`messages` empty) or just
+    /// those messages from its own messages. Not undoable: only after the
+    /// user chose it. `Unsupported` from a phone that doesn't offer it.
+    pub async fn sms_delete(&self, peer: DeviceId, thread: String, messages: Vec<String>) -> Result<()> {
+        let session = self.connected(&peer)?;
+        crate::sms::delete(&self.shared, &session, thread, messages).await
+    }
+
     /// Sends a text or MMS through a paired phone on the SIM `sim` (an id
     /// from [`sms_sims`](Self::sms_sims)), or on its default when `None`.
     pub async fn send_sms_on(
