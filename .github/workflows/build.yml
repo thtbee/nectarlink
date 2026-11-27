@@ -338,13 +338,24 @@ jobs:
           "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --print-certs "$apk"
           mkdir -p out
           cp "$apk" "out/Nectarlink-${VERSION}-android.apk"
+      - name: Keep the code map
+        # The release APK is minified, so a crash report from the phone names
+        # classes like HomeScreenKt$$ExternalSyntheticLambda120. R8's mapping
+        # turns them back into the code's names; it's published as a symbols
+        # zip, like the Windows PDBs.
+        run: |
+          mapping=android/app/build/outputs/mapping/release/mapping.txt
+          test -s "$mapping"
+          (cd "$(dirname "$mapping")" && zip -q -9 "$GITHUB_WORKSPACE/out/Nectarlink-${VERSION}-android-symbols.zip" mapping.txt)
       - name: Forget the key
         if: always()
         run: rm -f "$RUNNER_TEMP/release.jks"
       - uses: actions/upload-artifact@v7
         with:
           name: android
-          path: out/*.apk
+          path: |
+            out/*.apk
+            out/*-symbols.zip
 
   macos:
     name: macOS DMG (Apple Silicon)
