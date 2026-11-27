@@ -10,7 +10,8 @@ change things that need a step from you, and its notes say so.
 
 - **An app you hide on the PC stays on the phone.** Its notifications and chats aren't sent to
   that PC at all any more, not only hidden there, and showing the app again brings them back.
-  Thanks to [@jed84](https://github.com/jed84) ([#701](https://github.com/thtbee/nectarlink/issues/701)).
+  Thanks to [@jed84](https://github.com/jed84) and [@aihehye](https://github.com/aihehye)
+  ([#701](https://github.com/thtbee/nectarlink/issues/701), [#704](https://github.com/thtbee/nectarlink/pull/704)).
 - **A setup video.** The README shows the whole setup in 74 seconds: installing the phone app,
   pairing by QR code, Assist and Elevated. Thanks to [@aihehye](https://github.com/aihehye) ([#641](https://github.com/thtbee/nectarlink/discussions/641)).
 - **The Mac app lives in the menu bar when its window is closed.** With **Stay in system tray**

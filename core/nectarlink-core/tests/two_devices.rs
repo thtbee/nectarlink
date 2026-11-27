@@ -2035,11 +2035,17 @@ async fn apps_hidden_on_the_pc_keep_their_notifications_on_the_phone() {
     })
     .await;
     phone.node.notification_posted(note("c", "com.secret", "Code", false)).await;
+    phone.node.notification_removed("b".into()).await;
     phone.node.notification_posted(note("d", "com.chat", "Alex", false)).await;
     wait_for(&mut pc, "the shown app's post", |e| match e {
         NodeEvent::NotificationPosted { device, notification } if *device == phone_id => {
             assert_ne!(notification.app, "com.secret", "a hidden app's notification left the phone");
             (notification.key == "d").then_some(())
+        }
+        // A key names its app: a hidden app's removal stays on the phone too.
+        NodeEvent::NotificationRemoved { device, key } if *device == phone_id => {
+            assert_ne!(key, "b", "a hidden app's removal left the phone");
+            None
         }
         _ => None,
     })

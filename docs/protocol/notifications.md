@@ -176,7 +176,8 @@ t = "ok"               re = n
   still arrives.
 - **`notify.hide`** lists the apps (package names, at most 1,024, each as a
   notification's `app`) the user hid on this PC. The phone then sends this PC
-  nothing from them: no `notify.posted`, and `notify.snapshot` leaves them out.
+  nothing from them: no `notify.posted` or `notify.removed` (a key names its
+  app), and `notify.snapshot` leaves them out.
   It keeps the list with the pairing, so it already applies when the PC
   reconnects. The whole list comes each time; an empty one hides nothing. A PC
   sends it to phones that offer `notify.hide`, when a session starts and when

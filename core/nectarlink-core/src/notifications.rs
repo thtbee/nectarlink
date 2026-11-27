@@ -148,10 +148,11 @@ impl Feed {
         Some(n)
     }
 
-    fn remove(&self, key: &str) -> bool {
+    /// Forgets a notification; returns its app, or `None` if it wasn't here.
+    fn remove(&self, key: &str) -> Option<String> {
         let mut state = self.lock();
         state.active = true;
-        state.items.remove(key).is_some()
+        state.items.remove(key).map(|n| n.app)
     }
 
     fn reset(&self, items: Vec<Notification>) {
@@ -387,11 +388,13 @@ impl Shared {
     }
 
     pub(crate) async fn notification_removed(&self, key: String) {
-        if !self.notifications.remove(&key) {
-            return;
-        }
+        let Some(app) = self.notifications.remove(&key) else { return };
         let Ok(env) = Envelope::new(types::NOTIFY_REMOVED, &NotifyKey { key }) else { return };
         for session in self.notification_targets() {
+            // A key names its app, so a hidden app's removals stay here too (#701).
+            if self.hidden_by(&session.peer).contains(&app) {
+                continue;
+            }
             let _ = session.send(env.clone()).await;
         }
     }
