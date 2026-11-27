@@ -130,6 +130,22 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "markOpenUnread"]
         fn mark_open_unread(self: &Messages);
+        /// Puts a picture of the conversation (its file URL) on the clipboard.
+        #[qinvokable]
+        #[cxx_name = "copyImage"]
+        fn copy_image(self: &Messages, url: &QString);
+        /// Saves a picture of the conversation (its file URL) to a file chosen in the Save dialog.
+        #[qinvokable]
+        #[cxx_name = "saveImage"]
+        fn save_image(self: &Messages, url: &QString, to: &QString);
+        /// A file URL for the Save dialog to start from, for that picture.
+        #[qinvokable]
+        #[cxx_name = "imageSaveSuggestion"]
+        fn image_save_suggestion(self: &Messages, url: &QString) -> QString;
+        /// Opens the system share sheet for a picture of the conversation (Windows and macOS).
+        #[qinvokable]
+        #[cxx_name = "shareImage"]
+        fn share_image(self: &Messages, url: &QString);
         /// Stages an image file (from drag-and-drop or file picker) as an MMS attachment.
         #[qinvokable]
         #[cxx_name = "attachFile"]
@@ -338,6 +354,37 @@ impl qobject::Messages {
 
     pub fn mark_open_unread(&self) {
         messages::mark_open_unread();
+    }
+
+    pub fn copy_image(&self, url: &QString) {
+        match messages::copy_picture(&String::from(url)) {
+            Ok(()) => crate::bridge::app::show_message(tr!("App", "Copied to clipboard.")),
+            Err(reason) => {
+                tracing::warn!(reason, "can't copy a picture");
+                crate::bridge::app::show_message(tr!("App", "Could not copy to the clipboard."));
+            }
+        }
+    }
+
+    pub fn save_image(&self, url: &QString, to: &QString) {
+        match messages::save_picture(&String::from(url), &String::from(to)) {
+            Ok(()) => crate::bridge::app::show_message(tr!("Messages", "Picture saved.")),
+            Err(reason) => {
+                tracing::warn!(reason, "can't save a picture");
+                crate::bridge::app::show_message(tr!("Messages", "The picture couldn't be saved."));
+            }
+        }
+    }
+
+    pub fn image_save_suggestion(&self, url: &QString) -> QString {
+        QString::from(&messages::picture_save_suggestion(&String::from(url)))
+    }
+
+    pub fn share_image(&self, url: &QString) {
+        if let Err(reason) = messages::share_picture(&String::from(url)) {
+            tracing::warn!(reason, "can't open the share sheet");
+            crate::bridge::app::show_message(tr!("Messages", "The share sheet couldn't be opened."));
+        }
     }
 
     pub fn attach_file(&self, path_or_url: &QString) -> bool {

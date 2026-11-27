@@ -110,6 +110,18 @@ Item {
         }
     }
 
+    // Where to save the picture being looked at.
+    FileDialog {
+        id: saveImageDialog
+        title: qsTr("Save picture")
+        fileMode: FileDialog.SaveFile
+        nameFilters: [qsTr("Pictures (*.jpg *.jpeg *.png *.gif *.webp)"), qsTr("All files (*)")]
+        onAccepted: {
+            if (selectedFile.toString().length > 0)
+                Messages.saveImage(msgImagePreviewSheet.imageUrl, selectedFile.toString())
+        }
+    }
+
     // Back to the list: nothing open.
     function closeChat() {
         Messages.closeThread()
@@ -1967,6 +1979,32 @@ Item {
                     iconPath: Icons.photo
                     text: qsTr("Open externally")
                     onClicked: Qt.openUrlExternally(msgImagePreviewSheet.imageUrl)
+                }
+                // The system's share sheet: on Windows and on a Mac.
+                Button {
+                    objectName: "shareImage"
+                    visible: Qt.platform.os === "windows" || Qt.platform.os === "osx"
+                    variant: "tonal"
+                    iconPath: Icons.share
+                    text: qsTr("Share")
+                    onClicked: Messages.shareImage(msgImagePreviewSheet.imageUrl)
+                }
+                Button {
+                    objectName: "saveImage"
+                    variant: "tonal"
+                    iconPath: Icons.download
+                    text: qsTr("Save as…")
+                    onClicked: {
+                        saveImageDialog.currentFile = Messages.imageSaveSuggestion(msgImagePreviewSheet.imageUrl)
+                        saveImageDialog.open()
+                    }
+                }
+                Button {
+                    objectName: "copyImage"
+                    variant: "tonal"
+                    iconPath: Icons.copy
+                    text: qsTr("Copy image")
+                    onClicked: Messages.copyImage(msgImagePreviewSheet.imageUrl)
                 }
             }
         }

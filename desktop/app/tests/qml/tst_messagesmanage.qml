@@ -348,5 +348,22 @@ Item {
             compare(Messages.lastAsk("openThread"), undefined, "choosing doesn't open the conversation")
             compare(page.selectedThreads.join(), "t2")
         }
+
+        function test_a_picture_can_be_copied_saved_and_shared() {
+            const sheet = root.find(page, "imageSheet")
+            sheet.openFor("file:///cache/sms-part-1.jpg")
+            verify(sheet.opened)
+            click(root.find(page, "copyImage"))
+            compare(Messages.lastAsk("copyImage"), "file:///cache/sms-part-1.jpg")
+            verify(root.find(page, "saveImage").visible)
+            // Where there's a share sheet: Windows and macOS only.
+            const share = root.find(page, "shareImage")
+            compare(share.visible, Qt.platform.os === "windows" || Qt.platform.os === "osx")
+            if (share.visible) {
+                click(share)
+                compare(Messages.lastAsk("shareImage"), "file:///cache/sms-part-1.jpg")
+            }
+            sheet.close()
+        }
     }
 }

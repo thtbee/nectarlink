@@ -1403,6 +1403,73 @@ async fn fetch_pictures(device: DeviceId, generation: u64, parts: Vec<String>) {
     }
 }
 
+// ---- Pictures in a conversation ----
+
+/// The cached file for a picture's URL, when it is one of this page's own.
+fn cached_picture(url: &str) -> Result<PathBuf, String> {
+    let path = url_to_path(url);
+    let own = path.file_name().and_then(|n| n.to_str()).is_some_and(is_message_cache_file);
+    let same = |a: &Path, b: &Path| match (std::fs::canonicalize(a), std::fs::canonicalize(b)) {
+        (Ok(a), Ok(b)) => a == b,
+        _ => a == b,
+    };
+    if own && path.parent().is_some_and(|dir| same(dir, &files_dir())) && path.is_file() {
+        Ok(path)
+    } else {
+        Err("not a picture of a conversation".to_owned())
+    }
+}
+
+/// The picture's MIME type, from what the file starts with.
+fn picture_mime(bytes: &[u8]) -> &'static str {
+    if bytes.starts_with(b"\x89PNG\r\n\x1a\n") { "image/png" } else { "image/jpeg" }
+}
+
+/// Where the Save dialog for a picture starts: a file URL for "Picture" in
+/// the Pictures folder (else Downloads), with the picture's own extension.
+pub fn picture_save_suggestion(url: &str) -> String {
+    let ext = Path::new(&url_to_path(url))
+        .extension()
+        .and_then(|e| e.to_str())
+        .filter(|e| !e.is_empty())
+        .unwrap_or("jpg")
+        .to_owned();
+    let dir = dirs::picture_dir().or_else(dirs::download_dir).unwrap_or_default();
+    crate::icons::file_url(&dir.join(format!("Picture.{ext}")))
+}
+
+/// Puts a picture on the clipboard.
+pub fn copy_picture(url: &str) -> Result<(), String> {
+    let bytes = std::fs::read(cached_picture(url)?).map_err(|e| e.to_string())?;
+    crate::win::clipboard::write_image(picture_mime(&bytes), &bytes)
+}
+
+/// Saves a picture where the user chose (a file URL or a path).
+pub fn save_picture(url: &str, to: &str) -> Result<(), String> {
+    let from = cached_picture(url)?;
+    let to = url_to_path(to);
+    if to.as_os_str().is_empty() || to.is_dir() {
+        return Err("no file chosen".to_owned());
+    }
+    std::fs::copy(from, to).map(|_| ()).map_err(|e| e.to_string())
+}
+
+/// Opens the system's share sheet for a picture, where there is one (Windows
+/// and macOS). Has to run on Qt's thread.
+pub fn share_picture(url: &str) -> Result<(), String> {
+    let from = cached_picture(url)?;
+    let ext = from.extension().and_then(|e| e.to_str()).unwrap_or("jpg");
+    let staged = crate::photos::stage_for_share(
+        &crate::photos::share_dir(),
+        vec![(from.clone(), format!("Picture.{ext}"))],
+        true,
+    );
+    if staged.is_empty() {
+        return Err("can't get the picture ready to share".to_owned());
+    }
+    crate::win::share::show(&staged)
+}
+
 // ---- MMS Attachment Staging ----
 
 /// Formats a byte count into a human-readable string (`245 KB`, `1.4 MB`).
@@ -2406,5 +2473,15 @@ mod tests {
 
         messages_local::forget(device);
         state(|s| *s = State::default());
+    }
+
+    #[test]
+    fn a_picture_is_saved_under_its_own_kind_of_name() {
+        assert_eq!(picture_mime(b"\x89PNG\r\n\x1a\nrest"), "image/png");
+        assert_eq!(picture_mime(b"\xff\xd8\xff\xe0"), "image/jpeg");
+        assert_eq!(picture_mime(b""), "image/jpeg");
+        let suggestion = picture_save_suggestion("file:///cache/sms-part-1.png");
+        assert!(suggestion.starts_with("file://") && suggestion.ends_with("/Picture.png"), "{suggestion}");
+        assert!(picture_save_suggestion("file:///cache/sms-part-2").ends_with("/Picture.jpg"));
     }
 }

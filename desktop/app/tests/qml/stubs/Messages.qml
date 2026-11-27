@@ -63,4 +63,8 @@ QtObject {
     function draft(key) { return "" }
     function chooseSim(sim) {}
     function startChat(device, number, name) {}
+    function copyImage(url) { ask("copyImage", url) }
+    function saveImage(url, to) { ask("saveImage", to) }
+    function imageSaveSuggestion(url) { return "file:///tmp/Picture.jpg" }
+    function shareImage(url) { ask("shareImage", url) }
 }
