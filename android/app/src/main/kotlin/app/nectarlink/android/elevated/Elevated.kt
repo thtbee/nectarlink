@@ -1279,6 +1279,18 @@ object Elevated {
         return at.takeIf { it.first >= 0f && it.second >= 0f }
     }
 
+    /** Presses [code] with [meta] held, on the phone's own screen (#651). */
+    fun keyCode(code: Int, meta: Int): Boolean {
+        val client = activeService(NectarlinkServiceContract.CAP_INPUT_INJECTION)
+        if (client != null) {
+            if (Thread.currentThread() === offMainThread) return client.injectKey(-1, code, meta)
+            offMain.execute { client.injectKey(-1, code, meta) }
+            return true
+        }
+        val writer = input ?: return false
+        return send(writer, if (meta == 0) "K $code" else "Y $code $meta")
+    }
+
     /** The PC's mouse went back to the PC. */
     fun pointerStop() {
         val client = activeService(NectarlinkServiceContract.CAP_POINTER_FLOW)

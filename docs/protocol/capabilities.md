@@ -102,7 +102,7 @@ capability is missing.
 | `mirror.listen` | Plays a mirrored phone's sound ([mirroring](mirror.md)) | app update |
 | `files.browse` | Lets a paired phone browse and fetch its files | app update |
 | `storage.mount` | Mounts a paired phone's shared storage in File Explorer ([storage](storage.md)) | app update |
-| `input.inject` | Accepts pointer, keyboard and presentation input ([remote input](remote.md)) | app update |
+| `input.inject` | Accepts pointer, keyboard and presentation input ([remote input](remote.md)). A phone or tablet offers it with Elevated, for another phone's touchpad and keyboard (pointer, buttons, wheel, keys and text, no presentation or controller) | app update |
 | `input.gamepad` | Plugs in a game controller for a phone's Gamepad ([remote input](remote.md) §3.1) | app update |
 | `input.gestures` | Does touchpad gestures from the phone: pinch, three and four fingers ([remote input](remote.md) §3.2) | app update |
 | `recorder` | Saves and converts voice recordings from a phone ([recorder](recorder.md)) | app update |

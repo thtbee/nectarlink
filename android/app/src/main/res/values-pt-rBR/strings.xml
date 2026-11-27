@@ -1695,6 +1695,13 @@
     <string name="pc_radio_wifi_off_text">Se este celular se conecta ao PC por Wi-Fi, a conexão vai cair e você vai precisar religar o Wi-Fi no PC.</string>
     <string name="pc_radio_wifi_off_confirm">Desligar</string>
     <string name="home_device_page">%1$s, %2$d de %3$d. Deslize para ver os outros.</string>
+    <string name="channel_device_control">Controle por outro celular</string>
+    <string name="device_control_request_title">%1$s quer controlar este dispositivo</string>
+    <string name="device_control_request_text">Permita que ele mova um ponteiro aqui e digite com o teclado dele. Você pode desativar em Configurações › Dispositivos.</string>
+    <string name="device_control_toggle">Permitir que controle este dispositivo</string>
+    <string name="device_control_toggle_hint">%1$s pode usar este dispositivo com o touchpad e o teclado dele. Precisa do Elevated aqui.</string>
+    <string name="peer_control">Controlar</string>
+    <string name="remote_unsupported_device_text">Ative o Elevated em %1$s para controlá-lo deste celular.</string>
 </resources>
 
 

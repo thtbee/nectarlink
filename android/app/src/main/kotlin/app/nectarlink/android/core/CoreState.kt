@@ -151,6 +151,8 @@ data class Device(
     val micEnabled: Boolean = true,
     /** Whether this PC may ask this phone to unlock it (off by default). */
     val unlockEnabled: Boolean = false,
+    /** Whether this device may use this one as its touchpad and keyboard target (#651, off by default). */
+    val controlAllowed: Boolean = false,
 ) {
     /** A paired phone or tablet rather than a PC. */
     val isAndroid: Boolean
@@ -305,6 +307,7 @@ data class CoreState(
         storageAllowed: Set<String> = emptySet(),
         micOff: Set<String> = emptySet(),
         unlockAllowed: Set<String> = emptySet(),
+        controlAllowed: Set<String> = emptySet(),
     ): CoreState {
         val prevById = devices.associateBy { it.id }
         return copy(
@@ -316,6 +319,7 @@ data class CoreState(
                     storageEnabled = if (p.id in storageAllowed) true else prev?.storageEnabled ?: false,
                     micEnabled = p.id !in micOff,
                     unlockEnabled = p.id in unlockAllowed,
+                    controlAllowed = p.id in controlAllowed,
                 )
             }.sortedWith(deviceOrder),
         )
@@ -331,6 +335,9 @@ data class CoreState(
 
     fun withUnlockEnabled(id: String, enabled: Boolean): CoreState =
         update(id) { it.copy(unlockEnabled = enabled) }
+
+    fun withControlAllowed(id: String, allowed: Boolean): CoreState =
+        update(id) { it.copy(controlAllowed = allowed) }
 
     fun withStorageEnabled(id: String, enabled: Boolean): CoreState =
         update(id) { it.copy(storageEnabled = enabled) }.copy(
@@ -448,7 +455,11 @@ data class CoreState(
         // Shown in Android's media controls (see media/PcMedia).
         is Event.MediaChanged -> this
         is Event.StorageRequested -> copy(storageRequestedFrom = event.id)
-        is Event.RemoteInputRequested -> copy(remoteInputRequested = !inputAccess && !elevated)
+        is Event.RemoteInputRequested -> if (devices.any { it.id == event.id && it.isAndroid }) {
+            this
+        } else {
+            copy(remoteInputRequested = !inputAccess && !elevated)
+        }
         // PCs only: phones announce their own photos, calls, contacts, texts, toggles, storage, screen and webcam.
         // Live PC audio frames are played directly by PcSpeakerPlayer in Core.
         is Event.PhotoAdded,

@@ -633,6 +633,27 @@ fun SettingsScreen(
                                     modifier = Modifier.semantics { contentDescription = storageToggleTitle },
                                 )
                             }
+                            // Another phone using this one as its touchpad target (#651): off until allowed.
+                            if (device.isAndroid) {
+                                val controlTitle = stringResource(R.string.device_control_toggle)
+                                val controlCore = (context.applicationContext as app.nectarlink.android.NectarlinkApplication).core
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                                    Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                                        Text(controlTitle, style = MaterialTheme.typography.bodyMedium)
+                                        Text(
+                                            stringResource(R.string.device_control_toggle_hint, device.name),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                    Switch(
+                                        checked = device.controlAllowed,
+                                        onCheckedChange = { controlCore.setControlAllowed(device.id, it) },
+                                        colors = app.nectarlink.android.ui.theme.nectarSwitchColors(),
+                                        modifier = Modifier.semantics { contentDescription = controlTitle },
+                                    )
+                                }
+                            }
                             if (!device.isAndroid) {
                                 val micToggleTitle = stringResource(R.string.mic_pc_toggle)
                                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {

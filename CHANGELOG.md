@@ -11,6 +11,11 @@ change things that need a step from you, and its notes say so.
 - **Swipe between your devices on the phone's Home.** With two or more paired devices, their cards
   sit side by side, PCs first: swipe to go from one to the next, with dots for where you are.
   Thanks to [@kedar284](https://github.com/kedar284) ([#651](https://github.com/thtbee/nectarlink/issues/651)).
+- **Use your phone as a touchpad and keyboard for your tablet.** A paired tablet (or another phone)
+  with Elevated shows **Control** on its card on the phone's Home: the touchpad moves a pointer on
+  the tablet, clicks and scrolls, and the keyboard types there, any language and emoji included.
+  The tablet asks the first time; **Let it control this device** in its Settings › Devices turns
+  it off again. Thanks to [@kedar284](https://github.com/kedar284) ([#651](https://github.com/thtbee/nectarlink/issues/651)).
 - **Now playing shows the time you want.** The time on the right of Now playing on the PC's Home
   can show what's left, the whole length, or both: click it to switch, or pick in Settings ›
   General. Thanks to [@jed84](https://github.com/jed84) ([#658](https://github.com/thtbee/nectarlink/issues/658)).

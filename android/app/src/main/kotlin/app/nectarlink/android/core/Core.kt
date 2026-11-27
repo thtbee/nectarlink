@@ -516,7 +516,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             updateLocalSendMulticast(lsEnabled)
             pruneOldTempCaches()
             _state.update {
-                it.withDevices(devices, pcToggles.storageAllowed, pcToggles.micOff, pcToggles.unlockAllowed).copy(
+                it.withDevices(devices, pcToggles.storageAllowed, pcToggles.micOff, pcToggles.unlockAllowed, pcToggles.controlAllowed).copy(
                     sendQueue = initialQueue,
                     clipboardHistoryEnabled = clipHistEnabled,
                     clipboardHistory = clipHist,
@@ -861,6 +861,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                                         storageEnabled = d.id in pcToggles.storageAllowed,
                                         micEnabled = d.id !in pcToggles.micOff,
                                         unlockEnabled = d.id in pcToggles.unlockAllowed,
+                                        controlAllowed = d.id in pcToggles.controlAllowed,
                                     )
                                 }
                             } else {
@@ -938,6 +939,14 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         }
         when (event) {
             is Event.Transfer -> onTransfer(event.transfer)
+            // Another phone tried to use this one as its touchpad target and isn't
+            // let in yet: ask here (#651). The core asks once per run of each device.
+            is Event.RemoteInputRequested -> {
+                val asking = _state.value.devices.firstOrNull { it.id == event.id }
+                if (asking != null && asking.isAndroid && !asking.controlAllowed) {
+                    app.nectarlink.android.elevated.DeviceControlRequest.show(context, asking.id, asking.name)
+                }
+            }
             is Event.MediaChanged -> {
                 val peer = peerOf(event.id).first
                 val pcName = _state.value.nameOf(event.id).orEmpty()
@@ -1402,19 +1411,26 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
      * Which PCs may browse this phone's storage, which may not ask for its microphone, and
      * which may ask it to unlock them.
      */
-    private class PerPcToggles(val storageAllowed: Set<String>, val micOff: Set<String>, val unlockAllowed: Set<String>)
+    private class PerPcToggles(
+        val storageAllowed: Set<String>,
+        val micOff: Set<String>,
+        val unlockAllowed: Set<String>,
+        val controlAllowed: Set<String>,
+    )
 
     private fun perPcToggles(node: NectarlinkNode, ids: List<String>): PerPcToggles {
         val storage = mutableSetOf<String>()
         val micOff = mutableSetOf<String>()
         val unlock = mutableSetOf<String>()
+        val control = mutableSetOf<String>()
         for (id in ids) {
             val toggles = runCatching { node.deviceToggles(id) }.getOrNull() ?: continue
             if (toggles.any { it.name == PhoneStorage.TOGGLE_NAME && it.enabled }) storage += id
             if (toggles.any { it.name == app.nectarlink.android.mic.MicService.TOGGLE_NAME && !it.enabled }) micOff += id
             if (toggles.any { it.name == UNLOCK_TOGGLE && it.enabled }) unlock += id
+            if (toggles.any { it.name == CONTROL_TOGGLE && it.enabled }) control += id
         }
-        return PerPcToggles(storage, micOff, unlock)
+        return PerPcToggles(storage, micOff, unlock, control)
     }
 
     /**
@@ -1428,6 +1444,23 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             val currentNode = node ?: return@launch
             runCatching { currentNode.setDeviceToggle(pcId, UNLOCK_TOGGLE, enabled) }
                 .onFailure { Log.w(TAG, "can't change the unlock toggle", it) }
+        }
+    }
+
+    /**
+     * Lets another phone [deviceId] use this one as its touchpad and keyboard
+     * target, or stops it (#651). Off by default; turning it off takes the
+     * pointer away at once.
+     */
+    fun setControlAllowed(deviceId: String, allowed: Boolean) {
+        _state.update { it.withControlAllowed(deviceId, allowed) }
+        if (!allowed) app.nectarlink.android.elevated.DeviceControl.stop()
+        app.nectarlink.android.elevated.DeviceControlRequest.dismiss(context, deviceId)
+        scope.launch(Dispatchers.IO) {
+            startJob?.join()
+            val currentNode = node ?: return@launch
+            runCatching { currentNode.setDeviceToggle(deviceId, CONTROL_TOGGLE, allowed) }
+                .onFailure { Log.w(TAG, "can't change the control toggle", it) }
         }
     }
 
@@ -2395,6 +2428,14 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             } else {
                 emptyList()
             }) +
+            // Another phone's touchpad and keyboard here (#651): a pointer of this
+            // device's own, which needs the Elevated helper.
+            (if (Elevated.hasCapability(NectarlinkServiceContract.CAP_POINTER_FLOW) &&
+                    Elevated.hasCapability(NectarlinkServiceContract.CAP_INPUT_INJECTION)) {
+                listOf("input.inject")
+            } else {
+                emptyList()
+            }) +
             (if (Elevated.hasCapability(NectarlinkServiceContract.CAP_CLIPBOARD_SYNC)) listOf("clip.read.auto") else emptyList()) +
             // Apps in windows of their own run on displays the Elevated helper makes,
             // and only where Android runs apps on other displays: some phones
@@ -3322,6 +3363,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         /** Accepting the PC's clipboard, and sending this one when asked. */
         /** The per-PC toggle for unlocking it with this phone (ADR 0009). */
         const val UNLOCK_TOGGLE = "unlock"
+        /** The core's per-device remote input switch (`remote_input`). */
+        const val CONTROL_TOGGLE = "remote_input"
 
         val CLIPBOARD_CAPABILITIES = listOf("clip.write", "clip.share", "mirror.capture", "mirror.view")
         /** With access to the phone's photos. */

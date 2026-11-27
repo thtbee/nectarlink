@@ -1712,6 +1712,13 @@
     <string name="pc_radio_wifi_off_text">Jeśli ten telefon łączy się z komputerem przez Wi-Fi, połączenie zostanie przerwane i trzeba będzie włączyć Wi-Fi na komputerze.</string>
     <string name="pc_radio_wifi_off_confirm">Wyłącz</string>
     <string name="home_device_page">%1$s, %2$d z %3$d. Przesuń, aby zobaczyć pozostałe.</string>
+    <string name="channel_device_control">Sterowanie z innego telefonu</string>
+    <string name="device_control_request_title">%1$s chce sterować tym urządzeniem</string>
+    <string name="device_control_request_text">Pozwól mu poruszać tu wskaźnikiem i pisać na jego klawiaturze. Możesz to wyłączyć w Ustawienia › Urządzenia.</string>
+    <string name="device_control_toggle">Pozwól mu sterować tym urządzeniem</string>
+    <string name="device_control_toggle_hint">%1$s może obsługiwać to urządzenie swoim touchpadem i klawiaturą. Wymaga tu Elevated.</string>
+    <string name="peer_control">Steruj</string>
+    <string name="remote_unsupported_device_text">Włącz Elevated na %1$s, aby sterować nim z tego telefonu.</string>
 </resources>
 
 

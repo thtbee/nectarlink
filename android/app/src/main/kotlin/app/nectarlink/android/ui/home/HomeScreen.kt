@@ -376,6 +376,7 @@ fun HomeScreen(
                 ringing = device.id in state.ringingDevices,
                 onRing = onRing,
                 onSendFiles = onSendFiles,
+                onRemote = onRemote,
             )
         } else {
             Box(
@@ -1483,6 +1484,7 @@ private fun PeerCard(
     ringing: Boolean,
     onRing: (String, Boolean) -> Unit,
     onSendFiles: (String, List<Uri>) -> Unit,
+    onRemote: (String) -> Unit,
 ) {
     val context = LocalContext.current
     val pickFiles = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
@@ -1552,6 +1554,17 @@ private fun PeerCard(
             Icon(imageVector = ClipboardIcon, contentDescription = null, modifier = Modifier.size(15.dp))
             Spacer(Modifier.width(6.dp))
             ButtonLabel(stringResource(R.string.action_send_clipboard))
+        }
+        // This phone as the tablet's touchpad and keyboard (#651), once it takes input.
+        if (device.has("pair.control")) {
+            FilledTonalButton(
+                contentPadding = CardButtonPadding,
+                enabled = device.online,
+                onClick = { onRemote(device.id) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                ButtonLabel(stringResource(R.string.peer_control))
+            }
         }
     }
 }
