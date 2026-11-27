@@ -380,7 +380,7 @@ fn show_ringing(device: DeviceId, call: &CallState, silenced: bool) {
         title: caller(call),
         body,
         attribution: "NectarLink".into(),
-        icon: call.photo.as_deref().and_then(|photo| save_photo(device, &call.id, photo)),
+        icon: caller_photo(device, call),
         image: None,
         actions,
         reply: None,
@@ -419,7 +419,7 @@ fn show_in_progress(device: DeviceId, call: &CallState) {
             None => format!("On {}", phone_name(device)),
         },
         attribution: "NectarLink".into(),
-        icon: None,
+        icon: caller_photo(device, call),
         image: None,
         actions,
         reply: None,
@@ -470,7 +470,7 @@ fn show_missed(device: DeviceId, call: &CallState) {
         title: tr!("Calls", "Missed call from %1", caller(call)),
         body: format!("On {}", phone_name(device)),
         attribution: "NectarLink".into(),
-        icon: None,
+        icon: caller_photo(device, call),
         image: None,
         actions: Vec::new(),
         reply: None,
@@ -480,11 +480,19 @@ fn show_missed(device: DeviceId, call: &CallState) {
     });
 }
 
-/// The caller's photo as a file, for the notification.
-fn save_photo(device: DeviceId, call: &str, photo: &[u8]) -> Option<PathBuf> {
-    let dir = crate::notifications::images_dir();
-    let path = dir.join(format!("call-{:016x}.jpg", crate::photos::fingerprint(&key(device, call))));
-    match std::fs::create_dir_all(&dir).and_then(|()| std::fs::write(&path, photo)) {
+/// The caller's photo for a call's notification. The phone sends it while
+/// the call rings (and with an outgoing call); the answered or missed call
+/// reuses the one kept then.
+fn caller_photo(device: DeviceId, call: &CallState) -> Option<PathBuf> {
+    caller_photo_in(&crate::notifications::images_dir(), device, call)
+}
+
+fn caller_photo_in(dir: &Path, device: DeviceId, call: &CallState) -> Option<PathBuf> {
+    let path = dir.join(format!("call-{:016x}.jpg", crate::photos::fingerprint(&key(device, &call.id))));
+    let Some(photo) = call.photo.as_deref() else {
+        return path.exists().then_some(path);
+    };
+    match std::fs::create_dir_all(dir).and_then(|()| std::fs::write(&path, photo)) {
         Ok(()) => Some(path),
         Err(e) => {
             tracing::warn!(error = %e, "can't keep a caller's photo");
@@ -1219,6 +1227,27 @@ mod tests {
             controls: None,
             app: None,
         }
+    }
+
+    #[test]
+    fn an_answered_or_missed_call_keeps_the_photo_it_rang_with() {
+        let dir = tempfile::tempdir().unwrap();
+        let device = DeviceId([7; 32]);
+        let mut ringing = call(Some("Sam"), Some("+1555"));
+        assert_eq!(caller_photo_in(dir.path(), device, &ringing), None, "no photo, none kept");
+
+        ringing.photo = Some(vec![0xff, 0xd8, 0xff]);
+        let kept = caller_photo_in(dir.path(), device, &ringing).unwrap();
+        assert_eq!(std::fs::read(&kept).unwrap(), [0xff, 0xd8, 0xff]);
+
+        // The phone stops sending the photo once the call is answered or over.
+        let answered = CallState { state: "active".into(), photo: None, ..ringing.clone() };
+        assert_eq!(caller_photo_in(dir.path(), device, &answered), Some(kept.clone()));
+        let missed = CallState { state: "ended".into(), missed: true, photo: None, ..ringing.clone() };
+        assert_eq!(caller_photo_in(dir.path(), device, &missed), Some(kept));
+
+        let another = CallState { id: "2".into(), photo: None, ..ringing };
+        assert_eq!(caller_photo_in(dir.path(), device, &another), None, "another call's photo isn't reused");
     }
 
     #[test]
