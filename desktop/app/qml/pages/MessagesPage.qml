@@ -144,14 +144,16 @@ Item {
         pendingDelete = { kind: kind, ids: ids }
         deleteSheet.open()
     }
-    function confirmDelete() {
+    // `onPhone`: also delete on the phone, which the user chose for this once; never by default.
+    function confirmDelete(onPhone) {
         deleteSheet.close()
         const ids = JSON.stringify(pendingDelete.ids)
+        const phone = onPhone === true && deleteSheet.phoneToo
         if (pendingDelete.kind === "threads") {
-            Messages.deleteThreads(ids)
+            Messages.deleteThreads(ids, phone)
             threadSel.clear()
         } else {
-            Messages.deleteMessages(ids)
+            Messages.deleteMessages(ids, phone)
             msgSel.clear()
         }
     }
@@ -218,7 +220,7 @@ Item {
         } else if (menuKind === "message") {
             if (key === "select") msgSel.toggle(ids[0])
             else if (key === "copy") Messages.copy(textOf(ids))
-            else if (key === "unread") { msgSel.clear(); Messages.markOpenUnread() }
+            else if (key === "unread") { msgSel.clear(); Messages.markMessagesUnread(JSON.stringify(ids)) }
             else if (key === "delete") askDelete("messages", ids)
         } else if (menuKind === "conversation") {
             if (key === "select") msgSel.start()
@@ -906,8 +908,9 @@ Item {
                     iconPath: Icons.mail
                     label: msgSel.count > 1 ? qsTr("Mark %n messages as unread", "", msgSel.count) : qsTr("Mark as unread")
                     onClicked: {
+                        const ids = msgSel.inOrder(page.messageOrder)
                         msgSel.clear()
-                        Messages.markOpenUnread()
+                        Messages.markMessagesUnread(JSON.stringify(ids))
                     }
                 }
                 IconButton {
@@ -2010,13 +2013,17 @@ Item {
         }
     }
 
-    // Deleting asks first, and says what it does: it is only on this PC.
+    // Deleting asks first, and says what it does: on this PC only, or (asked each time, when the
+    // phone can) on the phone too, which can't be undone.
     Sheet {
         id: deleteSheet
         objectName: "deleteSheet"
         cardWidth: 420
         readonly property int count: page.pendingDelete.ids.length
         readonly property bool threads: page.pendingDelete.kind === "threads"
+        // Chats read from notifications aren't on the phone's messages.
+        readonly property bool phoneToo: Messages.phoneCanDelete
+            && (threads ? page.pendingDelete.ids.some(id => id.indexOf("chat:") !== 0) : !Messages.currentIsChat)
         Column {
             width: parent.width
             spacing: 14
@@ -2032,22 +2039,61 @@ Item {
                 wrapMode: Text.WordWrap
                 role: "body"
                 muted: true
-                text: deleteSheet.count > 1 ? qsTr("Removes them from this PC. They stay on your phone.")
+                text: deleteSheet.phoneToo ? qsTr("Choose where to delete. Deleting on the phone can't be undone.")
+                    : deleteSheet.count > 1 ? qsTr("Removes them from this PC. They stay on your phone.")
                     : qsTr("Removes it from this PC. It stays on your phone.")
+            }
+            // The phone can delete too: two clear choices.
+            Column {
+                visible: deleteSheet.phoneToo
+                width: parent.width
+                spacing: 6
+                Button {
+                    objectName: "confirmDeleteOnPhone"
+                    width: parent.width
+                    variant: "danger"
+                    text: qsTr("Delete here and on the phone")
+                    iconPath: Icons.trash
+                    onClicked: page.confirmDelete(true)
+                }
+                Txt {
+                    width: parent.width
+                    wrapMode: Text.WordWrap
+                    role: "bodySmall"
+                    muted: true
+                    text: qsTr("Also deletes it from your phone's messages. This can't be undone.")
+                }
+                Item { width: 1; height: 6 }
+                Button {
+                    objectName: "confirmDeleteHere"
+                    width: parent.width
+                    variant: "tonal"
+                    text: qsTr("Remove from this PC only")
+                    onClicked: page.confirmDelete(false)
+                }
+                Txt {
+                    width: parent.width
+                    wrapMode: Text.WordWrap
+                    role: "bodySmall"
+                    muted: true
+                    text: qsTr("It stays on your phone.")
+                }
             }
             Row {
                 anchors.right: parent.right
                 spacing: 8
                 Button {
+                    objectName: "cancelDelete"
                     variant: "text"
                     text: qsTr("Cancel")
                     onClicked: deleteSheet.close()
                 }
                 Button {
                     objectName: "confirmDelete"
+                    visible: !deleteSheet.phoneToo
                     text: qsTr("Delete")
                     iconPath: Icons.trash
-                    onClicked: page.confirmDelete()
+                    onClicked: page.confirmDelete(false)
                 }
             }
         }

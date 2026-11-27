@@ -216,6 +216,10 @@ pub fn set_mark_read_on_phone(on: bool) {
     MARK_READ_ON_PHONE.store(on, Ordering::Relaxed);
     // Turned on: conversations open or unread now are worth asking about again.
     MARKED.lock().unwrap_or_else(|e| e.into_inner()).take();
+    // The page says whether marking unread reaches the phone.
+    if let Some(host) = core_host::try_host() {
+        host.hub.changed(Changes::MESSAGES);
+    }
     if on {
         mark_open_read();
     }
@@ -435,6 +439,11 @@ pub struct View {
     pub compose_to: Option<String>,
     pub compose_name: Option<String>,
     pub app_filter: String,
+    /// The phone deletes texts when asked (it offers `sms.delete`): deleting here can delete there too.
+    pub phone_can_delete: bool,
+    /// Marking a conversation unread here marks it on the phone too: the phone offers
+    /// `sms.mark_unread` and the user turned on syncing the read state.
+    pub unread_syncs: bool,
     pub available_apps: Value,
     pub has_chat_threads: bool,
     pub current_is_chat: bool,
@@ -458,6 +467,11 @@ pub struct View {
 pub fn view() -> View {
     // Read before taking the Messages lock so the two locks never nest.
     let hidden = core_host::try_host().map(|host| host.hub.read(AppState::hidden_apps)).unwrap_or_default();
+    let device = state(|s| s.device);
+    let node = core_host::node();
+    let offers = |cap: &str| device.zip(node.as_ref()).is_some_and(|(d, n)| n.peer_offers(d, cap));
+    let phone_can_delete = offers(nectarlink_core::SMS_DELETE);
+    let unread_syncs = offers(nectarlink_core::SMS_MARK_UNREAD);
     state(|s| {
         // A filter on an app that has since been hidden shows everything.
         let app_filter = if hidden.contains(&s.app_filter) { "" } else { s.app_filter.as_str() };
@@ -566,6 +580,8 @@ pub fn view() -> View {
             compose_to: s.compose_to.clone(),
             compose_name: s.compose_name.clone(),
             app_filter: app_filter.to_owned(),
+            phone_can_delete,
+            unread_syncs,
             available_apps,
             has_chat_threads: s.chat_threads.iter().any(|ct| !hidden.contains(&ct.app)),
             current_is_chat,
@@ -797,7 +813,9 @@ fn managed(device: DeviceId) {
     crate::badges::publish();
 }
 
-/// Marks conversations unread, until they're opened. Only on this PC.
+/// Marks conversations unread, until they're opened, and on the phone too when it offers it.
+/// Choosing it is the ask, so it doesn't wait for "Sync read state with the phone" (which is
+/// only about marking read on its own).
 pub fn mark_threads_unread(ids: Vec<String>) {
     let Some(device) = state(|s| s.device) else { return };
     messages_local::update(device, |l| {
@@ -807,20 +825,76 @@ pub fn mark_threads_unread(ids: Vec<String>) {
     });
     close_if_open(&ids);
     managed(device);
+    mark_unread_on_phone(device, ids.into_iter().map(|thread| (thread, None)).collect());
 }
 
-/// Marks the open conversation unread from here (all of it, as one unread
-/// text), and leaves it. Only on this PC.
-pub fn mark_open_unread() {
-    if let Some(thread) = state(|s| s.thread.clone()) {
-        mark_threads_unread(vec![thread]);
+/// Marks messages of the open conversation unread (what's chosen of them that was received),
+/// and leaves it: on the phone each of them, so its count follows; here the conversation is
+/// marked unread until it's opened.
+pub fn mark_messages_unread(ids: Vec<String>) {
+    let Some((device, thread, received)) = state(|s| {
+        let thread = s.thread.clone()?;
+        let received: Vec<String> =
+            s.messages.iter().filter(|m| !m.outgoing && ids.contains(&m.id)).map(|m| m.id.clone()).collect();
+        Some((s.device?, thread, received))
+    }) else {
+        return;
+    };
+    messages_local::update(device, |l| l.mark_unread(&thread));
+    close_if_open(std::slice::from_ref(&thread));
+    managed(device);
+    mark_unread_on_phone(device, received.into_iter().map(|id| (thread.clone(), Some(id))).collect());
+}
+
+/// Asks the phone to mark unread what `targets` name: a text conversation's latest received
+/// text (no message) or one message of it. Not the chats read from notifications, which the
+/// phone has no messages for. Done only when the phone offers it; they stay marked unread here
+/// either way, and a phone that can't is only logged.
+fn mark_unread_on_phone(device: DeviceId, targets: Vec<(String, Option<String>)>) {
+    let Some(node) = core_host::node().filter(|n| n.peer_offers(device, nectarlink_core::SMS_MARK_UNREAD))
+    else {
+        tracing::info!(device = %device.short(), "the phone can't mark texts unread: only marked here");
+        return;
+    };
+    let targets: Vec<(String, Option<String>)> =
+        targets.into_iter().filter(|(t, _)| !t.starts_with("chat:")).collect();
+    if targets.is_empty() {
+        return;
     }
+    // Opened again later, they're worth marking read on the phone again.
+    MARKED
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .get_or_insert_default()
+        .retain(|(d, t, _)| *d != device || !targets.iter().any(|(thread, _)| thread == t));
+    core_host::spawn(async move {
+        for (thread, message) in targets {
+            match node.sms_mark_unread(device, thread.clone(), message.clone()).await {
+                Ok(()) => {
+                    tracing::info!(device = %device.short(), "the phone marked a text unread");
+                    state(|s| {
+                        if s.device == Some(device)
+                            && let Some(t) = s.threads.iter_mut().find(|t| t.id == thread)
+                        {
+                            // A message each, or the conversation's latest.
+                            t.unread = if message.is_some() { t.unread + 1 } else { t.unread.max(1) };
+                        }
+                    });
+                    changed();
+                }
+                Err(e) => {
+                    tracing::info!(device = %device.short(), error = %e, "the phone didn't mark a text unread");
+                }
+            }
+        }
+    });
 }
 
 /// Deletes conversations from this PC. A text conversation stays on the phone
-/// and shows again, with only the newer texts, when one arrives; a chat read
-/// from notifications is removed from the PC's own store.
-pub fn delete_threads(ids: Vec<String>) {
+/// and shows again, with only the newer texts, when one arrives, unless `on_phone` (the user
+/// chose it, each time) also has the phone delete it; a chat read from notifications is
+/// removed from the PC's own store.
+pub fn delete_threads(ids: Vec<String>, on_phone: bool) {
     let Some((device, dates)) = state(|s| {
         let dates: Vec<(String, i64)> =
             ids.iter().filter_map(|id| Some((id.clone(), thread_date(s, id)?))).collect();
@@ -844,12 +918,85 @@ pub fn delete_threads(ids: Vec<String>) {
         s.recent.retain(|(t, _)| !ids.contains(t));
     });
     managed(device);
+    if on_phone {
+        delete_on_phone(
+            device,
+            ids.into_iter().filter(|t| !t.starts_with("chat:")).map(|t| (t, None)).collect(),
+        );
+    }
+}
+
+/// Why the phone didn't delete, in words for the user. What was deleted here stays deleted.
+pub fn delete_problem(error: &Error) -> String {
+    match error {
+        Error::Offline | Error::NotPaired | Error::Timeout | Error::Network(_) => tr!(
+            "Messages",
+            "Couldn't delete on the phone: it isn't connected. It was removed from this PC only."
+        ),
+        Error::Denied => tr!(
+            "Messages",
+            "Couldn't delete on the phone: messages are turned off for this PC there. It was removed from this PC only."
+        ),
+        Error::Unsupported => tr!(
+            "Messages",
+            "Couldn't delete on the phone: it doesn't delete texts for this PC. It was removed from this PC only."
+        ),
+        _ => tr!(
+            "Messages",
+            "Couldn't delete on the phone: its messages refused the change (some phones don't allow it). It was removed from this PC only."
+        ),
+    }
+}
+
+/// Asks the phone to delete conversations (`None`) or only those messages of them, the user
+/// having chosen to. Not undoable, and never on its own: a list of messages that is empty
+/// deletes nothing, not the conversation. A phone that couldn't says so, in words; the PC's
+/// side was already done.
+fn delete_on_phone(device: DeviceId, requests: Vec<(String, Option<Vec<String>>)>) {
+    let requests: Vec<_> = requests
+        .into_iter()
+        .filter(|(_, messages)| messages.as_ref().is_none_or(|m| !m.is_empty()))
+        .collect();
+    if requests.is_empty() {
+        return;
+    }
+    let Some(node) = core_host::node() else {
+        crate::bridge::app::show_message(delete_problem(&Error::Offline));
+        return;
+    };
+    core_host::spawn(async move {
+        let mut failed = None;
+        for (thread, messages) in requests {
+            let batches: Vec<Vec<String>> = match messages {
+                None => vec![Vec::new()],
+                Some(messages) => {
+                    messages.chunks(nectarlink_core::SMS_MAX_DELETE).map(<[String]>::to_vec).collect()
+                }
+            };
+            for batch in batches {
+                if let Err(e) = node.sms_delete(device, thread.clone(), batch).await {
+                    tracing::info!(device = %device.short(), error = %e, "the phone didn't delete");
+                    failed.get_or_insert(e);
+                }
+            }
+        }
+        match failed {
+            Some(e) => crate::bridge::app::show_message(delete_problem(&e)),
+            // The phone's list lost them.
+            None => {
+                if state(|s| s.device == Some(device)) {
+                    load_threads();
+                }
+            }
+        }
+    });
 }
 
 /// Deletes messages of the open conversation from this PC, by the IDs the page
-/// shows. Texts stay on the phone and stay hidden here; chat messages are
-/// removed from the PC's own store as well.
-pub fn delete_messages(ids: Vec<String>) {
+/// shows. Texts stay on the phone and stay hidden here, unless `on_phone` (the user chose
+/// it, each time) also has the phone delete them; chat messages are removed from the PC's
+/// own store as well.
+pub fn delete_messages(ids: Vec<String>, on_phone: bool) {
     let Some((device, thread, newest, keys, rows, date)) = state(|s| {
         let thread = s.thread.clone()?;
         let date = thread_date(s, &thread)?;
@@ -899,6 +1046,12 @@ pub fn delete_messages(ids: Vec<String>) {
         });
     }
     managed(device);
+    if on_phone && !is_chat {
+        // Only what the phone listed: a text still being sent has no number there yet.
+        let phone_ids: Vec<String> =
+            keys.into_iter().filter(|id| id.starts_with("sms:") || id.starts_with("mms:")).collect();
+        delete_on_phone(device, vec![(thread, Some(phone_ids))]);
+    }
 }
 
 /// Shows `device`'s messages (again: reloads).
@@ -2473,6 +2626,26 @@ mod tests {
 
         messages_local::forget(device);
         state(|s| *s = State::default());
+    }
+
+    #[test]
+    fn a_phone_that_could_not_delete_is_told_in_words_and_never_by_its_own_reason() {
+        let said = |e: Error| delete_problem(&e);
+        for e in [Error::Offline, Error::Timeout, Error::NotPaired, Error::Network("x".into())] {
+            assert!(said(e).contains("isn't connected"));
+        }
+        assert!(said(Error::Denied).contains("turned off"));
+        assert!(said(Error::Unsupported).contains("doesn't delete"));
+        let refused = said(Error::Protocol("INTERNAL: the phone couldn't do it".into()));
+        assert!(refused.contains("refused"), "{refused}");
+        // The PC's own side is always said to be done, and the phone's reason is not repeated.
+        for e in [Error::Offline, Error::Denied, Error::Unsupported, Error::Protocol("secret".into())] {
+            let text = said(e);
+            assert!(
+                text.contains("removed from this PC only") || text.contains("removed from this PC only.")
+            );
+            assert!(!text.contains("secret") && !text.contains("INTERNAL"));
+        }
     }
 
     #[test]

@@ -17,6 +17,9 @@ FocusScope {
     readonly property bool small: size === "sm"
     readonly property bool interactive: enabled && !busy
     readonly property color background: {
+        // A destructive choice: filled in the error color, in every look.
+        if (variant === "danger")
+            return mouse.pressed ? Qt.darker(Theme.error, 1.25) : (mouse.containsMouse ? Qt.darker(Theme.error, 1.1) : Theme.error)
         if (Theme.fluent) {
             if (variant === "fill")
                 return mouse.pressed ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.80)
@@ -38,6 +41,8 @@ FocusScope {
         return "transparent"
     }
     readonly property color foreground: {
+        if (variant === "danger")
+            return Theme.errorContent
         if (Theme.fluent) {
             if (variant === "fill")
                 return mouse.pressed ? Qt.rgba(Theme.primaryContent.r, Theme.primaryContent.g, Theme.primaryContent.b, 0.70) : Theme.primaryContent

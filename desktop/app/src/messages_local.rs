@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-//! What was done with conversations on this PC: deleted, marked unread. The
-//! phone is never asked, so this is a layer over what the phone lists: the
-//! conversations and messages are still on the phone. Kept by device in
+//! What was done with conversations on this PC: deleted, marked unread. This
+//! is a layer over what the phone lists: the phone is asked to delete (only
+//! when the user chose it, each time) or to mark unread (only when read state
+//! is synced) as well, and a phone that can't or won't leaves its
+//! conversations and messages as they were. Kept by device in
 //! `messages-local.json` in the data folder, and dropped with the phone.
 //!
 //! Dates are the phone's, from the conversation's latest message. A mark

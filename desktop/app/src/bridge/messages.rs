@@ -39,6 +39,10 @@ pub mod qobject {
         #[qproperty(QString, compose_name, cxx_name = "composeName")]
         /// Active app filter ("" = All, "sms" = SMS only, or package name).
         #[qproperty(QString, app_filter, cxx_name = "appFilter")]
+        /// The phone deletes texts when asked: deleting here can delete there too.
+        #[qproperty(bool, phone_can_delete, cxx_name = "phoneCanDelete")]
+        /// Marking unread here marks the phone's own messages too.
+        #[qproperty(bool, unread_syncs, cxx_name = "unreadSyncs")]
         /// Filter chips JSON array (`[{ key, label }, ...]`).
         #[qproperty(QString, available_apps, cxx_name = "availableApps")]
         /// True when at least one MessagingStyle chat thread exists for this phone.
@@ -114,22 +118,26 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "filterByApp"]
         fn filter_by_app(self: &Messages, app: &QString);
-        /// Marks conversations unread (a JSON array of IDs) until opened. Only on this PC.
+        /// Marks conversations unread (a JSON array of IDs) until opened, and on the phone
+        /// when it offers it (`unreadSyncs`).
         #[qinvokable]
         #[cxx_name = "markThreadsUnread"]
         fn mark_threads_unread(self: &Messages, ids: &QString);
-        /// Deletes conversations (a JSON array of IDs) from this PC; the phone keeps its own.
+        /// Deletes conversations (a JSON array of IDs) from this PC; the phone keeps its own
+        /// unless `onPhone` (the user chose it, and the phone offers it: `phoneCanDelete`).
         #[qinvokable]
         #[cxx_name = "deleteThreads"]
-        fn delete_threads(self: &Messages, ids: &QString);
-        /// Deletes messages of the open conversation (a JSON array of IDs) from this PC.
+        fn delete_threads(self: &Messages, ids: &QString, on_phone: bool);
+        /// Deletes messages of the open conversation (a JSON array of IDs) from this PC, and
+        /// from the phone when `onPhone` (the user chose it, and the phone offers it).
         #[qinvokable]
         #[cxx_name = "deleteMessages"]
-        fn delete_messages(self: &Messages, ids: &QString);
-        /// Marks the open conversation unread and leaves it. Only on this PC.
+        fn delete_messages(self: &Messages, ids: &QString, on_phone: bool);
+        /// Marks messages of the open conversation (a JSON array of IDs) unread, on the phone
+        /// when it offers it (`unreadSyncs`), and leaves the conversation.
         #[qinvokable]
-        #[cxx_name = "markOpenUnread"]
-        fn mark_open_unread(self: &Messages);
+        #[cxx_name = "markMessagesUnread"]
+        fn mark_messages_unread(self: &Messages, ids: &QString);
         /// Puts a picture of the conversation (its file URL) on the clipboard.
         #[qinvokable]
         #[cxx_name = "copyImage"]
@@ -186,6 +194,8 @@ pub struct MessagesRust {
     compose_to: QString,
     compose_name: QString,
     app_filter: QString,
+    phone_can_delete: bool,
+    unread_syncs: bool,
     available_apps: QString,
     has_chat_threads: bool,
     current_is_chat: bool,
@@ -248,6 +258,8 @@ impl qobject::Messages {
         self.as_mut().set_compose_to(QString::from(view.compose_to.as_deref().unwrap_or_default()));
         self.as_mut().set_compose_name(QString::from(view.compose_name.as_deref().unwrap_or_default()));
         self.as_mut().set_app_filter(QString::from(&view.app_filter));
+        self.as_mut().set_phone_can_delete(view.phone_can_delete);
+        self.as_mut().set_unread_syncs(view.unread_syncs);
         if differs(|v| &v.available_apps) {
             self.as_mut().set_available_apps(QString::from(&view.available_apps.to_string()));
         }
@@ -344,16 +356,16 @@ impl qobject::Messages {
         messages::mark_threads_unread(ids_of(ids));
     }
 
-    pub fn delete_threads(&self, ids: &QString) {
-        messages::delete_threads(ids_of(ids));
+    pub fn delete_threads(&self, ids: &QString, on_phone: bool) {
+        messages::delete_threads(ids_of(ids), on_phone);
     }
 
-    pub fn delete_messages(&self, ids: &QString) {
-        messages::delete_messages(ids_of(ids));
+    pub fn delete_messages(&self, ids: &QString, on_phone: bool) {
+        messages::delete_messages(ids_of(ids), on_phone);
     }
 
-    pub fn mark_open_unread(&self) {
-        messages::mark_open_unread();
+    pub fn mark_messages_unread(&self, ids: &QString) {
+        messages::mark_messages_unread(ids_of(ids));
     }
 
     pub fn copy_image(&self, url: &QString) {

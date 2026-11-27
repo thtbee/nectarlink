@@ -1788,11 +1788,11 @@ Item {
                         ListRow {
                             width: parent.width
                             iconPath: Icons.messages
-                            title: qsTr("Mark texts read on the phone")
+                            title: qsTr("Sync read state with the phone")
                             newKey: "mark-read-on-phone"
-                            description: qsTr("Reading a conversation here marks it read on the phone too, in its messaging app.")
+                            description: qsTr("Reading a conversation here marks it read on the phone, and marking it unread here marks it unread there. Messaging apps such as Google Messages keep their own state too, so their badge may not change.")
                             Toggle {
-                                label: qsTr("Mark texts read on the phone")
+                                label: qsTr("Sync read state with the phone")
                                 checked: Preferences.markReadOnPhone
                                 onToggled: (on) => Preferences.markReadOnPhone = on
                             }

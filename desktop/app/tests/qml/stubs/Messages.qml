@@ -16,6 +16,8 @@ QtObject {
     property string composeTo: ""
     property string composeName: ""
     property string appFilter: ""
+    property bool phoneCanDelete: false
+    property bool unreadSyncs: false
     property string availableApps: "[]"
     property bool hasChatThreads: false
     property bool currentIsChat: false
@@ -53,9 +55,9 @@ QtObject {
     function copy(text) { ask("copy", text) }
     function filterByApp(app) { appFilter = app }
     function markThreadsUnread(ids) { ask("markThreadsUnread", ids) }
-    function deleteThreads(ids) { ask("deleteThreads", ids) }
-    function deleteMessages(ids) { ask("deleteMessages", ids) }
-    function markOpenUnread() { ask("markOpenUnread") }
+    function deleteThreads(ids, onPhone) { ask("deleteThreads", ids); ask("deleteThreadsOnPhone", onPhone) }
+    function deleteMessages(ids, onPhone) { ask("deleteMessages", ids); ask("deleteMessagesOnPhone", onPhone) }
+    function markMessagesUnread(ids) { ask("markMessagesUnread", ids) }
     function attachFile(path) { return false }
     function pasteClipboardImage() { return false }
     function clearAttachment() {}

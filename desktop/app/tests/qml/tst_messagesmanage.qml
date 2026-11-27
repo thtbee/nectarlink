@@ -78,6 +78,7 @@ Item {
             Messages.asked = []
             Messages.thread = ""
             Messages.messages = "[]"
+            Messages.phoneCanDelete = false
             Messages.currentIsChat = false
             Messages.threads = JSON.stringify(root.threadRows(10))
             wait(50)
@@ -140,7 +141,7 @@ Item {
             compare(page.selectedThreads.length, 0)
         }
 
-        // On this PC it is the conversation that is marked unread, however many messages are chosen.
+        // Marking unread names the messages chosen, and asks for those.
         function test_selected_messages_are_marked_unread_by_count() {
             Messages.messages = JSON.stringify(root.messageRows(8))
             Messages.thread = "t1"
@@ -150,8 +151,74 @@ Item {
             const labels = page.messageEntries(page.selectedMessages, true).map(e => e.label)
             verify(labels.some(l => l.indexOf("unread") >= 0 && l.indexOf("conversation") < 0), labels.join("|"))
             click(root.find(page, "unreadSelectedMessages"))
-            verify(Messages.lastAsk("markOpenUnread") !== undefined)
+            compare(Messages.lastAsk("markMessagesUnread"), '["m2","m4"]')
             compare(page.selectedMessages.length, 0)
+        }
+
+        // A phone that deletes when asked: the user picks, each time, between deleting there too
+        // and only on this PC; cancelling does neither.
+        function test_a_phone_that_deletes_is_asked_each_time() {
+            Messages.phoneCanDelete = true
+            click(row(1), Qt.LeftButton, Qt.ControlModifier)
+            click(root.find(page, "deleteSelected"))
+            const sheet = root.find(page, "deleteSheet")
+            verify(sheet.opened)
+            verify(root.find(page, "confirmDeleteOnPhone").visible)
+            verify(root.find(page, "confirmDeleteHere").visible)
+            verify(!root.find(page, "confirmDelete").visible, "no single button when there are two choices")
+            compare(root.find(page, "confirmDeleteOnPhone").text, "Delete here and on the phone")
+            compare(root.find(page, "confirmDeleteHere").text, "Remove from this PC only")
+            compare(Messages.lastAsk("deleteThreads"), undefined, "nothing is deleted until chosen")
+
+            click(root.find(page, "cancelDelete"))
+            tryVerify(() => !sheet.visible)
+            compare(Messages.lastAsk("deleteThreads"), undefined, "cancel deletes nothing")
+
+            page.askDelete("threads", ["t1", "t2"])
+            click(root.find(page, "confirmDeleteHere"))
+            compare(Messages.lastAsk("deleteThreads"), '["t1","t2"]')
+            compare(Messages.lastAsk("deleteThreadsOnPhone"), false, "the PC's own only")
+            tryVerify(() => !sheet.visible)
+
+            page.askDelete("threads", ["t3"])
+            click(root.find(page, "confirmDeleteOnPhone"))
+            compare(Messages.lastAsk("deleteThreads"), '["t3"]')
+            compare(Messages.lastAsk("deleteThreadsOnPhone"), true)
+            tryVerify(() => !sheet.visible)
+        }
+
+        function test_messages_can_be_deleted_on_the_phone_too_when_it_offers_it() {
+            Messages.phoneCanDelete = true
+            Messages.messages = JSON.stringify(root.messageRows(4))
+            Messages.thread = "t1"
+            wait(100)
+            page.askDelete("messages", ["m1"])
+            const sheet = root.find(page, "deleteSheet")
+            verify(root.find(page, "confirmDeleteOnPhone").visible)
+            click(root.find(page, "confirmDeleteOnPhone"))
+            compare(Messages.lastAsk("deleteMessages"), '["m1"]')
+            compare(Messages.lastAsk("deleteMessagesOnPhone"), true)
+            tryVerify(() => !sheet.visible)
+            // A chat read from notifications isn't in the phone's messages: only the PC's.
+            Messages.currentIsChat = true
+            page.askDelete("messages", ["m2"])
+            verify(!root.find(page, "confirmDeleteOnPhone").visible)
+            verify(root.find(page, "confirmDelete").visible)
+            wait(50)
+            click(root.find(page, "confirmDelete"))
+            compare(Messages.lastAsk("deleteMessages"), '["m2"]')
+            compare(Messages.lastAsk("deleteMessagesOnPhone"), false)
+            tryVerify(() => !sheet.visible)
+        }
+
+        function test_a_phone_that_cannot_delete_keeps_the_single_pc_only_choice() {
+            page.askDelete("threads", ["t1"])
+            const sheet = root.find(page, "deleteSheet")
+            verify(!root.find(page, "confirmDeleteOnPhone").visible)
+            verify(root.find(page, "confirmDelete").visible)
+            click(root.find(page, "confirmDelete"))
+            compare(Messages.lastAsk("deleteThreadsOnPhone"), false)
+            tryVerify(() => !sheet.visible)
         }
 
         function test_right_click_opens_a_menu_for_that_conversation() {
@@ -235,7 +302,7 @@ Item {
             wait(100)
             click(bubbleOf("m1"), Qt.RightButton)
             page.menuChosen("unread")
-            verify(Messages.lastAsk("markOpenUnread") !== undefined)
+            compare(Messages.lastAsk("markMessagesUnread"), JSON.stringify(["m1"]))
             root.find(page, "contextMenu").close()
         }
 
@@ -296,7 +363,7 @@ Item {
 
         function test_mark_unread_on_a_picture_message_only_marks_unread() {
             chooseOnPicture("unread")
-            verify(Messages.lastAsk("markOpenUnread") !== undefined)
+            compare(Messages.lastAsk("markMessagesUnread"), JSON.stringify(["m1"]))
         }
 
         function test_delete_on_a_picture_message_only_asks_to_delete() {
