@@ -1684,6 +1684,13 @@
     <string name="pc_radio_wifi_off_title">%1$s の Wi-Fi をオフにしますか?</string>
     <string name="pc_radio_wifi_off_text">このスマートフォンが Wi-Fi で PC につながっている場合は接続が切れ、PC で Wi-Fi をオンに戻す必要があります。</string>
     <string name="pc_radio_wifi_off_confirm">オフにする</string>
+    <string name="channel_device_control">別のスマートフォンからの操作</string>
+    <string name="device_control_request_title">%1$s がこの端末を操作しようとしています</string>
+    <string name="device_control_request_text">ここでポインターを動かし、そのキーボードで入力することを許可します。設定 › デバイスでオフにできます。</string>
+    <string name="device_control_toggle">この端末の操作を許可</string>
+    <string name="device_control_toggle_hint">%1$s がタッチパッドとキーボードでこの端末を操作できます。この端末で Elevated が必要です。</string>
+    <string name="peer_control">操作</string>
+    <string name="remote_unsupported_device_text">このスマートフォンから操作するには、%1$s で Elevated をオンにしてください。</string>
 </resources>
 
 

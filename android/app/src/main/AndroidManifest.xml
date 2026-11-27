@@ -336,6 +336,11 @@
                 android:resource="@xml/input_service" />
         </service>
 
+        <!-- Allow, or not, another phone using this one as its touchpad target (#651). -->
+        <receiver
+            android:name=".elevated.DeviceControlRequest$Receiver"
+            android:exported="false" />
+
         <!-- The wireless debugging pairing code, typed into a notification. -->
         <receiver
             android:name=".elevated.PairingNotification$Receiver"
