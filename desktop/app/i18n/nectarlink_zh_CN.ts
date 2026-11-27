@@ -9324,6 +9324,11 @@ What it needs
         <translation>用 NectarLink 发送到 %1</translation>
     </message>
     <message>
+        <location filename="rust_strings.h" line="534"/>
+        <source>Send with NectarLink</source>
+        <translation>用 NectarLink 发送</translation>
+    </message>
+    <message>
         <location filename="rust_strings.h" line="505"/>
         <source>Sending to %1…</source>
         <translation>正在发送到 %1…</translation>

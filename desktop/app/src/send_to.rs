@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! Explorer's "Send to" menu: a shortcut per paired phone, which starts
-//! NectarLink with `--send-to <device> <files…>`. The running app sends the
+//! NectarLink with `--send-to <device> <files…>`. On Windows the phones are
+//! also in the menu's first level ([`crate::win::send_menu`]), which starts it
+//! the same way. The running app sends the
 //! files and follows the transfer in a Windows notification with a progress
 //! bar, so nothing else needs to open.
 
@@ -102,6 +104,10 @@ fn sync() {
             if lock(&APPLIED).as_ref() == Some(&desired) {
                 return;
             }
+            #[cfg(windows)]
+            if let Err(e) = crate::win::send_menu::write(&desired) {
+                tracing::warn!(error = %e, "can't update Explorer's Send with NectarLink entry");
+            }
             match reconcile(&dir, &desired, &exe) {
                 Ok(()) => *lock(&APPLIED) = Some(desired),
                 Err(e) => {
@@ -119,6 +125,10 @@ fn sync() {
 
 /// Removes this app's shortcuts (when uninstalling).
 pub fn remove_all() -> io::Result<()> {
+    #[cfg(windows)]
+    if let Err(e) = crate::win::send_menu::clear() {
+        tracing::warn!(error = %e, "can't remove Explorer's Send with NectarLink entry");
+    }
     let res = match (shortcut::send_to_dir(), std::env::current_exe()) {
         (Some(dir), Ok(exe)) => reconcile(&dir, &[], &exe),
         _ => Ok(()),

@@ -9280,6 +9280,11 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
         <translation>NectarLinkで%1に送信</translation>
     </message>
     <message>
+        <location filename="rust_strings.h" line="534"/>
+        <source>Send with NectarLink</source>
+        <translation>NectarLinkで送信</translation>
+    </message>
+    <message>
         <location filename="rust_strings.h" line="505"/>
         <source>Sending to %1…</source>
         <translation>%1へ送信中…</translation>

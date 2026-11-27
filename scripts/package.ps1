@@ -103,10 +103,10 @@ if (-not $SkipBuild) {
     if ($isArm64) {
         $env:QMAKE = Join-Path $arm64ToolDir "qmake6.exe"
         if (-not (Test-Path $env:QMAKE)) { $env:QMAKE = Join-Path $arm64ToolDir "qmake.exe" }
-        Invoke-Native "the build" { cargo build --locked --release --target aarch64-pc-windows-msvc -p nectarlink-desktop -p nectarlink-mcp -p nectarlink-vcam -p nectarlink-credprov }
+        Invoke-Native "the build" { cargo build --locked --release --target aarch64-pc-windows-msvc -p nectarlink-desktop -p nectarlink-mcp -p nectarlink-vcam -p nectarlink-credprov -p nectarlink-shellmenu }
     } else {
         $env:PATH = "$(Join-Path $targetKit 'bin');$env:PATH"
-        Invoke-Native "the build" { cargo build --locked --release -p nectarlink-desktop -p nectarlink-mcp -p nectarlink-vcam -p nectarlink-credprov }
+        Invoke-Native "the build" { cargo build --locked --release -p nectarlink-desktop -p nectarlink-mcp -p nectarlink-vcam -p nectarlink-credprov -p nectarlink-shellmenu }
     }
 }
 $exe = Join-Path $targetDir 'nectarlink-desktop.exe'
@@ -116,6 +116,9 @@ if (-not (Test-Path $vcamDll)) { throw "no release build at $vcamDll" }
 # Unlock with phone: the credential provider, registered only when turned on.
 $credprovDll = Join-Path $targetDir 'nectarlink_credprov.dll'
 if (-not (Test-Path $credprovDll)) { throw "no release build at $credprovDll" }
+# "Send with NectarLink" in File Explorer's menu, declared in the sparse package (#451).
+$shellMenuDll = Join-Path $targetDir 'nectarlink_shellmenu.dll'
+if (-not (Test-Path $shellMenuDll)) { throw "no release build at $shellMenuDll" }
 
 # ---- Stage ----
 Step "Stage"
@@ -145,6 +148,7 @@ if (-not (Test-Path $agentExe)) { throw "no release build at $agentExe" }
 Copy-Item $agentExe $stage
 Copy-Item $vcamDll $stage
 Copy-Item $credprovDll $stage
+Copy-Item $shellMenuDll $stage
 
 Invoke-Native "windeployqt" {
     $deployArgs = @(
@@ -265,6 +269,7 @@ if ($makeappx) {
         Copy-Item (Join-Path $stage 'AppxManifest.xml'), $assetsDir -Destination (Join-Path $check 'content') -Recurse
         # The app is outside the package (its install folder); any file stands in for it.
         Set-Content (Join-Path $check 'content\nectarlink-desktop.exe') 'app'
+        Set-Content (Join-Path $check 'content\nectarlink_shellmenu.dll') 'menu'
         Invoke-Native "the package manifest check" {
             & $makeappx.FullName pack /o /d (Join-Path $check 'content') /p (Join-Path $check 'check.msix')
         }

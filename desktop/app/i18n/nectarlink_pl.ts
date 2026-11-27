@@ -9336,6 +9336,11 @@ Wymagania
         <translation>Wyślij do %1 przez NectarLink</translation>
     </message>
     <message>
+        <location filename="rust_strings.h" line="534"/>
+        <source>Send with NectarLink</source>
+        <translation>Wyślij przez NectarLink</translation>
+    </message>
+    <message>
         <location filename="rust_strings.h" line="505"/>
         <source>Sending to %1…</source>
         <translation>Wysyłanie do %1…</translation>
