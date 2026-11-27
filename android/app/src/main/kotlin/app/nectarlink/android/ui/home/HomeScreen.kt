@@ -15,6 +15,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
@@ -1752,172 +1754,193 @@ private fun PcCard(
                 }
             }
             Spacer(Modifier.height(16.dp))
+            val folds by HomeFolds.state(context).collectAsStateWithLifecycle()
+            val reducedMotion = LocalReducedMotion.current
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 // 1. Primary Workspace Bento Grid (2x2): Control PC, Deck, Desk Mode, Webcam
-                Text(
-                    text = stringResource(R.string.home_section_screen),
-                    style = MaterialTheme.typography.labelSmall,
+                FoldableSectionTitle(
+                    title = stringResource(R.string.home_section_screen),
+                    folded = HomeFolds.SCREEN in folds,
                     color = sectionLabelColor,
-                    modifier = Modifier.padding(start = 2.dp),
+                    chevron = ChevronDownIcon,
+                    onToggle = { HomeFolds.toggle(context, HomeFolds.SCREEN) },
                 )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                AnimatedVisibility(
+                    visible = HomeFolds.SCREEN !in folds,
+                    enter = if (reducedMotion) EnterTransition.None else expandVertically() + fadeIn(),
+                    exit = if (reducedMotion) ExitTransition.None else shrinkVertically() + fadeOut(),
                 ) {
-                    Button(
-                        contentPadding = CardButtonPadding,
-                        enabled = device.online,
-                        colors = primaryBtn,
-                        onClick = { onRemote(device.id) },
-                        modifier = Modifier.weight(1f).heightIn(min = 46.dp),
-                    ) {
-                        Icon(
-                            imageVector = RemotePcIcon,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        ButtonLabel(stringResource(R.string.action_remote_pc))
-                    }
-                    FilledTonalButton(
-                        contentPadding = CardButtonPadding,
-                        enabled = device.online,
-                        colors = tonal,
-                        onClick = { onDeck(device.id) },
-                        modifier = Modifier.weight(1f).heightIn(min = 46.dp),
-                    ) {
-                        Icon(
-                            imageVector = DeckGridIcon,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        ButtonLabel(stringResource(R.string.action_deck_pc))
-                    }
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    FilledTonalButton(
-                        contentPadding = CardButtonPadding,
-                        enabled = device.online,
-                        colors = tonal,
-                        onClick = { onDesk(device.id) },
-                        modifier = Modifier.weight(1f).heightIn(min = 44.dp),
-                    ) {
-                        Icon(
-                            imageVector = DeskClockIcon,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        ButtonLabel(stringResource(R.string.action_desk_pc))
-                    }
-                    FilledTonalButton(
-                        contentPadding = CardButtonPadding,
-                        enabled = device.online,
-                        colors = tonal,
-                        onClick = { onWebcam(device.id) },
-                        modifier = Modifier.weight(1f).heightIn(min = 44.dp),
-                    ) {
-                        Icon(
-                            imageVector = CameraLensIcon,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        ButtonLabel(stringResource(R.string.action_webcam_pc))
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Button(
+                                contentPadding = CardButtonPadding,
+                                enabled = device.online,
+                                colors = primaryBtn,
+                                onClick = { onRemote(device.id) },
+                                modifier = Modifier.weight(1f).heightIn(min = 46.dp),
+                            ) {
+                                Icon(
+                                    imageVector = RemotePcIcon,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                ButtonLabel(stringResource(R.string.action_remote_pc))
+                            }
+                            FilledTonalButton(
+                                contentPadding = CardButtonPadding,
+                                enabled = device.online,
+                                colors = tonal,
+                                onClick = { onDeck(device.id) },
+                                modifier = Modifier.weight(1f).heightIn(min = 46.dp),
+                            ) {
+                                Icon(
+                                    imageVector = DeckGridIcon,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                ButtonLabel(stringResource(R.string.action_deck_pc))
+                            }
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            FilledTonalButton(
+                                contentPadding = CardButtonPadding,
+                                enabled = device.online,
+                                colors = tonal,
+                                onClick = { onDesk(device.id) },
+                                modifier = Modifier.weight(1f).heightIn(min = 44.dp),
+                            ) {
+                                Icon(
+                                    imageVector = DeskClockIcon,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                ButtonLabel(stringResource(R.string.action_desk_pc))
+                            }
+                            FilledTonalButton(
+                                contentPadding = CardButtonPadding,
+                                enabled = device.online,
+                                colors = tonal,
+                                onClick = { onWebcam(device.id) },
+                                modifier = Modifier.weight(1f).heightIn(min = 44.dp),
+                            ) {
+                                Icon(
+                                    imageVector = CameraLensIcon,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                ButtonLabel(stringResource(R.string.action_webcam_pc))
+                            }
+                        }
                     }
                 }
 
                 // 2. Files & Clipboard Bento Strip (Always visible, no hidden expander)
-                Text(
-                    text = stringResource(R.string.home_section_transfer),
-                    style = MaterialTheme.typography.labelSmall,
+                FoldableSectionTitle(
+                    title = stringResource(R.string.home_section_transfer),
+                    folded = HomeFolds.TRANSFER in folds,
                     color = sectionLabelColor,
-                    modifier = Modifier.padding(start = 2.dp, top = 2.dp),
+                    chevron = ChevronDownIcon,
+                    onToggle = { HomeFolds.toggle(context, HomeFolds.TRANSFER) },
+                    top = 2.dp,
                 )
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .bentoWell(
-                            cornerRadius = 20.dp,
-                            fillColor = fillInk.copy(alpha = if (isGlass) 0.11f else 0.07f),
-                            borderColor = if (isGlass) ink.copy(alpha = 0.16f) else Color.Transparent,
-                        )
-                        .padding(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                AnimatedVisibility(
+                    visible = HomeFolds.TRANSFER !in folds,
+                    enter = if (reducedMotion) EnterTransition.None else expandVertically() + fadeIn(),
+                    exit = if (reducedMotion) ExitTransition.None else shrinkVertically() + fadeOut(),
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        FilledTonalButton(
-                            contentPadding = CardButtonPadding,
-                            enabled = if (device.online) device.has("files.send") else true,
-                            colors = tonal,
-                            onClick = { pickFiles.launch(arrayOf("*/*")) },
-                            modifier = Modifier.weight(1f),
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .bentoWell(
+                                    cornerRadius = 20.dp,
+                                    fillColor = fillInk.copy(alpha = if (isGlass) 0.11f else 0.07f),
+                                    borderColor = if (isGlass) ink.copy(alpha = 0.16f) else Color.Transparent,
+                                )
+                                .padding(10.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            Icon(
-                                imageVector = SendArrowIcon,
-                                contentDescription = null,
-                                modifier = Modifier.size(15.dp),
-                            )
-                            Spacer(Modifier.width(6.dp))
-                            ButtonLabel(stringResource(R.string.action_send_files))
-                        }
-                        FilledTonalButton(
-                            contentPadding = CardButtonPadding,
-                            enabled = if (device.online) device.has("files.send") else true,
-                            colors = tonal,
-                            onClick = { pickFolder.launch(null) },
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            Icon(
-                                imageVector = FolderIcon,
-                                contentDescription = null,
-                                modifier = Modifier.size(15.dp),
-                            )
-                            Spacer(Modifier.width(6.dp))
-                            ButtonLabel(stringResource(R.string.action_send_folder))
-                        }
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        FilledTonalButton(
-                            contentPadding = CardButtonPadding,
-                            // Offline, the clip waits in the send queue.
-                            enabled = if (device.online) device.usable("clipboard.auto_phone_to_pc") else true,
-                            colors = tonal,
-                            onClick = { context.startActivity(SendActivity.sendClipboardIntent(context, device.id)) },
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            Icon(
-                                imageVector = ClipboardIcon,
-                                contentDescription = null,
-                                modifier = Modifier.size(15.dp),
-                            )
-                            Spacer(Modifier.width(6.dp))
-                            ButtonLabel(stringResource(R.string.action_send_clipboard))
-                        }
-                        FilledTonalButton(
-                            contentPadding = CardButtonPadding,
-                            enabled = device.online,
-                            colors = tonal,
-                            onClick = { onBrowsePcFiles(device.id) },
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            Icon(
-                                imageVector = PcFolderIcon,
-                                contentDescription = null,
-                                modifier = Modifier.size(15.dp),
-                            )
-                            Spacer(Modifier.width(6.dp))
-                            ButtonLabel(stringResource(R.string.action_browse_pc_files))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                FilledTonalButton(
+                                    contentPadding = CardButtonPadding,
+                                    enabled = if (device.online) device.has("files.send") else true,
+                                    colors = tonal,
+                                    onClick = { pickFiles.launch(arrayOf("*/*")) },
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Icon(
+                                        imageVector = SendArrowIcon,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(15.dp),
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    ButtonLabel(stringResource(R.string.action_send_files))
+                                }
+                                FilledTonalButton(
+                                    contentPadding = CardButtonPadding,
+                                    enabled = if (device.online) device.has("files.send") else true,
+                                    colors = tonal,
+                                    onClick = { pickFolder.launch(null) },
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Icon(
+                                        imageVector = FolderIcon,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(15.dp),
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    ButtonLabel(stringResource(R.string.action_send_folder))
+                                }
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                FilledTonalButton(
+                                    contentPadding = CardButtonPadding,
+                                    // Offline, the clip waits in the send queue.
+                                    enabled = if (device.online) device.usable("clipboard.auto_phone_to_pc") else true,
+                                    colors = tonal,
+                                    onClick = { context.startActivity(SendActivity.sendClipboardIntent(context, device.id)) },
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Icon(
+                                        imageVector = ClipboardIcon,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(15.dp),
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    ButtonLabel(stringResource(R.string.action_send_clipboard))
+                                }
+                                FilledTonalButton(
+                                    contentPadding = CardButtonPadding,
+                                    enabled = device.online,
+                                    colors = tonal,
+                                    onClick = { onBrowsePcFiles(device.id) },
+                                    modifier = Modifier.weight(1f),
+                                ) {
+                                    Icon(
+                                        imageVector = PcFolderIcon,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(15.dp),
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    ButtonLabel(stringResource(R.string.action_browse_pc_files))
+                                }
+                            }
                         }
                     }
                 }
@@ -1960,112 +1983,122 @@ private fun PcCard(
                 }
 
                 // 4. Utilities & Power Row (Voice Memo, Ring PC, Lock, Sleep)
-                Text(
-                    text = stringResource(R.string.home_section_system),
-                    style = MaterialTheme.typography.labelSmall,
+                FoldableSectionTitle(
+                    title = stringResource(R.string.home_section_system),
+                    folded = HomeFolds.SYSTEM in folds,
                     color = sectionLabelColor,
-                    modifier = Modifier.padding(start = 2.dp, top = 2.dp),
+                    chevron = ChevronDownIcon,
+                    onToggle = { HomeFolds.toggle(context, HomeFolds.SYSTEM) },
+                    top = 2.dp,
                 )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                AnimatedVisibility(
+                    visible = HomeFolds.SYSTEM !in folds,
+                    enter = if (reducedMotion) EnterTransition.None else expandVertically() + fadeIn(),
+                    exit = if (reducedMotion) ExitTransition.None else shrinkVertically() + fadeOut(),
                 ) {
-                    FilledTonalButton(
-                        contentPadding = CardButtonPadding,
-                        enabled = device.online,
-                        colors = tonal,
-                        onClick = { onRecord(device.id) },
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Icon(
-                            imageVector = MicIcon,
-                            contentDescription = null,
-                            modifier = Modifier.size(15.dp),
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        ButtonLabel(stringResource(R.string.action_record_pc))
-                    }
-                    FilledTonalButton(
-                        contentPadding = CardButtonPadding,
-                        enabled = device.online,
-                        colors = tonal,
-                        onClick = { onRing(device.id, !ringing) },
-                        modifier = Modifier.weight(1f),
-                    ) {
-                        Icon(
-                            imageVector = BellIcon,
-                            contentDescription = null,
-                            modifier = Modifier.size(15.dp),
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        ButtonLabel(stringResource(if (ringing) R.string.action_stop_ringing else R.string.action_ring_pc))
-                    }
-                }
-                if (device.has("device.unlock_from_phone") && device.unlockEnabled) {
-                    OutlinedButton(
-                        contentPadding = CardButtonPadding,
-                        enabled = device.online,
-                        colors = outlined,
-                        border = outline,
-                        onClick = { onUnlock(device.id) },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        ButtonLabel(stringResource(R.string.action_unlock_pc))
-                    }
-                }
-                if (device.has("device.pc_actions")) {
-                    var confirmPowerAction by remember { mutableStateOf<Int?>(null) }
-                    val actions = buildList<Pair<Int, () -> Unit>> {
-                        add(R.string.action_lock_pc to { onPower(device.id, false) })
-                        add(R.string.action_sleep_pc to { onPower(device.id, true) })
-                        if (device.has("device.pc_hibernate")) add(R.string.action_hibernate_pc to { onHibernate(device.id) })
-                        if (device.has("device.pc_shutdown")) {
-                            add(R.string.action_shutdown_pc to { confirmPowerAction = R.string.action_shutdown_pc })
-                        }
-                        if (device.has("device.pc_restart")) {
-                            add(R.string.action_restart_pc to { confirmPowerAction = R.string.action_restart_pc })
-                        }
-                    }
-                    actions.chunked(if (actions.size == 4) 2 else 3).forEach { row ->
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            row.forEach { (label, action) ->
-                                OutlinedButton(
-                                    contentPadding = CardButtonPadding,
-                                    enabled = device.online,
-                                    colors = outlined,
-                                    border = outline,
-                                    onClick = action,
-                                    modifier = Modifier.weight(1f),
-                                ) {
-                                    ButtonLabel(stringResource(label))
-                                }
+                            FilledTonalButton(
+                                contentPadding = CardButtonPadding,
+                                enabled = device.online,
+                                colors = tonal,
+                                onClick = { onRecord(device.id) },
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Icon(
+                                    imageVector = MicIcon,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(15.dp),
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                ButtonLabel(stringResource(R.string.action_record_pc))
+                            }
+                            FilledTonalButton(
+                                contentPadding = CardButtonPadding,
+                                enabled = device.online,
+                                colors = tonal,
+                                onClick = { onRing(device.id, !ringing) },
+                                modifier = Modifier.weight(1f),
+                            ) {
+                                Icon(
+                                    imageVector = BellIcon,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(15.dp),
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                ButtonLabel(stringResource(if (ringing) R.string.action_stop_ringing else R.string.action_ring_pc))
                             }
                         }
-                    }
-                    confirmPowerAction?.let { label ->
-                        val restart = label == R.string.action_restart_pc
-                        AlertDialog(
-                            onDismissRequest = { confirmPowerAction = null },
-                            containerColor = glassModalContainerColor(),
-                            title = {
-                                Text(stringResource(if (restart) R.string.restart_pc_title else R.string.shutdown_pc_title, device.name))
-                            },
-                            text = { Text(stringResource(if (restart) R.string.restart_pc_text else R.string.shutdown_pc_text)) },
-                            confirmButton = {
-                                TextButton(onClick = {
-                                    confirmPowerAction = null
-                                    if (restart) onRestart(device.id) else onShutdown(device.id)
-                                }) { Text(stringResource(label)) }
-                            },
-                            dismissButton = {
-                                TextButton(onClick = { confirmPowerAction = null }) {
-                                    Text(stringResource(R.string.action_cancel))
+                        if (device.has("device.unlock_from_phone") && device.unlockEnabled) {
+                            OutlinedButton(
+                                contentPadding = CardButtonPadding,
+                                enabled = device.online,
+                                colors = outlined,
+                                border = outline,
+                                onClick = { onUnlock(device.id) },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                ButtonLabel(stringResource(R.string.action_unlock_pc))
+                            }
+                        }
+                        if (device.has("device.pc_actions")) {
+                            var confirmPowerAction by remember { mutableStateOf<Int?>(null) }
+                            val actions = buildList<Pair<Int, () -> Unit>> {
+                                add(R.string.action_lock_pc to { onPower(device.id, false) })
+                                add(R.string.action_sleep_pc to { onPower(device.id, true) })
+                                if (device.has("device.pc_hibernate")) add(R.string.action_hibernate_pc to { onHibernate(device.id) })
+                                if (device.has("device.pc_shutdown")) {
+                                    add(R.string.action_shutdown_pc to { confirmPowerAction = R.string.action_shutdown_pc })
                                 }
-                            },
-                        )
+                                if (device.has("device.pc_restart")) {
+                                    add(R.string.action_restart_pc to { confirmPowerAction = R.string.action_restart_pc })
+                                }
+                            }
+                            actions.chunked(if (actions.size == 4) 2 else 3).forEach { row ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    row.forEach { (label, action) ->
+                                        OutlinedButton(
+                                            contentPadding = CardButtonPadding,
+                                            enabled = device.online,
+                                            colors = outlined,
+                                            border = outline,
+                                            onClick = action,
+                                            modifier = Modifier.weight(1f),
+                                        ) {
+                                            ButtonLabel(stringResource(label))
+                                        }
+                                    }
+                                }
+                            }
+                            confirmPowerAction?.let { label ->
+                                val restart = label == R.string.action_restart_pc
+                                AlertDialog(
+                                    onDismissRequest = { confirmPowerAction = null },
+                                    containerColor = glassModalContainerColor(),
+                                    title = {
+                                        Text(stringResource(if (restart) R.string.restart_pc_title else R.string.shutdown_pc_title, device.name))
+                                    },
+                                    text = { Text(stringResource(if (restart) R.string.restart_pc_text else R.string.shutdown_pc_text)) },
+                                    confirmButton = {
+                                        TextButton(onClick = {
+                                            confirmPowerAction = null
+                                            if (restart) onRestart(device.id) else onShutdown(device.id)
+                                        }) { Text(stringResource(label)) }
+                                    },
+                                    dismissButton = {
+                                        TextButton(onClick = { confirmPowerAction = null }) {
+                                            Text(stringResource(R.string.action_cancel))
+                                        }
+                                    },
+                                )
+                            }
+                        }
                     }
                 }
             }
