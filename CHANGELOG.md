@@ -11,6 +11,9 @@ change things that need a step from you, and its notes say so.
 - **New settings say so.** After an update, the settings it added have a **New** pill, and so
   does their section in the PC's Settings, until you've looked at that section. A new install
   starts without them. Thanks to [@jed84](https://github.com/jed84) ([#656](https://github.com/thtbee/nectarlink/issues/656)).
+- **Now playing shows the time you want.** The time on the right of Now playing on the PC's Home
+  can show what's left, the whole length, or both: click it to switch, or pick in Settings ›
+  General. Thanks to [@jed84](https://github.com/jed84) ([#658](https://github.com/thtbee/nectarlink/issues/658)).
 - **One mouse and keyboard for two PCs.** Set another paired PC **Beside this PC** on the left
   or right, and the mouse goes over that edge of the screen onto it, with the keyboard typing
   there, no phone needed. The other PC asks first. From Windows, to Windows or Linux. Thanks to
@@ -597,6 +600,10 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **The phone's volume buttons work for the phone while it plays something itself,** with
+  **Volume buttons control your PC** on and the PC playing too. They went to the PC, so the phone's
+  own volume couldn't be changed. Thanks to [@Deliond](https://github.com/Deliond)
+  ([#643](https://github.com/thtbee/nectarlink/issues/643)).
 - **Copy and paste on the phone works with Elevated on** for phones where it pasted nothing in
   every app (a Xiaomi with HyperOS). Elevated only watches the clipboard while some device takes
   the phone's copies by itself, so with **Share my clipboard with it** off for every device, it

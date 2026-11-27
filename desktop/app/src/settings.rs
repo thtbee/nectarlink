@@ -643,6 +643,9 @@ pub struct Settings {
     /// The app's language: a locale name from `i18n::LANGUAGES`, or "" for
     /// the system's.
     pub language: String,
+    /// What the right-hand time on Home's Now playing card shows (#658):
+    /// "remaining", "total" or "both".
+    pub media_time: String,
     /// Play on phone: mute this PC's speakers while a phone watches its
     /// playback (the phone still gets the sound).
     pub mute_while_watched: bool,
@@ -994,6 +997,7 @@ impl Default for Settings {
             pause_media_on_call: true,
             mute_while_watched: true,
             language: String::new(),
+            media_time: "remaining".into(),
             sync_dnd: false,
             enter_sends: false,
             right_click_long_press: false,
@@ -1359,6 +1363,7 @@ mod tests {
             pause_media_on_call: false,
             mute_while_watched: false,
             language: "zh_CN".into(),
+            media_time: "both".into(),
             sync_dnd: true,
             enter_sends: true,
             right_click_long_press: true,

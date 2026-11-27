@@ -7667,6 +7667,11 @@ Voraussetzungen
         <source>PC speaker</source>
         <translation>PC-Lautsprecher</translation>
     </message>
+    <message>
+        <location filename="../qml/components/NowPlaying.qml" line="1"/>
+        <source>Time shown: %1. Click to switch</source>
+        <translation>Angezeigte Zeit: %1. Zum Wechseln klicken</translation>
+    </message>
 </context>
 <context>
     <name>Obs</name>
@@ -11844,6 +11849,31 @@ Voraussetzungen
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>A phone paired with this PC in Bluetooth settings stays connected without Wi-Fi or data, for notifications, texts, calls and the clipboard. Turn it on in the phone&apos;s Settings too.</source>
         <translation>Ein Handy, das in den Bluetooth-Einstellungen mit diesem PC gekoppelt ist, bleibt ohne WLAN oder mobile Daten verbunden, für Benachrichtigungen, SMS, Anrufe und die Zwischenablage. Schalte es auch in den Einstellungen des Handys ein.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Now playing time</source>
+        <translation>Zeit bei Aktuelle Wiedergabe</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>What the time on the right of Now playing on Home shows. Clicking it there switches too.</source>
+        <translation>Was die Zeit rechts bei Aktuelle Wiedergabe auf der Startseite zeigt. Ein Klick darauf wechselt auch.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Remaining</source>
+        <translation>Verbleibend</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Total</source>
+        <translation>Gesamt</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Both</source>
+        <translation>Beides</translation>
     </message>
 </context>
 <context>

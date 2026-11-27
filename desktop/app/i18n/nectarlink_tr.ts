@@ -7658,6 +7658,11 @@ Neler gerekir
         <source>PC speaker</source>
         <translation>Bilgisayar hoparlörü</translation>
     </message>
+    <message>
+        <location filename="../qml/components/NowPlaying.qml" line="1"/>
+        <source>Time shown: %1. Click to switch</source>
+        <translation>Gösterilen süre: %1. Değiştirmek için tıklayın</translation>
+    </message>
 </context>
 <context>
     <name>Obs</name>
@@ -11835,6 +11840,31 @@ Neler gerekir
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>A phone paired with this PC in Bluetooth settings stays connected without Wi-Fi or data, for notifications, texts, calls and the clipboard. Turn it on in the phone&apos;s Settings too.</source>
         <translation>Bluetooth ayarlarında bu bilgisayarla eşlenen bir telefon, Wi-Fi veya veri olmadan bildirimler, mesajlar, aramalar ve pano için bağlı kalır. Bunu telefonun ayarlarında da açın.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Now playing time</source>
+        <translation>Şimdi çalıyor süresi</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>What the time on the right of Now playing on Home shows. Clicking it there switches too.</source>
+        <translation>Ana sayfadaki Şimdi çalıyor&apos;un sağındaki sürenin ne gösterdiği. Oraya tıklamak da değiştirir.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Remaining</source>
+        <translation>Kalan</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Total</source>
+        <translation>Toplam</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Both</source>
+        <translation>İkisi</translation>
     </message>
 </context>
 <context>

@@ -14,6 +14,7 @@ use serde::Serialize;
 pub const NEW: &[(&str, &str)] = &[
     ("toolbar-beside", "general"),
     ("mark-read-on-phone", "general"),
+    ("media-time", "general"),
     ("beside-this-pc", "devices"),
     ("unlock-pc", "devices"),
     ("frame-rate", "camera_audio"),
