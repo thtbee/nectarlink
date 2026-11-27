@@ -13,9 +13,22 @@ change things that need a step from you, and its notes say so.
   has **Copy text**, **Mark as unread** (**Mark 3 messages as unread** for a selection) and **Delete message** in its own menu, and
   the open conversation has **Mark as unread** and **Delete** in its **More** menu. **Select** (or
   Ctrl+click, Cmd+click on a Mac) picks several, Shift+click a range, **Esc** lets go, and a toolbar
-  shows how many with what to do with them. This is on the PC only: the phone keeps every
-  conversation and message. A deleted conversation shows again, with only what is newer, when a
-  text arrives.
+  shows how many with what to do with them. Delete and mark unread can reach the phone too, see
+  below. A deleted conversation shows again, with only what is newer, when a text arrives.
+- **Mark unread and delete on the phone, too.** With the `Elevated` helper running, a phone now
+  offers to mark a conversation's latest text unread, and to delete texts and conversations, in its
+  own messages. **Mark as unread** marks the conversation's latest text, or the messages you chose,
+  unread on the phone's messages. A messaging app that keeps its own state may not show it: the
+  system's AOSP Messaging reads a message's state only as it arrives and never follows this. In the conversation list, the badge now counts the new texts the phone
+  has a notification for, and a conversation that is only unread, or marked unread, is bold with no
+  badge. **Sync read state with the phone** (the setting that was **Mark texts read on the
+  phone**; it stays off until you turn it on) still only decides whether reading on the PC marks
+  read on the phone. When the phone can delete, deleting asks every time:
+  **Delete here and on the phone** (it can't be undone) or **Remove from this PC only**, and
+  nothing is deleted on the phone without that choice. A phone whose messages refuse the change is
+  reported as **Couldn't delete on the phone**, and the PC still removes its own copy. This comes
+  from the shell's write access to the phone's messages, so it depends on the phone: it has not
+  been tried on every make.
 - **Copy, save and share a picture from a conversation.** The picture viewer in Messages has
   **Copy image**, **Save as…** and, on Windows and on a Mac, **Share** (the system's share sheet).
 - **An app you hide on the PC stays on the phone.** Its notifications and chats aren't sent to
