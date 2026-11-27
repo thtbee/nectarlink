@@ -20,6 +20,11 @@ change things that need a step from you, and its notes say so.
 - **Your own pictures on Deck tiles.** In a tile's editor on the PC, **Choose…** next to **Picture**
   takes any image and shows it instead of the icon, on the PC's Deck page and on the phone.
   Thanks to [@hichamb1](https://github.com/hichamb1) and [@riyaddl](https://github.com/riyaddl) ([#490](https://github.com/thtbee/nectarlink/issues/490)).
+- **Chat between your devices.** Type a note on the PC and it shows on the phone, and the other
+  way round: a Chat card on the PC's Home and a Chat button on each device's card on the phone open
+  it. Notes stay on the two devices with the rest of the timeline; your own can be changed, and
+  either side can delete one. Both devices need this version. Thanks to
+  [@amir1376](https://github.com/amir1376) ([#698](https://github.com/thtbee/nectarlink/issues/698)).
 - **Pick which of the PC's players Now playing controls.** With several players running on the PC,
   their names sit in a row on the PC's Now playing card: click one to control it. Thanks to
   [@jed84](https://github.com/jed84) ([#665](https://github.com/thtbee/nectarlink/issues/665)).
