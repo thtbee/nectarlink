@@ -531,6 +531,7 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("SendTo", "Couldn't share with %1"), // desktop/app/src/send_to.rs
     QT_TRANSLATE_NOOP("SendTo", "File failed integrity check; partial file kept to resume."), // desktop/app/src/send_to.rs
     QT_TRANSLATE_NOOP("SendTo", "Send to %1 with NectarLink"), // desktop/app/src/send_to.rs
+    QT_TRANSLATE_NOOP("SendTo", "Send with NectarLink"), // desktop/app/src/win/send_menu.rs
     QT_TRANSLATE_NOOP("SendTo", "Sending to %1…"), // desktop/app/src/send_to.rs
     QT_TRANSLATE_NOOP("SendTo", "Sent to %1"), // desktop/app/src/send_to.rs
     QT_TRANSLATE_NOOP("SendTo", "The transfer didn't go through."), // desktop/app/src/send_to.rs

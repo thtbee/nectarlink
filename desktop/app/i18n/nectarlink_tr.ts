@@ -9320,6 +9320,11 @@ Neler gerekir
         <translation>NectarLink ile %1 cihazına gönder</translation>
     </message>
     <message>
+        <location filename="rust_strings.h" line="534"/>
+        <source>Send with NectarLink</source>
+        <translation>NectarLink ile gönder</translation>
+    </message>
+    <message>
         <location filename="rust_strings.h" line="505"/>
         <source>Sending to %1…</source>
         <translation>%1 cihazına gönderiliyor…</translation>

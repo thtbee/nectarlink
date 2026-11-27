@@ -9295,6 +9295,11 @@ Qué necesitas
         <translation>Enviar a %1 con NectarLink</translation>
     </message>
     <message>
+        <location filename="rust_strings.h" line="534"/>
+        <source>Send with NectarLink</source>
+        <translation>Enviar con NectarLink</translation>
+    </message>
+    <message>
         <location filename="rust_strings.h" line="505"/>
         <source>Sending to %1…</source>
         <translation>Enviando a %1…</translation>
