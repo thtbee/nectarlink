@@ -621,6 +621,9 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **Your voice from the PC stays clear on a phone call.** When the phone got the PC's microphone
+  in pieces that split a sample, the rest of the call's sound from the PC turned to noise.
+  Thanks to [@farfromrefug](https://github.com/farfromrefug) ([#693](https://github.com/thtbee/nectarlink/pull/693)).
 - **Pairing fits a phone held sideways.** In landscape or a short window, the QR scanner, the code
   and the list of nearby PCs ran off the screen; wide windows now show two panes and short ones
   scroll. Thanks to [@aihehye](https://github.com/aihehye) ([#529](https://github.com/thtbee/nectarlink/issues/529), [#690](https://github.com/thtbee/nectarlink/pull/690)).
