@@ -16,8 +16,8 @@ use iroh::endpoint::{RecvStream, SendStream};
 use nectarlink_protocol::{
     DeviceId, Envelope, ErrorCode, MAX_FRAME_LEN,
     messages::{
-        MediaCommand, MediaFileMeta, MediaFileRead, MediaPlayer, MediaState, MediaWatch, StreamHeader,
-        WatchFile, media_actions, media_limits::PLAYERS, media_watch, types,
+        DeviceKind, MediaCommand, MediaFileMeta, MediaFileRead, MediaPlayer, MediaState, MediaWatch,
+        StreamHeader, WatchFile, media_actions, media_limits::PLAYERS, media_watch, types,
     },
     read_frame, write_frame,
 };
@@ -161,11 +161,15 @@ impl Shared {
     /// Sends this device's players to one device: all of them when the
     /// user allows it, none (which clears that device) when not.
     pub(crate) async fn send_media_state(&self, session: &Arc<Session>) {
-        if !self.players.lock().active || !self.shows_media(&session.peer) {
+        if !self.shows_media(&session.peer) {
+            return;
+        }
+        let enabled = self.toggle_on(&session.peer, TOGGLE) && !session.media_held();
+        if enabled && !self.players.lock().active {
             return;
         }
         let mut sent_art = session.sent_art.lock().await;
-        let state = if self.toggle_on(&session.peer, TOGGLE) {
+        let state = if enabled {
             self.players.for_session(&mut sent_art)
         } else {
             MediaState { players: Vec::new() }
@@ -217,8 +221,22 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
         types::MEDIA_STATE => {
             if shared.toggle_on(&peer, TOGGLE) {
                 let state: MediaState = env.body()?;
-                let players =
+                let players: Vec<MediaPlayer> =
                     state.players.into_iter().filter_map(MediaPlayer::sanitized).take(PLAYERS).collect();
+                // A phone that plays its own media must not also show this
+                // PC's player: Android would list two system players.
+                let this_is_pc = matches!(
+                    shared.local.read().unwrap_or_else(|e| e.into_inner()).device.kind,
+                    DeviceKind::Desktop
+                );
+                let peer_is_android = !shared.is_desktop(&peer);
+                if this_is_pc && peer_is_android {
+                    let held = players.iter().any(|p| p.playing);
+                    if session.media_held() != held {
+                        session.hold_media(held);
+                        shared.send_media_state(session).await;
+                    }
+                }
                 shared.emit(NodeEvent::MediaChanged { device: peer, players });
             }
         }

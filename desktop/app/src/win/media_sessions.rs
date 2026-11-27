@@ -301,12 +301,15 @@ fn snapshot(
     players
 }
 
-/// Whether a session's app ID is NectarLink's own: the process's ID, or the
-/// sparse package's (`Nectarlink.Desktop_<publisher>!Nectarlink`) when the
-/// app runs with package identity.
-fn is_own_id(id: &str) -> bool {
-    id.eq_ignore_ascii_case(AUMID)
-        || id.get(..AUMID.len() + 1).is_some_and(|p| p.eq_ignore_ascii_case(&format!("{AUMID}_")))
+/// Whether a Windows media session belongs to NectarLink itself. The
+/// explicit app ID isn't always what the system reports for the SMTC session
+/// this app puts a phone's player into; an unpackaged app can get its
+/// executable path or a generated ID instead. Matching the name as well
+/// keeps that mirror from being read back as a PC player and echoed to the
+/// phone as a second, identical player.
+fn is_our_session(id: &str) -> bool {
+    let lower = id.to_ascii_lowercase();
+    lower == AUMID.to_ascii_lowercase() || lower.contains("nectarlink") || lower.contains("nectar-link")
 }
 
 fn player(
@@ -314,7 +317,7 @@ fn player(
     art: &mut ArtCache,
 ) -> windows::core::Result<Option<MediaPlayer>> {
     let id = session.SourceAppUserModelId()?.to_string();
-    if is_own_id(&id) {
+    if is_our_session(&id) {
         return Ok(None);
     }
     let properties = session.TryGetMediaPropertiesAsync()?.join()?;
@@ -793,7 +796,7 @@ pub fn pause_for_call() {
         for session in sessions {
             let Ok(id_h) = session.SourceAppUserModelId() else { continue };
             let id = id_h.to_string();
-            if is_own_id(&id) {
+            if is_our_session(&id) {
                 continue;
             }
             let is_playing = session
@@ -849,12 +852,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn nectarlinks_own_sessions_are_left_out() {
-        assert!(is_own_id("Nectarlink.Desktop"));
-        assert!(is_own_id("Nectarlink.Desktop_x9vsc3j3gdrmg!Nectarlink"));
-        assert!(!is_own_id("Spotify.exe"));
-        assert!(!is_own_id("Nectarlink.DesktopOther"));
-        assert!(!is_own_id("Nectar"));
+    fn own_media_session_is_never_a_pc_player() {
+        assert!(is_our_session(AUMID));
+        assert!(is_our_session("Nectarlink.Desktop"));
+        assert!(is_our_session(r"C:\Program Files\Nectarlink\nectarlink-desktop.exe"));
+        assert!(is_our_session("nectarlink-desktop"));
+        assert!(!is_our_session("Spotify.exe"));
+        assert!(!is_our_session("chrome.exe"));
     }
 
     fn playing(title: &str, timeline: Option<(u64, u64)>, seek: bool) -> MediaPlayer {
