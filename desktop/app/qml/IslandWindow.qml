@@ -719,6 +719,7 @@ Window {
                         Icon {
                             anchors.centerIn: parent
                             visible: !(islandWin.mode === "notification" && appIcon14.status === Image.Ready)
+                                && !(islandWin.mode === "call" && callPhoto14.status === Image.Ready)
                             width: 14; height: 14
                             path: islandWin.mode === "call"
                                 ? Icons.call
@@ -726,6 +727,14 @@ Window {
                                     ? Icons.bell
                                     : (islandWin.mode === "waiting" ? Icons.send : Icons.phone))
                             color: islandWin.mode === "call" ? "#4ADE80" : Theme.primary
+                        }
+                        RoundedImage {
+                            id: callPhoto14
+                            anchors.fill: parent
+                            radius: 13
+                            visible: islandWin.mode === "call" && status === Image.Ready
+                            source: islandWin.mode === "call" ? PhoneCall.callerPhoto : ""
+                            sourceSize: Qt.size(96, 96)
                         }
                         RoundedImage {
                             id: appIcon14
@@ -1017,6 +1026,7 @@ Window {
                         Icon {
                             anchors.centerIn: parent
                             visible: !(islandWin.mode === "notification" && appIcon22.status === Image.Ready)
+                                && !(islandWin.mode === "call" && callPhoto22.status === Image.Ready)
                             width: 22; height: 22
                             path: islandWin.mode === "call"
                                 ? Icons.call
@@ -1024,6 +1034,14 @@ Window {
                                     ? Icons.bell
                                     : (islandWin.mode === "waiting" ? Icons.send : Icons.phone))
                             color: islandWin.mode === "call" ? "#4ADE80" : Theme.primary
+                        }
+                        RoundedImage {
+                            id: callPhoto22
+                            anchors.fill: parent
+                            radius: 24
+                            visible: islandWin.mode === "call" && status === Image.Ready
+                            source: islandWin.mode === "call" ? PhoneCall.callerPhoto : ""
+                            sourceSize: Qt.size(96, 96)
                         }
                         RoundedImage {
                             id: appIcon22

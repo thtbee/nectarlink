@@ -96,6 +96,7 @@ Card {
                 // A number alone has no letter worth showing.
                 name: PhoneCall.number.length > 0 || PhoneCall.app.length > 0 ? PhoneCall.caller : ""
                 iconPath: PhoneCall.number.length > 0 || PhoneCall.app.length > 0 ? "" : Icons.person
+                photo: PhoneCall.callerPhoto
                 emphasized: true
             }
             Column {

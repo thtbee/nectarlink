@@ -6,6 +6,7 @@
 //! answered.
 
 use crate::i18n::tr;
+use crate::local_contacts;
 use std::{
     collections::{HashMap, HashSet},
     path::{Path, PathBuf},
@@ -176,6 +177,8 @@ pub fn on_event(event: &NodeEvent) {
         }
         NodeEvent::ContactsChanged { device } if Some(*device) == page_device => {
             load_contacts();
+            // The call log's names come from the phone's contacts too.
+            load_call_log(None);
         }
         NodeEvent::LinkChanged { device, link: LinkState::Online { .. } } if Some(*device) == page_device => {
             if page_state(|s| !matches!(s.log_status, Status::Ready | Status::Loading)) {
@@ -343,11 +346,16 @@ pub fn is_app_call(id: &str) -> bool {
     id.starts_with("app:")
 }
 
-/// Who's calling, as well as the phone knows.
+/// Who's calling: the name the phone knows, else the one in this computer's contacts.
+pub fn caller_name(call: &CallState) -> Option<String> {
+    call.name.clone().filter(|n| !n.trim().is_empty()).or_else(|| {
+        call.number.as_deref().filter(|n| !n.trim().is_empty()).and_then(local_contacts::find).map(|f| f.name)
+    })
+}
+
+/// Who's calling, as well as the phone and this computer know.
 fn caller(call: &CallState) -> String {
-    call.name
-        .clone()
-        .filter(|n| !n.trim().is_empty())
+    caller_name(call)
         .or_else(|| call.number.clone().filter(|n| !n.trim().is_empty()))
         .unwrap_or_else(|| tr!("Calls", "Unknown caller"))
 }
@@ -367,11 +375,9 @@ fn show_ringing(device: DeviceId, call: &CallState, silenced: bool) {
         }
     }
     // The number under the name, when there's a name; or the app a call is in.
-    let body = match (&call.app, &call.name, &call.number) {
+    let body = match (&call.app, caller_name(call), &call.number) {
         (Some(app), _, _) => tr!("Calls", "%1 call on %2", app, phone_name(device)),
-        (None, Some(name), Some(number)) if !name.trim().is_empty() => {
-            format!("{number} · on {}", phone_name(device))
-        }
+        (None, Some(_), Some(number)) => format!("{number} · on {}", phone_name(device)),
         _ => tr!("Calls", "Calling %1", phone_name(device)),
     };
     toast::show(Toast {
@@ -482,9 +488,10 @@ fn show_missed(device: DeviceId, call: &CallState) {
 
 /// The caller's photo for a call's notification. The phone sends it while
 /// the call rings (and with an outgoing call); the answered or missed call
-/// reuses the one kept then.
-fn caller_photo(device: DeviceId, call: &CallState) -> Option<PathBuf> {
+/// reuses the one kept then. Without the phone's, this computer's contact's.
+pub fn caller_photo(device: DeviceId, call: &CallState) -> Option<PathBuf> {
     caller_photo_in(&crate::notifications::images_dir(), device, call)
+        .or_else(|| call.number.as_deref().and_then(local_contacts::find).and_then(|f| f.photo))
 }
 
 fn caller_photo_in(dir: &Path, device: DeviceId, call: &CallState) -> Option<PathBuf> {
@@ -653,14 +660,15 @@ pub struct View {
 
 pub fn view() -> View {
     page_state(|s| {
+        // The phone's contacts and this computer's as one list.
+        let merged = local_contacts::merge(&s.contacts, &s.contact_photos, &local_contacts::entries());
         // Match call log numbers to contacts for photos and fallback names.
         let mut by_digits: HashMap<String, (&str, Option<&PathBuf>)> = HashMap::new();
-        for c in &s.contacts {
-            let photo = s.contact_photos.get(&c.id);
-            for n in &c.numbers {
+        for m in &merged {
+            for n in &m.contact.numbers {
                 let d = digits(&n.number);
                 if !d.is_empty() {
-                    by_digits.entry(d).or_insert((c.name.as_str(), photo));
+                    by_digits.entry(d).or_insert((m.contact.name.as_str(), m.photo.as_ref()));
                 }
             }
         }
@@ -692,9 +700,10 @@ pub fn view() -> View {
             ),
             more_log: s.more_log,
             loading_older: s.loading_older,
-            contacts_status: s.contacts_status,
+            // This computer's contacts are there whether the phone is or not.
+            contacts_status: if merged.is_empty() { s.contacts_status } else { Status::Ready },
             contacts: Value::Array(
-                s.contacts.iter().map(|c| contact_json(c, s.contact_photos.get(&c.id))).collect(),
+                merged.iter().map(|m| contact_json(&m.contact, m.photo.as_ref(), m.source)).collect(),
             ),
             dialing: s.dialing,
             sims: if s.sims.sims.len() > 1 {
@@ -797,7 +806,7 @@ fn log_entry_json(e: &CallLogEntry, name: &str, photo: String) -> Value {
     })
 }
 
-fn contact_json(c: &Contact, photo: Option<&PathBuf>) -> Value {
+fn contact_json(c: &Contact, photo: Option<&PathBuf>, source: &str) -> Value {
     let numbers: Vec<Value> = c
         .numbers
         .iter()
@@ -814,6 +823,8 @@ fn contact_json(c: &Contact, photo: Option<&PathBuf>) -> Value {
         "numbers": numbers,
         "starred": c.starred,
         "photo": photo.map(|p| crate::icons::file_url(p)).unwrap_or_default(),
+        // "phone", "computer" (only in this PC's address book) or "both".
+        "source": source,
     })
 }
 
@@ -846,6 +857,7 @@ pub fn ensure_contacts(device: DeviceId) {
             s.contacts.is_empty() && s.contacts_status != Status::Loading
         }
     });
+    local_contacts::refresh_if_stale();
     if should_load {
         load_contacts();
     }

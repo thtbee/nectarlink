@@ -33,6 +33,8 @@ pub mod qobject {
         #[qproperty(QString, caller)]
         /// The number, when there's a name to show above it.
         #[qproperty(QString, number)]
+        /// The caller's picture (a file URL), or empty.
+        #[qproperty(QString, caller_photo, cxx_name = "callerPhoto")]
         /// The app the call is in (WhatsApp...), empty for a phone call (#434).
         #[qproperty(QString, app)]
         /// When it was answered (Unix ms), or 0 when the phone didn't say.
@@ -161,6 +163,7 @@ pub struct PhoneCallRust {
     ringing: bool,
     caller: QString,
     number: QString,
+    caller_photo: QString,
     app: QString,
     since: f64,
     can_end: bool,
@@ -281,7 +284,7 @@ impl qobject::PhoneCall {
         self.as_mut().rust_mut().call = call_device.zip(call.as_ref().map(|c| c.id.clone()));
         let (caller, number) = match &call {
             Some(call) => {
-                let name = call.name.clone().filter(|n| !n.trim().is_empty());
+                let name = calls::caller_name(call);
                 let number = call.number.clone().filter(|n| !n.trim().is_empty());
                 match name {
                     Some(name) => (name, number.unwrap_or_default()),
@@ -292,6 +295,12 @@ impl qobject::PhoneCall {
         };
         self.as_mut().set_caller(QString::from(&caller));
         self.as_mut().set_number(QString::from(&number));
+        let photo = call_device
+            .zip(call.as_ref())
+            .and_then(|(d, c)| calls::caller_photo(d, c))
+            .map(|p| crate::icons::file_url(&p))
+            .unwrap_or_default();
+        self.as_mut().set_caller_photo(QString::from(&photo));
         let app = call.as_ref().and_then(|c| c.app.clone()).unwrap_or_default();
         self.as_mut().set_app(QString::from(&app));
         self.as_mut().set_since(call.as_ref().and_then(|c| c.since).unwrap_or(0) as f64);

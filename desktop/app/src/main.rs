@@ -35,6 +35,7 @@ mod input_share;
 mod launch;
 mod links;
 mod local_api;
+mod local_contacts;
 mod logging;
 mod mark;
 mod media;

@@ -453,6 +453,7 @@ fn main() {
         );
     } else if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("macos") {
         build_macos_audio_loopback();
+        build_macos_contacts();
         println!("cargo:rustc-link-lib=framework=AppKit");
         println!("cargo:rustc-link-lib=framework=CoreGraphics");
         println!("cargo:rustc-link-lib=framework=CoreAudio");
@@ -461,6 +462,7 @@ fn main() {
         println!("cargo:rustc-link-lib=framework=ScreenCaptureKit");
         println!("cargo:rustc-link-lib=framework=CoreMedia");
         println!("cargo:rustc-link-lib=framework=Foundation");
+        println!("cargo:rustc-link-lib=framework=Contacts");
     }
     println!("cargo:rerun-if-changed=cpp/app_helpers.h");
     println!("cargo:rerun-if-changed=cpp/app_helpers.cpp");
@@ -500,4 +502,13 @@ fn build_macos_audio_loopback() {
         .flag("-fobjc-arc")
         .flag("-std=c++17")
         .compile("nectarlink_mac_audio_loopback");
+}
+
+fn build_macos_contacts() {
+    println!("cargo::rerun-if-changed=cpp/mac_contacts.mm");
+    cc::Build::new()
+        .file("cpp/mac_contacts.mm")
+        .flag("-fobjc-arc")
+        .flag("-std=c++17")
+        .compile("nectarlink_mac_contacts");
 }
