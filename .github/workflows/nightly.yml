@@ -156,7 +156,7 @@ jobs:
         run: |
           set -euo pipefail
           cd files
-          sha256sum *.exe *.dmg *.deb *.rpm *.AppImage *.tar.gz *.apk install.sh > SHA256SUMS.txt
+          sha256sum *.exe *.dmg *.deb *.rpm *.AppImage *.AppImage.zsync *.tar.gz *.apk install.sh > SHA256SUMS.txt
           cat SHA256SUMS.txt
           compare=""
           if [ -n "$PREVIOUS" ]; then
@@ -176,7 +176,7 @@ jobs:
             "$compare" \
             "" \
             "Trying it out? Tell us how it goes in the Hive on Discord: https://discord.gg/AA2Dp8PYqf" > notes.md
-          gh release create "v$VERSION" *.exe *.dmg *.deb *.rpm *.AppImage *.tar.gz *.apk *-symbols.zip install.sh SHA256SUMS.txt \
+          gh release create "v$VERSION" *.exe *.dmg *.deb *.rpm *.AppImage *.AppImage.zsync *.tar.gz *.apk *-symbols.zip install.sh SHA256SUMS.txt \
             --repo "$GITHUB_REPOSITORY" --target "$COMMIT" --prerelease \
             --title "Nightly $NUMBER · $NAME ($VERSION)" --notes-file notes.md
       - name: Point the nightly feed at it

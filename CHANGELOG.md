@@ -8,6 +8,11 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **The AppImage tells AppImage managers where its updates are.** It carries update information
+  for AppImageUpdate, and each release comes with a `.zsync` file, so tools like AppManager and
+  AppImageUpdate find and download only what changed: releases follow releases, Nightlies follow
+  Nightlies. Thanks to [@xmha97](https://github.com/xmha97) and [@shuvashish76](https://github.com/shuvashish76)
+  ([#672](https://github.com/thtbee/nectarlink/issues/672)).
 - **Now playing shows the time you want.** The time on the right of Now playing on the PC's Home
   can show what's left, the whole length, or both: click it to switch, or pick in Settings ›
   General. Thanks to [@jed84](https://github.com/jed84) ([#658](https://github.com/thtbee/nectarlink/issues/658)).
