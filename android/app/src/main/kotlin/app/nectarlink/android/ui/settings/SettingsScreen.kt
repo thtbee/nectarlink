@@ -116,6 +116,7 @@ fun SettingsScreen(
     touchpadSensitivity: Float,
     onTouchpadSensitivity: (Float) -> Unit,
     onUnpair: (String) -> Unit,
+    onRenamePc: (pcId: String, name: String) -> Unit = { _, _ -> },
     onPairNew: () -> Unit,
     onAccessChanged: () -> Unit,
     updater: AppUpdater,
@@ -162,6 +163,7 @@ fun SettingsScreen(
     var confirmUnpair by remember { mutableStateOf<Device?>(null) }
     var confirmClearEverything by remember { mutableStateOf(false) }
     var pickLanguage by remember { mutableStateOf(false) }
+    var renamePc by remember { mutableStateOf<Device?>(null) }
     var activeCategory by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("all") }
     var pulsingSectionKey by remember { mutableStateOf<String?>(null) }
     var jumpToControl by remember { mutableStateOf(0) }
@@ -608,6 +610,7 @@ fun SettingsScreen(
                                         )
                                     }
                                 }
+                                TextButton(onClick = { renamePc = device }) { Text(stringResource(R.string.action_rename)) }
                                 OutlinedButton(onClick = { confirmUnpair = device }) { Text(stringResource(R.string.action_unpair)) }
                             }
                             val storageToggleTitle = stringResource(R.string.storage_pc_toggle)
@@ -1457,6 +1460,35 @@ fun SettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = { pickLanguage = false }) { Text(stringResource(R.string.action_cancel)) }
+            },
+        )
+    }
+
+    renamePc?.let { device ->
+        var draft by remember(device.id) {
+            mutableStateOf(if (device.name != device.rawName) device.name else "")
+        }
+        AlertDialog(
+            onDismissRequest = { renamePc = null },
+            containerColor = glassModalContainerColor(),
+            title = { Text(stringResource(R.string.settings_pc_name)) },
+            text = {
+                OutlinedTextField(
+                    value = draft,
+                    onValueChange = { if (it.length <= 64) draft = it },
+                    singleLine = true,
+                    label = { Text(device.rawName) },
+                    supportingText = { Text(stringResource(R.string.settings_pc_name_hint)) },
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    onRenamePc(device.id, draft.trim())
+                    renamePc = null
+                }) { Text(stringResource(R.string.action_save)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { renamePc = null }) { Text(stringResource(R.string.action_cancel)) }
             },
         )
     }

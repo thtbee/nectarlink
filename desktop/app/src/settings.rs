@@ -481,18 +481,6 @@ pub fn set_battery_low_threshold(threshold: u8) {
 static NICKNAMES: std::sync::Mutex<Option<std::collections::HashMap<String, String>>> =
     std::sync::Mutex::new(None);
 
-/// This PC's name as phones see it; empty uses the computer name.
-static DEVICE_DISPLAY_NAME: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
-
-/// This PC's chosen display name, or empty to use the computer name.
-pub fn device_display_name() -> String {
-    DEVICE_DISPLAY_NAME.lock().unwrap_or_else(|e| e.into_inner()).clone()
-}
-
-pub fn set_device_display_name(name: String) {
-    *DEVICE_DISPLAY_NAME.lock().unwrap_or_else(|e| e.into_inner()) = name.trim().to_string();
-}
-
 /// Most apps pinned on one phone.
 pub const MAX_PINNED_APPS: usize = 24;
 
@@ -796,9 +784,6 @@ pub struct Settings {
         alias = "device_nicknames"
     )]
     pub device_nicknames: std::collections::HashMap<String, String>,
-    /// This PC's name as phones see it; empty uses the computer name.
-    #[serde(default, skip_serializing_if = "String::is_empty", alias = "device_display_name")]
-    pub device_display_name: String,
     /// Apps pinned to the top of Apps (#477), by device ID: package names.
     #[serde(default, skip_serializing_if = "std::collections::HashMap::is_empty", alias = "pinned_apps")]
     pub pinned_apps: std::collections::HashMap<String, Vec<String>>,
@@ -1148,7 +1133,6 @@ impl Default for Settings {
             ui_scale: default_ui_scale(),
             keep_screen_off: Vec::new(),
             device_nicknames: std::collections::HashMap::new(),
-            device_display_name: String::new(),
             pinned_apps: std::collections::HashMap::new(),
             start_with_windows: None,
             recordings_folder: None,
@@ -1358,7 +1342,6 @@ impl Settings {
         set_keep_screen_off_phones(self.keep_screen_off.clone());
         set_own_name(self.own_name.clone());
         set_device_nicknames(self.device_nicknames.clone());
-        set_device_display_name(self.device_display_name.clone());
         set_pinned_apps_all(self.pinned_apps.clone());
         set_window_geometry(
             self.window_screen.clone(),
@@ -1589,7 +1572,6 @@ mod tests {
             ui_scale: 125,
             keep_screen_off: vec!["abc".to_owned()],
             device_nicknames: std::collections::HashMap::from([("abc".to_owned(), "Work phone".to_owned())]),
-            device_display_name: "Studio PC".into(),
             pinned_apps: std::collections::HashMap::from([(
                 "abc".to_owned(),
                 vec!["com.example.notes".to_owned()],

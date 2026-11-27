@@ -56,6 +56,12 @@
     <string name="settings_dynamic_color">Цвета обоев</string>
     <string name="settings_dynamic_color_hint">Использовать цвета ваших обоев.</string>
     <string name="settings_devices">ПК</string>
+    <string name="settings_this_phone">Имя этого телефона</string>
+    <string name="settings_this_phone_hint">Имя, которое компьютеры видят для этого телефона. Оставьте пустым, чтобы использовать имя Android.</string>
+    <string name="settings_pc_name">Имя компьютера</string>
+    <string name="settings_pc_name_hint">Имя, которое этот телефон показывает для компьютера. Оставьте пустым, чтобы использовать его собственное имя.</string>
+    <string name="action_rename">Переименовать</string>
+    <string name="action_save">Сохранить</string>
     <string name="settings_about">О приложении</string>
     <string name="settings_notifications">Уведомления</string>
     <string name="notifications_title">Показывать уведомления на ПК</string>

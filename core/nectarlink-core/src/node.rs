@@ -1543,6 +1543,9 @@ impl Shared {
                 let _ = s.send(env).await;
             }
             shared.send_media_state(&s).await;
+            // What the other side plays decides whether this side's players may
+            // follow; a PC holds its player until the phone says it's free.
+            let _ = s.send(Envelope::empty(types::MEDIA_SYNC)).await;
             shared.send_held_notifications(&s).await;
             shared.send_notification_snapshot(&s).await;
             shared.send_call_state(&s).await;
@@ -4311,6 +4314,18 @@ impl Node {
     /// up with what they show when it ends.
     pub async fn hold_notifications(&self, held: bool) {
         self.shared.hold_notifications(held).await;
+    }
+
+    /// Asks connected phones (or one) to send the notifications they show now.
+    pub async fn sync_notifications(&self, peer: Option<DeviceId>) -> Result<()> {
+        let sessions: Vec<_> = match peer {
+            Some(id) => self.shared.session(&id).into_iter().collect(),
+            None => self.shared.live_sessions(),
+        };
+        for session in sessions {
+            let _ = session.send(Envelope::empty(types::NOTIFY_SYNC)).await;
+        }
+        Ok(())
     }
 
     pub async fn notification_posted(&self, notification: Notification) {

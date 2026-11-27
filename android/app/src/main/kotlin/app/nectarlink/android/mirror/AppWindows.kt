@@ -76,6 +76,10 @@ class AppWindows(
     fun open(pc: String, options: MirrorOptions): Boolean {
         val pkg = options.app ?: return false
         if (pkg == context.packageName) return false
+        if (!Elevated.running) {
+            if (options.screenOff) Elevated.setScreenOff(false)
+            return false
+        }
         val maxSize = options.maxSize.toInt().coerceIn(320, 1920)
         val (width, height, dpi) = size(maxSize)
         // The phone stays as it is: the helper gives the window a display

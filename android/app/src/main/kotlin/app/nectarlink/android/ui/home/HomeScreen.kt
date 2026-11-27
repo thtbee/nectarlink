@@ -45,6 +45,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
@@ -192,6 +194,7 @@ fun HomeScreen(
     onPhoneSoundOnPc: (pcId: String) -> Unit = {},
     onWake: (pcId: String) -> Unit,
     onSetReconnect: (pcId: String, on: Boolean) -> Unit,
+    onUnpair: (pcId: String) -> Unit = {},
     onRemote: (pcId: String) -> Unit,
     onDeck: (pcId: String) -> Unit,
     onDesk: (pcId: String) -> Unit = {},
@@ -1587,6 +1590,7 @@ private fun PcCard(
     onStopSound: () -> Unit,
     onWake: (String) -> Unit,
     onSetReconnect: (String, Boolean) -> Unit,
+    onUnpair: (String) -> Unit,
     onRemote: (String) -> Unit,
     onDeck: (String) -> Unit,
     onRecord: (String) -> Unit,
@@ -1599,6 +1603,8 @@ private fun PcCard(
     micOn: Boolean = false,
     onToggleMic: (Boolean) -> Unit = {},
 ) {
+    var menuOpen by remember { mutableStateOf(false) }
+    var confirmUnpair by remember { mutableStateOf(false) }
     val pickFiles = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         if (uris.isNotEmpty()) onSendFiles(device.id, uris)
     }
@@ -1749,6 +1755,31 @@ private fun PcCard(
                             )
                             .padding(horizontal = 10.dp, vertical = 5.dp),
                     )
+                }
+                Box {
+                    IconButton(
+                        onClick = { menuOpen = true },
+                        modifier = Modifier.size(36.dp),
+                    ) {
+                        Icon(
+                            imageVector = MoreVertIcon,
+                            contentDescription = stringResource(R.string.remote_more_controls),
+                            tint = ink,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = menuOpen,
+                        onDismissRequest = { menuOpen = false },
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.action_unpair)) },
+                            onClick = {
+                                menuOpen = false
+                                confirmUnpair = true
+                            },
+                        )
+                    }
                 }
             }
             Spacer(Modifier.height(16.dp))
@@ -2102,6 +2133,26 @@ private fun PcCard(
             }
         }
     }
+    if (confirmUnpair) {
+        AlertDialog(
+            onDismissRequest = { confirmUnpair = false },
+            title = { Text(stringResource(R.string.unpair_title, device.name)) },
+            text = { Text(stringResource(R.string.unpair_text)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    onUnpair(device.id)
+                    confirmUnpair = false
+                }) {
+                    Text(stringResource(R.string.action_unpair))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmUnpair = false }) {
+                    Text(stringResource(R.string.action_cancel))
+                }
+            },
+        )
+    }
 }
 
 /**
@@ -2207,8 +2258,9 @@ private fun PcAudioCardSection(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     mediaSummary.artwork?.let { art ->
+                        val artBitmap = androidx.compose.runtime.remember(art) { art.asImageBitmap() }
                         androidx.compose.foundation.Image(
-                            bitmap = art.asImageBitmap(),
+                            bitmap = artBitmap,
                             contentDescription = null,
                             contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                             modifier = Modifier.size(40.dp).clip(RoundedCornerShape(10.dp)),
@@ -4119,6 +4171,29 @@ private fun softContinuousVector(name: String, svgPath: String, strokeWidth: Flo
         strokeLineCap = StrokeCap.Round,
         strokeLineJoin = StrokeJoin.Round,
     ).build()
+}
+
+private fun softFilledVector(name: String, svgPath: String): ImageVector {
+    val nodes = androidx.compose.ui.graphics.vector.PathParser().parsePathString(svgPath).toNodes()
+    return ImageVector.Builder(
+        name = name,
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f,
+    ).addPath(
+        pathData = nodes,
+        fill = SolidColor(Color.White),
+    ).build()
+}
+
+private val MoreVertIcon: ImageVector by lazy {
+    softFilledVector(
+        name = "MoreVert",
+        svgPath = "M12,4.5A1.5,1.5 0 1,0 12,7.5A1.5,1.5 0 1,0 12,4.5Z "
+            + "M12,10.5A1.5,1.5 0 1,0 12,13.5A1.5,1.5 0 1,0 12,10.5Z "
+            + "M12,16.5A1.5,1.5 0 1,0 12,19.5A1.5,1.5 0 1,0 12,16.5Z",
+    )
 }
 
 private val RemotePcIcon: ImageVector by lazy {

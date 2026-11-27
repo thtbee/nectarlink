@@ -62,6 +62,12 @@
     <string name="settings_dynamic_color">Cores do papel de parede</string>
     <string name="settings_dynamic_color_hint">Usar as cores do papel de parede.</string>
     <string name="settings_devices">PCs</string>
+    <string name="settings_this_phone">Nome deste telefone</string>
+    <string name="settings_this_phone_hint">O nome que seus PCs veem para este telefone. Deixe em branco para usar o nome do Android.</string>
+    <string name="settings_pc_name">Nome do PC</string>
+    <string name="settings_pc_name_hint">O nome que este celular mostra para o computador. Deixe em branco para usar o nome próprio dele.</string>
+    <string name="action_rename">Renomear</string>
+    <string name="action_save">Salvar</string>
     <string name="settings_about">Sobre</string>
     <string name="settings_notifications">Notificações</string>
     <string name="notifications_title">Mostrar notificações no PC</string>

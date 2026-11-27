@@ -250,6 +250,9 @@ pub(crate) struct Session {
     /// This peer asked for no notifications for now. Ends with the session: a
     /// PC that's still locked says so again when it reconnects.
     notifications_held: std::sync::atomic::AtomicBool,
+    /// This peer plays media of its own, so this device's players aren't sent
+    /// to it: two system players on one phone would be confusing.
+    media_held: std::sync::atomic::AtomicBool,
     pub(crate) cancel: CancellationToken,
 }
 
@@ -301,6 +304,12 @@ impl Session {
         on_end: impl FnOnce(Arc<Session>) + Send + 'static,
     ) -> Arc<Session> {
         let peer = crate::device_id(&conn.remote_id());
+        // A phone starts with this PC's players withheld: it may already be
+        // playing its own music, and Android would then show two players.
+        // Its first media report says whether to release them.
+        let hold_media =
+            matches!(shared.local.read().unwrap_or_else(|e| e.into_inner()).device.kind, DeviceKind::Desktop)
+                && !shared.is_desktop(&peer);
         // Start from QUIC's estimate (from the handshake) until the first
         // heartbeat measures the round trip end to end.
         let initial_rtt = conn
@@ -328,6 +337,7 @@ impl Session {
             sent_icons: Default::default(),
             sent_art: Default::default(),
             notifications_held: Default::default(),
+            media_held: std::sync::atomic::AtomicBool::new(hold_media),
             cancel: shared.cancel.child_token(),
         });
 
@@ -499,6 +509,14 @@ impl Session {
 
     pub(crate) fn hold_notifications(&self, held: bool) {
         self.notifications_held.store(held, Ordering::Relaxed);
+    }
+
+    pub(crate) fn media_held(&self) -> bool {
+        self.media_held.load(Ordering::Relaxed)
+    }
+
+    pub(crate) fn hold_media(&self, held: bool) {
+        self.media_held.store(held, Ordering::Relaxed);
     }
 
     pub fn is_alive(&self) -> bool {

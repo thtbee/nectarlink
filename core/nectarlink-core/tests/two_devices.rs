@@ -2416,6 +2416,8 @@ async fn pc_playback_reaches_both_phones_with_large_artwork() {
     let mut first = device("Pixel", DeviceKind::Phone).await;
     let mut second = device("Tablet", DeviceKind::Phone).await;
     pair_qr(&mut pc, &mut first).await;
+    // A real phone reports its (empty) media state; that releases the PC's player.
+    first.node.media_changed(Vec::new()).await;
     let pc_id = pc.node.device_id();
 
     let players = (0..4)
@@ -2430,7 +2432,10 @@ async fn pc_playback_reaches_both_phones_with_large_artwork() {
         })
         .collect::<Vec<_>>();
     pc.node.media_changed(players.clone()).await;
-    let state = wait_for(&mut first, "first phone sees video", media_of(pc_id)).await;
+    let state = wait_for(&mut first, "first phone sees video", |event| {
+        media_of(pc_id)(event).filter(|players| !players.is_empty())
+    })
+    .await;
     assert_eq!(state.len(), 4);
     assert!(state[3].playing && state[3].art.is_some());
 
@@ -2438,9 +2443,10 @@ async fn pc_playback_reaches_both_phones_with_large_artwork() {
     // subscription so waiting for pairing can't consume its first snapshot.
     let mut events = second.node.events();
     pair_qr(&mut pc, &mut second).await;
+    second.node.media_changed(Vec::new()).await;
     let state = with_timeout("second phone sees the already playing video", async {
         loop {
-            if let Some(players) = media_of(pc_id)(&events.recv().await.unwrap()) {
+            if let Some(players) = media_of(pc_id)(&events.recv().await.unwrap()).filter(|p| !p.is_empty()) {
                 break players;
             }
         }
@@ -2459,6 +2465,36 @@ async fn pc_playback_reaches_both_phones_with_large_artwork() {
         .await;
         assert_eq!(state[3].title.as_deref(), Some("Video 3"));
     }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn pc_player_is_withheld_while_the_phone_plays_its_own() {
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    // A real phone reports its (empty) media state; that releases the PC's player.
+    phone.node.media_changed(Vec::new()).await;
+    let pc_id = pc.node.device_id();
+
+    pc.node.media_changed(vec![player("Spotify.exe", "On the PC", None)]).await;
+    let players = wait_for(&mut phone, "the pc player", |event| {
+        media_of(pc_id)(event).filter(|players| !players.is_empty())
+    })
+    .await;
+    assert_eq!(players[0].title.as_deref(), Some("On the PC"));
+
+    // The phone starts its own music: the PC's player is taken off its
+    // system media controls, so there aren't two players there.
+    phone.node.media_changed(vec![player("com.music", "Phone song", None)]).await;
+    wait_for(&mut phone, "the pc player withheld", |event| media_of(pc_id)(event).filter(Vec::is_empty))
+        .await;
+
+    // Paused: the PC's player comes back.
+    let mut paused = player("com.music", "Phone song", None);
+    paused.playing = false;
+    phone.node.media_changed(vec![paused]).await;
+    let back = wait_for(&mut phone, "the pc player returns", media_of(pc_id)).await;
+    assert_eq!(back[0].title.as_deref(), Some("On the PC"));
 }
 
 #[tokio::test(flavor = "multi_thread")]

@@ -406,18 +406,26 @@ class AppDisplay(
     }
 
     private fun launch(pkg: String, display: Int) {
-        // By its launcher activity's name: a package-only launcher intent isn't resolved on some
-        // phones (Samsung's One UI answers "intent not resolved"), and nothing would open.
-        val target = launcherActivity(pkg)?.let { arrayOf("-n", it) }
-            ?: arrayOf("-a", "android.intent.action.MAIN", "-c", "android.intent.category.LAUNCHER", "-p", pkg)
-        val command = arrayOf("am", "start", "--display", display.toString(), "--windowingMode", "1") + target +
-            arrayOf("-f", (FLAG_NEW_TASK or FLAG_MULTIPLE_TASK).toString())
-        val process = Runtime.getRuntime().exec(command)
-        val said = process.inputStream.bufferedReader().readText() + process.errorStream.bufferedReader().readText()
-        process.waitFor()
-        if (said.contains("Error", ignoreCase = true) || said.contains("Warning", ignoreCase = true)) {
-            System.err.println("launching $pkg: ${said.trim().lines().joinToString(" | ")}")
-        }
+        if (!PACKAGE_NAME.matches(pkg)) return
+        // The shell may have gone away between creating the display and this
+        // call (Wireless debugging turned off). `exec` then throws; a window
+        // must not take the whole app down with it.
+        runCatching {
+            // By its launcher activity's name: a package-only launcher intent isn't resolved on some
+            // phones (Samsung's One UI answers "intent not resolved"), and nothing would open.
+            val target = launcherActivity(pkg)?.let { listOf("-n", it) }
+                ?: listOf("-a", "android.intent.action.MAIN", "-c", "android.intent.category.LAUNCHER", "-p", pkg)
+            val command = mutableListOf("am", "start", "--display", display.toString(), "--windowingMode", "1")
+            command.addAll(target)
+            command.addAll(listOf("-f", (FLAG_NEW_TASK or FLAG_MULTIPLE_TASK).toString()))
+            val process = ProcessBuilder(command).start()
+            val said =
+                process.inputStream.bufferedReader().readText() + process.errorStream.bufferedReader().readText()
+            process.waitFor()
+            if (said.contains("Error", ignoreCase = true) || said.contains("Warning", ignoreCase = true)) {
+                System.err.println("launching $pkg: ${said.trim().lines().joinToString(" | ")}")
+            }
+        }.onFailure { System.err.println("can't launch $pkg on display $display: $it") }
     }
 
     /** `pkg/.Activity` for the package's launcher activity, or null. */
@@ -566,6 +574,7 @@ class AppDisplay(
 
         private const val FLAG_NEW_TASK = 0x10000000
         private const val FLAG_MULTIPLE_TASK = 0x08000000
+        private val PACKAGE_NAME = Regex("^[A-Za-z][A-Za-z0-9_]*(\\.[A-Za-z][A-Za-z0-9_]*)+$")
     }
 }
 

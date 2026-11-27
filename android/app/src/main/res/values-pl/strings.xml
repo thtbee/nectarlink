@@ -62,6 +62,12 @@
     <string name="settings_dynamic_color">Kolory z tapety</string>
     <string name="settings_dynamic_color_hint">Używaj kolorów tapety.</string>
     <string name="settings_devices">Komputery</string>
+    <string name="settings_this_phone">Nazwa tego telefonu</string>
+    <string name="settings_this_phone_hint">Nazwa tego telefonu widoczna na komputerach. Pozostaw puste, aby użyć nazwy Androida.</string>
+    <string name="settings_pc_name">Nazwa komputera</string>
+    <string name="settings_pc_name_hint">Nazwa komputera wyświetlana na tym telefonie. Pozostaw puste, aby użyć nazwy własnej komputera.</string>
+    <string name="action_rename">Zmień nazwę</string>
+    <string name="action_save">Zapisz</string>
     <string name="settings_about">O aplikacji</string>
     <string name="settings_notifications">Powiadomienia</string>
     <string name="notifications_title">Wyświetlaj powiadomienia na komputerze</string>

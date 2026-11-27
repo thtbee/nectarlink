@@ -53,12 +53,14 @@ internal fun FfiQueueKind.isFileBacked(): Boolean = when (this) {
 }
 
 /** Normalizes multi-line queue titles to a single clean line for display. */
+private val queueWhitespace = Regex("\\s+")
+
 fun formatQueueItemTitle(title: String, fallback: String, maxChars: Int = 44): String {
     val singleLine = title
         .replace("\r\n", " ")
         .replace('\n', ' ')
         .replace('\r', ' ')
-        .replace(Regex("\\s+"), " ")
+        .replace(queueWhitespace, " ")
         .trim()
     if (singleLine.isEmpty()) {
         return fallback
@@ -129,6 +131,8 @@ enum class WakeState {
 data class Device(
     val id: String,
     val name: String,
+    /** The device's own name, before any name this phone gives it. */
+    val rawName: String = name,
     val kind: app.nectarlink.core.DeviceKind,
     /** "windows", "macos", "linux", "android", or what a newer device says. */
     val os: String = "",
@@ -272,8 +276,16 @@ data class CoreState(
     val keyboardFromPc: Set<String> = emptySet(),
     /** Vibrant seed color (`0xRRGGBB`) extracted from currently playing phone or PC media artwork. */
     val activeMediaColor: UInt? = null,
+    /** Names this phone gives its PCs, by device ID; the PC's own name when absent. */
+    val pcAliases: Map<String, String> = emptyMap(),
 ) {
     fun device(id: String): Device? = devices.firstOrNull { it.id == id }
+
+    /** [device] under the name this phone gives it, if any. */
+    private fun aliased(device: Device): Device {
+        val alias = pcAliases[device.id]?.takeIf { it.isNotBlank() } ?: return device
+        return if (device.name == alias) device else device.copy(name = alias)
+    }
 
     /** Whether [flag] is provided by normal Elevated or by the verified system service. */
     fun hasElevatedCapability(flag: Long): Boolean =
@@ -298,7 +310,8 @@ data class CoreState(
         }
 
     fun nameOf(id: String): String? =
-        device(id)?.name
+        pcAliases[id]?.takeIf { it.isNotBlank() }
+            ?: device(id)?.rawName
             ?: discovered.firstOrNull { it.id == id }?.name
             ?: localsendPeers.firstOrNull { it.id == id }?.alias
 
@@ -313,17 +326,28 @@ data class CoreState(
         return copy(
             devices = paired.map { p ->
                 val prev = prevById[p.id]
-                p.toDevice().copy(
-                    deckLayout = prev?.deckLayout,
-                    deckState = prev?.deckState,
-                    storageEnabled = if (p.id in storageAllowed) true else prev?.storageEnabled ?: false,
-                    micEnabled = p.id !in micOff,
-                    unlockEnabled = p.id in unlockAllowed,
-                    controlAllowed = p.id in controlAllowed,
+                aliased(
+                    p.toDevice().copy(
+                        deckLayout = prev?.deckLayout,
+                        deckState = prev?.deckState,
+                        storageEnabled = if (p.id in storageAllowed) true else prev?.storageEnabled ?: false,
+                        micEnabled = p.id !in micOff,
+                        unlockEnabled = p.id in unlockAllowed,
+                        controlAllowed = p.id in controlAllowed,
+                    ),
                 )
             }.sortedWith(deviceOrder),
         )
     }
+
+    /** Applies new names for PCs, keeping each PC's own name to fall back to. */
+    fun withPcAliases(aliases: Map<String, String>): CoreState = copy(
+        pcAliases = aliases,
+        devices = devices.map { d ->
+            val alias = aliases[d.id]?.takeIf { it.isNotBlank() }
+            d.copy(name = alias ?: d.rawName)
+        }.sortedWith(deviceOrder),
+    )
 
     fun withWakeState(id: String, state: WakeState): CoreState =
         update(id) { it.copy(wakeState = state) }
@@ -359,7 +383,7 @@ data class CoreState(
     /** Folds one core event into the state. */
     fun reduce(event: Event): CoreState = when (event) {
         is Event.DeviceAdded -> {
-            val device = event.device.toDevice()
+            val device = aliased(event.device.toDevice())
             copy(devices = (devices.filterNot { it.id == device.id } + device).sortedWith(deviceOrder))
         }
         is Event.DeviceRemoved -> copy(
@@ -408,7 +432,8 @@ data class CoreState(
         }
         is Event.PeerInfoChanged -> update(event.id) {
             it.copy(
-                name = event.info.name,
+                name = pcAliases[event.id]?.takeIf { alias -> alias.isNotBlank() } ?: event.info.name,
+                rawName = event.info.name,
                 kind = event.info.kind,
                 model = event.info.model,
                 accent = event.info.accent ?: it.accent,
@@ -585,6 +610,7 @@ fun Transfer.isFinished(): Boolean =
 internal fun PairedDevice.toDevice() = Device(
     id = id,
     name = info.name,
+    rawName = info.name,
     kind = info.kind,
     os = info.os,
     model = info.model,

@@ -56,6 +56,12 @@
     <string name="settings_dynamic_color">壁纸取色</string>
     <string name="settings_dynamic_color_hint">使用壁纸的颜色。</string>
     <string name="settings_devices">电脑</string>
+    <string name="settings_this_phone">此手机的名称</string>
+    <string name="settings_this_phone_hint">电脑上显示的此手机名称。留空则使用 Android 的设备名称。</string>
+    <string name="settings_pc_name">电脑名称</string>
+    <string name="settings_pc_name_hint">手机上显示的此电脑名称。留空则使用电脑本身的名称。</string>
+    <string name="action_rename">重命名</string>
+    <string name="action_save">保存</string>
     <string name="settings_about">关于</string>
     <string name="settings_notifications">通知</string>
     <string name="notifications_title">在电脑上显示通知</string>

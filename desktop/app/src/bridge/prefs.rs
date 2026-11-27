@@ -216,8 +216,6 @@ pub mod qobject {
         #[qproperty(QString, phone_beside)]
         /// Which side it's on: "left" or "right".
         #[qproperty(QString, phone_beside_side)]
-        /// This PC's name as phones see it; empty uses the computer name.
-        #[qproperty(QString, device_display_name, cxx_name = "deviceDisplayName")]
         /// Stay connected over mobile data (LTE/5G) or relay when away from Wi-Fi.
         #[qproperty(bool, away_mode)]
         #[qproperty(QString, network_interface)]
@@ -392,10 +390,6 @@ pub mod qobject {
         /// Sets or clears a custom nickname for a device.
         #[qinvokable]
         fn set_nickname(self: Pin<&mut Preferences>, device_id: &QString, nickname: &QString);
-        /// Changes this PC's name as phones see it; empty restores the computer name.
-        #[qinvokable]
-        #[cxx_name = "renameThisDevice"]
-        fn rename_this_device(self: Pin<&mut Preferences>, name: &QString);
 
         #[qobject]
         #[qml_element]
@@ -551,7 +545,6 @@ pub struct PreferencesRust {
     forward_pc_notifications_to_phone: bool,
     phone_beside: QString,
     phone_beside_side: QString,
-    device_display_name: QString,
     away_mode: bool,
     network_interface: QString,
     start_at_login: bool,
@@ -706,7 +699,6 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_forward_pc_notifications_to_phone(settings.forward_pc_notifications_to_phone);
         self.as_mut().set_phone_beside(QString::from(&settings.phone_beside));
         self.as_mut().set_phone_beside_side(QString::from(&settings.phone_beside_side));
-        self.as_mut().set_device_display_name(QString::from(&settings.device_display_name));
         self.as_mut().set_away_mode(settings.away_mode);
         self.as_mut().set_network_interface(QString::from(&settings.network_interface));
         self.as_mut().set_walkthrough_completed(settings.walkthrough_completed);
@@ -1147,12 +1139,6 @@ impl cxx_qt::Initialize for qobject::Preferences {
             })
             .release();
         self.as_mut()
-            .on_device_display_name_changed(|p| {
-                crate::settings::set_device_display_name(p.device_display_name.to_string());
-                p.save();
-            })
-            .release();
-        self.as_mut()
             .on_phone_beside_side_changed(|p| {
                 crate::settings::set_phone_beside(
                     &p.phone_beside.to_string(),
@@ -1379,14 +1365,6 @@ impl qobject::Preferences {
         crate::settings::set_nickname(&dev, if nick.trim().is_empty() { None } else { Some(nick) });
         self.save();
         core_host::host().hub.changed(crate::state::Changes::DEVICES);
-    }
-
-    pub fn rename_this_device(mut self: Pin<&mut Self>, name: &QString) {
-        let name = String::from(name).trim().to_string();
-        crate::settings::set_device_display_name(name.clone());
-        self.as_mut().set_device_display_name(QString::from(&name));
-        core_host::rename_this_device(name);
-        self.save();
     }
 
     pub fn choose_recordings_folder(mut self: Pin<&mut Self>, url: &QString) {
@@ -1729,7 +1707,6 @@ impl qobject::Preferences {
             forward_pc_notifications_to_phone: p.forward_pc_notifications_to_phone,
             phone_beside: p.phone_beside.to_string(),
             phone_beside_side: p.phone_beside_side.to_string(),
-            device_display_name: p.device_display_name.to_string(),
             away_mode: p.away_mode,
             network_interface: p.network_interface.to_string(),
             walkthrough_completed: p.walkthrough_completed,

@@ -164,7 +164,12 @@ class PcMedia(
     }
 
     private fun applyUpdate(pc: String, pcName: String, list: List<MediaPlayer>) {
-        val decoded = list.mapNotNull { player ->
+        // The PC's own NectarLink media-control session mirrors a phone's
+        // player. If an older PC build sends that mirror back as a PC player,
+        // dropping it here keeps the phone's shade from showing a second,
+        // identical player next to the real app.
+        val visible = list.filterNot { it.app.contains("nectarlink", ignoreCase = true) }
+        val decoded = visible.mapNotNull { player ->
             val key = player.artKey ?: return@mapNotNull null
             val bytes = player.art ?: return@mapNotNull null
             val bmp = decodeArtwork(bytes) ?: return@mapNotNull null
@@ -175,7 +180,7 @@ class PcMedia(
             for ((cacheKey, entry) in decoded) {
                 art[cacheKey] = entry
             }
-            if (list.isEmpty()) players.remove(pc) else players[pc] = list
+            if (visible.isEmpty()) players.remove(pc) else players[pc] = visible
             _playing.value = players.flatMap { (id, all) -> all.map { "$id/${it.id}" to it.playing } }.toMap()
             val now = android.os.SystemClock.elapsedRealtime()
             _timelines.value = players.flatMap { (id, all) ->

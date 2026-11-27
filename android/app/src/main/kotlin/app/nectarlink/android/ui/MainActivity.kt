@@ -1009,6 +1009,7 @@ private fun App(
                                     onPhoneSoundOnPc = core::askPcForPhoneSound,
                                     onWake = core::wake,
                                     onSetReconnect = core::setReconnect,
+                                    onUnpair = core::unpair,
                                     onRemote = { id ->
                                         remoteInitialMode = RemoteMode.Touchpad
                                         remotePcId = id
@@ -1137,6 +1138,7 @@ private fun App(
                                     touchpadSensitivity = touchpadSensitivity,
                                     onTouchpadSensitivity = preferences::updateTouchpadSensitivity,
                                     onUnpair = core::unpair,
+                                    onRenamePc = core::renamePc,
                                     onPairNew = { pairing = true },
                                     onAccessChanged = core::refreshNotificationAccess,
                                     updater = (context.applicationContext as NectarlinkApplication).updater,

@@ -1362,50 +1362,6 @@ Item {
 
                         Divider { width: parent.width }
 
-                        ListRow {
-                            width: parent.width
-                            title: qsTr("This PC's name")
-                            description: qsTr("The name phones see for this computer. Leave it blank to use the computer name.")
-                            Rectangle {
-                                width: 190
-                                height: 30
-                                radius: 8
-                                color: Theme.surfaceContainerHighest
-                                border.width: pcNameInput.activeFocus ? 2 : 1
-                                border.color: pcNameInput.activeFocus ? Theme.primary : Theme.outlineVariant
-                                TextInput {
-                                    id: pcNameInput
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 9
-                                    anchors.rightMargin: 9
-                                    verticalAlignment: TextInput.AlignVCenter
-                                    font.family: Theme.fontUi
-                                    font.pixelSize: 12
-                                    color: Theme.surfaceContent
-                                    selectionColor: Theme.primaryContainer
-                                    selectedTextColor: Theme.primaryContainerContent
-                                    maximumLength: 64
-                                    text: Preferences.deviceDisplayName
-                                    onEditingFinished: Preferences.renameThisDevice(text)
-                                    Accessible.name: qsTr("This PC's name")
-                                }
-                                Txt {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 9
-                                    anchors.rightMargin: 9
-                                    visible: pcNameInput.text.length === 0
-                                    text: AppController.deviceName
-                                    role: "body"
-                                    size: 12
-                                    color: Theme.surfaceContentVariant
-                                    elide: Text.ElideRight
-                                    verticalAlignment: Text.AlignVCenter
-                                }
-                            }
-                        }
-
-                        Divider { width: parent.width }
-
                         // Row 1: Start with Windows | Stay in system tray
                         Item {
                             id: startupPairRow

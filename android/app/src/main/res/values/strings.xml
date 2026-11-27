@@ -62,6 +62,12 @@
     <string name="settings_dynamic_color">Colors from wallpaper</string>
     <string name="settings_dynamic_color_hint">Use your wallpaper\'s colors.</string>
     <string name="settings_devices">PCs</string>
+    <string name="settings_this_phone">This phone\'s name</string>
+    <string name="settings_this_phone_hint">The name your PCs see for this phone. Leave it blank to use Android\'s name.</string>
+    <string name="settings_pc_name">PC name</string>
+    <string name="settings_pc_name_hint">The name this phone shows for the computer. Leave it blank to use its own name.</string>
+    <string name="action_rename">Rename</string>
+    <string name="action_save">Save</string>
     <string name="settings_about">About</string>
     <string name="settings_notifications">Notifications</string>
     <string name="notifications_title">Show notifications on your PC</string>

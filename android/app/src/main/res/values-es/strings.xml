@@ -62,6 +62,12 @@
     <string name="settings_dynamic_color">Colores del fondo de pantalla</string>
     <string name="settings_dynamic_color_hint">Usa los colores de tu fondo de pantalla.</string>
     <string name="settings_devices">PC</string>
+    <string name="settings_this_phone">Nombre de este teléfono</string>
+    <string name="settings_this_phone_hint">El nombre que tus PCs ven para este teléfono. Déjalo vacío para usar el nombre de Android.</string>
+    <string name="settings_pc_name">Nombre del PC</string>
+    <string name="settings_pc_name_hint">El nombre que este teléfono muestra para el ordenador. Déjalo en blanco para usar su propio nombre.</string>
+    <string name="action_rename">Cambiar nombre</string>
+    <string name="action_save">Guardar</string>
     <string name="settings_about">Acerca de</string>
     <string name="settings_notifications">Notificaciones</string>
     <string name="notifications_title">Mostrar notificaciones en tu PC</string>

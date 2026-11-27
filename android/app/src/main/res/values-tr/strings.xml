@@ -62,6 +62,12 @@
     <string name="settings_dynamic_color">Duvar kağıdından renkler</string>
     <string name="settings_dynamic_color_hint">Duvar kağıdınızın renklerini kullanın.</string>
     <string name="settings_devices">Bilgisayarlar</string>
+    <string name="settings_this_phone">Bu telefonun adı</string>
+    <string name="settings_this_phone_hint">Bilgisayarlarınızın bu telefon için gördüğü ad. Android\'in adını kullanmak için boş bırakın.</string>
+    <string name="settings_pc_name">Bilgisayar adı</string>
+    <string name="settings_pc_name_hint">Bu telefonun bilgisayar için gösterdiği ad. Kendi adını kullanmak için boş bırakın.</string>
+    <string name="action_rename">Yeniden adlandır</string>
+    <string name="action_save">Kaydet</string>
     <string name="settings_about">Hakkında</string>
     <string name="settings_notifications">Bildirimler</string>
     <string name="notifications_title">Bildirimleri bilgisayarınızda göster</string>

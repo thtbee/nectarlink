@@ -61,6 +61,12 @@
     <string name="settings_dynamic_color">Кольори зі шпалер</string>
     <string name="settings_dynamic_color_hint">Використовувати кольори ваших шпалер.</string>
     <string name="settings_devices">ПК</string>
+    <string name="settings_this_phone">Назва цього телефона</string>
+    <string name="settings_this_phone_hint">Назва, яку комп\'ютери бачать для цього телефона. Залиште порожнім, щоб використовувати назву Android.</string>
+    <string name="settings_pc_name">Назва комп\'ютера</string>
+    <string name="settings_pc_name_hint">Назва, яку цей телефон показує для комп\'ютера. Залиште порожнім, щоб використовувати власну назву.</string>
+    <string name="action_rename">Перейменувати</string>
+    <string name="action_save">Зберегти</string>
     <string name="settings_about">Про застосунок</string>
     <string name="settings_notifications">Сповіщення</string>
     <string name="notifications_title">Показувати сповіщення на ПК</string>

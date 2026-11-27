@@ -275,7 +275,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         }
     }
 
-    private val _state = MutableStateFlow(CoreState())
+    private val _state = MutableStateFlow(CoreState(pcAliases = PcDisplayName.all(context)))
     private val _messages = MutableSharedFlow<String>(extraBufferCapacity = 8)
     private val _queuedNotices = MutableSharedFlow<OfflineQueuedNotice>(extraBufferCapacity = 8)
     private val _clipSuggestions = MutableSharedFlow<ClipSuggestionNotice>(extraBufferCapacity = 4)
@@ -785,6 +785,15 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     @Volatile private var lastSensitiveAccess = false
     private val refreshAccessRunning = java.util.concurrent.atomic.AtomicBoolean(false)
     private val refreshAccessPending = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    init {
+        // Wireless debugging can be turned off while the app runs. Elevated
+        // then loses its helper; re-check capabilities at once so PCs stop
+        // offering app windows instead of opening one into a dead helper.
+        scope.launch {
+            Elevated.state.collect { refreshNotificationAccess() }
+        }
+    }
     private val lastTransferUiEmitMs = java.util.concurrent.ConcurrentHashMap<String, Long>()
 
     /**
@@ -3195,6 +3204,12 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             runCatching { currentNode.setReconnect(pcId, on) }
                 .onFailure { Log.w(TAG, "set reconnect failed", it) }
         }
+    }
+
+    /** Changes the name this phone shows for a PC; blank goes back to the PC's own name. */
+    fun renamePc(pcId: String, name: String) {
+        PcDisplayName.set(context, pcId, name)
+        _state.update { it.withPcAliases(PcDisplayName.all(context)) }
     }
 
     fun setStorageEnabled(pcId: String, enabled: Boolean) {

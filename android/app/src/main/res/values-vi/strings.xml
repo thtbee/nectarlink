@@ -59,6 +59,12 @@
 <string name="settings_dynamic_color">Màu từ ảnh nền</string>
 <string name="settings_dynamic_color_hint">Dùng màu của ảnh nền.</string>
 <string name="settings_devices">PC</string>
+<string name="settings_this_phone">Tên điện thoại này</string>
+<string name="settings_this_phone_hint">Tên mà máy tính của bạn thấy cho điện thoại này. Để trống để dùng tên của Android.</string>
+    <string name="settings_pc_name">Tên máy tính</string>
+    <string name="settings_pc_name_hint">Tên mà điện thoại này hiển thị cho máy tính. Để trống để dùng tên riêng của máy tính.</string>
+<string name="action_rename">Đổi tên</string>
+<string name="action_save">Lưu</string>
 <string name="settings_about">Giới thiệu</string>
 <string name="settings_notifications">Thông báo</string>
 <string name="notifications_title">Hiển thị thông báo trên PC của bạn</string>
