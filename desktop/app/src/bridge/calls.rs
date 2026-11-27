@@ -78,6 +78,10 @@ pub mod qobject {
         #[qproperty(QString, call_mics, cxx_name = "callMics")]
         /// The microphone calls record on this PC (an id from `callMics`), or `""`.
         #[qproperty(QString, call_mic, cxx_name = "callMic")]
+        /// This PC can test the sound of a call (Windows and macOS).
+        #[qproperty(bool, call_audio_test_available, cxx_name = "callAudioTestAvailable")]
+        /// What the call audio test shows now (JSON, after `pollCallAudioTest`).
+        #[qproperty(QString, call_audio_test, cxx_name = "callAudioTest")]
         type PhoneCall = super::PhoneCallRust;
     }
 
@@ -151,6 +155,18 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "chooseCallMic"]
         fn choose_call_mic(self: Pin<&mut PhoneCall>, id: &QString);
+        /// Starts the call audio test: through the phone when it offers one, else on this PC alone.
+        #[qinvokable]
+        #[cxx_name = "startCallAudioTest"]
+        fn start_call_audio_test(self: &PhoneCall);
+        /// Ends the call audio test.
+        #[qinvokable]
+        #[cxx_name = "stopCallAudioTest"]
+        fn stop_call_audio_test(self: &PhoneCall);
+        /// Reads the test's levels and counters again (into `callAudioTest`).
+        #[qinvokable]
+        #[cxx_name = "pollCallAudioTest"]
+        fn poll_call_audio_test(self: Pin<&mut PhoneCall>);
     }
 }
 
@@ -186,6 +202,8 @@ pub struct PhoneCallRust {
     call_audio: bool,
     call_mics: QString,
     call_mic: QString,
+    call_audio_test_available: bool,
+    call_audio_test: QString,
     /// The call's ID on the phone, for its commands.
     call: Option<(DeviceId, String)>,
     /// What the Calls page last showed, to skip JSON updates that changed nothing.
@@ -200,6 +218,8 @@ impl cxx_qt::Initialize for qobject::PhoneCall {
         self.as_mut().set_contacts(QString::from("[]"));
         self.as_mut().set_sims(QString::from("[]"));
         self.as_mut().set_call_mics(QString::from("[]"));
+        self.as_mut().set_call_audio_test(QString::from("{}"));
+        self.as_mut().set_call_audio_test_available(crate::call_audio_test::supported());
         super::subscribe(self.qt_thread(), Changes::CALLS | Changes::CAPABILITIES, Self::refresh_state);
     }
 }
@@ -392,6 +412,21 @@ impl qobject::PhoneCall {
     pub fn choose_call_mic(self: Pin<&mut Self>, id: &QString) {
         crate::call_audio::set_mic(String::from(id));
         self.refresh_call_mics();
+    }
+
+    pub fn start_call_audio_test(&self) {
+        crate::call_audio_test::start();
+    }
+
+    pub fn stop_call_audio_test(&self) {
+        crate::call_audio_test::stop();
+    }
+
+    pub fn poll_call_audio_test(mut self: Pin<&mut Self>) {
+        let view = QString::from(&crate::call_audio_test::view());
+        if *self.call_audio_test() != view {
+            self.as_mut().set_call_audio_test(view);
+        }
     }
 
     pub fn move_call_audio(&self, here: bool) {

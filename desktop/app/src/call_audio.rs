@@ -71,6 +71,8 @@ pub fn start(device: DeviceId) {
     if !available(device) || phase() != Phase::Off {
         return;
     }
+    // A call's sound comes first: the test in Settings ends.
+    crate::call_audio_test::stop();
     set_phase(Phase::Starting(device));
     core_host::spawn(async move {
         if let Err(e) = node.call_audio_start(device, call.id).await {
@@ -138,7 +140,7 @@ impl std::fmt::Display for MicError {
 }
 
 /// What to tell the person when the microphone can't be recorded.
-fn mic_message(e: &MicError) -> String {
+pub(crate) fn mic_message(e: &MicError) -> String {
     match e {
         #[cfg(windows)]
         MicError::Denied => tr!(
@@ -176,14 +178,33 @@ fn record_into(uplink: &Arc<nectarlink_core::MirrorStream>, device: DeviceId) ->
 /// Records the chosen microphone into `uplink`. Blocks a moment.
 #[cfg(any(windows, target_os = "macos"))]
 fn recorder(uplink: &Arc<nectarlink_core::MirrorStream>) -> Result<crate::win::audio_in::Recorder, MicError> {
-    let rate = nectarlink_core::CALLS_AUDIO_RATE;
     let stream = uplink.clone();
+    recorder_with(move |time_us, pcm| {
+        stream.send(nectarlink_core::PacketKind::Frame, time_us, pcm);
+    })
+}
+
+/// Records the chosen microphone as a call does: 16 kHz mono 16-bit, each
+/// piece handed to `on_pcm` with the time, in microseconds, its sound starts
+/// at (counted in samples from the first). The call audio test records
+/// through this too. Blocks a moment.
+#[cfg(any(windows, target_os = "macos"))]
+pub(crate) fn recorder_with(
+    mut on_pcm: impl FnMut(u64, Vec<u8>) + Send + 'static,
+) -> Result<crate::win::audio_in::Recorder, MicError> {
+    let rate = nectarlink_core::CALLS_AUDIO_RATE;
     let mut samples = 0u64;
     crate::win::audio_in::Recorder::start(chosen_mic(), rate, move |pcm| {
         let time_us = samples * 1_000_000 / u64::from(rate);
         samples += pcm.len() as u64 / 2;
-        stream.send(nectarlink_core::PacketKind::Frame, time_us, pcm);
+        on_pcm(time_us, pcm);
     })
+}
+
+/// There's no recording off Windows and macOS.
+#[cfg(not(any(windows, target_os = "macos")))]
+pub(crate) fn recorder_with(_on_pcm: impl FnMut(u64, Vec<u8>) + Send + 'static) -> Result<(), MicError> {
+    Err(MicError::Other("not on this system".into()))
 }
 
 /// The microphone chosen in Settings, if any (kept when other settings save).

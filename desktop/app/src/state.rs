@@ -628,6 +628,8 @@ impl AppState {
             | NodeEvent::Mic { .. }
             | NodeEvent::PcAudioFrame { .. }
             | NodeEvent::CallAudioUplink { .. }
+            | NodeEvent::CallAudioTestUplink { .. }
+            | NodeEvent::CallAudioTestEnded { .. }
             | NodeEvent::CameraCaptureRequested { .. }
             | NodeEvent::CameraCaptureCancelled { .. }
             // The updater acts on it (update_relay); nothing shows.

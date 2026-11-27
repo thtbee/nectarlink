@@ -8,6 +8,18 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Test call audio.** When someone on a call can't hear you properly, **Settings › Calls through
+  this PC › Test call audio** (Windows and macOS) opens a fake call, marked as a test, that runs the
+  sound of a call with no call going on. With your phone connected, your microphone goes to the
+  phone, plays on its speaker and comes back to this PC's output (the phone needs the app version
+  with this; older ones, or no phone, get a 5-second record-and-play-back on this PC instead, and
+  the test says which ran). It shows the microphone it records from, the level meter, clipping, how
+  many pieces of sound were sent, dropped, late or lost, and the round trip. See
+  [Testing the sound without a call](docs/guide/calls.md#testing-the-sound-without-a-call).
+- **Nectar Island on the Mac.** The pill for calls, transfers and new notifications sits just
+  below the menu bar, on every Space, and stays when another app is in front or NectarLink has no
+  window open. It doesn't show over full-screen apps.
+- **Swipe between your devices on the phone's Home.** With two or more paired devices, their cards
 - **Talk on a phone call through the Mac.** The **On PC** button on a call now works on macOS as
   on Windows: the other party plays on the Mac's sound output, headphones included, and the Mac's
   microphone goes into the call. macOS asks once to let NectarLink use the microphone. Pick the

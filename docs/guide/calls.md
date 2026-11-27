@@ -62,6 +62,15 @@ Whether your phone allows this is up to its maker: the phone's audio system must
 
 On Linux, call audio goes to the PC over Bluetooth instead, as for a headset.
 
+### Testing the sound without a call
+
+If the other person says they can't hear you well (or at all), try **Settings › Calls through this PC › Test call audio** on Windows or macOS. It opens a fake call, marked as a test, and works with no call going on.
+
+- **With your phone connected** (and an up-to-date NectarLink on it), your voice goes to your phone, plays on its speaker and comes back to this PC's speakers or headphones, the way a call's sound travels. You hear what the phone received.
+- **Without it** (the phone is off, away, or has an older NectarLink), the test records 5 seconds from this PC's microphone and plays them back, and says that it ran on this PC alone.
+
+It shows the microphone it records from (its name, and on a Mac its own sample rate and channels, which NectarLink converts to the 16 kHz mono a call carries), where the sound plays, a live level meter (loudness and peak in dBFS; speaking normally reads about -30 to -12), whether the sound is cut off, how many pieces of sound were sent, dropped, late or never came back, and the round trip in milliseconds. It points out the usual causes of a call that sounds wrong: a silent or muted microphone, a low system input volume, a clipped signal, a Bluetooth headset's low-quality microphone, and a slow connection. Use headphones for the test, as for a call.
+
 ## What the Options Do
 
 - **Calls toggle** (`Settings › Devices` on PC, **On** by default): Enables caller ID, call log sync, incoming call alerts, and call control for that phone.

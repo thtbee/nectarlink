@@ -238,7 +238,7 @@ impl Recorder {
         if let Some(uid) = device.as_deref().and_then(CfString::new) {
             let raw = uid.as_raw();
             // SAFETY: the property takes a CFStringRef, which the queue retains.
-            let _ = unsafe {
+            let status = unsafe {
                 AudioQueueSetProperty(
                     queue,
                     K_AUDIO_QUEUE_PROPERTY_CURRENT_DEVICE,
@@ -246,6 +246,11 @@ impl Recorder {
                     size_of::<*const c_void>() as u32,
                 )
             };
+            // The default microphone records instead; said, so a call that
+            // records the wrong one can be told from the log.
+            if status != 0 {
+                tracing::warn!(status, "can't record the chosen microphone, using the default one");
+            }
         }
         let buffer_bytes = (rate as usize * BUFFER_MS / 1000).max(1) as u32 * 2;
         for _ in 0..BUFFER_COUNT {
@@ -328,6 +333,35 @@ mod tests {
         let bytes = *heard.lock().unwrap();
         // About a second of 16-bit samples at 16 kHz: 32,000 bytes.
         assert!((24_000..=40_000).contains(&bytes), "{bytes} bytes in a second");
+    }
+
+    /// Needs a microphone: reads the default one's own format, records two seconds and
+    /// checks that what comes is sound at the format asked for, and not silence
+    /// (speak while it runs): `cargo test -p nectarlink-desktop -- --ignored reports_the_format`.
+    #[test]
+    #[ignore = "records the microphone"]
+    fn reports_the_format_and_a_level() {
+        let format = super::super::audio::input_format(None).expect("a default microphone");
+        eprintln!("native: {} Hz, {} channels, bluetooth {}", format.rate, format.channels, format.bluetooth);
+        let got = Arc::new(std::sync::Mutex::new(Vec::<u8>::new()));
+        let kept = got.clone();
+        let recorder =
+            Recorder::start(None, 16_000, move |pcm| kept.lock().unwrap().extend(pcm)).expect("starts");
+        std::thread::sleep(std::time::Duration::from_secs(2));
+        drop(recorder);
+        let pcm = got.lock().unwrap().clone();
+        let mut meter = crate::call_audio_test::Meter::default();
+        meter.push(&pcm);
+        let level = meter.window().expect("sound came");
+        eprintln!(
+            "{} bytes, rms {:.1} dBFS, peak {:.1} dBFS, {} clipped",
+            pcm.len(),
+            level.rms_db,
+            level.peak_db,
+            meter.clipped
+        );
+        assert_eq!(pcm.len() % 2, 0);
+        assert!((56_000..=72_000).contains(&pcm.len()), "{} bytes in two seconds", pcm.len());
     }
 
     #[test]
