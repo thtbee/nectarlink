@@ -389,6 +389,11 @@ pub mod qobject {
         #[qinvokable]
         fn logs_url(self: &AppController) -> QString;
 
+        /// The end of the app's log, for the log viewer: the lines holding `filter`.
+        #[qinvokable]
+        #[cxx_name = "readLog"]
+        fn read_log(self: &AppController, filter: &QString) -> QString;
+
         /// Opens a paired phone's storage sync root in File Explorer.
         #[qinvokable]
         fn open_phone_storage(self: &AppController, device: &QString);
@@ -2126,6 +2131,10 @@ impl qobject::AppController {
 
     pub fn doctor_fix(self: Pin<&mut Self>, fix: &QString) {
         diagnose_in_background(self, Some(String::from(fix)));
+    }
+
+    pub fn read_log(&self, filter: &QString) -> QString {
+        QString::from(&crate::logging::tail(&String::from(filter)))
     }
 
     pub fn logs_url(&self) -> QString {

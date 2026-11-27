@@ -21,6 +21,12 @@ change things that need a step from you, and its notes say so.
   **Tray icon** in Settings › General turns the color tile back on (a Mac that already ran
   NectarLink moves to the one-color icon once). Thanks to
   [@farfromrefug](https://github.com/farfromrefug) ([#685](https://github.com/thtbee/nectarlink/pull/685)).
+- **A detailed log and a log viewer, to find out why something doesn't connect.** In **Settings ›
+  Connection & About**, **Detailed log** also logs what the USB cable, the connection and a
+  call's sound do, step by step, and **View the log** shows the end of the log as it goes, with a
+  filter box, **Copy** and **Open folder**. The log stays free of names, numbers, messages, files
+  and addresses. A phone on a cable that adb shows but NectarLink doesn't reconnect to can now be
+  followed from the plug to the tunnel's hello.
 - **Unlock KDE Plasma with the phone.** On Linux, NectarLink's PAM module can now run in the
   lock screen's `kde-fingerprint` service, so the phone asks for your fingerprint each time the
   PC locks and unlocks it when you approve. It's one line in `/etc/pam.d/kde-fingerprint`; see

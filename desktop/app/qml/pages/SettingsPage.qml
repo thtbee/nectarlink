@@ -4347,6 +4347,31 @@ Item {
                                 }
                             }
                         }
+                        Divider { width: parent.width }
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.terminal
+                            title: qsTr("Detailed log")
+                            description: qsTr("Logs more about the USB cable, the connection and calls' sound, to find what went wrong. Names, numbers and messages are never logged.")
+                            Toggle {
+                                label: qsTr("Detailed log")
+                                checked: Preferences.detailedLog
+                                onToggled: (on) => Preferences.detailedLog = on
+                            }
+                        }
+                        Divider { width: parent.width }
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.code
+                            title: qsTr("View the log")
+                            description: qsTr("The end of this app's log, as it goes. Pick a word to show only the lines with it, such as usb.")
+                            Button {
+                                variant: "outline"
+                                size: "sm"
+                                text: qsTr("View")
+                                onClicked: logSheet.show()
+                            }
+                        }
                     }
                 }
 
@@ -5046,6 +5071,116 @@ Item {
             Row {
                 anchors.right: parent.right
                 Button { variant: "text"; text: qsTr("Close"); onClicked: languageSheet.close() }
+            }
+        }
+    }
+
+    Sheet {
+        id: logSheet
+        cardWidth: 820
+
+        property string text: ""
+        property bool live: true
+        function show() {
+            refresh()
+            open()
+        }
+        function refresh() { text = AppController.readLog(logFilter.text) }
+
+        // New lines come in while it's open.
+        Timer {
+            interval: 2000
+            repeat: true
+            running: logSheet.opened && logSheet.live
+            onTriggered: logSheet.refresh()
+        }
+
+        Column {
+            width: parent.width
+            spacing: 10
+            Txt { width: parent.width; text: qsTr("Log"); role: "headline" }
+            Row {
+                width: parent.width
+                spacing: 10
+                Rectangle {
+                    width: parent.width - liveLog.width - parent.spacing
+                    height: 36
+                    radius: Theme.graphite ? Theme.radiusSm : height / 2
+                    color: Theme.graphite ? "transparent" : Theme.surfaceContainerHighest
+                    border.width: logFilter.activeFocus ? 2 : (Theme.graphite ? 1 : 0)
+                    border.color: logFilter.activeFocus ? Theme.primary : Theme.outlineVariant
+                    TextInput {
+                        id: logFilter
+                        anchors.fill: parent
+                        anchors.leftMargin: 14
+                        anchors.rightMargin: 14
+                        verticalAlignment: TextInput.AlignVCenter
+                        font.family: Theme.fontUi
+                        font.pixelSize: 14
+                        color: Theme.surfaceContent
+                        selectionColor: Theme.primaryContainer
+                        selectedTextColor: Theme.primaryContainerContent
+                        clip: true
+                        Accessible.name: qsTr("Show only lines with")
+                        onTextChanged: logSheet.refresh()
+                        Txt {
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: logFilter.text.length === 0
+                            role: "body"
+                            muted: true
+                            text: qsTr("Only lines with…")
+                        }
+                    }
+                }
+                Toggle {
+                    id: liveLog
+                    anchors.verticalCenter: parent.verticalCenter
+                    label: qsTr("Live")
+                    checked: logSheet.live
+                    onToggled: (on) => logSheet.live = on
+                }
+            }
+            Flickable {
+                id: logFlick
+                width: parent.width
+                height: 380
+                clip: true
+                contentWidth: logText.width
+                contentHeight: logText.height
+                boundsBehavior: Flickable.StopAtBounds
+                // Stays at the end while new lines come in, unless scrolled up.
+                property bool atEnd: true
+                onMovementEnded: atEnd = contentY + height >= contentHeight - 8
+                onContentHeightChanged: if (atEnd) contentY = Math.max(0, contentHeight - height)
+                TextEdit {
+                    id: logText
+                    readOnly: true
+                    selectByMouse: true
+                    wrapMode: TextEdit.NoWrap
+                    text: logSheet.text.length > 0 ? logSheet.text : qsTr("Nothing logged that matches.")
+                    font.family: Theme.fontMono
+                    font.pixelSize: 12
+                    color: Theme.surfaceContent
+                    selectionColor: Theme.primaryContainer
+                    selectedTextColor: Theme.primaryContainerContent
+                }
+            }
+            Row {
+                anchors.right: parent.right
+                spacing: 8
+                Button {
+                    variant: "text"
+                    iconPath: Icons.folder
+                    text: qsTr("Open folder")
+                    onClicked: Qt.openUrlExternally(AppController.logsUrl())
+                }
+                Button {
+                    variant: "tonal"
+                    iconPath: Icons.copy
+                    text: qsTr("Copy")
+                    onClicked: AppController.copyText(logSheet.text)
+                }
+                Button { variant: "text"; text: qsTr("Close"); onClicked: logSheet.close() }
             }
         }
     }
