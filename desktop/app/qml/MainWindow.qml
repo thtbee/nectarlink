@@ -13,6 +13,36 @@ NativeWindow {
     readonly property bool welcome: AppController.status !== "ready" || showWalkthrough
     property string page: AppController.currentPage.length > 0 ? AppController.currentPage : "home"
     property string pendingSettingsSection: ""
+    readonly property var pageCatalog: [
+        { id: "home", label: qsTr("Home"), icon: Icons.home },
+        { id: "messages", label: qsTr("Messages"), icon: Icons.messages },
+        { id: "calls", label: qsTr("Calls"), icon: Icons.call },
+        { id: "photos", label: qsTr("Photos"), icon: Icons.photo },
+        { id: "apps", label: qsTr("Apps"), icon: Icons.apps },
+        { id: "deck", label: qsTr("Deck"), icon: Icons.deck },
+        { id: "guide", label: qsTr("Guide"), icon: Icons.book },
+        { id: "settings", label: qsTr("Settings"), icon: Icons.settings }
+    ]
+    readonly property var navPages: {
+        const hidden = String(Preferences.pageHidden).split(",").filter(id => id.length > 0)
+        const order = String(Preferences.pageOrder).split(",").filter(id => id.length > 0)
+        const byId = {}
+        for (const item of pageCatalog)
+            byId[item.id] = item
+        const out = []
+        for (const id of order)
+            if (byId[id] && !hidden.includes(id) && !out.some(p => p.id === id))
+                out.push(byId[id])
+        for (const item of pageCatalog)
+            if (!hidden.includes(item.id) && !out.some(p => p.id === item.id))
+                out.push(item)
+        return out
+    }
+    onNavPagesChanged: {
+        if (!navPages.some(item => item.id === page
+                || (item.id === "home" && page === "timeline")))
+            page = "home"
+    }
     onPageChanged: {
         if (AppController.currentPage !== page) AppController.currentPage = page
         whatsNewLoader.hide()
@@ -133,6 +163,9 @@ NativeWindow {
     property int normalY: Preferences.windowY
     property bool hasNormalPosition: Preferences.hasWindowPosition
     property bool restoringGeometry: true
+    // Remembered across a minimize or a hide, where `visibility` no longer
+    // says whether the window should come back maximized.
+    property bool lastMaximized: Preferences.windowMaximized
 
     width: normalWidth
     height: normalHeight
@@ -217,7 +250,13 @@ NativeWindow {
         id: restoreCompleteTimer
         interval: 180
         onTriggered: {
-            if (!Preferences.windowMaximized && window.visibility === Window.Windowed) {
+            if (window.restoringGeometry && Preferences.windowMaximized && window.visible
+                    && window.visibility !== Window.Maximized) {
+                // Showing a window can land it in Windowed after showMaximized()
+                // on some drivers; ask once more while the restore is settling.
+                window.showMaximized()
+            }
+            if (!window.lastMaximized && window.visibility === Window.Windowed) {
                 const s = findScreen(window.normalScreen) || primaryScreen()
                 const targetGlobalX = screenOriginX(s) + window.normalX
                 const targetGlobalY = screenOriginY(s) + window.normalY
@@ -294,8 +333,12 @@ NativeWindow {
         height = fittedH
         x = sx + normalX
         y = sy + normalY
-        if (Preferences.windowMaximized)
+        if (Preferences.windowMaximized) {
+            lastMaximized = true
             showMaximized()
+        } else {
+            lastMaximized = false
+        }
         restoreCompleteTimer.restart()
     }
 
@@ -316,6 +359,11 @@ NativeWindow {
                 normalHeight = Math.max(window.minimumHeight, window.height)
             }
         }
+        if (window.visibility === Window.Maximized) {
+            lastMaximized = true
+        } else if (window.visibility === Window.Windowed) {
+            lastMaximized = false
+        }
         Preferences.saveWindowGeometry(
             normalScreen,
             hasNormalPosition,
@@ -324,6 +372,7 @@ NativeWindow {
             normalWidth,
             normalHeight,
             window.visibility === Window.Maximized
+                || (window.visibility !== Window.Windowed && window.lastMaximized)
         )
     }
 
@@ -353,8 +402,15 @@ NativeWindow {
     Connections {
         target: window
         function onVisibilityChanged() {
+            if (window.visibility === Window.Maximized)
+                window.lastMaximized = true
+            else if (window.visibility === Window.Windowed)
+                window.lastMaximized = false
+            // Minimized and Hidden keep the last state, so a window closed
+            // from the tray still comes back maximized.
             if (window.visible && !window.restoringGeometry
-                && (window.visibility === Window.Windowed || window.visibility === Window.Maximized))
+                && (window.visibility === Window.Windowed || window.visibility === Window.Maximized
+                    || window.visibility === Window.Minimized))
                 geometrySaveTimer.restart()
         }
     }
@@ -704,95 +760,23 @@ NativeWindow {
             anchors.top: mark.bottom
             anchors.topMargin: 31
             spacing: 6
-            NavItem {
-                iconPath: Icons.home
-                text: qsTr("Home")
-                selected: window.page === "home" || window.page === "timeline"
-                activeHover: rail.hoveredNav === "home"
-                onHoveredChanged: {
-                    if (hovered) rail.hoveredNav = "home"
-                    else if (rail.hoveredNav === "home") rail.hoveredNav = ""
+            Repeater {
+                model: window.navPages
+                delegate: NavItem {
+                    required property var modelData
+                    iconPath: modelData.icon
+                    text: modelData.label
+                    badge: modelData.id === "messages" ? AppController.unreadMessagesBadge
+                        : modelData.id === "calls" ? AppController.missedCallsBadge : 0
+                    selected: window.page === modelData.id
+                        || (modelData.id === "home" && window.page === "timeline")
+                    activeHover: rail.hoveredNav === modelData.id
+                    onHoveredChanged: {
+                        if (hovered) rail.hoveredNav = modelData.id
+                        else if (rail.hoveredNav === modelData.id) rail.hoveredNav = ""
+                    }
+                    onClicked: window.page = modelData.id
                 }
-                onClicked: window.page = "home"
-            }
-            NavItem {
-                iconPath: Icons.messages
-                text: qsTr("Messages")
-                badge: AppController.unreadMessagesBadge
-                selected: window.page === "messages"
-                activeHover: rail.hoveredNav === "messages"
-                onHoveredChanged: {
-                    if (hovered) rail.hoveredNav = "messages"
-                    else if (rail.hoveredNav === "messages") rail.hoveredNav = ""
-                }
-                onClicked: window.page = "messages"
-            }
-            NavItem {
-                iconPath: Icons.call
-                text: qsTr("Calls")
-                badge: AppController.missedCallsBadge
-                selected: window.page === "calls"
-                activeHover: rail.hoveredNav === "calls"
-                onHoveredChanged: {
-                    if (hovered) rail.hoveredNav = "calls"
-                    else if (rail.hoveredNav === "calls") rail.hoveredNav = ""
-                }
-                onClicked: window.page = "calls"
-            }
-            NavItem {
-                iconPath: Icons.photo
-                text: qsTr("Photos")
-                selected: window.page === "photos"
-                activeHover: rail.hoveredNav === "photos"
-                onHoveredChanged: {
-                    if (hovered) rail.hoveredNav = "photos"
-                    else if (rail.hoveredNav === "photos") rail.hoveredNav = ""
-                }
-                onClicked: window.page = "photos"
-            }
-            NavItem {
-                iconPath: Icons.apps
-                text: qsTr("Apps")
-                selected: window.page === "apps"
-                activeHover: rail.hoveredNav === "apps"
-                onHoveredChanged: {
-                    if (hovered) rail.hoveredNav = "apps"
-                    else if (rail.hoveredNav === "apps") rail.hoveredNav = ""
-                }
-                onClicked: window.page = "apps"
-            }
-            NavItem {
-                iconPath: Icons.deck
-                text: qsTr("Deck")
-                selected: window.page === "deck"
-                activeHover: rail.hoveredNav === "deck"
-                onHoveredChanged: {
-                    if (hovered) rail.hoveredNav = "deck"
-                    else if (rail.hoveredNav === "deck") rail.hoveredNav = ""
-                }
-                onClicked: window.page = "deck"
-            }
-            NavItem {
-                iconPath: Icons.book
-                text: qsTr("Guide")
-                selected: window.page === "guide"
-                activeHover: rail.hoveredNav === "guide"
-                onHoveredChanged: {
-                    if (hovered) rail.hoveredNav = "guide"
-                    else if (rail.hoveredNav === "guide") rail.hoveredNav = ""
-                }
-                onClicked: window.page = "guide"
-            }
-            NavItem {
-                iconPath: Icons.settings
-                text: qsTr("Settings")
-                selected: window.page === "settings"
-                activeHover: rail.hoveredNav === "settings"
-                onHoveredChanged: {
-                    if (hovered) rail.hoveredNav = "settings"
-                    else if (rail.hoveredNav === "settings") rail.hoveredNav = ""
-                }
-                onClicked: window.page = "settings"
             }
         }
         // The device the pages show: click to pick another.

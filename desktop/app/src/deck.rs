@@ -81,16 +81,72 @@ pub fn set_page_active(active: bool) {
     }
 }
 
+/// The default label for an action kind in the app's language. The core
+/// stores English defaults in the Deck file for the phone and older builds;
+/// this is what the PC shows and writes for a new tile.
+pub fn localized_default_label(kind: &str) -> String {
+    match kind {
+        deck_kinds::MEDIA_PLAY_PAUSE => tr!("Deck", "Play / pause").to_string(),
+        deck_kinds::MEDIA_NEXT => tr!("Deck", "Next").to_string(),
+        deck_kinds::MEDIA_PREVIOUS => tr!("Deck", "Previous").to_string(),
+        deck_kinds::VOLUME_UP => tr!("Deck", "Volume up").to_string(),
+        deck_kinds::VOLUME_DOWN => tr!("Deck", "Volume down").to_string(),
+        deck_kinds::VOLUME_MUTE => tr!("Deck", "Mute audio").to_string(),
+        deck_kinds::MIC_MUTE => tr!("Deck", "Mic mute").to_string(),
+        deck_kinds::LOCK_PC => tr!("Deck", "Lock PC").to_string(),
+        deck_kinds::SHOW_DESKTOP => tr!("Deck", "Show desktop").to_string(),
+        deck_kinds::SWITCH_WINDOW => tr!("Deck", "Switch window").to_string(),
+        deck_kinds::SCREENSHOT => tr!("Deck", "Screenshot").to_string(),
+        deck_kinds::SHORTCUT => tr!("Deck", "Shortcut").to_string(),
+        deck_kinds::OPEN_URL => tr!("Deck", "Open website").to_string(),
+        deck_kinds::TYPE_TEXT => tr!("Deck", "Type text").to_string(),
+        deck_kinds::LAUNCH_APP => tr!("Deck", "Launch app").to_string(),
+        deck_kinds::RUN_COMMAND => tr!("Deck", "Run command").to_string(),
+        _ => deck_kinds::default_label(kind).to_string(),
+    }
+}
+
+/// Replaces the English default labels written by older builds (or the core
+/// default layout) with the app language's labels. User-edited labels are
+/// left alone because they no longer match the English default.
+fn localize_default_labels(config: &mut DeckConfig) -> bool {
+    let mut changed = false;
+    for page in &mut config.pages {
+        if page.name == "Main" {
+            let localized = tr!("Deck", "Main").to_string();
+            if localized != page.name {
+                page.name = localized;
+                changed = true;
+            }
+        }
+        for tile in &mut page.tiles {
+            let kind = tile.action.kind();
+            if tile.label == deck_kinds::default_label(kind) {
+                let localized = localized_default_label(kind);
+                if localized != tile.label {
+                    tile.label = localized;
+                    changed = true;
+                }
+            }
+        }
+    }
+    changed
+}
+
 /// Loads `deck.json` from `data_dir` and starts the background poller that
 /// keeps speaker volume, microphone mute, output devices, and external
 /// `deck.json` edits in sync.
 pub fn init(data_dir: &Path) {
     let path = data_dir.join(FILE_NAME);
     if !path.exists() {
-        let default = DeckConfig::default_deck();
+        let mut default = DeckConfig::default_deck();
+        localize_default_labels(&mut default);
         let _ = default.save(&path);
     }
-    let config = DeckConfig::load(&path);
+    let mut config = DeckConfig::load(&path);
+    if localize_default_labels(&mut config) {
+        let _ = config.save(&path);
+    }
     let mtime = file_mtime(&path);
     let initial_state = DeckState {
         volume: 50,
@@ -168,7 +224,8 @@ fn reload_from_disk_if_modified() {
             return;
         }
         rt.last_mtime = mtime;
-        let fresh = DeckConfig::load(path);
+        let mut fresh = DeckConfig::load(path);
+        localize_default_labels(&mut fresh);
         if fresh == rt.config {
             return;
         }

@@ -23,6 +23,36 @@ Item {
         }
     }
     property int currentPageIndex: 0
+
+    // The core stores a tile's default label in English; older deck.json
+    // files still have those labels. Map them to the same translated strings
+    // the Deck editor already uses, at display time, without touching a
+    // label the user typed themselves.
+    function displayTileLabel(label) {
+        switch (label) {
+        case "Play / pause": return qsTr("Play / pause")
+        case "Next": return qsTr("Next track")
+        case "Previous": return qsTr("Previous track")
+        case "Volume up": return qsTr("Volume up")
+        case "Volume down": return qsTr("Volume down")
+        case "Mute audio": return qsTr("Mute speaker")
+        case "Mic mute": return qsTr("Mute microphone")
+        case "Lock PC": return qsTr("Lock PC")
+        case "Show desktop":
+            return Qt.platform.os === "linux" ? qsTr("Show desktop (Super+D)") : qsTr("Show desktop (Win+D)")
+        case "Switch window": return qsTr("Switch window (Alt+Tab)")
+        case "Screenshot":
+            return Qt.platform.os === "linux" ? qsTr("Screenshot") : qsTr("Screenshot (Win+Shift+S)")
+        case "Shortcut": return qsTr("Keyboard shortcut")
+        case "Open website": return qsTr("Open website")
+        case "Type text": return qsTr("Type text snippet")
+        case "Launch app":
+            return Qt.platform.os === "linux" ? qsTr("Launch application (.desktop / binary)") : qsTr("Launch application (.exe / .lnk)")
+        case "Run command": return qsTr("Run shell command")
+        case "Action": return qsTr("Action")
+        default: return label
+        }
+    }
     readonly property var currentPage: pagesList[Math.min(currentPageIndex, Math.max(0, pagesList.length - 1))] || { id: "main", name: qsTr("Main"), tiles: [] }
     readonly property var currentTiles: currentPage.tiles || []
     property int draggedTileIndex: -1
@@ -133,7 +163,7 @@ Item {
     function openAddTile() {
         editorSheet.tileId = ""
         editorSheet.actionKind = "shortcut"
-        editorSheet.tileLabel = DeckController.defaultLabelFor("shortcut")
+        editorSheet.tileLabel = page.displayTileLabel(DeckController.defaultLabelFor("shortcut"))
         editorSheet.labelCustomized = false
         editorSheet.tileIcon = DeckController.defaultIconFor("shortcut")
         editorSheet.tileColor = DeckController.defaultColorFor("shortcut")
@@ -150,7 +180,7 @@ Item {
     function openEditTile(tile) {
         editorSheet.tileId = tile.id
         editorSheet.actionKind = tile.kind
-        editorSheet.tileLabel = tile.label
+        editorSheet.tileLabel = page.displayTileLabel(tile.label)
         editorSheet.labelCustomized = true
         editorSheet.tileIcon = tile.icon
         editorSheet.tileColor = tile.color
@@ -325,7 +355,7 @@ Item {
                             required property int index
                             interactive: true
                             selected: index === page.currentPageIndex
-                            text: "%1 (%2)".arg(modelData.name).arg((modelData.tiles || []).length)
+                            text: "%1 (%2)".arg(qsTr(modelData.name)).arg((modelData.tiles || []).length)
                             onClicked: page.currentPageIndex = index
                         }
                     }
@@ -509,7 +539,7 @@ Item {
 
                                 Txt {
                                     width: parent.width
-                                    text: tileSlot.modelData.label
+                                    text: page.displayTileLabel(tileSlot.modelData.label)
                                     role: "body"
                                     weight: Font.DemiBold
                                     elide: Text.ElideRight
@@ -699,7 +729,7 @@ Item {
             }
             actionKind = kind
             if (!labelCustomized || tileLabel.trim().length === 0) {
-                tileLabel = DeckController.defaultLabelFor(kind)
+                tileLabel = page.displayTileLabel(DeckController.defaultLabelFor(kind))
             }
             tileIcon = DeckController.defaultIconFor(kind)
             tileColor = DeckController.defaultColorFor(kind)
@@ -768,7 +798,7 @@ Item {
                         anchors.right: parent.right
                         anchors.bottom: parent.bottom
                         anchors.margins: 10
-                        text: editorSheet.tileLabel.length > 0 ? editorSheet.tileLabel : DeckController.defaultLabelFor(editorSheet.actionKind)
+                        text: editorSheet.tileLabel.length > 0 ? editorSheet.tileLabel : page.displayTileLabel(DeckController.defaultLabelFor(editorSheet.actionKind))
                         role: "bodySmall"
                         weight: Font.DemiBold
                         elide: Text.ElideRight

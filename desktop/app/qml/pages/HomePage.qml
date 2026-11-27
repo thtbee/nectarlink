@@ -2,6 +2,7 @@
 import QtQuick
 import QtQuick.Window
 import QtQuick.Dialogs
+import QtQuick.Layouts
 import QtQuick.Shapes
 import app.nectarlink
 
@@ -87,7 +88,12 @@ Item {
         target: TransferList
         function onSendQueueChanged() { page.syncSendQueue() }
     }
-    Component.onCompleted: syncSendQueue()
+    Component.onCompleted: {
+        syncSendQueue()
+        // A phone that was already showing notifications should reach the PC
+        // even if its listener missed the session-start snapshot.
+        NotificationList.syncFromPhone()
+    }
 
     function formatQueueSize(bytes) {
         if (!bytes || bytes <= 0) return ""
@@ -1131,7 +1137,8 @@ Item {
                             spacing: 6
                             Txt {
                                 id: nameTxt
-                                width: Math.min(implicitWidth, parent.width - editNicknameBtn.width - parent.spacing)
+                                width: Math.min(implicitWidth, parent.width - editNicknameBtn.width
+                                    - removePhoneBtn.width - parent.spacing * 2)
                                 text: home.name
                                 role: "displaySmall"
                                 size: home.name.length > 14 ? 20 : (home.name.length > 10 ? 22 : 25)
@@ -1147,6 +1154,14 @@ Item {
                                 iconSize: 14
                                 label: home.hasNickname ? qsTr("Change nickname") : qsTr("Set nickname")
                                 onClicked: nicknameSheet.openFor(home.deviceId, home.name, home.rawName)
+                            }
+                            IconButton {
+                                id: removePhoneBtn
+                                anchors.verticalCenter: nameTxt.verticalCenter
+                                iconPath: Icons.trash
+                                iconSize: 14
+                                label: qsTr("Unpair this phone")
+                                onClicked: unpairSheet.openFor(home.deviceId, home.name)
                             }
                         }
                         Txt {
@@ -1642,7 +1657,7 @@ Item {
                             anchors.right: clearAll.visible ? clearAll.left : parent.right
                             anchors.rightMargin: clearAll.visible ? 8 : 0
                             anchors.verticalCenter: parent.verticalCenter
-                            visible: NotificationList.historyEnabled && NotificationHistory.count > 0
+                            visible: NotificationList.historyEnabled
                             iconPath: Icons.history
                             text: qsTr("History")
                             label: qsTr("Notification history (last 24 hours)")
@@ -1754,17 +1769,43 @@ Item {
                         }
                     }
                     // Empty: say why, and what turns it on.
-                    Txt {
+                    Column {
                         width: parent.width
+                        spacing: 8
                         visible: feed.count === 0 && !lockedHint.visible
-                        role: "bodySmall"
-                        muted: true
-                        wrapMode: Text.WordWrap
-                        text: feed.state.state === "available"
-                              ? qsTr("No notifications")
-                              : home.lastSeen > 0 || home.online
-                                ? qsTr("Notifications unavailable")
-                                : qsTr("Connect %1 to view notifications").arg(home.name)
+
+                        Txt {
+                            width: parent.width
+                            role: "bodySmall"
+                            muted: true
+                            wrapMode: Text.WordWrap
+                            text: feed.state.state === "available"
+                                  ? qsTr("No notifications")
+                                  : home.lastSeen > 0 || home.online
+                                    ? qsTr("Notifications unavailable")
+                                    : qsTr("Connect %1 to view notifications").arg(home.name)
+                        }
+
+                        RowLayout {
+                            width: parent.width
+                            visible: feed.state.state === "available" && home.online
+                            spacing: 8
+
+                            Txt {
+                                Layout.fillWidth: true
+                                role: "caption"
+                                muted: true
+                                wrapMode: Text.WordWrap
+                                text: qsTr("If your phone already shows notifications, check that notification access is on for NectarLink there.")
+                            }
+                            Button {
+                                variant: "tonal"
+                                size: "sm"
+                                iconPath: Icons.refresh
+                                text: qsTr("Refresh")
+                                onClicked: NotificationList.syncFromPhone()
+                            }
+                        }
                     }
                     LockChip { id: lockedHint; visible: feed.count === 0 && label.length > 0; feature: feed.state }
                     // Windows hides every app's notifications when they're
@@ -2855,6 +2896,52 @@ Item {
                 Button {
                     text: qsTr("Save")
                     onClicked: nicknameSheet.saveNickname()
+                }
+            }
+        }
+    }
+
+    // Forget the phone from its own page, without digging into Settings.
+    Sheet {
+        id: unpairSheet
+        property string targetDeviceId: ""
+        property string deviceName: ""
+        cardWidth: 420
+        function openFor(devId, name) {
+            targetDeviceId = devId
+            deviceName = name
+            open()
+        }
+        Column {
+            width: parent.width
+            spacing: 16
+            Txt {
+                width: parent.width
+                text: qsTr("Unpair %1?").arg(unpairSheet.deviceName)
+                role: "headline"
+                wrapMode: Text.WordWrap
+            }
+            Txt {
+                width: parent.width
+                text: qsTr("Both devices forget each other. You can pair them again any time.")
+                role: "body"
+                muted: true
+                wrapMode: Text.WordWrap
+            }
+            Row {
+                anchors.right: parent.right
+                spacing: 8
+                Button {
+                    variant: "text"
+                    text: qsTr("Cancel")
+                    onClicked: unpairSheet.close()
+                }
+                Button {
+                    text: qsTr("Unpair")
+                    onClicked: {
+                        AppController.unpair(unpairSheet.targetDeviceId)
+                        unpairSheet.close()
+                    }
                 }
             }
         }

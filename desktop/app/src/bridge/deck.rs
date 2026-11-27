@@ -192,7 +192,7 @@ impl qobject::DeckController {
     }
 
     pub fn default_label_for(&self, kind: &QString) -> QString {
-        QString::from(deck_kinds::default_label(&String::from(kind)))
+        QString::from(crate::deck::localized_default_label(&String::from(kind)))
     }
 
     pub fn default_icon_for(&self, kind: &QString) -> QString {
