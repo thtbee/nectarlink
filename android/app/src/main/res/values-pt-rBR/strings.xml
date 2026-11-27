@@ -1702,6 +1702,9 @@
     <string name="device_control_toggle_hint">%1$s pode usar este dispositivo com o touchpad e o teclado dele. Precisa do Elevated aqui.</string>
     <string name="peer_control">Controlar</string>
     <string name="remote_unsupported_device_text">Ative o Elevated em %1$s para controlá-lo deste celular.</string>
+    <string name="settings_own_name">Nome deste celular</string>
+    <string name="settings_own_name_change">Alterar</string>
+    <string name="settings_own_name_hint">Como este celular aparece nos seus PCs. Deixe em branco para usar %1$s.</string>
 </resources>
 
 

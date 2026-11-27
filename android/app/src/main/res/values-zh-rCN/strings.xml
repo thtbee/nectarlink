@@ -1560,4 +1560,7 @@
     <string name="device_control_toggle_hint">%1$s 可以用它的触控板和键盘操作此设备。此设备需要开启 Elevated。</string>
     <string name="peer_control">控制</string>
     <string name="remote_unsupported_device_text">在 %1$s 上开启 Elevated，即可从此手机控制它。</string>
+    <string name="settings_own_name">此手机的名称</string>
+    <string name="settings_own_name_change">更改</string>
+    <string name="settings_own_name_hint">此手机在你的电脑上显示的名称。留空则使用 %1$s。</string>
 </resources>

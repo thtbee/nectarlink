@@ -65,6 +65,8 @@ pub mod qobject {
         #[qproperty(bool, pause_media_on_call)]
         /// Mute this PC while a phone watches its playback (Play on phone).
         #[qproperty(bool, mute_while_watched, cxx_name = "muteWhileWatched")]
+        /// This PC's name on other devices, or "" for its hostname (#648).
+        #[qproperty(QString, own_name, cxx_name = "ownName")]
         /// The app's language: "" for the system's, "en", "zh_CN".
         #[qproperty(QString, language)]
         /// What Now playing's right-hand time shows: "remaining", "total" or "both" (#658).
@@ -242,6 +244,10 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "markNewSettingsSeen"]
         fn mark_new_settings_seen(self: Pin<&mut Preferences>, section: &QString);
+        /// This PC's hostname: its name when the user hasn't given it one.
+        #[qinvokable]
+        #[cxx_name = "hostName"]
+        fn host_name(self: &Preferences) -> QString;
         /// Saves the main window's monitor name/identifier, screen-relative position, dimensions, and maximized state.
         #[qinvokable]
         fn save_window_geometry(
@@ -425,6 +431,7 @@ pub struct PreferencesRust {
     mark_read_on_phone: bool,
     pause_media_on_call: bool,
     mute_while_watched: bool,
+    own_name: QString,
     language: QString,
     media_time: QString,
     sync_dnd: bool,
@@ -546,6 +553,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
         crate::messages::set_mark_read_on_phone(settings.mark_read_on_phone);
         self.as_mut().set_pause_media_on_call(settings.pause_media_on_call);
         self.as_mut().set_mute_while_watched(settings.mute_while_watched);
+        self.as_mut().set_own_name(QString::from(&settings.own_name));
         self.as_mut().set_language(QString::from(&settings.language));
         self.as_mut().set_media_time(QString::from(&settings.media_time));
         crate::pc_mirror::set_mute_while_watched(settings.mute_while_watched);
@@ -709,6 +717,13 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut()
             .on_language_changed(|p| {
                 crate::i18n::install(&String::from(&p.language));
+                p.save();
+            })
+            .release();
+        self.as_mut()
+            .on_own_name_changed(|p| {
+                crate::settings::set_own_name(String::from(&p.own_name).trim().to_owned());
+                crate::core_host::rename_this_pc();
                 p.save();
             })
             .release();
@@ -1134,6 +1149,10 @@ impl qobject::Preferences {
         self.save();
     }
 
+    pub fn host_name(&self) -> QString {
+        QString::from(&crate::core_host::host_name())
+    }
+
     pub fn save_window_geometry(
         mut self: Pin<&mut Self>,
         screen: &QString,
@@ -1472,6 +1491,7 @@ impl qobject::Preferences {
             mark_read_on_phone: p.mark_read_on_phone,
             pause_media_on_call: p.pause_media_on_call,
             mute_while_watched: p.mute_while_watched,
+            own_name: String::from(&p.own_name).trim().to_owned(),
             language: String::from(&p.language),
             media_time: String::from(&p.media_time),
             sync_dnd: p.sync_dnd,

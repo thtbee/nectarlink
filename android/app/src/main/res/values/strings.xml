@@ -1703,6 +1703,9 @@
     <string name="device_control_toggle_hint">%1$s can use this device as its touchpad and keyboard target. Needs Elevated here.</string>
     <string name="peer_control">Control</string>
     <string name="remote_unsupported_device_text">Turn on Elevated on %1$s to control it from this phone.</string>
+    <string name="settings_own_name">This phone\'s name</string>
+    <string name="settings_own_name_change">Change</string>
+    <string name="settings_own_name_hint">How this phone shows on your PCs. Leave it empty to use %1$s.</string>
 </resources>
 
 

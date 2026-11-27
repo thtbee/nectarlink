@@ -1701,6 +1701,9 @@
     <string name="device_control_toggle_hint">%1$s bu cihazı dokunmatik yüzeyi ve klavyesiyle kullanabilir. Burada Elevated gerekir.</string>
     <string name="peer_control">Kontrol et</string>
     <string name="remote_unsupported_device_text">Bu telefondan kontrol etmek için %1$s üzerinde Elevated\'ı açın.</string>
+    <string name="settings_own_name">Bu telefonun adı</string>
+    <string name="settings_own_name_change">Değiştir</string>
+    <string name="settings_own_name_hint">Bu telefonun bilgisayarlarınızda nasıl görüneceği. %1$s kullanmak için boş bırakın.</string>
 </resources>
 
 

@@ -1630,4 +1630,7 @@
     <string name="device_control_toggle_hint">%1$s có thể dùng bàn di chuột và bàn phím của nó trên thiết bị này. Cần Elevated ở đây.</string>
     <string name="peer_control">Điều khiển</string>
     <string name="remote_unsupported_device_text">Bật Elevated trên %1$s để điều khiển nó từ điện thoại này.</string>
+    <string name="settings_own_name">Tên của điện thoại này</string>
+    <string name="settings_own_name_change">Đổi</string>
+    <string name="settings_own_name_hint">Tên điện thoại này hiển thị trên các máy tính của bạn. Để trống để dùng %1$s.</string>
 </resources>

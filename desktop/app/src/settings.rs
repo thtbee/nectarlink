@@ -475,6 +475,17 @@ pub fn set_app_pinned(device: &str, pkg: &str, on: bool) {
 
 static KEEP_SCREEN_OFF: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
 
+static OWN_NAME: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
+
+/// The name the user gave this PC, or "" to go by its hostname (#648).
+pub fn own_name() -> String {
+    OWN_NAME.lock().unwrap_or_else(|e| e.into_inner()).clone()
+}
+
+pub fn set_own_name(name: String) {
+    *OWN_NAME.lock().unwrap_or_else(|e| e.into_inner()) = name;
+}
+
 /// The phones whose screen stays off for mirroring and app windows, by device ID.
 pub fn keep_screen_off_phones() -> Vec<String> {
     KEEP_SCREEN_OFF.lock().unwrap_or_else(|e| e.into_inner()).clone()
@@ -649,6 +660,8 @@ pub struct Settings {
     /// Play on phone: mute this PC's speakers while a phone watches its
     /// playback (the phone still gets the sound).
     pub mute_while_watched: bool,
+    /// This PC's name on other devices, or "" for its hostname (#648).
+    pub own_name: String,
     /// Quiet phone notification pop-ups on the PC while the phone is in Do Not Disturb.
     #[serde(alias = "sync_dnd")]
     pub sync_dnd: bool,
@@ -996,6 +1009,7 @@ impl Default for Settings {
             mark_read_on_phone: false,
             pause_media_on_call: true,
             mute_while_watched: true,
+            own_name: String::new(),
             language: String::new(),
             media_time: "remaining".into(),
             sync_dnd: false,
@@ -1159,6 +1173,7 @@ impl Settings {
         set_phone_sound_buffer_ms(self.phone_sound_buffer_ms);
         set_phone_sound_volume(self.phone_sound_volume);
         set_keep_screen_off_phones(self.keep_screen_off.clone());
+        set_own_name(self.own_name.clone());
         set_device_nicknames(self.device_nicknames.clone());
         set_pinned_apps_all(self.pinned_apps.clone());
         set_window_geometry(
@@ -1362,6 +1377,7 @@ mod tests {
             mark_read_on_phone: true,
             pause_media_on_call: false,
             mute_while_watched: false,
+            own_name: "Study PC".into(),
             language: "zh_CN".into(),
             media_time: "both".into(),
             sync_dnd: true,

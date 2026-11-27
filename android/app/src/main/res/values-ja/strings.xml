@@ -1692,6 +1692,9 @@
     <string name="device_control_toggle_hint">%1$s がタッチパッドとキーボードでこの端末を操作できます。この端末で Elevated が必要です。</string>
     <string name="peer_control">操作</string>
     <string name="remote_unsupported_device_text">このスマートフォンから操作するには、%1$s で Elevated をオンにしてください。</string>
+    <string name="settings_own_name">このスマートフォンの名前</string>
+    <string name="settings_own_name_change">変更</string>
+    <string name="settings_own_name_hint">PC でのこのスマートフォンの表示名です。空欄にすると %1$s を使います。</string>
 </resources>
 
 

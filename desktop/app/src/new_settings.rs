@@ -15,6 +15,7 @@ pub const NEW: &[(&str, &str)] = &[
     ("toolbar-beside", "general"),
     ("mark-read-on-phone", "general"),
     ("media-time", "general"),
+    ("own-name", "general"),
     ("beside-this-pc", "devices"),
     ("unlock-pc", "devices"),
     ("frame-rate", "camera_audio"),

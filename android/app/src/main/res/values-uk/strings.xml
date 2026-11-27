@@ -1717,6 +1717,9 @@
     <string name="device_control_toggle_hint">%1$s зможе керувати цим пристроєм своїм тачпадом і клавіатурою. Потрібен Elevated на цьому пристрої.</string>
     <string name="peer_control">Керувати</string>
     <string name="remote_unsupported_device_text">Увімкніть Elevated на %1$s, щоб керувати ним із цього телефона.</string>
+    <string name="settings_own_name">Назва цього телефона</string>
+    <string name="settings_own_name_change">Змінити</string>
+    <string name="settings_own_name_hint">Як цей телефон показується на ваших ПК. Залиште порожнім, щоб використовувати %1$s.</string>
 </resources>
 
 

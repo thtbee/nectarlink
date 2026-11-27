@@ -1712,4 +1712,7 @@
     <string name="device_control_toggle_hint">%1$s puede usar este dispositivo con su touchpad y su teclado. Necesita Elevated aquí.</string>
     <string name="peer_control">Controlar</string>
     <string name="remote_unsupported_device_text">Activa Elevated en %1$s para controlarlo desde este teléfono.</string>
+    <string name="settings_own_name">Nombre de este teléfono</string>
+    <string name="settings_own_name_change">Cambiar</string>
+    <string name="settings_own_name_hint">Cómo aparece este teléfono en tus PC. Déjalo vacío para usar %1$s.</string>
 </resources>

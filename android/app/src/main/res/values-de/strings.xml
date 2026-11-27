@@ -1702,4 +1702,7 @@
     <string name="device_control_toggle_hint">%1$s kann dieses Gerät mit Touchpad und Tastatur bedienen. Braucht hier Elevated.</string>
     <string name="peer_control">Steuern</string>
     <string name="remote_unsupported_device_text">Schalte Elevated auf %1$s ein, um es von diesem Telefon aus zu steuern.</string>
+    <string name="settings_own_name">Name dieses Telefons</string>
+    <string name="settings_own_name_change">Ändern</string>
+    <string name="settings_own_name_hint">So erscheint dieses Telefon auf deinen PCs. Leer lassen, um %1$s zu verwenden.</string>
 </resources>

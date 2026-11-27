@@ -19,6 +19,10 @@ change things that need a step from you, and its notes say so.
 - **New settings say so.** After an update, the settings it added have a **New** pill, and so
   does their section in the PC's Settings, until you've looked at that section. A new install
   starts without them. Thanks to [@jed84](https://github.com/jed84) ([#656](https://github.com/thtbee/nectarlink/issues/656)).
+- **Give your PC and phone a name of their own.** In Settings › General on the PC (**This PC's
+  name**) and Settings › Devices on the phone (**This phone's name**). Paired devices show it at once;
+  leave it empty to go back to the computer's or Android's name. Thanks to
+  [@zubair1511983](https://github.com/zubair1511983) ([#648](https://github.com/thtbee/nectarlink/issues/648)).
 - **Now playing shows the time you want.** The time on the right of Now playing on the PC's Home
   can show what's left, the whole length, or both: click it to switch, or pick in Settings ›
   General. Thanks to [@jed84](https://github.com/jed84) ([#658](https://github.com/thtbee/nectarlink/issues/658)).
