@@ -21,6 +21,7 @@ import app.nectarlink.android.R
 import app.nectarlink.android.notifications.NotificationListener
 import app.nectarlink.android.notifications.PcNotificationPoster
 import app.nectarlink.android.calls.CallAudioService
+import app.nectarlink.android.calls.CallAudioTest
 import app.nectarlink.android.calls.CallCompanion
 import app.nectarlink.android.calls.PhoneCalls
 import app.nectarlink.android.companion.PcCompanion
@@ -972,6 +973,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
                 event.device,
             )
             is Event.CallAudioUplink -> CallAudioService.uplink(event.device, event.pcm)
+            is Event.CallAudioTestUplink -> CallAudioTest.play(event.device, event.pcm)
+            is Event.CallAudioTestEnded -> CallAudioTest.end(event.device)
             is Event.PcMirrorConfig -> {
                 _pcMirrorConfig.value = PcMirrorConfigState(
                     pcId = event.id,
@@ -2404,6 +2407,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             } else {
                 emptyList()
             }) +
+            // A PC's "Test call audio": plays its microphone on the speaker and sends it back. Needs no call and no Elevated.
+            listOf("call.audio.test") +
             (if (PhoneCalls.canReadLog(context)) listOf("call.log") else emptyList()) +
             (if (PhoneCalls.canDial(context)) listOf("call.dial") else emptyList()) +
             (if (PhoneCalls.canListSims(context)) listOf("call.sims") else emptyList()) +
