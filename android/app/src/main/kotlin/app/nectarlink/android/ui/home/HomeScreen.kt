@@ -404,6 +404,7 @@ fun HomeScreen(
                     onStopSound = onStopMirror,
                     onWake = onWake,
                     onSetReconnect = onSetReconnect,
+                    onUnpair = onUnpair,
                     onRemote = onRemote,
                     onDeck = onDeck,
                     onDesk = onDesk,
