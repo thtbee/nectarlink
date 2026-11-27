@@ -453,6 +453,7 @@ fn main() {
         );
     } else if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("macos") {
         build_macos_audio_loopback();
+        build_macos_share();
         println!("cargo:rustc-link-lib=framework=AppKit");
         println!("cargo:rustc-link-lib=framework=CoreGraphics");
         println!("cargo:rustc-link-lib=framework=CoreAudio");
@@ -500,4 +501,13 @@ fn build_macos_audio_loopback() {
         .flag("-fobjc-arc")
         .flag("-std=c++17")
         .compile("nectarlink_mac_audio_loopback");
+}
+
+fn build_macos_share() {
+    println!("cargo::rerun-if-changed=cpp/mac_share.mm");
+    cc::Build::new()
+        .file("cpp/mac_share.mm")
+        .flag("-fobjc-arc")
+        .flag("-std=c++17")
+        .compile("nectarlink_mac_share");
 }
