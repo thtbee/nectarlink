@@ -68,6 +68,11 @@ rust::String translate(rust::Str context, rust::Str text);
 // Decodes image bytes (PNG, JPEG, WebP, BMP, etc.) into width, height and ARGB32 bytes.
 rust::Vec<uint8_t> decode_image(rust::Slice<const uint8_t> bytes);
 
+// Re-encodes an image as a JPEG no more than `max_side` pixels on a side, at
+// `quality` (0 to 100), upright and on white where it was transparent. Empty
+// when it can't be read or written.
+rust::Vec<uint8_t> shrink_image_jpeg(rust::Slice<const uint8_t> bytes, int32_t max_side, int32_t quality);
+
 // Native macOS clipboard support: changeCount, privacy detection, and direct reading/writing.
 int64_t mac_clipboard_change_count();
 rust::String mac_clipboard_read_text(bool &is_private);

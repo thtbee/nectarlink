@@ -2,6 +2,8 @@
 #include "app_helpers.h"
 #include "video_view.h"
 
+#include <QtCore/QBuffer>
+#include <QtCore/QByteArray>
 #include <QtCore/QCoreApplication>
 #include <QtCore/QDateTime>
 #include <QtCore/QDir>
@@ -21,6 +23,8 @@
 #include <QtGui/QGuiApplication>
 #include <QtGui/QIcon>
 #include <QtGui/QImage>
+#include <QtGui/QImageReader>
+#include <QtGui/QPainter>
 #include <QtGui/QPixmap>
 #include <QtGui/QPixmapCache>
 #include <QtGui/QSessionManager>
@@ -441,6 +445,42 @@ rust::Vec<uint8_t> decode_image(rust::Slice<const uint8_t> bytes)
     const uint8_t *bits = argb.constBits();
     for (size_t i = 0; i < byteCount; ++i)
         result.push_back(bits[i]);
+    return result;
+}
+
+rust::Vec<uint8_t> shrink_image_jpeg(rust::Slice<const uint8_t> bytes, int32_t max_side, int32_t quality)
+{
+    rust::Vec<uint8_t> result;
+    if (bytes.empty() || max_side <= 0)
+        return result;
+    QByteArray source(reinterpret_cast<const char *>(bytes.data()), static_cast<qsizetype>(bytes.size()));
+    QBuffer input(&source);
+    if (!input.open(QIODevice::ReadOnly))
+        return result;
+    QImageReader reader(&input);
+    // A photo's orientation is in its metadata; the copy has none, so apply it.
+    reader.setAutoTransform(true);
+    QImage image = reader.read();
+    if (image.isNull())
+        return result;
+    if (image.width() > max_side || image.height() > max_side)
+        image = image.scaled(max_side, max_side, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    if (image.hasAlphaChannel()) {
+        // JPEG has no transparency: lay the picture on white.
+        QImage flat(image.size(), QImage::Format_RGB32);
+        flat.fill(Qt::white);
+        QPainter painter(&flat);
+        painter.drawImage(0, 0, image);
+        painter.end();
+        image = flat;
+    }
+    QByteArray encoded;
+    QBuffer output(&encoded);
+    if (!output.open(QIODevice::WriteOnly) || !image.save(&output, "JPEG", quality))
+        return result;
+    result.reserve(static_cast<size_t>(encoded.size()));
+    for (char byte : encoded)
+        result.push_back(static_cast<uint8_t>(byte));
     return result;
 }
 

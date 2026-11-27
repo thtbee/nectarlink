@@ -26,7 +26,8 @@ change things that need a step from you, and its notes say so.
   picker with a **Photos** tab (the phone's gallery, newest first, with thumbnails) and a **Files**
   tab (its folders). The one you pick is brought to the PC and staged exactly like a file chosen
   here. It needs the phone's photos, or its storage turned on for this PC; the entry is missing
-  otherwise.
+  otherwise. A picture too big for a message (a phone photo, mostly) is now shrunk to fit one,
+  from the phone or from this PC, instead of being refused.
 - **Unlock KDE Plasma with the phone.** On Linux, NectarLink's PAM module can now run in the
   lock screen's `kde-fingerprint` service, so the phone asks for your fingerprint each time the
   PC locks and unlocks it when you approve. It's one line in `/etc/pam.d/kde-fingerprint`; see

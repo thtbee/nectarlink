@@ -1351,6 +1351,26 @@ fn stage_attachment_bytes(name: String, mime: String, data: Vec<u8>) -> bool {
     true
 }
 
+/// A JPEG of `data`, a picture too big for a message, that fits one: smaller
+/// and less sharp until it does. `None` when it already fits, isn't a picture
+/// to shrink (an animation would stop moving), or can't be made to fit.
+fn shrink_to_fit(mime: &str, data: &[u8]) -> Option<Vec<u8>> {
+    const STEPS: [(i32, i32); 5] = [(2048, 80), (1600, 75), (1280, 70), (1024, 65), (800, 60)];
+    if data.len() <= MAX_ATTACHMENT_BYTES || !matches!(mime, "image/jpeg" | "image/png" | "image/webp") {
+        return None;
+    }
+    for (side, quality) in STEPS {
+        let jpeg = crate::bridge::native::ffi::shrink_image_jpeg(data, side, quality);
+        if jpeg.is_empty() {
+            return None;
+        }
+        if jpeg.len() <= MAX_ATTACHMENT_BYTES {
+            return Some(jpeg);
+        }
+    }
+    None
+}
+
 /// Stages an image or audio file from disk (via drag-and-drop or file picker) as an MMS attachment.
 pub fn attach_file(path_or_url: String) -> bool {
     let path = url_to_path(&path_or_url);
@@ -1372,7 +1392,16 @@ pub fn attach_file(path_or_url: String) -> bool {
         }
     };
     match converted {
-        Ok((mime, data)) => stage_attachment_bytes(name, mime, data),
+        Ok((mime, data)) => {
+            // A phone's photo is several MB: a picture is made smaller to fit.
+            match shrink_to_fit(&mime, &data) {
+                Some(smaller) => {
+                    let name = Path::new(&name).with_extension("jpg").to_string_lossy().into_owned();
+                    stage_attachment_bytes(name, "image/jpeg".into(), smaller)
+                }
+                None => stage_attachment_bytes(name, mime, data),
+            }
+        }
         Err(error) => {
             stage_error(name, error);
             false
@@ -2186,6 +2215,33 @@ mod tests {
     fn numbers_match_however_they_are_written() {
         assert_eq!(digits("+1 (555) 010-0100"), digits("5550100100"));
         assert_eq!(digits("12"), "12");
+    }
+
+    #[test]
+    fn a_picture_too_big_for_a_message_is_made_to_fit() {
+        use crate::win::image::{Bitmap, encode_png};
+        // Noise, so the PNG is big and a JPEG of it still isn't small.
+        let (width, height) = (1600u32, 1200u32);
+        let mut seed = 0x2545_F491_u32;
+        let bgra: Vec<u8> = (0..width * height * 4)
+            .map(|i| {
+                seed ^= seed << 13;
+                seed ^= seed >> 17;
+                seed ^= seed << 5;
+                if i % 4 == 3 { 255 } else { (seed >> 24) as u8 }
+            })
+            .collect();
+        let png = encode_png(&Bitmap { width, height, bgra }).expect("a PNG");
+        assert!(png.len() > MAX_ATTACHMENT_BYTES);
+        let Some(jpeg) = shrink_to_fit("image/png", &png) else {
+            // Qt without its JPEG writer (a bare test environment) can't shrink.
+            eprintln!("no JPEG writer in this Qt: skipped");
+            return;
+        };
+        assert!(jpeg.len() <= MAX_ATTACHMENT_BYTES);
+        assert!(jpeg.starts_with(b"\xff\xd8\xff"));
+        assert_eq!(shrink_to_fit("image/png", &png[..1000]), None, "what already fits is left alone");
+        assert_eq!(shrink_to_fit("image/gif", &png), None, "an animation isn't flattened");
     }
 
     #[test]
