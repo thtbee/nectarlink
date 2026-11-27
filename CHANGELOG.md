@@ -8,6 +8,16 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Delete, mark unread and select conversations and messages.** Right-click a conversation (or
+  press and hold on a touch screen) in Messages for **Mark as unread** and **Delete**. A message
+  has **Copy text**, **Mark as unread** (**Mark 3 messages as unread** for a selection) and **Delete message** in its own menu, and
+  the open conversation has **Mark as unread** and **Delete** in its **More** menu. **Select** (or
+  Ctrl+click, Cmd+click on a Mac) picks several, Shift+click a range, **Esc** lets go, and a toolbar
+  shows how many with what to do with them. This is on the PC only: the phone keeps every
+  conversation and message. A deleted conversation shows again, with only what is newer, when a
+  text arrives.
+- **Copy, save and share a picture from a conversation.** The picture viewer in Messages has
+  **Copy image**, **Save as…** and, on Windows and on a Mac, **Share** (the system's share sheet).
 - **An app you hide on the PC stays on the phone.** Its notifications and chats aren't sent to
   that PC at all any more, not only hidden there, and showing the app again brings them back.
   Thanks to [@jed84](https://github.com/jed84) and [@aihehye](https://github.com/aihehye)
@@ -634,6 +644,11 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **Messages stays where you were.** Choosing an unread conversation low in the list no longer
+  sends the list back to the top, and opening a conversation no longer makes its messages blink
+  and jump while it loads: a conversation opens at its newest message once, and older messages
+  loaded above, a picture arriving or a new text don't move what you are reading. A picture in a
+  conversation now shows in a frame of one size (cropped to it; **click it** to see it whole).
 - **The PC's notifications on the phone can be cleared.** One cleared on the phone came back, as
   the PC never heard of it, and an automation's notice said `call_ringing → pause_pc_media`. It
   now reads like Settings (Pause PC media, When phone rings) and goes away after a few seconds.
