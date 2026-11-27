@@ -6414,6 +6414,21 @@ What it needs
         <source>This feature is turned off for this phone in Settings › Devices.</source>
         <translation>Цю функцію вимкнено для цього телефона в Налаштування › Пристрої.</translation>
     </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="32"/>
+        <source>Needs Windows 11</source>
+        <translation>Потрібна Windows 11</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="32"/>
+        <source>Needs a newer Windows</source>
+        <translation>Потрібна новіша Windows</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="34"/>
+        <source>Needs Android %1</source>
+        <translation>Потрібен Android %1</translation>
+    </message>
 </context>
 <context>
     <name>MainWindow</name>

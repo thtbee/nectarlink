@@ -6456,6 +6456,21 @@ Qué necesitas
         <source>This feature is turned off for this phone in Settings › Devices.</source>
         <translation>Esta función está desactivada para este teléfono en Ajustes › Dispositivos.</translation>
     </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="32"/>
+        <source>Needs Windows 11</source>
+        <translation>Requiere Windows 11</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="32"/>
+        <source>Needs a newer Windows</source>
+        <translation>Requiere un Windows más reciente</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="34"/>
+        <source>Needs Android %1</source>
+        <translation>Requiere Android %1</translation>
+    </message>
 </context>
 <context>
     <name>MainWindow</name>

@@ -6484,6 +6484,21 @@ What it needs
         <source>This feature is turned off for this phone in Settings › Devices.</source>
         <translation>此功能已在设置 › 设备中对该手机关闭。</translation>
     </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="32"/>
+        <source>Needs Windows 11</source>
+        <translation>需要 Windows 11</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="32"/>
+        <source>Needs a newer Windows</source>
+        <translation>需要更新版本的 Windows</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="34"/>
+        <source>Needs Android %1</source>
+        <translation>需要 Android %1</translation>
+    </message>
 </context>
 <context>
     <name>MainWindow</name>

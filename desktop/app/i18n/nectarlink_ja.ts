@@ -6448,6 +6448,21 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
         <source>This feature is turned off for this phone in Settings › Devices.</source>
         <translation>この機能は、「設定」＞「デバイス」でこのスマートフォン向けにオフになっています。</translation>
     </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="32"/>
+        <source>Needs Windows 11</source>
+        <translation>Windows 11 が必要</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="32"/>
+        <source>Needs a newer Windows</source>
+        <translation>新しい Windows が必要</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="34"/>
+        <source>Needs Android %1</source>
+        <translation>Android %1 が必要</translation>
+    </message>
 </context>
 <context>
     <name>MainWindow</name>

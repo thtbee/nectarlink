@@ -6453,6 +6453,21 @@ Nó cần gì
         <source>This feature is turned off for this phone in Settings › Devices.</source>
         <translation>Tính năng này đã bị tắt cho điện thoại này trong Cài đặt › Thiết bị.</translation>
     </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="32"/>
+        <source>Needs Windows 11</source>
+        <translation>Cần Windows 11</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="32"/>
+        <source>Needs a newer Windows</source>
+        <translation>Cần Windows mới hơn</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="34"/>
+        <source>Needs Android %1</source>
+        <translation>Cần Android %1</translation>
+    </message>
 </context>
 <context>
     <name>MainWindow</name>

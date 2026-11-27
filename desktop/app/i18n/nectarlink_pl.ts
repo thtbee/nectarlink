@@ -6490,6 +6490,21 @@ Wymagania
         <source>This feature is turned off for this phone in Settings › Devices.</source>
         <translation>Ta funkcja jest wyłączona dla tego telefonu w Ustawienia › Urządzenia.</translation>
     </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="32"/>
+        <source>Needs Windows 11</source>
+        <translation>Wymaga Windows 11</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="32"/>
+        <source>Needs a newer Windows</source>
+        <translation>Wymaga nowszego Windows</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="34"/>
+        <source>Needs Android %1</source>
+        <translation>Wymaga Androida %1</translation>
+    </message>
 </context>
 <context>
     <name>MainWindow</name>

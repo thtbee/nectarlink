@@ -597,6 +597,8 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **A feature Windows 10 can't run says it needs Windows 11** instead of only *Unavailable*, such
+  as Phone as webcam, and one that needs a newer Android says which version.
 - **The phone's volume buttons work for the phone while it plays something itself,** with
   **Volume buttons control your PC** on and the PC playing too. They went to the PC, so the phone's
   own volume couldn't be changed. Thanks to [@Deliond](https://github.com/Deliond)

@@ -6480,6 +6480,21 @@ Neler gerekir
         <source>This feature is turned off for this phone in Settings › Devices.</source>
         <translation>Bu özellik bu telefon için Ayarlar › Cihazlar bölümünde kapalı.</translation>
     </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="32"/>
+        <source>Needs Windows 11</source>
+        <translation>Windows 11 gerekir</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="32"/>
+        <source>Needs a newer Windows</source>
+        <translation>Daha yeni bir Windows gerekir</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="34"/>
+        <source>Needs Android %1</source>
+        <translation>Android %1 gerekir</translation>
+    </message>
 </context>
 <context>
     <name>MainWindow</name>
