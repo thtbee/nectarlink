@@ -19,7 +19,8 @@ import kotlin.math.roundToInt
 object DeviceControl {
     private const val IDLE_MS = 60_000L
 
-    private val main = Handler(Looper.getMainLooper())
+    // Lazy, so the key table can be used (and unit tested) without a main looper.
+    private val main by lazy { Handler(Looper.getMainLooper()) }
     private val lock = Any()
 
     /** Logical pixels per pointer count, once the pointer shows. */
