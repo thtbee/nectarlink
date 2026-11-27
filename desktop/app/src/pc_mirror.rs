@@ -2304,7 +2304,7 @@ mod imp {
             let raw = remote.as_raw_fd();
             let node_id = portal.node_id;
             let mut cmd = Command::new("gst-launch-1.0");
-            cmd.args(pipeline_args(node_id, dst_w, dst_h, mode.uses_gl()))
+            cmd.args(pipeline_args(node_id, dst_w, dst_h, mode))
                 .stdin(Stdio::null())
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped());
@@ -2459,10 +2459,9 @@ mod imp {
     }
 
     /// gst-launch arguments: read stream `node_id` through the portal's
-    /// PipeWire connection (fd 3) and write raw BGRx frames to stdout. With
-    /// `gl`, frames go through OpenGL first, for GPU (DMABuf) buffers.
+    /// PipeWire connection (fd 3) and write raw BGRx frames to stdout.
     #[cfg(target_os = "linux")]
-    pub(crate) fn pipeline_args(node_id: u32, dst_w: u32, dst_h: u32, gl: bool) -> Vec<String> {
+    fn pipeline_args(node_id: u32, dst_w: u32, dst_h: u32, mode: WaylandCaptureMode) -> Vec<String> {
         static HAS_ON_DISCONNECT: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
         let mut args = vec![
             "-q".to_owned(),
@@ -2480,11 +2479,18 @@ mod imp {
         }) {
             args.push("on-disconnect=error".to_owned());
         }
-        if gl {
-            args.extend(
-                ["!", "glupload", "!", "glcolorconvert", "!", "gldownload", "!", "video/x-raw,format=RGBA"]
-                    .map(str::to_owned),
-            );
+        if mode.uses_gl() {
+            args.extend(["!", "glupload", "!", "glcolorconvert"].map(str::to_owned));
+            if mode == WaylandCaptureMode::OpenGl {
+                // Shrink the texture before reading it back to system memory.
+                // LastOpenGl keeps the original path if this fails.
+                args.extend(
+                    ["!", "video/x-raw(memory:GLMemory),format=RGBA", "!", "glcolorscale"].map(str::to_owned),
+                );
+                args.push("!".to_owned());
+                args.push(format!("video/x-raw(memory:GLMemory),format=RGBA,width={dst_w},height={dst_h}"));
+            }
+            args.extend(["!", "gldownload", "!", "video/x-raw,format=RGBA"].map(str::to_owned));
         } else {
             // Request system memory from PipeWire. videoconvert also accepts
             // DMA-BUF caps, which would let the two paths select the same buffers.
@@ -3405,7 +3411,7 @@ mod imp {
         #[cfg(target_os = "linux")]
         #[test]
         fn wayland_capture_reads_the_stream_through_the_portal_connection() {
-            let args = pipeline_args(57, 1280, 720, false);
+            let args = pipeline_args(57, 1280, 720, WaylandCaptureMode::PipeWire);
             assert_eq!(args[1], "pipewiresrc");
             assert!(args.contains(&"fd=3".to_owned()), "the portal's PipeWire connection, as fd 3");
             assert!(args.contains(&"path=57".to_owned()));
@@ -3415,12 +3421,25 @@ mod imp {
             assert!(args.windows(3).any(|args| args == ["video/x-raw", "!", "videoconvert"]));
 
             // Through OpenGL: GPU buffers downloaded as RGBA, then the same tail.
-            let gl = pipeline_args(57, 1280, 720, true);
+            let gl = pipeline_args(57, 1280, 720, WaylandCaptureMode::OpenGl);
             let at = |name: &str| gl.iter().position(|a| a == name).unwrap_or(usize::MAX);
+            assert!(gl.windows(5).any(|args| {
+                args == [
+                    "glcolorscale",
+                    "!",
+                    "video/x-raw(memory:GLMemory),format=RGBA,width=1280,height=720",
+                    "!",
+                    "gldownload",
+                ]
+            }));
             assert!(at("glupload") < at("glcolorconvert") && at("glcolorconvert") < at("gldownload"));
             assert!(at("gldownload") < at("videoconvert"));
             assert!(!gl.iter().any(|arg| arg == "video/x-raw"));
             assert!(gl.contains(&"video/x-raw,format=BGRx,width=1280,height=720".to_owned()));
+
+            let retry_gl = pipeline_args(57, 1280, 720, WaylandCaptureMode::LastOpenGl);
+            assert!(retry_gl.iter().any(|arg| arg == "glupload"));
+            assert!(!retry_gl.iter().any(|arg| arg == "glcolorscale"));
         }
 
         #[cfg(target_os = "linux")]
