@@ -783,6 +783,16 @@ pub enum Event {
         device: String,
         pcm: Vec<u8>,
     },
+    /// A paired PC's test sound (`call.audio.test`): 16 kHz mono 16-bit PCM
+    /// for the phone's speaker. The core sends it back to the PC itself.
+    CallAudioTestUplink {
+        device: String,
+        pcm: Vec<u8>,
+    },
+    /// The test with a paired PC ended: the speaker goes quiet.
+    CallAudioTestEnded {
+        device: String,
+    },
     /// A paired PC started streaming its screen to this phone (`mirror` video stream config).
     PcMirrorConfig {
         id: String,
@@ -2706,6 +2716,10 @@ impl Event {
                 Event::PcAudioFrame { device: device.to_string(), sample_rate, channels, pcm }
             }
             NodeEvent::CallAudioUplink { device, pcm } => Event::CallAudioUplink { device: device.to_string(), pcm },
+            NodeEvent::CallAudioTestUplink { device, pcm } => {
+                Event::CallAudioTestUplink { device: device.to_string(), pcm }
+            }
+            NodeEvent::CallAudioTestEnded { device } => Event::CallAudioTestEnded { device: device.to_string() },
         })
     }
 }

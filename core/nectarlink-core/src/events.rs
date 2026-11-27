@@ -277,6 +277,16 @@ pub enum NodeEvent {
         device: DeviceId,
         pcm: Vec<u8>,
     },
+    /// A paired PC's test sound (`call.audio.test`): 16 kHz mono 16-bit PCM
+    /// for this phone's speaker. The core sends it back to the PC itself.
+    CallAudioTestUplink {
+        device: DeviceId,
+        pcm: Vec<u8>,
+    },
+    /// The test with a paired PC ended: the phone's speaker goes quiet.
+    CallAudioTestEnded {
+        device: DeviceId,
+    },
     /// A paired PC requested a Continuity Camera capture on this phone.
     CameraCaptureRequested {
         device: DeviceId,

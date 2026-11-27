@@ -928,6 +928,13 @@ pub const FEATURES: &[FeatureDef] = &[
         ],
         partial: None,
     },
+    // A PC's "Test call audio": no call, nothing the phone has to allow beyond the toggles.
+    FeatureDef {
+        id: "calls.audio_test",
+        group: FeatureGroup::Calls,
+        requires: &[phone("call.audio.test", UPDATE), DeviceToggle("calls"), DeviceToggle("call_audio")],
+        partial: None,
+    },
     FeatureDef {
         id: "contacts.read",
         group: FeatureGroup::Calls,

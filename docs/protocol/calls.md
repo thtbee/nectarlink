@@ -22,6 +22,7 @@ call (§2.6).
 | `call.dial` | phone | Places a call (or opens the dialer with the number filled in) when a PC asks |
 | `call.sims` | phone | Lists the SIMs it calls with, and places a call on the one a PC picks |
 | `call.audio` | phone | Carries the call in progress's sound to a PC and the PC's microphone into the call (§2.6) |
+| `call.audio.test` | phone | Plays a PC's test sound on its speaker and sends it back, with no call (§2.6.1) |
 | `call.show` | PC | Shows calls, recent calls and the dialer, and wants `call.log.changed` |
 
 A phone reports calls and answers call requests only for PCs that offer
@@ -170,6 +171,8 @@ Apps can't grant that app-op to themselves; NectarLink's Elevated mode
 (Wireless debugging) grants it through the shell when it starts.
 
 `call.audio` needs Android 13 or later and Elevated (§2.6).
+`call.audio.test` needs neither: any phone with the app version that
+added it offers it.
 
 ### 2.6 `call.audio.start` and `call.audio.stop`
 
@@ -221,6 +224,47 @@ HAL to have the telephony Rx and Tx devices
 (`isPstnCallAudioInterceptable`), which is up to the phone's maker. The
 phone checks it each time Elevated starts and offers `call.audio` only
 when it holds.
+
+#### 2.6.1 `call.audio.test.start` and `call.audio.test.stop`
+
+A PC's **Test call audio** (Settings › Calls through this PC) checks the
+sound path of a call with no call: the PC's microphone goes to the phone,
+which plays it on its speaker and sends it straight back, and the PC plays
+what returns on its call output. It reuses the packets and format of §2.6
+and nothing else of it:
+
+```
+t = "call.audio.test.start"  id = n          // PC to phone, no body
+t = "ok"                     re = n
+t = "call.audio.test.stop"   [id = n]        // either way
+t = "ok"                     re = n          // when it had an id
+```
+
+The PC asks only a phone that offers `call.audio.test`; to any other the
+test runs on the PC alone (it records, then plays back). The phone answers
+`DENIED` when calls or the `call_audio` toggle are off for the PC,
+`UNSUPPORTED` without the capability, and `BUSY` while a call's sound is on
+a PC (the test would cut into it). A call's sound always wins: a
+`call.audio.start` from the PC ends its test, and a phone that gets one
+ends the test too.
+
+After `ok` the PC opens the first stream, the phone the second:
+
+| Header | Opened by | Carries |
+|---|---|---|
+| `{ svc: "calls", op: "test-uplink", v: 1 }` | PC | The PC's microphone, for the phone's speaker |
+| `{ svc: "calls", op: "test-downlink", v: 1 }` | phone | The same packets, sent back as they came: `config` first, then each frame with its `time_us` unchanged |
+
+The phone opens `test-downlink` when it has read the `config` packet of
+`test-uplink`, so the PC measures the round trip from its own capture time
+(`time_us` counts samples from the first one) to the packet's return, and
+sound that never came back shows as a jump in `time_us`. A device takes
+these streams only while a test is under way (after `ok`, until
+`call.audio.test.stop` or a stream ends); any other, or a different format,
+is reset with code `14`, as for a call's sound. The test has its own stream
+ops and stop signals, so it never reaches a call's sound, and the call's
+streams (`uplink`, `downlink`) never carry a test. Nothing is stored on
+either device.
 
 Not in this service:
 

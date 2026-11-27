@@ -767,6 +767,15 @@ pub trait Platform: Send + Sync + 'static {
         None
     }
 
+    /// Where a test's sound comes back to on this PC (`call.audio.test`):
+    /// `Some` only while this PC asked that phone for a test.
+    fn call_audio_test_sink(
+        &self,
+        _peer: &nectarlink_protocol::DeviceId,
+    ) -> Option<std::sync::Arc<dyn crate::MicSink>> {
+        None
+    }
+
     /// A paired PC asked for call `call_id`'s sound: get ready to carry it,
     /// then stream with [`Node::call_audio_open`](crate::Node::call_audio_open).
     /// An error refuses (the phone can't reach the call's sound).

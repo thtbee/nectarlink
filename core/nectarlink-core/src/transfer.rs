@@ -1581,13 +1581,24 @@ pub(crate) async fn accept_stream(
         Some(h)
             if h.svc == nectarlink_protocol::messages::calls::AUDIO_SERVICE
                 && h.v == nectarlink_protocol::messages::calls::AUDIO_VERSION
-                && (h.op == nectarlink_protocol::messages::calls::OP_DOWNLINK
-                    || h.op == nectarlink_protocol::messages::calls::OP_UPLINK) =>
+                && matches!(
+                    h.op.as_str(),
+                    nectarlink_protocol::messages::calls::OP_DOWNLINK
+                        | nectarlink_protocol::messages::calls::OP_UPLINK
+                        | nectarlink_protocol::messages::calls::OP_TEST_DOWNLINK
+                        | nectarlink_protocol::messages::calls::OP_TEST_UPLINK
+                ) =>
         {
-            if h.op == nectarlink_protocol::messages::calls::OP_DOWNLINK {
-                crate::call_audio::receive_downlink(shared, session.peer, send, recv).await;
-            } else {
-                crate::call_audio::receive_uplink(shared, session.peer, send, recv).await;
+            use nectarlink_protocol::messages::calls;
+            match h.op.as_str() {
+                calls::OP_DOWNLINK => {
+                    crate::call_audio::receive_downlink(shared, session.peer, send, recv).await
+                }
+                calls::OP_UPLINK => crate::call_audio::receive_uplink(shared, session.peer, send, recv).await,
+                calls::OP_TEST_DOWNLINK => {
+                    crate::call_audio::receive_test_downlink(shared, session.peer, send, recv).await
+                }
+                _ => crate::call_audio::receive_test_uplink(shared, session.peer, send, recv).await,
             }
         }
         Some(h)

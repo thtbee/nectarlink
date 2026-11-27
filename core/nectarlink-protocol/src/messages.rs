@@ -81,6 +81,8 @@ pub mod types {
     pub const CALL_SIMS: &str = "call.sims";
     pub const CALL_AUDIO_START: &str = "call.audio.start";
     pub const CALL_AUDIO_STOP: &str = "call.audio.stop";
+    pub const CALL_AUDIO_TEST_START: &str = "call.audio.test.start";
+    pub const CALL_AUDIO_TEST_STOP: &str = "call.audio.test.stop";
     pub const CONTACTS_LIST: &str = "contacts.list";
     pub const CONTACTS_CHANGED: &str = "contacts.changed";
     pub const SMS_THREADS: &str = "sms.threads";
@@ -2580,6 +2582,13 @@ pub mod calls {
     pub const AUDIO_SERVICE: &str = "calls";
     pub const OP_DOWNLINK: &str = "downlink";
     pub const OP_UPLINK: &str = "uplink";
+    /// Offered by phones that play a PC's test sound and send it back, with no
+    /// call (`call.audio.test.start`): a PC's "Test call audio".
+    pub const AUDIO_TEST: &str = "call.audio.test";
+    /// The test's streams: `test-uplink` PC to phone (the PC's microphone),
+    /// `test-downlink` phone to PC (the same sound, sent back).
+    pub const OP_TEST_DOWNLINK: &str = "test-downlink";
+    pub const OP_TEST_UPLINK: &str = "test-uplink";
     pub const AUDIO_VERSION: u32 = 1;
     /// The call's sound: 16 kHz mono 16-bit PCM, both ways.
     pub const AUDIO_RATE: u32 = 16_000;
@@ -6360,6 +6369,17 @@ mod tests {
             Envelope::new(types::CONTACTS_LIST, &ContactsList { contacts: vec![contact.clone()] }).unwrap();
         let back: ContactsList = Envelope::from_cbor(&env.to_cbor()).unwrap().body().unwrap();
         assert_eq!(back.contacts, vec![contact]);
+    }
+
+    #[test]
+    fn the_call_audio_test_has_its_own_names() {
+        // A test never shares a stream op, a message or a capability with a call's sound.
+        let ops = [calls::OP_DOWNLINK, calls::OP_UPLINK, calls::OP_TEST_DOWNLINK, calls::OP_TEST_UPLINK];
+        assert!(ops.iter().enumerate().all(|(i, a)| ops.iter().skip(i + 1).all(|b| a != b)));
+        assert_ne!(calls::AUDIO_TEST, calls::AUDIO);
+        assert!(types::CALL_AUDIO_TEST_START.starts_with("call.audio."));
+        assert!(types::CALL_AUDIO_TEST_STOP.starts_with("call.audio."));
+        assert_ne!(types::CALL_AUDIO_TEST_START, types::CALL_AUDIO_START);
     }
 
     #[test]
