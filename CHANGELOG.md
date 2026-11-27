@@ -526,6 +526,12 @@ change things that need a step from you, and its notes say so.
   Appearance on the phone, Settings › General on the PC) picks it, or the system language does.
   Thanks to [@sho9029](https://github.com/sho9029)
   ([#437](https://github.com/thtbee/nectarlink/pull/437)).
+- **The Mac DMG carries the virtual camera for the phone as a webcam.** NectarLink.app now
+  ships the "NectarLink Webcam" camera extension and installs it from **Settings › Virtual
+  camera add-on › Set up**. macOS asks you to approve it once, in System Settings › General ›
+  Login Items & Extensions › Camera Extensions, and NectarLink says when it is waiting for
+  that or why the install failed. Until then, the phone's **Start webcam** had nothing to
+  send to on a Mac.
 
 - **Pick the SIM a text goes out on.** On a dual-SIM phone, the box you type in shows
   which SIM sends it (SIM 1, SIM 2); click it to switch. A conversation starts on the SIM its

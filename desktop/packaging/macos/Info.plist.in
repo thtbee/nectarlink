@@ -23,7 +23,7 @@
     <key>CFBundleVersion</key>
     <string>@BUNDLE_VERSION@</string>
     <key>LSMinimumSystemVersion</key>
-    <string>14.0</string>
+    <string>14.4</string>
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>NSLocalNetworkUsageDescription</key>

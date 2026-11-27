@@ -5,9 +5,9 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleExecutable</key>
-	<string>com.nectarlink.desktop.camera-extension</string>
+	<string>app.nectarlink.desktop.camera-extension</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.nectarlink.desktop.camera-extension</string>
+	<string>app.nectarlink.desktop.camera-extension</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
@@ -17,14 +17,18 @@
 	<key>CFBundlePackageType</key>
 	<string>SYSX</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.1.0</string>
+	<string>@VERSION@</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>@BUNDLE_VERSION@</string>
 	<key>CMIOExtension</key>
 	<dict>
 		<key>CMIOExtensionMachServiceName</key>
-		<string>$(TeamIdentifierPrefix)com.nectarlink.desktop.camera-extension</string>
+		<string>@APP_GROUP_ID@.camera-extension</string>
 	</dict>
+	<key>LSMinimumSystemVersion</key>
+	<string>12.3</string>
+	<key>NLAppGroupID</key>
+	<string>@APP_GROUP_ID@</string>
 	<key>NSSystemExtensionUsageDescription</key>
 	<string>NectarLink uses a Camera Extension to provide your phone's camera as a virtual webcam to apps like Zoom, Teams, and Meet.</string>
 </dict>

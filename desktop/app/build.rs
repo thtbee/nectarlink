@@ -453,7 +453,11 @@ fn main() {
         );
     } else if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("macos") {
         build_macos_audio_loopback();
+        build_macos_notifications();
+        build_macos_sysext();
         println!("cargo:rustc-link-lib=framework=AppKit");
+        println!("cargo:rustc-link-lib=framework=Security");
+        println!("cargo:rustc-link-lib=framework=SystemExtensions");
         println!("cargo:rustc-link-lib=framework=CoreGraphics");
         println!("cargo:rustc-link-lib=framework=CoreAudio");
         println!("cargo:rustc-link-lib=framework=AudioToolbox");
@@ -461,6 +465,7 @@ fn main() {
         println!("cargo:rustc-link-lib=framework=ScreenCaptureKit");
         println!("cargo:rustc-link-lib=framework=CoreMedia");
         println!("cargo:rustc-link-lib=framework=Foundation");
+        println!("cargo:rustc-link-lib=framework=UserNotifications");
     }
     println!("cargo:rerun-if-changed=cpp/app_helpers.h");
     println!("cargo:rerun-if-changed=cpp/app_helpers.cpp");
@@ -491,6 +496,24 @@ fn build_linux_video_codec() {
     build.compile("nectarlink_linux_video_codec");
     println!("cargo::rustc-link-lib=dl");
     println!("cargo::rustc-cfg=linux_ffmpeg_video");
+}
+
+fn build_macos_notifications() {
+    println!("cargo::rerun-if-changed=cpp/mac_notifications.mm");
+    cc::Build::new()
+        .file("cpp/mac_notifications.mm")
+        .flag("-fobjc-arc")
+        .flag("-std=c++17")
+        .compile("nectarlink_mac_notifications");
+}
+
+fn build_macos_sysext() {
+    println!("cargo::rerun-if-changed=cpp/mac_sysext.mm");
+    cc::Build::new()
+        .file("cpp/mac_sysext.mm")
+        .flag("-fobjc-arc")
+        .flag("-std=c++17")
+        .compile("nectarlink_mac_sysext");
 }
 
 fn build_macos_audio_loopback() {

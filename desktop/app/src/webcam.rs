@@ -175,6 +175,8 @@ pub fn init(settings: &Settings) {
     let h = normalize_height(settings.webcam_height);
     HEIGHT.store(h, Ordering::Relaxed);
     let preferred = settings.webcam_phone.as_deref().and_then(|s| s.parse().ok());
+    #[cfg(target_os = "macos")]
+    vcam::set_status_hook(|| core_host::host().hub.changed(Changes::WEBCAM));
     let registered = vcam::is_registered();
     let vcam_handle = if registered {
         match VirtualCameraHandle::start() {
@@ -353,6 +355,37 @@ pub fn addon_busy() -> bool {
     state(|s| s.addon_busy)
 }
 
+/// Whether macOS is waiting for the user to allow the virtual camera in System Settings.
+pub fn addon_needs_approval() -> bool {
+    #[cfg(target_os = "macos")]
+    {
+        vcam::awaiting_approval()
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        false
+    }
+}
+
+/// Opens the System Settings page where macOS asks to allow the virtual camera.
+pub fn open_approval_settings() {
+    #[cfg(target_os = "macos")]
+    vcam::open_approval_settings();
+}
+
+/// What the virtual camera set-up is waiting for or why it failed (macOS: the
+/// approval prompt, a missing entitlement); empty when there is nothing to say.
+pub fn addon_status() -> String {
+    #[cfg(target_os = "macos")]
+    {
+        vcam::setup_status()
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        String::new()
+    }
+}
+
 /// Launches the elevated helper (`--register-vcam`) when the user clicks "Set up".
 pub fn setup_addon() {
     let already_busy = state(|s| {
@@ -366,8 +399,8 @@ pub fn setup_addon() {
         return;
     }
     core_host::host().hub.changed(Changes::WEBCAM);
-    vcam::run_elevated(vcam::REGISTER_ARG, |_ok| {
-        let registered = vcam::is_registered();
+    vcam::run_elevated(vcam::REGISTER_ARG, |ok| {
+        let registered = settle_registration(ok, true);
         let handle = if registered {
             VirtualCameraHandle::start()
                 .inspect_err(|e| tracing::warn!(error = %e, "can't start virtual camera session"))
@@ -383,6 +416,8 @@ pub fn setup_addon() {
             }
         });
         core_host::host().hub.changed(Changes::WEBCAM);
+        // `addon.vcam` is in the capabilities only while it's registered: tell the phones.
+        core_host::refresh_capabilities();
     });
 }
 
@@ -400,14 +435,29 @@ pub fn remove_addon() {
         return;
     }
     core_host::host().hub.changed(Changes::WEBCAM);
-    vcam::run_elevated(vcam::UNREGISTER_ARG, |_ok| {
-        let registered = vcam::is_registered();
+    vcam::run_elevated(vcam::UNREGISTER_ARG, |ok| {
+        let registered = settle_registration(ok, false);
         state(|s| {
             s.addon_busy = false;
             s.addon_registered = registered;
         });
         core_host::host().hub.changed(Changes::WEBCAM);
+        core_host::refresh_capabilities();
     });
+}
+
+/// Whether the virtual camera is registered once a set-up (`want` true) or
+/// removal finished. On macOS the system's list can trail the request by a
+/// moment, so when `done` it looks again for up to 5 seconds before it gives up.
+fn settle_registration(done: bool, want: bool) -> bool {
+    for _ in 0..10 {
+        let registered = vcam::is_registered();
+        if !done || registered == want {
+            return registered;
+        }
+        std::thread::sleep(Duration::from_millis(500));
+    }
+    vcam::is_registered()
 }
 
 fn phone_name_for(device: Option<DeviceId>) -> String {

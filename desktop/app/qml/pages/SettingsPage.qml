@@ -2515,9 +2515,13 @@ Item {
                             width: parent.width
                             iconPath: Icons.video
                             title: qsTr("Virtual camera add-on")
-                            description: Webcam.addonRegistered
-                                ? qsTr("Registered for Zoom, Teams & Meet.")
-                                : qsTr("One-time setup (admin required) for Zoom, Teams & Meet.")
+                            description: Webcam.addonStatus !== ""
+                                ? Webcam.addonStatus
+                                : Webcam.addonRegistered
+                                    ? qsTr("Registered for Zoom, Teams & Meet.")
+                                    : Qt.platform.os === "osx"
+                                        ? qsTr("One-time setup for Zoom, Teams & Meet. macOS asks you to approve it.")
+                                        : qsTr("One-time setup (admin required) for Zoom, Teams & Meet.")
                             Row {
                                 spacing: 12
                                 Spinner {
@@ -2538,6 +2542,14 @@ Item {
                                         muted: true
                                         text: qsTr("Ready")
                                     }
+                                }
+                                Button {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    visible: Webcam.addonNeedsApproval
+                                    variant: "tonal"
+                                    size: "sm"
+                                    text: qsTr("Open System Settings")
+                                    onClicked: Webcam.openApprovalSettings()
                                 }
                                 Button {
                                     anchors.verticalCenter: parent.verticalCenter

@@ -57,10 +57,21 @@ final class SharedFrameReader {
     private static func candidatePaths() -> [URL] {
         var urls: [URL] = []
 
-        if let groupURL = FileManager.default.containerURL(
-            forSecurityApplicationGroupIdentifier: appGroupID
-        ) {
-            urls.append(groupURL.appendingPathComponent(appGroupFileName))
+        // The App Group this build is signed for (team-prefixed for Developer ID),
+        // written into Info.plist by build-vcam-extension.sh; then the bare name.
+        var groupIDs: [String] = []
+        if let configured = Bundle.main.object(forInfoDictionaryKey: "NLAppGroupID") as? String,
+            !configured.isEmpty
+        {
+            groupIDs.append(configured)
+        }
+        groupIDs.append(appGroupID)
+        for groupID in groupIDs {
+            if let groupURL = FileManager.default.containerURL(
+                forSecurityApplicationGroupIdentifier: groupID
+            ) {
+                urls.append(groupURL.appendingPathComponent(appGroupFileName))
+            }
         }
 
         // Team-prefixed App Group containers (if present when unsandboxed)

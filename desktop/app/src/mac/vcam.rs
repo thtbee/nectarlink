@@ -3,16 +3,24 @@
 //! and shared-memory frame sink for `"NectarLink Webcam"`.
 
 use std::{
+    ffi::{CString, c_char, c_int, c_void},
     path::{Path, PathBuf},
     process::{Command, Stdio},
-    sync::Arc,
+    sync::{
+        Arc, Mutex, OnceLock,
+        atomic::{AtomicBool, Ordering},
+    },
     thread,
 };
 
 use nectarlink_vcam::{DEFAULT_MAPPING_NAME, SharedFrameMapping};
 
-pub const BUNDLE_ID: &str = "com.nectarlink.desktop.camera-extension";
-pub const EXTENSION_BUNDLE_NAME: &str = "com.nectarlink.desktop.camera-extension.systemextension";
+use crate::i18n::tr;
+
+/// The extension's bundle ID. macOS only installs a system extension whose ID
+/// starts with its host app's (`app.nectarlink.desktop`).
+pub const BUNDLE_ID: &str = "app.nectarlink.desktop.camera-extension";
+pub const EXTENSION_BUNDLE_NAME: &str = "app.nectarlink.desktop.camera-extension.systemextension";
 pub const APP_GROUP_ID: &str = "group.com.nectarlink.desktop";
 pub const APP_GROUP_FILE: &str = "nectarlink_vcam_frame_v2";
 pub const REGISTER_ARG: &str = "--register-vcam";
@@ -88,92 +96,183 @@ pub fn app_group_shm_path() -> Option<PathBuf> {
     None
 }
 
-fn activation_helper_path() -> Option<PathBuf> {
-    let exe = std::env::current_exe().ok()?;
-    let exe_dir = exe.parent()?;
-    let candidate = exe_dir.join("nectarlink-vcam-activate");
-    candidate.is_file().then_some(candidate)
+/// How long to wait for the user to approve the extension in System Settings.
+const APPROVAL_TIMEOUT_SECS: c_int = 15 * 60;
+
+/// macOS is waiting for the user to allow the extension in System Settings.
+static AWAITING_APPROVAL: AtomicBool = AtomicBool::new(false);
+static SETUP_STATUS: Mutex<String> = Mutex::new(String::new());
+static STATUS_HOOK: OnceLock<Box<dyn Fn() + Send + Sync>> = OnceLock::new();
+
+/// Whether macOS is waiting for the user to allow the extension.
+pub fn awaiting_approval() -> bool {
+    AWAITING_APPROVAL.load(Ordering::Relaxed)
 }
 
-/// Activates `com.nectarlink.desktop.camera-extension` via `OSSystemExtensionManager`
-/// when bundled and signed in an `.app` bundle.
+/// Opens System Settings at Login Items & Extensions, where the extension is allowed.
+pub fn open_approval_settings() {
+    let _ = Command::new("/usr/bin/open")
+        .arg("x-apple.systempreferences:com.apple.LoginItems-Settings.extension")
+        .stdin(Stdio::null())
+        .spawn();
+}
+
+/// What the last "Set up" is waiting for or why it failed, ready to show;
+/// empty when there is nothing to say.
+pub fn setup_status() -> String {
+    SETUP_STATUS.lock().map(|s| s.clone()).unwrap_or_default()
+}
+
+/// Calls `hook` whenever [`setup_status`] changes, from the setup thread.
+pub fn set_status_hook(hook: impl Fn() + Send + Sync + 'static) {
+    let _ = STATUS_HOOK.set(Box::new(hook));
+}
+
+fn set_status(text: impl Into<String>) {
+    let text = text.into();
+    if let Ok(mut s) = SETUP_STATUS.lock() {
+        if *s == text {
+            return;
+        }
+        *s = text;
+    }
+    if let Some(hook) = STATUS_HOOK.get() {
+        hook();
+    }
+}
+
+fn approval_message() -> String {
+    tr!(
+        "Webcam",
+        "Waiting for your approval: turn on NectarLink Webcam in System Settings > General > Login Items & Extensions > Camera Extensions."
+    )
+}
+
+// `cpp/mac_sysext.mm`. It runs in this executable because macOS only honors the
+// system-extension entitlement for an app bundle's main executable.
+const SYSEXT_DONE: c_int = 0;
+const SYSEXT_RESTART: c_int = 2;
+const SYSEXT_TIMEOUT: c_int = 3;
+
+#[allow(unsafe_code)]
+unsafe extern "C" {
+    fn nl_sysext_request(
+        bundle_id: *const c_char,
+        deactivate: c_int,
+        timeout_secs: c_int,
+        on_approval: extern "C" fn(*mut c_void),
+        ctx: *mut c_void,
+        error_code: *mut c_int,
+        error_text: *mut c_char,
+        error_text_len: usize,
+    ) -> c_int;
+}
+
+extern "C" fn on_approval_needed(_ctx: *mut c_void) {
+    AWAITING_APPROVAL.store(true, Ordering::Relaxed);
+    set_status(approval_message());
+}
+
+/// Words for an `OSSystemExtensionError` code, the system's own `text` when
+/// there are none better.
+fn describe_sysext_error(code: i32, text: &str) -> String {
+    match code {
+        2 => tr!(
+            "Webcam",
+            "This NectarLink build isn't allowed to install the camera extension (missing the system-extension entitlement or provisioning profile). Install the official signed NectarLink release."
+        ),
+        3 => tr!("Webcam", "Move NectarLink.app to the Applications folder, then try again."),
+        4 => tr!("Webcam", "The camera extension isn't inside this copy of NectarLink.app."),
+        8..=10 => tr!("Webcam", "macOS rejected the camera extension: %1", text),
+        11 | 12 => tr!("Webcam", "The camera extension request was canceled."),
+        13 => tr!(
+            "Webcam",
+            "Allow NectarLink Webcam in System Settings > General > Login Items & Extensions > Camera Extensions, then try again."
+        ),
+        _ if text.is_empty() => tr!("Webcam", "The camera extension request failed (%1).", code),
+        _ => tr!("Webcam", "The camera extension request failed: %1", text),
+    }
+}
+
+#[allow(unsafe_code)]
+/// Asks macOS to activate (or remove) the camera extension and waits, telling
+/// the status hook if the user has to approve it. Fails with a message fit to show.
+fn request_extension(deactivate: bool) -> Result<(), String> {
+    let id = CString::new(BUNDLE_ID).map_err(|e| e.to_string())?;
+    let mut code: c_int = 0;
+    let mut text = [0 as c_char; 512];
+    // SAFETY: `id` and `text` outlive the call, and `text`'s length is passed along.
+    let result = unsafe {
+        nl_sysext_request(
+            id.as_ptr(),
+            c_int::from(deactivate),
+            APPROVAL_TIMEOUT_SECS,
+            on_approval_needed,
+            std::ptr::null_mut(),
+            &mut code,
+            text.as_mut_ptr(),
+            text.len(),
+        )
+    };
+    match result {
+        SYSEXT_DONE => Ok(()),
+        SYSEXT_RESTART => {
+            Err(tr!("Webcam", "The camera extension will be ready after you restart your Mac."))
+        }
+        SYSEXT_TIMEOUT => Err(tr!(
+            "Webcam",
+            "The camera extension wasn't approved in time. Click Set up again, then turn on NectarLink Webcam in System Settings > General > Login Items & Extensions > Camera Extensions."
+        )),
+        _ => {
+            // SAFETY: the function wrote a NUL-terminated string into `text` on failure.
+            let text = unsafe { std::ffi::CStr::from_ptr(text.as_ptr()) }.to_string_lossy().into_owned();
+            Err(describe_sysext_error(code, &text))
+        }
+    }
+}
+
+/// Activates the camera extension through `OSSystemExtensionManager` when it's
+/// bundled in a signed `.app`. macOS may ask the user to approve it.
 pub fn register_hklm() -> Result<(), String> {
     if is_registered() {
         return Ok(());
     }
-    let Some(_bundle) = extension_bundle_path() else {
-        return Err(
-            "NectarLinkCamera.systemextension is not installed in Contents/Library/SystemExtensions/. \
-             macOS Camera Extensions require an Apple Developer-signed .app bundle."
-                .into(),
-        );
-    };
-    let Some(helper) = activation_helper_path() else {
-        return Err(
-            "Camera Extension activation helper is missing; activate from a signed NectarLink.app bundle."
-                .into(),
-        );
-    };
-    let out = Command::new(&helper)
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::piped())
-        .output()
-        .map_err(|e| format!("run {}: {e}", helper.display()))?;
-    if out.status.success() {
-        return Ok(());
+    if extension_bundle_path().is_none() {
+        return Err(tr!(
+            "Webcam",
+            "This copy of NectarLink doesn't include the camera extension. Install NectarLink from its DMG into the Applications folder."
+        ));
     }
-    let stderr = String::from_utf8_lossy(&out.stderr).trim().to_owned();
-    Err(if stderr.is_empty() {
-        format!(
-            "Camera Extension activation failed (exit {}); check Apple Developer signing and System Settings -> Privacy & Security",
-            out.status
-        )
-    } else {
-        stderr
-    })
+    request_extension(false)
 }
 
-/// Deactivates `com.nectarlink.desktop.camera-extension` via `OSSystemExtensionManager`.
+/// Deactivates the camera extension through `OSSystemExtensionManager`.
 pub fn unregister_hklm() -> Result<(), String> {
     if !is_registered() {
         return Ok(());
     }
-    let Some(helper) = activation_helper_path() else {
-        return Err(
-            "Camera Extension deactivation requires a signed NectarLink.app bundle or System Settings -> Login Items & Extensions."
-                .into(),
-        );
-    };
-    let out = Command::new(&helper)
-        .arg("--deactivate")
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::piped())
-        .output()
-        .map_err(|e| format!("run {}: {e}", helper.display()))?;
-    if out.status.success() {
-        return Ok(());
-    }
-    let stderr = String::from_utf8_lossy(&out.stderr).trim().to_owned();
-    Err(if stderr.is_empty() {
-        format!("Camera Extension deactivation failed (exit {})", out.status)
-    } else {
-        stderr
-    })
+    request_extension(true)
 }
 
 /// Runs Camera Extension registration or unregistration on a background thread
-/// and invokes `on_done` with whether the operation succeeded.
+/// and invokes `on_done` with whether the operation succeeded. A failure or a
+/// wait for approval is left in [`setup_status`].
 pub fn run_elevated(arg: &'static str, on_done: impl FnOnce(bool) + Send + 'static) {
     thread::spawn(move || {
+        AWAITING_APPROVAL.store(false, Ordering::Relaxed);
+        set_status("");
         let res = match arg {
             REGISTER_ARG => register_hklm(),
             UNREGISTER_ARG => unregister_hklm(),
             _ => Err(format!("unknown vcam action: {arg}")),
         };
-        if let Err(ref e) = res {
-            tracing::warn!(error = %e, arg, "macOS virtual camera setup failed");
+        AWAITING_APPROVAL.store(false, Ordering::Relaxed);
+        match &res {
+            Ok(()) => set_status(""),
+            Err(e) => {
+                tracing::warn!(error = %e, arg, "macOS virtual camera setup failed");
+                set_status(e.clone());
+            }
         }
         on_done(res.is_ok());
     });
@@ -242,7 +341,7 @@ mod tests {
 5 extension(s)
 --- com.apple.system_extension.cmio (Go to 'System Settings > General > Login Items & Extensions > Camera Extensions')
 enabled\tactive\tteamID\tbundleID (version)\tname\t[state]
-*\t*\tABC1234567\tcom.nectarlink.desktop.camera-extension (0.1.0/1)\tNectarLink Webcam\t[activated enabled]
+*\t*\tABC1234567\tapp.nectarlink.desktop.camera-extension (0.1.0/1)\tNectarLink Webcam\t[activated enabled]
 ";
         assert!(parse_systemextensionsctl_list(sample));
     }
@@ -251,7 +350,7 @@ enabled\tactive\tteamID\tbundleID (version)\tname\t[state]
     fn parse_systemextensionsctl_list_ignores_waiting_for_user_and_other_bundles() {
         let waiting = "\
 --- com.apple.system_extension.cmio
-\t*\tABC1234567\tcom.nectarlink.desktop.camera-extension (0.1.0/1)\tNectarLink Webcam\t[activated waiting for user]
+\t*\tABC1234567\tapp.nectarlink.desktop.camera-extension (0.1.0/1)\tNectarLink Webcam\t[activated waiting for user]
 ";
         assert!(!parse_systemextensionsctl_list(waiting));
 
@@ -260,6 +359,16 @@ enabled\tactive\tteamID\tbundleID (version)\tname\t[state]
 *\t*\tR84MX49LQY\tcom.iriun.macwebcam.extension (1.2/3)\tExtension\t[activated enabled]
 ";
         assert!(!parse_systemextensionsctl_list(other));
+    }
+
+    #[test]
+    fn describe_sysext_error_explains_the_codes_users_hit() {
+        assert!(describe_sysext_error(2, "").contains("isn't allowed to install"));
+        assert!(describe_sysext_error(3, "").contains("Applications folder"));
+        assert!(describe_sysext_error(13, "").contains("Camera Extensions"));
+        assert!(describe_sysext_error(10, "blocked").contains("blocked"));
+        assert!(describe_sysext_error(99, "Boom").contains("Boom"));
+        assert!(describe_sysext_error(99, "").contains("99"));
     }
 
     #[test]
