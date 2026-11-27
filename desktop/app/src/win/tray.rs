@@ -16,10 +16,10 @@ use std::{
 
 use windows::{
     Win32::{
-        Foundation::{HWND, LPARAM, LRESULT, WPARAM},
+        Foundation::{HWND, LPARAM, LRESULT, POINT, WPARAM},
         Graphics::Gdi::{
-            BI_RGB, BITMAPINFO, BITMAPINFOHEADER, CreateBitmap, CreateDIBSection, DIB_RGB_COLORS,
-            DeleteObject, HBITMAP,
+            BI_RGB, BITMAPINFO, BITMAPINFOHEADER, CombineRgn, CreateBitmap, CreateDIBSection,
+            CreateRoundRectRgn, DIB_RGB_COLORS, DeleteObject, HBITMAP, RGN_OR, SetWindowRgn,
         },
         System::{
             LibraryLoader::GetModuleHandleW,
@@ -39,14 +39,15 @@ use windows::{
             WindowsAndMessaging::{
                 AppendMenuW, BringWindowToTop, CreateIconIndirect, CreatePopupMenu, CreateWindowExW,
                 DefWindowProcW, DestroyIcon, DestroyMenu, DestroyWindow, EVENT_SYSTEM_FOREGROUND,
-                GW_HWNDNEXT, GWL_EXSTYLE, GetClassNameW, GetForegroundWindow, GetSystemMetrics, GetTopWindow,
-                GetWindow, GetWindowLongW, GetWindowTextW, GetWindowThreadProcessId, HICON, HMENU, ICONINFO,
-                IsIconic, IsWindow, IsWindowVisible, MF_GRAYED, MF_SEPARATOR, MF_STRING, PostMessageW,
-                RegisterClassExW, RegisterWindowMessageW, SM_CXSMICON, SW_RESTORE, SendMessageW,
-                SetForegroundWindow, ShowWindow, TPM_BOTTOMALIGN, TPM_RETURNCMD, TPM_RIGHTBUTTON,
-                TrackPopupMenuEx, WINDOW_EX_STYLE, WINEVENT_OUTOFCONTEXT, WINEVENT_SKIPOWNPROCESS, WM_APP,
-                WM_CONTEXTMENU, WM_HOTKEY, WM_LBUTTONDBLCLK, WM_NULL, WM_POWERBROADCAST, WM_SETTINGCHANGE,
-                WNDCLASSEXW, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP,
+                GW_HWNDNEXT, GWL_EXSTYLE, GetClassNameW, GetCursorPos, GetForegroundWindow, GetSystemMetrics,
+                GetTopWindow, GetWindow, GetWindowLongW, GetWindowTextW, GetWindowThreadProcessId, HICON,
+                HMENU, ICONINFO, IsIconic, IsWindow, IsWindowVisible, MF_GRAYED, MF_SEPARATOR, MF_STRING,
+                PostMessageW, RegisterClassExW, RegisterWindowMessageW, SM_CXSMICON, SW_RESTORE,
+                SendMessageW, SetForegroundWindow, ShowWindow, TPM_BOTTOMALIGN, TPM_RETURNCMD,
+                TPM_RIGHTBUTTON, TrackPopupMenuEx, WINDOW_EX_STYLE, WINEVENT_OUTOFCONTEXT,
+                WINEVENT_SKIPOWNPROCESS, WM_APP, WM_CONTEXTMENU, WM_HOTKEY, WM_LBUTTONDBLCLK, WM_NULL,
+                WM_POWERBROADCAST, WM_SETTINGCHANGE, WNDCLASSEXW, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW,
+                WS_EX_TOPMOST, WS_EX_TRANSPARENT, WS_POPUP,
             },
         },
     },
@@ -354,6 +355,138 @@ pub fn apply_no_activate_style_by_title(title: &str) {
                 Ok(next) if !next.0.is_null() => cur = next,
                 _ => break,
             }
+        }
+    }
+}
+
+/// The mouse position in physical screen pixels, for the Island's leave watchdog.
+pub fn cursor_position() -> Option<(i32, i32)> {
+    // SAFETY: GetCursorPos writes to a local POINT and takes no pointers we keep.
+    unsafe {
+        let mut point = POINT::default();
+        GetCursorPos(&mut point).ok()?;
+        Some((point.x, point.y))
+    }
+}
+
+/// Makes the Island window ignore the mouse (or accept it again) without
+/// recreating it. Qt's WindowTransparentForInput flag is applied when the
+/// window is first shown and does not reliably change later; the native
+/// extended style does, so hover keeps working after the Island wakes up.
+pub fn set_island_click_through(on: bool) {
+    // SAFETY: Enumerates top-level windows in Z-order and updates GWL_EXSTYLE
+    // on a window owned by this process.
+    unsafe {
+        let self_pid = GetCurrentProcessId();
+        let mut cur = match GetTopWindow(None) {
+            Ok(h) => h,
+            Err(_) => return,
+        };
+        for _ in 0..256 {
+            let mut pid: u32 = 0;
+            GetWindowThreadProcessId(cur, Some(&mut pid));
+            let title = window_title(cur);
+            if pid == self_pid && title.contains("Nectar") && !title.contains("NectarLink") {
+                let ex = GetWindowLongW(cur, GWL_EXSTYLE) as u32;
+                let wanted = if on { ex | WS_EX_TRANSPARENT.0 } else { ex & !WS_EX_TRANSPARENT.0 };
+                if wanted != ex {
+                    let _ = windows::Win32::UI::WindowsAndMessaging::SetWindowLongW(
+                        cur,
+                        GWL_EXSTYLE,
+                        wanted as i32,
+                    );
+                    let _ = windows::Win32::UI::WindowsAndMessaging::SetWindowPos(
+                        cur,
+                        None,
+                        0,
+                        0,
+                        0,
+                        0,
+                        windows::Win32::UI::WindowsAndMessaging::SWP_NOMOVE
+                            | windows::Win32::UI::WindowsAndMessaging::SWP_NOSIZE
+                            | windows::Win32::UI::WindowsAndMessaging::SWP_NOZORDER
+                            | windows::Win32::UI::WindowsAndMessaging::SWP_NOACTIVATE
+                            | windows::Win32::UI::WindowsAndMessaging::SWP_FRAMECHANGED,
+                    );
+                }
+                break;
+            }
+            match GetWindow(cur, GW_HWNDNEXT) {
+                Ok(next) if !next.0.is_null() => cur = next,
+                _ => break,
+            }
+        }
+    }
+}
+
+/// Clips the Island window's visible and mouse-hit shape to the pill and, when
+/// open, the card under it. Transparent margins around them no longer take
+/// clicks from the window underneath. Coordinates are physical window pixels.
+pub fn set_island_input_region(
+    x1: i32,
+    y1: i32,
+    w1: i32,
+    h1: i32,
+    r1: i32,
+    x2: i32,
+    y2: i32,
+    w2: i32,
+    h2: i32,
+    r2: i32,
+) {
+    if w1 <= 0 || h1 <= 0 {
+        return;
+    }
+    // SAFETY: Enumerates top-level windows in Z-order; the region is created
+    // and owned by this call, and SetWindowRgn takes it over on success.
+    unsafe {
+        let self_pid = GetCurrentProcessId();
+        let mut cur = match GetTopWindow(None) {
+            Ok(h) => h,
+            Err(_) => return,
+        };
+        let mut island = None;
+        for _ in 0..256 {
+            let mut pid: u32 = 0;
+            GetWindowThreadProcessId(cur, Some(&mut pid));
+            let title = window_title(cur);
+            if pid == self_pid && title.contains("Nectar") && !title.contains("NectarLink") {
+                island = Some(cur);
+                break;
+            }
+            match GetWindow(cur, GW_HWNDNEXT) {
+                Ok(next) if !next.0.is_null() => cur = next,
+                _ => break,
+            }
+        }
+        let Some(hwnd) = island else { return };
+        let region = CreateRoundRectRgn(
+            x1,
+            y1,
+            x1.saturating_add(w1),
+            y1.saturating_add(h1),
+            r1.max(0).saturating_mul(2),
+            r1.max(0).saturating_mul(2),
+        );
+        if region.0.is_null() {
+            return;
+        }
+        if w2 > 0 && h2 > 0 {
+            let card = CreateRoundRectRgn(
+                x2,
+                y2,
+                x2.saturating_add(w2),
+                y2.saturating_add(h2),
+                r2.max(0).saturating_mul(2),
+                r2.max(0).saturating_mul(2),
+            );
+            if !card.0.is_null() {
+                let _ = CombineRgn(Some(region), Some(region), Some(card), RGN_OR);
+                let _ = DeleteObject(card.into());
+            }
+        }
+        if SetWindowRgn(hwnd, Some(region), true) == 0 {
+            let _ = DeleteObject(region.into());
         }
     }
 }

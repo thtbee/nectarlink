@@ -28,4 +28,21 @@ QtObject {
     property bool nectarIslandPcMedia: false
     property bool nectarIslandNotifications: true
     property bool nectarIslandTransfers: true
+    // The Island's own appearance and placement, with the same defaults as
+    // desktop/app/src/settings.rs.
+    property bool nectarIslandAlwaysVisible: true
+    property bool nectarIslandClickThrough: false
+    property bool nectarIslandClock: true
+    property bool nectarIslandClock12h: false
+    property string nectarIslandDisplay: ""
+    property string nectarIslandEdge: "top"
+    property bool nectarIslandHasPosition: false
+    property string nectarIslandMediaSource: "phone"
+    property int nectarIslandOpacity: 100
+    property string nectarIslandShape: "capsule"
+    property int nectarIslandSize: 100
+    property string nectarIslandSkin: "classic"
+    property real nectarIslandX: 0
+    property real nectarIslandY: 0
+    function saveIslandPosition(present, x, y) {}
 }

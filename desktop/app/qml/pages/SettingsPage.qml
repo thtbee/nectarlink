@@ -69,6 +69,51 @@ Item {
         scrollToRow.restart()
     }
     property var pendingRow: null
+    readonly property var navPageMeta: ({
+        home: { label: qsTr("Home"), icon: Icons.home },
+        messages: { label: qsTr("Messages"), icon: Icons.messages },
+        calls: { label: qsTr("Calls"), icon: Icons.call },
+        photos: { label: qsTr("Photos"), icon: Icons.photo },
+        apps: { label: qsTr("Apps"), icon: Icons.apps },
+        deck: { label: qsTr("Deck"), icon: Icons.deck },
+        guide: { label: qsTr("Guide"), icon: Icons.book },
+        settings: { label: qsTr("Settings"), icon: Icons.settings }
+    })
+    ListModel { id: navPageModel }
+    function rebuildNavPages() {
+        navPageModel.clear()
+        const hidden = String(Preferences.pageHidden).split(",").filter(id => id.length > 0)
+        const order = String(Preferences.pageOrder).split(",").filter(id => id.length > 0)
+        const seen = {}
+        const add = (id) => {
+            const meta = navPageMeta[id]
+            if (!meta || seen[id])
+                return
+            seen[id] = true
+            navPageModel.append({
+                pageId: id,
+                label: meta.label,
+                icon: meta.icon,
+                pageEnabled: !hidden.includes(id)
+            })
+        }
+        for (const id of order)
+            add(id)
+        for (const id of Object.keys(navPageMeta))
+            add(id)
+    }
+    function saveNavPages() {
+        const order = []
+        const hidden = []
+        for (let i = 0; i < navPageModel.count; i++) {
+            const row = navPageModel.get(i)
+            order.push(row.pageId)
+            if (!row.pageEnabled && row.pageId !== "home" && row.pageId !== "settings")
+                hidden.push(row.pageId)
+        }
+        Preferences.pageOrder = order.join(",")
+        Preferences.pageHidden = hidden.join(",")
+    }
     Timer {
         id: scrollToRow
         // After the section's own scroll-to-top and fade-in.
@@ -215,6 +260,7 @@ Item {
         }
     }
     Component.onCompleted: {
+        rebuildNavPages()
         if (active)
             syncSectionSideEffects()
         page.visitedSection = active ? currentSection : ""
@@ -1316,6 +1362,50 @@ Item {
 
                         Divider { width: parent.width }
 
+                        ListRow {
+                            width: parent.width
+                            title: qsTr("This PC's name")
+                            description: qsTr("The name phones see for this computer. Leave it blank to use the computer name.")
+                            Rectangle {
+                                width: 190
+                                height: 30
+                                radius: 8
+                                color: Theme.surfaceContainerHighest
+                                border.width: pcNameInput.activeFocus ? 2 : 1
+                                border.color: pcNameInput.activeFocus ? Theme.primary : Theme.outlineVariant
+                                TextInput {
+                                    id: pcNameInput
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 9
+                                    anchors.rightMargin: 9
+                                    verticalAlignment: TextInput.AlignVCenter
+                                    font.family: Theme.fontUi
+                                    font.pixelSize: 12
+                                    color: Theme.surfaceContent
+                                    selectionColor: Theme.primaryContainer
+                                    selectedTextColor: Theme.primaryContainerContent
+                                    maximumLength: 64
+                                    text: Preferences.deviceDisplayName
+                                    onEditingFinished: Preferences.renameThisDevice(text)
+                                    Accessible.name: qsTr("This PC's name")
+                                }
+                                Txt {
+                                    anchors.fill: parent
+                                    anchors.leftMargin: 9
+                                    anchors.rightMargin: 9
+                                    visible: pcNameInput.text.length === 0
+                                    text: AppController.deviceName
+                                    role: "body"
+                                    size: 12
+                                    color: Theme.surfaceContentVariant
+                                    elide: Text.ElideRight
+                                    verticalAlignment: Text.AlignVCenter
+                                }
+                            }
+                        }
+
+                        Divider { width: parent.width }
+
                         // Row 1: Start with Windows | Stay in system tray
                         Item {
                             id: startupPairRow
@@ -1467,7 +1557,7 @@ Item {
                                 id: islandTriggersRow
                                 width: parent.width
                                 title: qsTr("Island triggers")
-                                description: qsTr("Choose when the top pill appears.")
+                                description: qsTr("Choose when the top pill appears. PC takes over this computer's media.")
 
                                 Row {
                                     id: islandTriggersRowItems
@@ -1478,7 +1568,8 @@ Item {
                                             { key: "calls", label: qsTr("Calls"), icon: Icons.call },
                                             { key: "transfers", label: qsTr("Transfers"), icon: Icons.send },
                                             { key: "media", label: qsTr("Media"), icon: Icons.music },
-                                            { key: "notifications", label: qsTr("Alerts"), icon: Icons.bell }
+                                            { key: "notifications", label: qsTr("Alerts"), icon: Icons.bell },
+                                            { key: "pc", label: qsTr("PC"), icon: Icons.desktop }
                                         ]
                                         delegate: Rectangle {
                                             id: trigChip
@@ -1487,12 +1578,14 @@ Item {
                                                 if (modelData.key === "calls") return Preferences.nectarIslandCalls
                                                 if (modelData.key === "transfers") return Preferences.nectarIslandTransfers
                                                 if (modelData.key === "media") return Preferences.nectarIslandMedia
+                                                if (modelData.key === "pc") return Preferences.nectarIslandPcMedia
                                                 return Preferences.nectarIslandNotifications
                                             }
                                             function toggleTrigger(nextVal) {
                                                 if (modelData.key === "calls") Preferences.nectarIslandCalls = nextVal
                                                 else if (modelData.key === "transfers") Preferences.nectarIslandTransfers = nextVal
                                                 else if (modelData.key === "media") Preferences.nectarIslandMedia = nextVal
+                                                else if (modelData.key === "pc") Preferences.nectarIslandPcMedia = nextVal
                                                 else Preferences.nectarIslandNotifications = nextVal
                                             }
                                             height: 30
@@ -1551,51 +1644,354 @@ Item {
                             ListRow {
                                 id: islandPositionRow
                                 visible: !Qt.platform.pluginName.startsWith("wayland")
+                                    && Preferences.nectarIslandEdge === "top"
                                 width: parent.width
                                 title: qsTr("Island position")
-                                description: qsTr("Where the pill sits along the top of the screen.")
+                                description: qsTr("Where the pill sits along the top of the screen. Drag the pill to put it anywhere on this screen.")
                                 Segmented {
-                                    options: [
-                                        { value: "left", label: qsTr("Left") },
-                                        { value: "center", label: qsTr("Center") },
-                                        { value: "right", label: qsTr("Right") }
-                                    ]
-                                    value: Preferences.nectarIslandPosition
-                                    onPicked: (val) => Preferences.nectarIslandPosition = val
+                                    options: {
+                                        const presets = [
+                                            { value: "left", label: qsTr("Left") },
+                                            { value: "center", label: qsTr("Center") },
+                                            { value: "right", label: qsTr("Right") }
+                                        ]
+                                        if (Preferences.nectarIslandHasPosition)
+                                            presets.push({ value: "custom", label: qsTr("Custom") })
+                                        return presets
+                                    }
+                                    value: Preferences.nectarIslandHasPosition ? "custom" : Preferences.nectarIslandPosition
+                                    onPicked: (val) => {
+                                        if (val === "custom")
+                                            return
+                                        Preferences.nectarIslandPosition = val
+                                        Preferences.saveIslandPosition(false, 0, 0)
+                                    }
                                 }
                             }
 
                             Divider { width: parent.width }
 
-                            // #325: dark always, or light when the app is.
+                            // Island form, skin and size.
                             ListRow {
                                 width: parent.width
-                                title: qsTr("Island look")
-                                description: qsTr("Always dark, or light and dark with the app.")
+                                title: qsTr("Island skin")
+                                description: qsTr("Classic black, cream, glass, or a cloud tinted by the playing cover.")
                                 Segmented {
                                     options: [
-                                        { value: "dark", label: qsTr("Dark") },
-                                        { value: "theme", label: qsTr("Like the app") }
+                                        { value: "classic", label: qsTr("Classic") },
+                                        { value: "cream", label: qsTr("Cream") },
+                                        { value: "glassLight", label: qsTr("Glass light") },
+                                        { value: "glassDark", label: qsTr("Glass dark") },
+                                        { value: "cloud", label: qsTr("Cloud") }
                                     ]
-                                    value: Preferences.nectarIslandLook
-                                    onPicked: (val) => Preferences.nectarIslandLook = val
+                                    value: Preferences.nectarIslandSkin
+                                    onPicked: (val) => Preferences.nectarIslandSkin = val
+                                }
+                            }
+
+                            Divider { width: parent.width }
+
+                            ListRow {
+                                width: parent.width
+                                title: qsTr("Island shape")
+                                description: qsTr("A floating capsule, or a notch attached to the top edge.")
+                                Segmented {
+                                    options: [
+                                        { value: "capsule", label: qsTr("Capsule") },
+                                        { value: "notch", label: qsTr("Notch") }
+                                    ]
+                                    value: Preferences.nectarIslandShape
+                                    onPicked: (val) => Preferences.nectarIslandShape = val
+                                }
+                            }
+
+                            Divider { width: parent.width }
+
+                            ListRow {
+                                width: parent.width
+                                title: qsTr("Island size")
+                                description: qsTr("%1% of the normal body size.").arg(Preferences.nectarIslandSize)
+                                ValueSlider {
+                                    width: 200
+                                    from: 80
+                                    to: 140
+                                    step: 5
+                                    value: Preferences.nectarIslandSize
+                                    label: qsTr("Island size")
+                                    valueText: qsTr("%1%").arg(Preferences.nectarIslandSize)
+                                    onMoved: (v) => Preferences.nectarIslandSize = v
+                                }
+                            }
+
+                            Divider { width: parent.width }
+
+                            ListRow {
+                                width: parent.width
+                                title: qsTr("Dock edge")
+                                description: qsTr("Top opens downward; left and right open inward from that edge.")
+                                Segmented {
+                                    options: [
+                                        { value: "top", label: qsTr("Top") },
+                                        { value: "left", label: qsTr("Left") },
+                                        { value: "right", label: qsTr("Right") }
+                                    ]
+                                    value: Preferences.nectarIslandEdge
+                                    onPicked: (val) => Preferences.nectarIslandEdge = val
+                                }
+                            }
+
+                            Divider { width: parent.width }
+
+                            ListRow {
+                                width: parent.width
+                                title: qsTr("Island display")
+                                description: qsTr("Follow the primary screen, or keep the Island on one display.")
+                                Segmented {
+                                    options: {
+                                        const list = [{ value: "", label: qsTr("Primary") }]
+                                        const screens = Qt.application.screens || []
+                                        for (let i = 0; i < screens.length; i++) {
+                                            const name = screens[i].name
+                                            if (name.length === 0)
+                                                continue
+                                            list.push({ value: name, label: name })
+                                        }
+                                        return list
+                                    }
+                                    value: Preferences.nectarIslandDisplay
+                                    onPicked: (val) => Preferences.nectarIslandDisplay = val
+                                }
+                            }
+
+                            Divider { width: parent.width }
+
+                            ListRow {
+                                width: parent.width
+                                title: qsTr("Island opacity")
+                                description: qsTr("Make the Island and its contents translucent; input still matches its exact bounds.")
+                                Column {
+                                    spacing: 2
+                                    Txt {
+                                        width: 200
+                                        text: qsTr("%1%").arg(Preferences.nectarIslandOpacity)
+                                        role: "caption"
+                                        size: 11
+                                        muted: true
+                                        horizontalAlignment: Text.AlignRight
+                                    }
+                                    ValueSlider {
+                                        width: 200
+                                        from: 30
+                                        to: 100
+                                        step: 5
+                                        value: Preferences.nectarIslandOpacity
+                                        label: qsTr("Island opacity")
+                                        valueText: qsTr("%1%").arg(Preferences.nectarIslandOpacity)
+                                        onMoved: (v) => Preferences.nectarIslandOpacity = v
+                                    }
+                                }
+                            }
+
+                            Divider { width: parent.width }
+
+                            ListRow {
+                                width: parent.width
+                                title: qsTr("Clock")
+                                description: qsTr("The Island's idle clock uses this format.")
+                                Row {
+                                    spacing: 10
+                                    Toggle {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        label: qsTr("Clock")
+                                        checked: Preferences.nectarIslandClock
+                                        onToggled: (on) => Preferences.nectarIslandClock = on
+                                    }
+                                    Segmented {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        enabled: Preferences.nectarIslandClock
+                                        opacity: enabled ? 1 : 0.45
+                                        options: [
+                                            { value: "24", label: qsTr("24-hour") },
+                                            { value: "12", label: qsTr("12-hour") }
+                                        ]
+                                        value: Preferences.nectarIslandClock12h ? "12" : "24"
+                                        onPicked: (val) => Preferences.nectarIslandClock12h = val === "12"
+                                    }
+                                }
+                            }
+
+                            Divider {
+                                width: parent.width
+                                visible: Qt.platform.os === "windows"
+                            }
+
+                            ListRow {
+                                width: parent.width
+                                visible: Qt.platform.os === "windows"
+                                title: qsTr("Click-through")
+                                description: qsTr("Hover still opens the Island; clicks go to the window underneath. Turn it off in NectarLink's Settings if you need to click the Island.")
+                                Toggle {
+                                    label: qsTr("Click-through")
+                                    checked: Preferences.nectarIslandClickThrough
+                                    onToggled: (on) => Preferences.nectarIslandClickThrough = on
                                 }
                             }
 
                             Divider { width: parent.width; visible: Preferences.nectarIslandMedia }
 
-                            // #472: Spotify, a browser, any player Windows' media controls know.
                             ListRow {
                                 width: parent.width
-                                visible: Preferences.nectarIslandMedia
-                                title: qsTr("This PC's players too")
-                                description: qsTr("Also show music and videos playing on this PC. With more than one, a button switches between them.")
+                                title: qsTr("Show when idle")
+                                description: qsTr("Keep the Island on screen with nothing playing, so it works without a phone.")
                                 Toggle {
-                                    label: qsTr("This PC's players too")
-                                    checked: Preferences.nectarIslandPcMedia
-                                    onToggled: (on) => Preferences.nectarIslandPcMedia = on
+                                    label: qsTr("Show when idle")
+                                    checked: Preferences.nectarIslandAlwaysVisible
+                                    onToggled: (on) => Preferences.nectarIslandAlwaysVisible = on
                                 }
                             }
+
+                            Divider {
+                                width: parent.width
+                                visible: Preferences.nectarIslandMedia && Preferences.nectarIslandPcMedia
+                            }
+
+                            ListRow {
+                                width: parent.width
+                                visible: Preferences.nectarIslandMedia && Preferences.nectarIslandPcMedia
+                                title: qsTr("When both play")
+                                description: qsTr("Which player the Island follows while the phone and this PC are both playing. The phone comes first by default.")
+                                Segmented {
+                                    options: [
+                                        { value: "phone", label: qsTr("Phone") },
+                                        { value: "pc", label: qsTr("This PC") }
+                                    ]
+                                    value: Preferences.nectarIslandMediaSource
+                                    onPicked: (val) => Preferences.nectarIslandMediaSource = val
+                                }
+                            }
+                        }
+
+                        // Sub-row: navigation pages, with drag-to-reorder.
+                        Column {
+                            id: pageManagerBlock
+                            width: parent.width
+                            spacing: 0
+
+                            Divider { width: parent.width }
+
+                            ListRow {
+                                width: parent.width
+                                title: qsTr("Pages")
+                                description: qsTr("Turn pages off, and drag the grip to change their order.")
+                            }
+
+                            ListView {
+                                id: navPageList
+                                width: parent.width
+                                height: contentHeight
+                                interactive: false
+                                boundsBehavior: Flickable.StopAtBounds
+                                model: navPageModel
+                                delegate: Item {
+                                    id: navPageRow
+                                    required property int index
+                                    required property string pageId
+                                    required property string label
+                                    required property string icon
+                                    required property bool pageEnabled
+                                    width: navPageList.width
+                                    height: 44
+                                    z: drag.active ? 3 : 0
+                                    transform: Translate { y: drag.active ? drag.translation.y : 0 }
+
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        radius: 8
+                                        color: rowHover.hovered ? Theme.surfaceContainerHigh : "transparent"
+                                    }
+                                    HoverHandler { id: rowHover }
+
+                                    Icon {
+                                        id: rowIcon
+                                        anchors.left: parent.left
+                                        anchors.leftMargin: 10
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: 16
+                                        height: 16
+                                        path: navPageRow.icon
+                                        color: Theme.surfaceContentVariant
+                                    }
+                                    Txt {
+                                        anchors.left: rowIcon.right
+                                        anchors.leftMargin: 10
+                                        anchors.right: pageToggle.left
+                                        anchors.rightMargin: 10
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        text: navPageRow.label
+                                        role: "body"
+                                        color: Theme.surfaceContent
+                                        elide: Text.ElideRight
+                                    }
+                                    Toggle {
+                                        id: pageToggle
+                                        anchors.right: dragHandle.left
+                                        anchors.rightMargin: 8
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        enabled: navPageRow.pageId !== "home" && navPageRow.pageId !== "settings"
+                                        checked: navPageRow.pageEnabled
+                                        label: navPageRow.label
+                                        onToggled: (on) => {
+                                            navPageModel.setProperty(navPageRow.index, "pageEnabled", on)
+                                            page.saveNavPages()
+                                        }
+                                    }
+                                    Item {
+                                        id: dragHandle
+                                        width: 36
+                                        height: parent.height
+                                        anchors.right: parent.right
+                                        Icon {
+                                            anchors.centerIn: parent
+                                            width: 15
+                                            height: 15
+                                            path: Icons.grip
+                                            color: drag.active ? Theme.primary : Theme.surfaceContentVariant
+                                        }
+                                        DragHandler {
+                                            id: drag
+                                            target: null
+                                            grabPermissions: PointerHandler.CanTakeOverFromAnything
+                                            xAxis.enabled: false
+                                            yAxis.enabled: true
+                                            property int from: -1
+                                            property int to: -1
+                                            onActiveChanged: {
+                                                if (active) {
+                                                    from = navPageRow.index
+                                                    to = from
+                                                } else if (from >= 0) {
+                                                    if (to !== from && to >= 0 && to < navPageModel.count) {
+                                                        navPageModel.move(from, to, 1)
+                                                        page.saveNavPages()
+                                                    }
+                                                    from = -1
+                                                    to = -1
+                                                }
+                                            }
+                                            onTranslationChanged: {
+                                                if (!active)
+                                                    return
+                                                const point = dragHandle.mapToItem(navPageList, 0, 0)
+                                                const target = Math.round(
+                                                    (point.y + translation.y) / navPageRow.height)
+                                                to = Math.max(0, Math.min(navPageModel.count - 1, target))
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            Item { width: 1; height: 8 }
                         }
 
                         // Sub-row: Full charge alert target (100% or 80% Protect battery)

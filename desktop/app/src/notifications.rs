@@ -42,6 +42,10 @@ const LOCK_LOOK_EVERY: std::time::Duration = std::time::Duration::from_secs(2);
 /// of notifications that went away meanwhile.
 static TOASTED: Mutex<Option<HashMap<DeviceId, HashSet<String>>>> = Mutex::new(None);
 
+/// When each alert last made a sound, so a progress update or a repeated
+/// snapshot doesn't chime again.
+static SOUNDED: Mutex<Option<HashMap<(DeviceId, String), i64>>> = Mutex::new(None);
+
 /// Keys of live notifications that already have a toast with a `<progress>` bar,
 /// so subsequent updates call [`toast::update_progress`] in place instead of
 /// popping up a new toast.
@@ -65,6 +69,17 @@ fn live_toasts<T>(f: impl FnOnce(&mut HashSet<(DeviceId, String)>) -> T) -> T {
 
 fn otp_codes<T>(f: impl FnOnce(&mut HashMap<(DeviceId, String), String>) -> T) -> T {
     f(OTP_CODES.lock().unwrap_or_else(|e| e.into_inner()).get_or_insert_with(HashMap::new))
+}
+
+fn sounded<T>(f: impl FnOnce(&mut HashMap<(DeviceId, String), i64>) -> T) -> T {
+    f(SOUNDED.lock().unwrap_or_else(|e| e.into_inner()).get_or_insert_with(HashMap::new))
+}
+
+fn play_notification_sound() {
+    #[cfg(windows)]
+    crate::win::sound::notification();
+    #[cfg(target_os = "linux")]
+    crate::win::sound::play_chime();
 }
 
 pub fn set_auto_copy_otp(on: bool) {
@@ -365,6 +380,7 @@ pub fn update_toasts(event: &NodeEvent) {
             toasted(|t| t.get_mut(device).map(|keys| keys.remove(key)));
             live_toasts(|l| l.remove(&(*device, key.clone())));
             otp_codes(|c| c.remove(&(*device, key.clone())));
+            sounded(|s| s.remove(&(*device, key.clone())));
             toast::remove(&device.to_string(), key);
         }
         NodeEvent::NotificationsReset { device, items } => {
@@ -382,6 +398,7 @@ pub fn update_toasts(event: &NodeEvent) {
             });
             live_toasts(|l| l.retain(|(d, k)| d != device || keep.contains(k.as_str())));
             otp_codes(|c| c.retain(|(d, k), _| d != device || keep.contains(k.as_str())));
+            sounded(|s| s.retain(|(d, k), _| d != device || keep.contains(k.as_str())));
             for key in gone {
                 toast::remove(&device.to_string(), &key);
             }
@@ -395,6 +412,7 @@ pub fn update_toasts(event: &NodeEvent) {
             toasted(|t| t.remove(device));
             live_toasts(|l| l.retain(|(d, _)| d != device));
             otp_codes(|c| c.retain(|(d, _), _| d != device));
+            sounded(|s| s.retain(|(d, _), _| d != device));
             toast::remove_device(&device.to_string());
         }
         _ => {}
@@ -450,6 +468,19 @@ fn show(device: DeviceId, n: &Notification) {
         return;
     }
     if stays_quiet(paused(), QUIET_WHEN_LOCKED.load(Ordering::Relaxed), crate::win::session_locked) {
+        return;
+    }
+    // With the Island set to show phone notifications, it is the prompt: one
+    // sound, no Windows toast on top of it.
+    if crate::settings::nectar_island() && crate::settings::nectar_island_notifications() {
+        if !n.silent {
+            let key = (device, n.key.clone());
+            let fresh = sounded(|s| s.get(&key).is_none_or(|&when| when != n.when));
+            if fresh {
+                sounded(|s| s.insert(key, n.when));
+                play_notification_sound();
+            }
+        }
         return;
     }
     let progress = live_toast_progress(n);

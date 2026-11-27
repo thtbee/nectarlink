@@ -154,6 +154,28 @@ pub fn record_foreground_window() {}
 
 pub fn apply_no_activate_style_by_title(_title: &str) {}
 
+/// The Island's input shape is handled by Qt on macOS.
+pub fn set_island_click_through(_on: bool) {}
+
+#[allow(clippy::too_many_arguments)]
+pub fn set_island_input_region(
+    _x1: i32,
+    _y1: i32,
+    _w1: i32,
+    _h1: i32,
+    _r1: i32,
+    _x2: i32,
+    _y2: i32,
+    _w2: i32,
+    _h2: i32,
+    _r2: i32,
+) {
+}
+
+pub fn cursor_position() -> Option<(i32, i32)> {
+    None
+}
+
 pub fn focus_window(_hwnd: isize) -> bool {
     false
 }

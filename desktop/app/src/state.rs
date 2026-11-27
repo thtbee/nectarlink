@@ -320,6 +320,10 @@ pub struct AppState {
     /// isn't reachable yet, and its next list (after a reconnect, or Refresh)
     /// mustn't bring them back. A newer post under the same key shows again.
     pub cleared: HashMap<(DeviceId, String), i64>,
+    /// Notifications cleared from Nectar Island only, by device and key, with
+    /// the post time they had. The main feed keeps them; a newer post under
+    /// the same key shows on the Island again.
+    pub island_cleared: HashMap<(DeviceId, String), i64>,
     /// Notifications that went away, newest first, while history is kept.
     pub history: Vec<HistoryEntry>,
     pub history_enabled: bool,
@@ -459,6 +463,7 @@ impl AppState {
                 self.last_dismissed.retain(|n| n.device != *id);
                 self.notification_images.retain(|(device, _), _| device != id);
                 self.cleared.retain(|(device, _), _| device != id);
+                self.island_cleared.retain(|(device, _), _| device != id);
                 if self.history.len() != kept.0 {
                     // Saved again without them.
                     changes |= Changes::HISTORY;
@@ -568,6 +573,7 @@ impl AppState {
             NodeEvent::NotificationsReset { device, items } => {
                 // What the phone no longer shows can't come back as the same post.
                 self.cleared.retain(|(d, key), _| d != device || items.iter().any(|i| i.key == *key));
+                self.island_cleared.retain(|(d, key), _| d != device || items.iter().any(|i| i.key == *key));
                 let before = self.notifications.len();
                 // What's gone since the last list went away on the phone.
                 let gone: Vec<NotificationView> = self
@@ -602,6 +608,7 @@ impl AppState {
                     return Changes::NONE;
                 };
                 let gone = self.notifications.remove(at);
+                self.island_cleared.remove(&(*device, key.clone()));
                 Changes::NOTIFICATIONS | self.remember(vec![gone])
             }
             // Feedback (crate::clipboard), notifications (crate::photos,
@@ -886,6 +893,24 @@ impl AppState {
         if let Some(n) = self.notifications.iter().find(|n| n.device == device && n.notification.key == key) {
             self.cleared.insert((device, key.to_owned()), n.notification.when);
         }
+    }
+
+    /// Whether the Island hid `n` without touching the main feed.
+    pub fn is_island_cleared(&self, device: DeviceId, n: &Notification) -> bool {
+        self.island_cleared.get(&(device, n.key.clone())).is_some_and(|&when| when == n.when)
+    }
+
+    /// Hides every current notification from the Island. The main feed keeps
+    /// them, and a newer post under the same key comes back to the Island.
+    pub fn clear_island(&mut self) -> Changes {
+        let mut changed = false;
+        for view in &self.notifications {
+            let key = (view.device, view.notification.key.clone());
+            if self.island_cleared.insert(key, view.notification.when).is_none() {
+                changed = true;
+            }
+        }
+        if changed { Changes::NOTIFICATIONS } else { Changes::NONE }
     }
 
     pub fn record_dismissed(&mut self, views: Vec<NotificationView>, label: String) -> Changes {
@@ -1702,6 +1727,28 @@ mod tests {
         s.apply(&NodeEvent::NotificationPosted { device: phone, notification: note("call", 30) });
         assert!(keys(&s).contains(&"call"));
         assert!(s.cleared.is_empty());
+    }
+
+    #[test]
+    fn island_clear_keeps_the_main_feed_and_lets_new_posts_through() {
+        let phone = DeviceId([1; 32]);
+        let mut s = AppState::default();
+        let first = note("a", 10);
+        let second = note("b", 20);
+        s.apply(&NodeEvent::NotificationsReset { device: phone, items: vec![first.clone(), second.clone()] });
+
+        s.clear_island();
+        assert_eq!(keys(&s), ["b", "a"], "the main feed keeps both");
+        assert!(s.is_island_cleared(phone, &first));
+        assert!(s.is_island_cleared(phone, &second));
+
+        // A newer post under the same key comes back to the Island.
+        s.apply(&NodeEvent::NotificationPosted { device: phone, notification: note("a", 30) });
+        assert!(!s.is_island_cleared(phone, &note("a", 30)));
+        assert!(s.is_island_cleared(phone, &second));
+        // The phone dropping one takes its marker with it.
+        s.apply(&NodeEvent::NotificationRemoved { device: phone, key: "b".into() });
+        assert!(!s.island_cleared.contains_key(&(phone, "b".into())));
     }
 
     #[test]

@@ -200,6 +200,34 @@ pub mod qobject {
         /// Applies Win32 `WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW | WS_EX_TOPMOST` to the Shelf window.
         #[qinvokable]
         fn style_shelf_window(self: &AppController);
+        /// Lets the Island ignore the mouse while it has nothing to do, or take it again.
+        #[qinvokable]
+        #[cxx_name = "setIslandClickThrough"]
+        fn set_island_click_through(self: &AppController, on: bool);
+        /// Clips the Island window's mouse-hit shape to its visible pill and card.
+        #[qinvokable]
+        #[cxx_name = "setIslandInputRegion"]
+        fn set_island_input_region(
+            self: &AppController,
+            x1: i32,
+            y1: i32,
+            w1: i32,
+            h1: i32,
+            r1: i32,
+            x2: i32,
+            y2: i32,
+            w2: i32,
+            h2: i32,
+            r2: i32,
+        );
+        /// The mouse x in physical screen pixels, or -1 when unavailable.
+        #[qinvokable]
+        #[cxx_name = "cursorX"]
+        fn cursor_x(self: &AppController) -> i32;
+        /// The mouse y in physical screen pixels, or -1 when unavailable.
+        #[qinvokable]
+        #[cxx_name = "cursorY"]
+        fn cursor_y(self: &AppController) -> i32;
         /// Starts a native OS drag-out operation for a Shelf item (photo, screenshot, clip, or file).
         #[qinvokable]
         fn start_shelf_drag(
@@ -441,6 +469,10 @@ pub mod qobject {
         /// Copies plain text to the Windows clipboard and shows a confirmation toast.
         #[qinvokable]
         fn copy_text(self: &AppController, text: &QString);
+        /// Shows the Island's window again if Windows hid it (it stays topmost, without focus).
+        #[qinvokable]
+        #[cxx_name = "keepIslandVisible"]
+        fn keep_island_visible(self: &AppController, should_show: bool, title: &QString);
         /// Loads a guide topic from `docs/guide/<doc_name>.md` (or built-in guide text) into the in-app reader sheet.
         #[qinvokable]
         fn open_guide_doc(self: Pin<&mut AppController>, doc_name: &QString);
@@ -2354,6 +2386,35 @@ impl qobject::AppController {
         win::tray::apply_no_activate_style_by_title("Nectar Island");
     }
 
+    pub fn set_island_click_through(&self, on: bool) {
+        win::tray::set_island_click_through(on);
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn set_island_input_region(
+        &self,
+        x1: i32,
+        y1: i32,
+        w1: i32,
+        h1: i32,
+        r1: i32,
+        x2: i32,
+        y2: i32,
+        w2: i32,
+        h2: i32,
+        r2: i32,
+    ) {
+        win::tray::set_island_input_region(x1, y1, w1, h1, r1, x2, y2, w2, h2, r2);
+    }
+
+    pub fn cursor_x(&self) -> i32 {
+        win::tray::cursor_position().map_or(-1, |point| point.0)
+    }
+
+    pub fn cursor_y(&self) -> i32 {
+        win::tray::cursor_position().map_or(-1, |point| point.1)
+    }
+
     pub fn start_shelf_drag(&self, kind: &QString, id_or_path: &QString, text: &QString) -> bool {
         let kind_str = String::from(kind);
         let s = String::from(id_or_path).trim().to_owned();
@@ -2570,6 +2631,16 @@ impl qobject::AppController {
             Ok(()) => show_message(tr!("App", "Copied to clipboard.")),
             Err(_) => show_message(tr!("App", "Could not copy to the clipboard.")),
         }
+    }
+
+    pub fn keep_island_visible(&self, should_show: bool, title: &QString) {
+        if !should_show {
+            return;
+        }
+        #[cfg(windows)]
+        crate::win::island::ensure_visible(&String::from(title));
+        #[cfg(not(windows))]
+        let _ = title;
     }
 
     pub fn open_guide_doc(mut self: Pin<&mut Self>, doc_name: &QString) {

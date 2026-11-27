@@ -168,12 +168,44 @@ pub mod qobject {
         #[qproperty(bool, nectar_island_media)]
         /// Trigger Nectar Island for phone notifications.
         #[qproperty(bool, nectar_island_notifications)]
+        /// Keep the Island visible even when there is nothing to show.
+        #[qproperty(bool, nectar_island_always_visible, cxx_name = "nectarIslandAlwaysVisible")]
         /// Where the Island sits: "left", "center" or "right" (#472).
         #[qproperty(QString, nectar_island_position, cxx_name = "nectarIslandPosition")]
         /// "dark", or "theme" to follow the app's look (#325).
         #[qproperty(QString, nectar_island_look, cxx_name = "nectarIslandLook")]
+        /// "classic", "cream", "glassLight", "glassDark" or "cloud".
+        #[qproperty(QString, nectar_island_skin, cxx_name = "nectarIslandSkin")]
+        /// "capsule" or "notch".
+        #[qproperty(QString, nectar_island_shape, cxx_name = "nectarIslandShape")]
+        /// Body size percent, 80..140.
+        #[qproperty(i32, nectar_island_size, cxx_name = "nectarIslandSize")]
+        /// The Island and its contents, 30..100 percent.
+        #[qproperty(i32, nectar_island_opacity, cxx_name = "nectarIslandOpacity")]
+        /// "top", "left" or "right" screen edge.
+        #[qproperty(QString, nectar_island_edge, cxx_name = "nectarIslandEdge")]
+        /// Show the clock on the Island.
+        #[qproperty(bool, nectar_island_clock, cxx_name = "nectarIslandClock")]
+        /// Use a 12-hour clock instead of 24-hour.
+        #[qproperty(bool, nectar_island_clock_12h, cxx_name = "nectarIslandClock12h")]
+        /// Empty follows the primary screen; otherwise a QScreen name.
+        #[qproperty(QString, nectar_island_display, cxx_name = "nectarIslandDisplay")]
+        /// Hover still expands the Island, but clicks pass through it.
+        #[qproperty(bool, nectar_island_click_through, cxx_name = "nectarIslandClickThrough")]
+        /// Comma-separated navigation page order.
+        #[qproperty(QString, page_order, cxx_name = "pageOrder")]
+        /// Comma-separated navigation pages that are turned off.
+        #[qproperty(QString, page_hidden, cxx_name = "pageHidden")]
         /// The Island also shows this PC's own players (#472).
         #[qproperty(bool, nectar_island_pc_media, cxx_name = "nectarIslandPcMedia")]
+        /// Which player the Island follows when both play: "phone" or "pc".
+        #[qproperty(QString, nectar_island_media_source, cxx_name = "nectarIslandMediaSource")]
+        /// Whether the Island was dragged to a custom position.
+        #[qproperty(bool, nectar_island_has_position, cxx_name = "nectarIslandHasPosition")]
+        /// Custom Island X offset from the primary work area, in logical pixels.
+        #[qproperty(i32, nectar_island_x, cxx_name = "nectarIslandX")]
+        /// Custom Island Y offset from the primary work area, in logical pixels.
+        #[qproperty(i32, nectar_island_y, cxx_name = "nectarIslandY")]
         /// Stream PC system audio to the connected phone via WASAPI loopback.
         #[qproperty(bool, stream_pc_audio_to_phone)]
         /// Share PC user folders (Downloads, Documents, Desktop, Pictures) with phones.
@@ -184,6 +216,8 @@ pub mod qobject {
         #[qproperty(QString, phone_beside)]
         /// Which side it's on: "left" or "right".
         #[qproperty(QString, phone_beside_side)]
+        /// This PC's name as phones see it; empty uses the computer name.
+        #[qproperty(QString, device_display_name, cxx_name = "deviceDisplayName")]
         /// Stay connected over mobile data (LTE/5G) or relay when away from Wi-Fi.
         #[qproperty(bool, away_mode)]
         #[qproperty(QString, network_interface)]
@@ -260,6 +294,9 @@ pub mod qobject {
             height: i32,
             maximized: bool,
         );
+        /// Saves where the Island was dragged to, or clears it to use the preset position.
+        #[qinvokable]
+        fn save_island_position(self: Pin<&mut Preferences>, has_position: bool, x: i32, y: i32);
         /// OBS Studio's WebSocket port, for `obs:` Deck commands.
         #[qinvokable]
         fn obs_port(self: &Preferences) -> i32;
@@ -355,6 +392,10 @@ pub mod qobject {
         /// Sets or clears a custom nickname for a device.
         #[qinvokable]
         fn set_nickname(self: Pin<&mut Preferences>, device_id: &QString, nickname: &QString);
+        /// Changes this PC's name as phones see it; empty restores the computer name.
+        #[qinvokable]
+        #[cxx_name = "renameThisDevice"]
+        fn rename_this_device(self: Pin<&mut Preferences>, name: &QString);
 
         #[qobject]
         #[qml_element]
@@ -486,14 +527,31 @@ pub struct PreferencesRust {
     nectar_island_transfers: bool,
     nectar_island_media: bool,
     nectar_island_notifications: bool,
+    nectar_island_always_visible: bool,
     nectar_island_position: QString,
     nectar_island_look: QString,
+    nectar_island_skin: QString,
+    nectar_island_shape: QString,
+    nectar_island_size: i32,
+    nectar_island_opacity: i32,
+    nectar_island_edge: QString,
+    nectar_island_clock: bool,
+    nectar_island_clock_12h: bool,
+    nectar_island_display: QString,
+    nectar_island_click_through: bool,
+    page_order: QString,
+    page_hidden: QString,
     nectar_island_pc_media: bool,
+    nectar_island_media_source: QString,
+    nectar_island_has_position: bool,
+    nectar_island_x: i32,
+    nectar_island_y: i32,
     stream_pc_audio_to_phone: bool,
     share_pc_storage: bool,
     forward_pc_notifications_to_phone: bool,
     phone_beside: QString,
     phone_beside_side: QString,
+    device_display_name: QString,
     away_mode: bool,
     network_interface: QString,
     start_at_login: bool,
@@ -621,14 +679,34 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_nectar_island_transfers(settings.nectar_island_transfers);
         self.as_mut().set_nectar_island_media(settings.nectar_island_media);
         self.as_mut().set_nectar_island_notifications(settings.nectar_island_notifications);
+        self.as_mut().set_nectar_island_always_visible(settings.nectar_island_always_visible);
+        crate::settings::set_nectar_island_notifications(settings.nectar_island_notifications);
         self.as_mut().set_nectar_island_position(QString::from(&settings.nectar_island_position));
         self.as_mut().set_nectar_island_look(QString::from(&settings.nectar_island_look));
+        self.as_mut().set_nectar_island_skin(QString::from(&settings.nectar_island_skin));
+        self.as_mut().set_nectar_island_shape(QString::from(&settings.nectar_island_shape));
+        self.as_mut().set_nectar_island_size(settings.nectar_island_size);
+        self.as_mut().set_nectar_island_opacity(settings.nectar_island_opacity);
+        self.as_mut().set_nectar_island_edge(QString::from(&settings.nectar_island_edge));
+        self.as_mut().set_nectar_island_clock(settings.nectar_island_clock);
+        self.as_mut().set_nectar_island_clock_12h(settings.nectar_island_clock_12h);
+        self.as_mut().set_nectar_island_display(QString::from(&settings.nectar_island_display));
+        self.as_mut().set_nectar_island_click_through(settings.nectar_island_click_through);
+        self.as_mut().set_page_order(QString::from(&settings.page_order));
+        self.as_mut().set_page_hidden(QString::from(&settings.page_hidden));
         self.as_mut().set_nectar_island_pc_media(settings.nectar_island_pc_media);
+        self.as_mut().set_nectar_island_media_source(QString::from(&settings.nectar_island_media_source));
+        self.as_mut().set_nectar_island_has_position(
+            settings.nectar_island_x.is_some() && settings.nectar_island_y.is_some(),
+        );
+        self.as_mut().set_nectar_island_x(settings.nectar_island_x.unwrap_or(0));
+        self.as_mut().set_nectar_island_y(settings.nectar_island_y.unwrap_or(0));
         self.as_mut().set_stream_pc_audio_to_phone(settings.stream_pc_audio_to_phone);
         self.as_mut().set_share_pc_storage(settings.share_pc_storage);
         self.as_mut().set_forward_pc_notifications_to_phone(settings.forward_pc_notifications_to_phone);
         self.as_mut().set_phone_beside(QString::from(&settings.phone_beside));
         self.as_mut().set_phone_beside_side(QString::from(&settings.phone_beside_side));
+        self.as_mut().set_device_display_name(QString::from(&settings.device_display_name));
         self.as_mut().set_away_mode(settings.away_mode);
         self.as_mut().set_network_interface(QString::from(&settings.network_interface));
         self.as_mut().set_walkthrough_completed(settings.walkthrough_completed);
@@ -1019,10 +1097,28 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().on_nectar_island_calls_changed(|p| p.save()).release();
         self.as_mut().on_nectar_island_transfers_changed(|p| p.save()).release();
         self.as_mut().on_nectar_island_media_changed(|p| p.save()).release();
-        self.as_mut().on_nectar_island_notifications_changed(|p| p.save()).release();
+        self.as_mut()
+            .on_nectar_island_notifications_changed(|p| {
+                crate::settings::set_nectar_island_notifications(p.nectar_island_notifications);
+                p.save();
+            })
+            .release();
+        self.as_mut().on_nectar_island_always_visible_changed(|p| p.save()).release();
         self.as_mut().on_nectar_island_position_changed(|p| p.save()).release();
         self.as_mut().on_nectar_island_look_changed(|p| p.save()).release();
+        self.as_mut().on_nectar_island_skin_changed(|p| p.save()).release();
+        self.as_mut().on_nectar_island_shape_changed(|p| p.save()).release();
+        self.as_mut().on_nectar_island_size_changed(|p| p.save()).release();
+        self.as_mut().on_nectar_island_opacity_changed(|p| p.save()).release();
+        self.as_mut().on_nectar_island_edge_changed(|p| p.save()).release();
+        self.as_mut().on_nectar_island_clock_changed(|p| p.save()).release();
+        self.as_mut().on_nectar_island_clock_12h_changed(|p| p.save()).release();
+        self.as_mut().on_nectar_island_display_changed(|p| p.save()).release();
+        self.as_mut().on_nectar_island_click_through_changed(|p| p.save()).release();
+        self.as_mut().on_page_order_changed(|p| p.save()).release();
+        self.as_mut().on_page_hidden_changed(|p| p.save()).release();
         self.as_mut().on_nectar_island_pc_media_changed(|p| p.save()).release();
+        self.as_mut().on_nectar_island_media_source_changed(|p| p.save()).release();
         self.as_mut()
             .on_stream_pc_audio_to_phone_changed(|p| {
                 crate::settings::set_stream_pc_audio_to_phone(p.stream_pc_audio_to_phone);
@@ -1047,6 +1143,12 @@ impl cxx_qt::Initialize for qobject::Preferences {
                     &p.phone_beside.to_string(),
                     &p.phone_beside_side.to_string(),
                 );
+                p.save();
+            })
+            .release();
+        self.as_mut()
+            .on_device_display_name_changed(|p| {
+                crate::settings::set_device_display_name(p.device_display_name.to_string());
                 p.save();
             })
             .release();
@@ -1199,6 +1301,24 @@ impl qobject::Preferences {
         let _ = settings.save(&core_host::host().data_dir);
     }
 
+    pub fn save_island_position(mut self: Pin<&mut Self>, has_position: bool, x: i32, y: i32) {
+        let x = x.clamp(0, crate::settings::MAX_ISLAND_OFFSET);
+        let y = y.clamp(0, crate::settings::MAX_ISLAND_OFFSET);
+        // Set the coordinates before turning the custom position on, and the
+        // other way round when clearing it, so the pill never flashes at (0, 0).
+        if has_position {
+            self.as_mut().set_nectar_island_x(x);
+            self.as_mut().set_nectar_island_y(y);
+            self.as_mut().set_nectar_island_has_position(true);
+        } else {
+            self.as_mut().set_nectar_island_has_position(false);
+            self.as_mut().set_nectar_island_x(0);
+            self.as_mut().set_nectar_island_y(0);
+        }
+        let settings = self.current_settings();
+        let _ = settings.save(&core_host::host().data_dir);
+    }
+
     pub fn obs_port(&self) -> i32 {
         i32::from(crate::settings::obs_settings().0)
     }
@@ -1259,6 +1379,14 @@ impl qobject::Preferences {
         crate::settings::set_nickname(&dev, if nick.trim().is_empty() { None } else { Some(nick) });
         self.save();
         core_host::host().hub.changed(crate::state::Changes::DEVICES);
+    }
+
+    pub fn rename_this_device(mut self: Pin<&mut Self>, name: &QString) {
+        let name = String::from(name).trim().to_string();
+        crate::settings::set_device_display_name(name.clone());
+        self.as_mut().set_device_display_name(QString::from(&name));
+        core_host::rename_this_device(name);
+        self.save();
     }
 
     pub fn choose_recordings_folder(mut self: Pin<&mut Self>, url: &QString) {
@@ -1559,19 +1687,49 @@ impl qobject::Preferences {
             nectar_island_transfers: p.nectar_island_transfers,
             nectar_island_media: p.nectar_island_media,
             nectar_island_notifications: p.nectar_island_notifications,
+            nectar_island_always_visible: p.nectar_island_always_visible,
             nectar_island_position: match String::from(&p.nectar_island_position).as_str() {
                 side @ ("left" | "right") => side.to_owned(),
                 _ => "center".to_owned(),
             },
             nectar_island_look: if String::from(&p.nectar_island_look) == "theme" { "theme" } else { "dark" }
                 .to_owned(),
+            nectar_island_skin: match String::from(&p.nectar_island_skin).as_str() {
+                skin @ ("classic" | "cream" | "glassLight" | "glassDark" | "cloud") => skin.to_owned(),
+                _ => "classic".to_owned(),
+            },
+            nectar_island_shape: if String::from(&p.nectar_island_shape) == "notch" {
+                "notch".to_owned()
+            } else {
+                "capsule".to_owned()
+            },
+            nectar_island_size: p.nectar_island_size.clamp(80, 140),
+            nectar_island_opacity: p.nectar_island_opacity.clamp(30, 100),
+            nectar_island_edge: match String::from(&p.nectar_island_edge).as_str() {
+                edge @ ("left" | "right") => edge.to_owned(),
+                _ => "top".to_owned(),
+            },
+            nectar_island_clock: p.nectar_island_clock,
+            nectar_island_clock_12h: p.nectar_island_clock_12h,
+            nectar_island_display: String::from(&p.nectar_island_display).trim().to_owned(),
+            nectar_island_click_through: p.nectar_island_click_through,
+            page_order: String::from(&p.page_order),
+            page_hidden: String::from(&p.page_hidden),
             nectar_island_pc_media: p.nectar_island_pc_media,
+            nectar_island_media_source: if String::from(&p.nectar_island_media_source) == "pc" {
+                "pc".to_owned()
+            } else {
+                "phone".to_owned()
+            },
+            nectar_island_x: if p.nectar_island_has_position { Some(p.nectar_island_x) } else { None },
+            nectar_island_y: if p.nectar_island_has_position { Some(p.nectar_island_y) } else { None },
             automation_rules: crate::settings::automation_rules(),
             stream_pc_audio_to_phone: p.stream_pc_audio_to_phone,
             share_pc_storage: p.share_pc_storage,
             forward_pc_notifications_to_phone: p.forward_pc_notifications_to_phone,
             phone_beside: p.phone_beside.to_string(),
             phone_beside_side: p.phone_beside_side.to_string(),
+            device_display_name: p.device_display_name.to_string(),
             away_mode: p.away_mode,
             network_interface: p.network_interface.to_string(),
             walkthrough_completed: p.walkthrough_completed,

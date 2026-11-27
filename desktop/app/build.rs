@@ -18,6 +18,8 @@ mod mark;
 const QML: &[&str] = &[
     "qml/App.qml",
     "qml/IslandWindow.qml",
+    "qml/IslandCard.qml",
+    "qml/IslandPanel.qml",
     "qml/LaserOverlay.qml",
     "qml/MainWindow.qml",
     "qml/MirrorWindow.qml",
@@ -41,6 +43,9 @@ const QML: &[&str] = &[
     "qml/components/HistoryItem.qml",
     "qml/components/Icon.qml",
     "qml/components/IconButton.qml",
+    "qml/components/IslandTipHover.qml",
+    "qml/components/KaraokeTxt.qml",
+    "qml/components/LyricsScroll.qml",
     "qml/components/ListRow.qml",
     "qml/components/LockChip.qml",
     "qml/components/NavItem.qml",

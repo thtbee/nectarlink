@@ -121,6 +121,9 @@ pub const MIN_WINDOW_WIDTH: u32 = 320;
 pub const MIN_WINDOW_HEIGHT: u32 = 240;
 pub const MAX_WINDOW_WIDTH: u32 = 7680;
 pub const MAX_WINDOW_HEIGHT: u32 = 4320;
+/// Broad sanity bound for a dragged Island position, in logical pixels from
+/// the primary work area's top-left. The UI clamps it to the screen itself.
+pub const MAX_ISLAND_OFFSET: i32 = 32768;
 
 fn default_local_api_port() -> u16 {
     DEFAULT_LOCAL_API_PORT
@@ -155,6 +158,42 @@ fn default_island_look() -> String {
     "dark".into()
 }
 
+fn default_island_skin() -> String {
+    "classic".into()
+}
+
+fn default_island_shape() -> String {
+    "capsule".into()
+}
+
+fn default_island_size() -> i32 {
+    100
+}
+
+fn default_island_opacity() -> i32 {
+    100
+}
+
+fn default_island_edge() -> String {
+    "top".into()
+}
+
+pub const PAGE_IDS: [&str; 8] = ["home", "messages", "calls", "photos", "apps", "deck", "guide", "settings"];
+
+fn default_page_order() -> String {
+    PAGE_IDS.join(",")
+}
+
+fn default_island_media_source() -> String {
+    "phone".into()
+}
+
+/// A settings file from before the phone/PC choice has no value here; the
+/// empty marker lets `sanitized` migrate its old PC-player visibility.
+fn missing_island_media_source() -> String {
+    String::new()
+}
+
 fn default_true() -> bool {
     true
 }
@@ -172,7 +211,8 @@ fn normalize_webcam_camera(cam: &str) -> String {
 }
 
 static CLIPBOARD_AUTO_COPY_FILES: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
-static NECTAR_ISLAND: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+static NECTAR_ISLAND: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
+static NECTAR_ISLAND_NOTIFICATIONS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
 static STREAM_PC_AUDIO: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 static SHARE_PC_STORAGE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 static FORWARD_PC_NOTIFICATIONS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
@@ -280,13 +320,20 @@ pub fn set_open_shared_files(on: bool) {
     OPEN_SHARED_FILES.store(on, std::sync::atomic::Ordering::Relaxed);
 }
 
-#[allow(dead_code)]
 pub fn nectar_island() -> bool {
     NECTAR_ISLAND.load(std::sync::atomic::Ordering::Relaxed)
 }
 
 pub fn set_nectar_island(on: bool) {
     NECTAR_ISLAND.store(on, std::sync::atomic::Ordering::Relaxed);
+}
+
+pub fn nectar_island_notifications() -> bool {
+    NECTAR_ISLAND_NOTIFICATIONS.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+pub fn set_nectar_island_notifications(on: bool) {
+    NECTAR_ISLAND_NOTIFICATIONS.store(on, std::sync::atomic::Ordering::Relaxed);
 }
 
 #[allow(dead_code)]
@@ -433,6 +480,18 @@ pub fn set_battery_low_threshold(threshold: u8) {
 
 static NICKNAMES: std::sync::Mutex<Option<std::collections::HashMap<String, String>>> =
     std::sync::Mutex::new(None);
+
+/// This PC's name as phones see it; empty uses the computer name.
+static DEVICE_DISPLAY_NAME: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
+
+/// This PC's chosen display name, or empty to use the computer name.
+pub fn device_display_name() -> String {
+    DEVICE_DISPLAY_NAME.lock().unwrap_or_else(|e| e.into_inner()).clone()
+}
+
+pub fn set_device_display_name(name: String) {
+    *DEVICE_DISPLAY_NAME.lock().unwrap_or_else(|e| e.into_inner()) = name.trim().to_string();
+}
 
 /// Most apps pinned on one phone.
 pub const MAX_PINNED_APPS: usize = 24;
@@ -737,6 +796,9 @@ pub struct Settings {
         alias = "device_nicknames"
     )]
     pub device_nicknames: std::collections::HashMap<String, String>,
+    /// This PC's name as phones see it; empty uses the computer name.
+    #[serde(default, skip_serializing_if = "String::is_empty", alias = "device_display_name")]
+    pub device_display_name: String,
     /// Apps pinned to the top of Apps (#477), by device ID: package names.
     #[serde(default, skip_serializing_if = "std::collections::HashMap::is_empty", alias = "pinned_apps")]
     pub pinned_apps: std::collections::HashMap<String, Vec<String>>,
@@ -857,7 +919,7 @@ pub struct Settings {
     #[serde(default, skip_serializing_if = "Vec::is_empty", alias = "folder_sync_rules")]
     pub folder_sync_rules: Vec<crate::folder_sync::FolderSyncRule>,
     /// Show the optional top-of-screen Nectar Island status pill when phone activity is ongoing.
-    #[serde(default, alias = "nectar_island")]
+    #[serde(default = "default_true", alias = "nectar_island")]
     pub nectar_island: bool,
     /// Trigger Nectar Island for incoming and active phone calls.
     #[serde(default = "default_true", alias = "nectar_island_calls")]
@@ -869,8 +931,12 @@ pub struct Settings {
     #[serde(default = "default_true", alias = "nectar_island_media")]
     pub nectar_island_media: bool,
     /// Trigger Nectar Island for phone notifications.
-    #[serde(default, alias = "nectar_island_notifications")]
+    #[serde(default = "default_true", alias = "nectar_island_notifications")]
     pub nectar_island_notifications: bool,
+    /// Keep the Island on screen with nothing to show, so it can be used
+    /// without a phone (PC media, notifications, or just the pill itself).
+    #[serde(default = "default_true", alias = "nectar_island_always_visible")]
+    pub nectar_island_always_visible: bool,
     /// Where the Island sits along the top (#472): `left`, `center` or `right`.
     #[serde(default = "default_island_position", alias = "nectar_island_position")]
     pub nectar_island_position: String,
@@ -878,9 +944,57 @@ pub struct Settings {
     /// look (`theme`, #325).
     #[serde(default = "default_island_look", alias = "nectar_island_look")]
     pub nectar_island_look: String,
+    /// Classic, cream, glass light/dark, or cloud.
+    #[serde(default = "default_island_skin", alias = "nectar_island_skin")]
+    pub nectar_island_skin: String,
+    /// Capsule or notch.
+    #[serde(default = "default_island_shape", alias = "nectar_island_shape")]
+    pub nectar_island_shape: String,
+    /// Body size, 80..140 percent.
+    #[serde(default = "default_island_size", alias = "nectar_island_size")]
+    pub nectar_island_size: i32,
+    /// The Island and its contents, 30..100 percent.
+    #[serde(default = "default_island_opacity", alias = "nectar_island_opacity")]
+    pub nectar_island_opacity: i32,
+    /// `top`, `left` or `right` screen edge.
+    #[serde(default = "default_island_edge", alias = "nectar_island_edge")]
+    pub nectar_island_edge: String,
+    /// Show the clock on the Island, left of the player controls.
+    #[serde(default = "default_true", alias = "nectar_island_clock")]
+    pub nectar_island_clock: bool,
+    /// 12-hour clock instead of 24-hour.
+    #[serde(default, alias = "nectar_island_clock_12h")]
+    pub nectar_island_clock_12h: bool,
+    /// Empty follows the primary screen; otherwise a QScreen name.
+    #[serde(default, skip_serializing_if = "String::is_empty", alias = "nectar_island_display")]
+    pub nectar_island_display: String,
+    /// Hover still expands the Island, but mouse clicks pass through to the
+    /// window underneath.
+    #[serde(default, alias = "nectar_island_click_through")]
+    pub nectar_island_click_through: bool,
+    /// Comma-separated navigation page order.
+    #[serde(default = "default_page_order", alias = "page_order")]
+    pub page_order: String,
+    /// Comma-separated navigation pages the user turned off.
+    #[serde(default, skip_serializing_if = "String::is_empty", alias = "page_hidden")]
+    pub page_hidden: String,
     /// The Island also shows what plays on this PC (#472).
-    #[serde(default, alias = "nectar_island_pc_media")]
+    #[serde(default = "default_true", alias = "nectar_island_pc_media")]
     pub nectar_island_pc_media: bool,
+    /// When the phone and this PC both play, which one the Island follows:
+    /// `phone` (the default) or `pc`. Empty means the file predates the
+    /// choice; `sanitized` turns it into the phone default.
+    #[serde(default = "missing_island_media_source", alias = "nectar_island_media_source")]
+    pub nectar_island_media_source: String,
+    /// Last dragged Island X offset from the primary work area's top-left, in
+    /// logical pixels. Both coordinates are set, or neither: unset uses
+    /// `nectar_island_position`.
+    #[serde(default, skip_serializing_if = "Option::is_none", alias = "nectar_island_x")]
+    pub nectar_island_x: Option<i32>,
+    /// Last dragged Island Y offset from the primary work area's top-left, in
+    /// logical pixels.
+    #[serde(default, skip_serializing_if = "Option::is_none", alias = "nectar_island_y")]
+    pub nectar_island_y: Option<i32>,
     /// Configured "When X, Do Y" automation rules.
     #[serde(default, skip_serializing_if = "Vec::is_empty", alias = "automation_rules")]
     pub automation_rules: Vec<crate::automations::AutomationRule>,
@@ -1034,6 +1148,7 @@ impl Default for Settings {
             ui_scale: default_ui_scale(),
             keep_screen_off: Vec::new(),
             device_nicknames: std::collections::HashMap::new(),
+            device_display_name: String::new(),
             pinned_apps: std::collections::HashMap::new(),
             start_with_windows: None,
             recordings_folder: None,
@@ -1071,14 +1186,29 @@ impl Default for Settings {
             phone_beside: String::new(),
             phone_beside_side: String::new(),
             folder_sync_rules: Vec::new(),
-            nectar_island: false,
+            nectar_island: true,
             nectar_island_calls: true,
             nectar_island_transfers: true,
             nectar_island_media: true,
-            nectar_island_notifications: false,
+            nectar_island_notifications: true,
+            nectar_island_always_visible: true,
             nectar_island_position: default_island_position(),
             nectar_island_look: default_island_look(),
-            nectar_island_pc_media: false,
+            nectar_island_skin: default_island_skin(),
+            nectar_island_shape: default_island_shape(),
+            nectar_island_size: default_island_size(),
+            nectar_island_opacity: default_island_opacity(),
+            nectar_island_edge: default_island_edge(),
+            nectar_island_clock: true,
+            nectar_island_clock_12h: false,
+            nectar_island_display: String::new(),
+            nectar_island_click_through: false,
+            page_order: default_page_order(),
+            page_hidden: String::new(),
+            nectar_island_pc_media: true,
+            nectar_island_media_source: default_island_media_source(),
+            nectar_island_x: None,
+            nectar_island_y: None,
             automation_rules: Vec::new(),
             stream_pc_audio_to_phone: false,
             share_pc_storage: false,
@@ -1127,6 +1257,58 @@ impl Settings {
             self.window_x = None;
             self.window_y = None;
         }
+        if self.nectar_island_x.is_none() || self.nectar_island_y.is_none() {
+            self.nectar_island_x = None;
+            self.nectar_island_y = None;
+        }
+        self.nectar_island_x = self.nectar_island_x.map(|x| x.clamp(0, MAX_ISLAND_OFFSET));
+        self.nectar_island_y = self.nectar_island_y.map(|y| y.clamp(0, MAX_ISLAND_OFFSET));
+        if self.nectar_island_media_source.is_empty() {
+            // Older builds hid the PC's players whenever a phone played. The
+            // Island now takes both, with the phone first by default.
+            self.nectar_island_pc_media = true;
+        }
+        if self.nectar_island_media_source != "pc" {
+            self.nectar_island_media_source = default_island_media_source();
+        }
+        if !matches!(
+            self.nectar_island_skin.as_str(),
+            "classic" | "cream" | "glassLight" | "glassDark" | "cloud"
+        ) {
+            self.nectar_island_skin = default_island_skin();
+        }
+        if !matches!(self.nectar_island_shape.as_str(), "capsule" | "notch") {
+            self.nectar_island_shape = default_island_shape();
+        }
+        if !matches!(self.nectar_island_edge.as_str(), "top" | "left" | "right") {
+            self.nectar_island_edge = default_island_edge();
+        }
+        self.nectar_island_size = self.nectar_island_size.clamp(80, 140);
+        self.nectar_island_opacity = self.nectar_island_opacity.clamp(30, 100);
+        self.nectar_island_display = self.nectar_island_display.trim().to_owned();
+
+        let mut seen = std::collections::HashSet::new();
+        let mut order: Vec<&str> = self
+            .page_order
+            .split(',')
+            .map(str::trim)
+            .filter(|id| PAGE_IDS.contains(id) && seen.insert(*id))
+            .collect();
+        for id in PAGE_IDS {
+            if seen.insert(id) {
+                order.push(id);
+            }
+        }
+        self.page_order = order.join(",");
+
+        let mut hidden = std::collections::HashSet::new();
+        self.page_hidden = self
+            .page_hidden
+            .split(',')
+            .map(str::trim)
+            .filter(|id| *id != "home" && *id != "settings" && PAGE_IDS.contains(id) && hidden.insert(*id))
+            .collect::<Vec<_>>()
+            .join(",");
         self
     }
 
@@ -1163,6 +1345,7 @@ impl Settings {
             self.obs_password.clone(),
         );
         set_nectar_island(self.nectar_island);
+        set_nectar_island_notifications(self.nectar_island_notifications);
         set_automation_rules(self.automation_rules.clone());
         set_stream_pc_audio_to_phone(self.stream_pc_audio_to_phone);
         set_share_pc_storage(self.share_pc_storage);
@@ -1175,6 +1358,7 @@ impl Settings {
         set_keep_screen_off_phones(self.keep_screen_off.clone());
         set_own_name(self.own_name.clone());
         set_device_nicknames(self.device_nicknames.clone());
+        set_device_display_name(self.device_display_name.clone());
         set_pinned_apps_all(self.pinned_apps.clone());
         set_window_geometry(
             self.window_screen.clone(),
@@ -1358,7 +1542,10 @@ mod tests {
         assert_eq!(def.local_api_port, 53320);
         def.apply_runtime();
         assert!(flow_follow_clipboard());
-        assert!(!nectar_island());
+        assert!(nectar_island());
+        assert!(def.nectar_island_pc_media);
+        assert!(def.nectar_island_always_visible);
+        assert_eq!(def.nectar_island_media_source, "phone");
         assert!(!stream_pc_audio_to_phone());
 
         let settings = Settings {
@@ -1402,6 +1589,7 @@ mod tests {
             ui_scale: 125,
             keep_screen_off: vec!["abc".to_owned()],
             device_nicknames: std::collections::HashMap::from([("abc".to_owned(), "Work phone".to_owned())]),
+            device_display_name: "Studio PC".into(),
             pinned_apps: std::collections::HashMap::from([(
                 "abc".to_owned(),
                 vec!["com.example.notes".to_owned()],
@@ -1447,9 +1635,24 @@ mod tests {
             nectar_island_transfers: true,
             nectar_island_media: true,
             nectar_island_notifications: false,
+            nectar_island_always_visible: true,
             nectar_island_position: "right".into(),
             nectar_island_look: "theme".into(),
+            nectar_island_skin: "glassLight".into(),
+            nectar_island_shape: "notch".into(),
+            nectar_island_size: 120,
+            nectar_island_opacity: 65,
+            nectar_island_edge: "left".into(),
+            nectar_island_clock_12h: true,
+            nectar_island_clock: false,
+            nectar_island_display: "DISPLAY1".into(),
+            nectar_island_click_through: true,
+            page_order: "settings,home,messages,calls,photos,apps,deck,guide".into(),
+            page_hidden: "photos,guide".into(),
             nectar_island_pc_media: true,
+            nectar_island_media_source: "pc".into(),
+            nectar_island_x: Some(300),
+            nectar_island_y: Some(90),
             automation_rules: Vec::new(),
             stream_pc_audio_to_phone: true,
             share_pc_storage: true,
@@ -1479,6 +1682,27 @@ mod tests {
         };
         settings.save(dir.path()).unwrap();
         assert_eq!(Settings::load(dir.path()), settings);
+    }
+
+    #[test]
+    fn older_settings_show_pc_players_beside_the_phone() {
+        let dir = tempfile::tempdir().unwrap();
+        // Before the "When both play" choice, the PC's players were hidden
+        // whenever a phone played. That file has no source value.
+        fs::write(dir.path().join(FILE_NAME), r#"{ "nectarIslandPcMedia": false }"#).unwrap();
+        let migrated = Settings::load(dir.path());
+        assert!(migrated.nectar_island_pc_media);
+        assert_eq!(migrated.nectar_island_media_source, "phone");
+
+        // Once the choice exists, an explicit "off" is kept.
+        fs::write(
+            dir.path().join(FILE_NAME),
+            r#"{ "nectarIslandPcMedia": false, "nectarIslandMediaSource": "phone" }"#,
+        )
+        .unwrap();
+        let current = Settings::load(dir.path());
+        assert!(!current.nectar_island_pc_media);
+        assert_eq!(current.nectar_island_media_source, "phone");
     }
 
     #[test]
@@ -1819,5 +2043,50 @@ mod tests {
         assert_eq!(partial.window_screen.as_deref(), Some("DP-2"));
         assert_eq!(partial.window_x, None);
         assert_eq!(partial.window_y, None);
+    }
+
+    #[test]
+    fn island_position_sanitization_and_persistence() {
+        let dir = tempfile::tempdir().unwrap();
+
+        // A dragged Island position is saved as both offsets and clamped.
+        let saved = Settings { nectar_island_x: Some(400), nectar_island_y: Some(120), ..Default::default() };
+        saved.save(dir.path()).unwrap();
+        let loaded = Settings::load(dir.path());
+        assert_eq!(loaded.nectar_island_x, Some(400));
+        assert_eq!(loaded.nectar_island_y, Some(120));
+
+        // Out-of-bounds offsets are clamped to the sanity bound.
+        let clamped = Settings {
+            nectar_island_x: Some(-40),
+            nectar_island_y: Some(MAX_ISLAND_OFFSET + 100),
+            ..Default::default()
+        }
+        .sanitized();
+        assert_eq!(clamped.nectar_island_x, Some(0));
+        assert_eq!(clamped.nectar_island_y, Some(MAX_ISLAND_OFFSET));
+
+        // A half-saved position is cleared, so the preset is used instead.
+        let partial =
+            Settings { nectar_island_x: Some(12), nectar_island_y: None, ..Default::default() }.sanitized();
+        assert_eq!(partial.nectar_island_x, None);
+        assert_eq!(partial.nectar_island_y, None);
+    }
+
+    #[test]
+    fn island_opacity_stays_in_its_usable_range() {
+        assert_eq!(Settings::default().nectar_island_opacity, 100);
+        assert_eq!(
+            Settings { nectar_island_opacity: 5, ..Default::default() }.sanitized().nectar_island_opacity,
+            30
+        );
+        assert_eq!(
+            Settings { nectar_island_opacity: 140, ..Default::default() }.sanitized().nectar_island_opacity,
+            100
+        );
+        assert_eq!(
+            Settings { nectar_island_opacity: 55, ..Default::default() }.sanitized().nectar_island_opacity,
+            55
+        );
     }
 }

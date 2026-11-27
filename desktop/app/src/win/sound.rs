@@ -8,7 +8,7 @@ use std::{
 };
 
 use windows::{
-    Win32::Media::Audio::{PlaySoundW, SND_ALIAS, SND_ASYNC, SND_FLAGS, SND_LOOP, SND_NODEFAULT},
+    Win32::Media::Audio::{PlaySoundW, SND_ALIAS, SND_ASYNC, SND_FLAGS, SND_LOOP, SND_NODEFAULT, SND_NOSTOP},
     core::{HSTRING, PCWSTR},
 };
 
@@ -42,5 +42,19 @@ pub fn stop_ringing() {
     // SAFETY: a null sound stops whatever this process is playing.
     unsafe {
         let _ = PlaySoundW(PCWSTR::null(), None, SND_FLAGS(0));
+    }
+}
+
+/// The system's notification sound, once. Used when the Island is the prompt
+/// and Windows' own toast (which would normally make this sound) is skipped.
+pub fn notification() {
+    for alias in ["Notification.Default", "SystemAsterisk"] {
+        let alias = HSTRING::from(alias);
+        // SAFETY: the alias is a valid string; the call only reads it.
+        let played =
+            unsafe { PlaySoundW(&alias, None, SND_ALIAS | SND_ASYNC | SND_NODEFAULT | SND_NOSTOP) }.as_bool();
+        if played {
+            return;
+        }
     }
 }

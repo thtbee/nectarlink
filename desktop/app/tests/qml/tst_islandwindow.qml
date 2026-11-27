@@ -14,6 +14,15 @@ Item {
         id: island
     }
 
+    // A stand-in for a button, for the hover-hint service.
+    Item {
+        id: tipOwner
+        parent: island.contentItem
+        width: 10
+        height: 10
+        visible: false
+    }
+
     TestCase {
         name: "IslandWindow"
         when: windowShown
@@ -110,15 +119,18 @@ Item {
             MediaList.append({
                 deviceId: device, playerId: id, app: id, title: title, artist: "", art: "",
                 playing: true, canPlay: true, canPause: true, canNext: true, canPrevious: true,
-                duration: 0, position: 0, positionAt: 0
+                canSeek: true, duration: 0, position: 0, positionAt: 0
             })
         }
 
-        function test_the_pcs_own_players_show_only_when_asked_and_switch_with_a_phones() {
+        function test_a_pc_player_shows_without_a_phone_and_switches_with_a_phones() {
             MediaList.clear()
             island.mediaPick = ""
             player("local", "spotify", "On the PC")
-            compare(island.mode, "idle", "the PC's own players are off by default")
+            // This fork keeps a PC-only player on the Island even when "This
+            // PC's players too" is off: it has to work with no phone at all.
+            compare(island.mode, "media", "a PC-only player shows without a phone")
+            compare(island.primaryLabel, "On the PC")
             Preferences.nectarIslandPcMedia = true
             compare(island.mode, "media")
             compare(island.primaryLabel, "On the PC")
@@ -133,7 +145,10 @@ Item {
             island.nextMediaSource()
             MediaList.setProperty(0, "playing", false)
             compare(island.primaryLabel, "On the phone")
+            // With a phone playing, the PC's player only joins when asked.
+            MediaList.setProperty(0, "playing", true)
             Preferences.nectarIslandPcMedia = false
+            compare(island.mediaSources, 1, "the PC's players stay out while a phone plays")
             MediaList.clear()
         }
 
@@ -145,6 +160,111 @@ Item {
             verify(island.x > center)
             Preferences.nectarIslandPosition = "center"
             compare(island.x, center)
+        }
+
+        function test_the_collapsed_island_has_one_fixed_shape() {
+            island.closePanel()
+            Preferences.nectarIslandOpacity = 100
+            tryCompare(island, "windowRoomy", false, 1000)
+            compare(island.width, 340)
+            compare(island.height, 46)
+            compare(island.compactPillHeight, 46)
+            compare(island.expandedHeight, 368)
+        }
+
+        function test_the_window_does_not_shrink_in_the_middle_of_the_collapse() {
+            const savedReduceMotion = AppController.reduceMotion
+            AppController.reduceMotion = false
+            island.panelHovered = true
+            island.panelShown = true
+            island.panelPinned = true
+            tryCompare(island, "windowRoomy", true, 1000)
+            island.closePanel()
+            compare(island.expanded, false)
+            wait(120)
+            compare(island.windowRoomy, true, "the native window waits for the pill")
+            tryCompare(island, "windowRoomy", false, 1000)
+            AppController.reduceMotion = savedReduceMotion
+        }
+
+        function test_opacity_is_clamped_to_a_usable_range() {
+            Preferences.nectarIslandOpacity = 100
+            compare(island.contentOpacity, 1)
+            Preferences.nectarIslandOpacity = 55
+            compare(island.contentOpacity, 0.55)
+            Preferences.nectarIslandOpacity = 5
+            compare(island.contentOpacity, 0.3)
+            Preferences.nectarIslandOpacity = 100
+        }
+
+        function test_the_settings_page_opens_inside_the_island_and_closes_with_its_own_x() {
+            island.closePanel()
+            island.openIslandSettings()
+            compare(island.islandSettingsOpen, true)
+            compare(island.panelShown, true)
+            compare(island.expanded, true)
+            island.closeIslandSettings()
+            compare(island.islandSettingsOpen, false)
+            compare(island.panelShown, true, "closing settings leaves the card open")
+            island.closePanel()
+        }
+
+        function test_click_through_still_opens_on_the_cursor() {
+            if (Qt.platform.os !== "windows")
+                skip("cursor polling for click-through is Windows-only")
+            island.closePanel()
+            island.panelSuppressed = false
+            Preferences.nectarIslandClickThrough = true
+            compare(island.clickThroughActive, true)
+            island.clickThroughHovered = true
+            compare(island.pointerOverIsland, true)
+            compare(island.expanded, true)
+            tryCompare(island, "unlockButtonVisible", true, 1000)
+            island.turnOffClickThrough()
+            compare(island.clickThroughActive, false)
+            compare(island.unlockButtonVisible, false)
+            island.clickThroughHovered = false
+            compare(island.pointerOverIsland, false)
+            tryCompare(island, "panelShown", false, 1000)
+            compare(island.expanded, false)
+            Preferences.nectarIslandClickThrough = false
+            island.closePanel()
+        }
+
+        function test_a_hover_hint_waits_then_shows_and_hides() {
+            island.showTip("A hint", tipOwner, Qt.point(4, 4))
+            compare(island.tipText, "", "the hint waits before it appears")
+            tryCompare(island, "tipText", "A hint", 1000)
+            island.moveTip(tipOwner, Qt.point(30, 20))
+            compare(island.tipText, "A hint")
+            island.hideTip(tipOwner)
+            compare(island.tipText, "")
+        }
+
+        function test_opening_settings_keeps_the_island_size() {
+            island.panelHovered = true
+            island.panelShown = true
+            island.panelPinned = true
+            wait(350)
+            const before = island.height
+            island.openIslandSettings()
+            island.panelPinned = true
+            wait(450)
+            compare(island.islandSettingsOpen, true)
+            compare(island.height, before, "settings must not resize the open Island")
+            island.closeIslandSettings()
+            island.closePanel()
+        }
+
+        function test_lyrics_need_a_confident_match() {
+            const songs = [
+                { name: "Some Song", artists: [], duration: 90000 },
+                { name: "Real Song", artists: [{ name: "Real Artist" }], duration: 200000 }
+            ]
+            compare(island.pickLyricSong(songs, "Unrelated Video", "", 0), null,
+                "a video title must not borrow a song's lyrics")
+            const found = island.pickLyricSong(songs, "Real Song", "Real Artist", 200500)
+            compare(found ? found.name : "", "Real Song")
         }
 
         function test_a_notification_says_which_app_it_is_from() {

@@ -85,6 +85,8 @@ QtObject {
     // Rotate: an arrow turning around a phone.
     readonly property string rotate: "M8 3h7a2 2 0 0 1 2 2v6M16 21H9a2 2 0 0 1-2-2v-6M3 8l4-4 4 4M7 4v6a2 2 0 0 0 2 2M21 16l-4 4-4-4M17 20v-6a2 2 0 0 0-2-2"
     readonly property string island: "M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zM9 7.5h6"
+    // A crosshair: put the Island back where it belongs.
+    readonly property string target: "M12 2v3M12 19v3M2 12h3M19 12h3M12 5a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"
     readonly property string shelf: "M12 3L2 8l10 5 10-5-10-5zM2 13l10 5 10-5M2 18l10 5 10-5"
     readonly property string glass: "M8 3h11a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM4 7v11a3 3 0 0 0 3 3h11"
     readonly property string download: "M12 15V3M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5"

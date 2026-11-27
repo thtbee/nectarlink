@@ -17,11 +17,30 @@ Item {
     readonly property bool isNew: newKey.length > 0 && Preferences.newSettings.indexOf("\"" + newKey + "\"") >= 0
     default property alias trailing: trailingSlot.data
 
-    readonly property bool stackTrailing: stackBelow || (trailingSlot.childrenRect.width > row.width * 0.52 && row.width > 0)
+    // Measure the trailing control by its own size, not childrenRect: a
+    // control that centres itself in the slot made the row's height depend on
+    // itself, which QML reported as a binding loop and could stall Settings.
+    readonly property real trailingWidth: {
+        let w = 0
+        for (let i = 0; i < trailingSlot.children.length; i++) {
+            const child = trailingSlot.children[i]
+            w = Math.max(w, child.implicitWidth > 0 ? child.implicitWidth : child.width)
+        }
+        return w
+    }
+    readonly property real trailingHeight: {
+        let h = 0
+        for (let i = 0; i < trailingSlot.children.length; i++) {
+            const child = trailingSlot.children[i]
+            h = Math.max(h, child.implicitHeight > 0 ? child.implicitHeight : child.height)
+        }
+        return h
+    }
+    readonly property bool stackTrailing: stackBelow || (trailingWidth > row.width * 0.52 && row.width > 0)
 
     implicitHeight: stackTrailing
-        ? texts.implicitHeight + trailingSlot.childrenRect.height + 34
-        : Math.max(56, texts.implicitHeight + 20, trailingSlot.childrenRect.height + 16)
+        ? texts.implicitHeight + trailingHeight + 34
+        : Math.max(56, texts.implicitHeight + 20, trailingHeight + 16)
 
     Icon {
         id: icon
@@ -77,7 +96,7 @@ Item {
         // across and its control sat over the title.
         x: row.stackTrailing ? texts.x : row.width - width
         y: row.stackTrailing ? (texts.y + texts.implicitHeight + 10) : Math.round((row.height - height) / 2)
-        width: childrenRect.width
-        height: childrenRect.height
+        width: row.trailingWidth
+        height: row.trailingHeight
     }
 }

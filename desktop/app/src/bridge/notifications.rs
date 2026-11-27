@@ -39,6 +39,8 @@ pub mod qobject {
         #[qml_element]
         #[qml_singleton]
         #[qproperty(i32, count)]
+        /// Everything in the main feed, including what the Island cleared.
+        #[qproperty(i32, all_count, cxx_name = "allCount")]
         /// Keep a day of history.
         #[qproperty(bool, history_enabled, cxx_name = "historyEnabled", READ, NOTIFY)]
         /// Apps that sent notifications, as JSON sorted by name:
@@ -120,6 +122,19 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "dismissAll"]
         fn dismiss_all(self: &NotificationList, device: &QString);
+        /// Dismisses every phone's notifications (the Island panel's Clear all).
+        #[qinvokable]
+        #[cxx_name = "dismissAllDevices"]
+        fn dismiss_all_devices(self: &NotificationList);
+        /// Hides every current notification from the Island only; the main
+        /// feed keeps them and a newer post comes back.
+        #[qinvokable]
+        #[cxx_name = "clearIsland"]
+        fn clear_island(self: &NotificationList);
+        /// Asks connected phones to send the notifications they show now.
+        #[qinvokable]
+        #[cxx_name = "syncFromPhone"]
+        fn sync_from_phone(self: &NotificationList);
         /// Toggles whether an app's notification group is expanded in the feed.
         #[qinvokable]
         #[cxx_name = "toggleGroup"]
@@ -179,6 +194,10 @@ struct Row {
     replies: Vec<SentReply>,
     /// Total notifications in this `(device, app)` group (`1` if ungrouped or live).
     group_count: i32,
+    /// How many of them the Island still shows (cleared ones are left out).
+    island_group_count: i32,
+    /// Hidden from the Island only; the main feed still lists it.
+    island_cleared: bool,
     /// Index within the `(device, app)` group (`0` is the newest / lead item).
     group_index: i32,
     /// Whether this `(device, app)` group is currently expanded.
@@ -190,6 +209,7 @@ struct Row {
 #[derive(Default)]
 pub struct NotificationListRust {
     count: i32,
+    all_count: i32,
     history_enabled: bool,
     apps: QString,
     undo_label: QString,
@@ -221,6 +241,8 @@ const ROLES: &[&str] = &[
     "otpCode",
     "live",
     "groupCount",
+    "islandGroupCount",
+    "islandCleared",
     "groupIndex",
     "groupExpanded",
     "groupSummary",
@@ -293,6 +315,8 @@ fn role_value(row: &Row, role: &str) -> QVariant {
             None => text(""),
         },
         "groupCount" => QVariant::from(&row.group_count),
+        "islandGroupCount" => QVariant::from(&row.island_group_count),
+        "islandCleared" => QVariant::from(&row.island_cleared),
         "groupIndex" => QVariant::from(&row.group_index),
         "groupExpanded" => QVariant::from(&row.group_expanded),
         "groupSummary" => text(&row.group_summary),
@@ -331,6 +355,8 @@ fn make_row(
     s: &AppState,
     view: &NotificationView,
     group_count: i32,
+    island_group_count: i32,
+    island_cleared: bool,
     group_index: i32,
     group_expanded: bool,
     group_summary: String,
@@ -346,6 +372,8 @@ fn make_row(
         replies: s.replies.get(&(view.device, view.notification.key.clone())).cloned().unwrap_or_default(),
         view: view.clone(),
         group_count,
+        island_group_count,
+        island_cleared,
         group_index,
         group_expanded,
         group_summary,
@@ -363,7 +391,17 @@ fn build_rows(s: &AppState) -> Vec<Row> {
 
     for view in &visible {
         if view.notification.live.is_some() {
-            rows.push(make_row(s, view, 1, 0, false, String::new()));
+            let island_cleared = s.is_island_cleared(view.device, &view.notification);
+            rows.push(make_row(
+                s,
+                view,
+                1,
+                if island_cleared { 0 } else { 1 },
+                island_cleared,
+                0,
+                false,
+                String::new(),
+            ));
             continue;
         }
         let group_key = (view.device, view.notification.app.clone());
@@ -378,6 +416,8 @@ fn build_rows(s: &AppState) -> Vec<Row> {
             })
             .collect();
         let group_count = members.len() as i32;
+        let island_group_count =
+            members.iter().filter(|v| !s.is_island_cleared(v.device, &v.notification)).count() as i32;
         let group_expanded = group_count > 1 && s.is_app_expanded(&group_key.1);
         let group_summary = if group_count > 1 {
             members[1..]
@@ -396,10 +436,29 @@ fn build_rows(s: &AppState) -> Vec<Row> {
         } else {
             String::new()
         };
-        rows.push(make_row(s, members[0], group_count, 0, group_expanded, group_summary));
+        rows.push(make_row(
+            s,
+            members[0],
+            group_count,
+            island_group_count,
+            island_group_count == 0,
+            0,
+            group_expanded,
+            group_summary,
+        ));
         if group_expanded {
             for (idx, member) in members.iter().enumerate().skip(1) {
-                rows.push(make_row(s, member, group_count, idx as i32, true, String::new()));
+                let island_cleared = s.is_island_cleared(member.device, &member.notification);
+                rows.push(make_row(
+                    s,
+                    member,
+                    group_count,
+                    if island_cleared { 0 } else { 1 },
+                    island_cleared,
+                    idx as i32,
+                    true,
+                    String::new(),
+                ));
             }
         }
     }
@@ -410,7 +469,7 @@ fn build_rows(s: &AppState) -> Vec<Row> {
 /// its app's name, its title and the app's icon.
 fn latest(rows: &[Row]) -> (String, String, String) {
     rows.iter()
-        .filter(|r| r.view.notification.live.is_none())
+        .filter(|r| r.view.notification.live.is_none() && r.island_group_count > 0)
         .max_by_key(|r| r.view.notification.when)
         .map(|r| {
             let n = &r.view.notification;
@@ -479,7 +538,9 @@ impl qobject::NotificationList {
         self.as_mut().set_latest_app(QString::from(&app));
         self.as_mut().set_latest_title(QString::from(&title));
         self.as_mut().set_latest_icon(QString::from(&icon));
-        let count: i32 = self.rows.iter().filter(|r| r.group_index == 0).map(|r| r.group_count).sum();
+        let count: i32 = self.rows.iter().filter(|r| r.group_index == 0).map(|r| r.island_group_count).sum();
+        let all_count: i32 = self.rows.iter().filter(|r| r.group_index == 0).map(|r| r.group_count).sum();
+        self.as_mut().set_all_count(all_count);
         self.set_count(count);
     }
 
@@ -592,6 +653,43 @@ impl qobject::NotificationList {
         for key in keys {
             crate::notifications::dismiss(&dev_str, key);
         }
+    }
+
+    pub fn dismiss_all_devices(&self) {
+        let views: Vec<NotificationView> = core_host::host().hub.read(|s| {
+            s.notifications
+                .iter()
+                .filter(|n| !n.notification.ongoing && s.app_rule(&n.notification.app) != AppRule::Hidden)
+                .cloned()
+                .collect()
+        });
+        if views.is_empty() {
+            return;
+        }
+        let count = views.len();
+        let label = if count == 1 {
+            tr!("Notifications", "Notification dismissed")
+        } else {
+            tr!("Notifications", "Dismissed %1 notifications", count)
+        };
+        let targets: Vec<(String, String)> =
+            views.iter().map(|v| (v.device.to_string(), v.notification.key.clone())).collect();
+        core_host::host().hub.update(|s| s.record_dismissed(views, label));
+        for (device, key) in targets {
+            crate::notifications::dismiss(&device, key);
+        }
+    }
+
+    pub fn clear_island(&self) {
+        core_host::host().hub.update(AppState::clear_island);
+    }
+
+    pub fn sync_from_phone(&self) {
+        core_host::spawn(async {
+            if let Some(node) = core_host::wait_for_node().await {
+                let _ = node.sync_notifications(None).await;
+            }
+        });
     }
 
     pub fn toggle_group(&self, app: &QString) {
@@ -723,6 +821,8 @@ mod tests {
             image_url: "file:///C:/data/cache/images/1.jpg".into(),
             replies: vec![SentReply { text: "On my way".into(), pending: true }],
             group_count: 3,
+            island_group_count: 3,
+            island_cleared: false,
             group_index: 0,
             group_expanded: false,
             group_summary: "Alex · Taylor".into(),
@@ -737,6 +837,8 @@ mod tests {
         assert_eq!(text("replies"), r#"[{"pending":true,"text":"On my way"}]"#);
         assert!(text("live").contains(r#""chip":"5 min""#));
         assert_eq!(role_value(&row, "groupCount").value::<i32>(), Some(3));
+        assert_eq!(role_value(&row, "islandGroupCount").value::<i32>(), Some(3));
+        assert_eq!(role_value(&row, "islandCleared").value::<bool>(), Some(false));
         assert_eq!(role_value(&row, "groupIndex").value::<i32>(), Some(0));
         assert_eq!(role_value(&row, "groupExpanded").value::<bool>(), Some(false));
         assert_eq!(text("groupSummary"), "Alex · Taylor");

@@ -14,6 +14,9 @@ Item {
     // Where the view is, such as the date of the photos at the top: shown
     // beside the thumb while it's held or hovered (#442).
     property string label: ""
+    // The thumb follows the app's theme unless a surface with its own colors
+    // (the Island) provides one.
+    property color thumbColor: Theme.surfaceContentVariant
 
     readonly property real ratio: flick ? Math.min(1, flick.visibleArea.heightRatio) : 1
     readonly property bool hot: area.containsMouse || area.pressed
@@ -47,7 +50,7 @@ Item {
             const at = free > 0 ? rail.flick.visibleArea.yPosition / free : 0
             return (rail.height - height) * Math.max(0, Math.min(1, at))
         }
-        color: Theme.surfaceContentVariant
+        color: rail.thumbColor
         opacity: rail.shown ? (rail.hot ? 0.7 : 0.45) : 0
 
         Behavior on opacity {
