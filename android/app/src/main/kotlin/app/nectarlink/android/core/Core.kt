@@ -116,6 +116,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     }
     /** What plays on this phone, for PCs (needs notification access), and for the media center (#536). */
     val phoneMedia = PhoneMedia(this.context) { players ->
+        // The phone's own playback keeps its volume buttons (#643).
+        pcMedia.phonePlaying(players.any { it.playing })
         syncActiveMediaColor()
         enqueueNotificationOp { it.mediaChanged(players) }
     }

@@ -594,6 +594,10 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **The phone's volume buttons work for the phone while it plays something itself,** with
+  **Volume buttons control your PC** on and the PC playing too. They went to the PC, so the phone's
+  own volume couldn't be changed. Thanks to [@Deliond](https://github.com/Deliond)
+  ([#643](https://github.com/thtbee/nectarlink/issues/643)).
 - **Copy and paste on the phone works with Elevated on** for phones where it pasted nothing in
   every app (a Xiaomi with HyperOS). Elevated only watches the clipboard while some device takes
   the phone's copies by itself, so with **Share my clipboard with it** off for every device, it
