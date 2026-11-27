@@ -621,6 +621,9 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **Pairing fits a phone held sideways.** In landscape or a short window, the QR scanner, the code
+  and the list of nearby PCs ran off the screen; wide windows now show two panes and short ones
+  scroll. Thanks to [@aihehye](https://github.com/aihehye) ([#529](https://github.com/thtbee/nectarlink/issues/529), [#690](https://github.com/thtbee/nectarlink/pull/690)).
 - **NectarLink leaves the Windows clipboard alone when it isn't sending it.** It read every copy,
   whole screenshots included, even with clipboard sharing off, and could keep Snipping Tool from
   saving a screenshot. Thanks to [@Snoopiam](https://github.com/Snoopiam) ([#688](https://github.com/thtbee/nectarlink/issues/688)).
