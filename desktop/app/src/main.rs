@@ -116,6 +116,15 @@ const BUNDLED_FONTS: i32 = 4;
 struct DesktopPlatform;
 
 impl Platform for DesktopPlatform {
+    /// A phone cleared one of this PC's forwarded notifications (#705).
+    fn dismiss_notification(&self, key: &str) -> Result<(), nectarlink_core::NotificationError> {
+        if pc_notifications::dismiss(key) {
+            Ok(())
+        } else {
+            Err(nectarlink_core::NotificationError::NotFound)
+        }
+    }
+
     fn diag_facts(&self) -> Option<(nectarlink_core::diag::report::DeviceFacts, Vec<(String, String)>)> {
         Some(bridge::report::own_facts())
     }
@@ -858,6 +867,13 @@ fn main() -> ExitCode {
     core_host::host().hub.update(|s| {
         notification_store::load(&data_dir, s);
         state::Changes::APPS | state::Changes::HISTORY
+    });
+    // Once the rules are loaded: the apps hidden here stay on the phones (#701).
+    // Until then the core sends phones nothing, so they keep what they were told last.
+    core_host::spawn(async {
+        if core_host::wait_for_node().await.is_some() {
+            notifications::send_hidden_apps();
+        }
     });
     notification_store::start(data_dir.clone());
     std::thread::spawn(notifications::prune_images);

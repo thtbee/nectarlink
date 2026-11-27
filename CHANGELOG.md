@@ -11,6 +11,10 @@ change things that need a step from you, and its notes say so.
 - **Pick which of the PC's players Now playing controls.** With several players running on the PC,
   their names sit in a row on the PC's Now playing card: click one to control it. Thanks to
   [@jed84](https://github.com/jed84) ([#665](https://github.com/thtbee/nectarlink/issues/665)).
+- **An app you hide on the PC stays on the phone.** Its notifications and chats aren't sent to
+  that PC at all any more, not only hidden there, and showing the app again brings them back.
+  Thanks to [@jed84](https://github.com/jed84) and [@aihehye](https://github.com/aihehye)
+  ([#701](https://github.com/thtbee/nectarlink/issues/701), [#704](https://github.com/thtbee/nectarlink/pull/704)).
 - **A setup video.** The README shows the whole setup in 74 seconds: installing the phone app,
   pairing by QR code, Assist and Elevated. Thanks to [@aihehye](https://github.com/aihehye) ([#641](https://github.com/thtbee/nectarlink/discussions/641)).
 - **The Mac app lives in the menu bar when its window is closed.** With **Stay in system tray**
@@ -633,6 +637,10 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **The PC's notifications on the phone can be cleared.** One cleared on the phone came back, as
+  the PC never heard of it, and an automation's notice said `call_ringing → pause_pc_media`. It
+  now reads like Settings (Pause PC media, When phone rings) and goes away after a few seconds.
+  Thanks to [@Del235](https://github.com/Del235) ([#705](https://github.com/thtbee/nectarlink/issues/705)).
 - **Notifications you clear on the PC stay cleared** when NectarLink starts again. The phone sends
   what it still shows on reconnect, and cleared ones came back. A new post from the same app shows
   as usual.

@@ -49,7 +49,6 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Apps", "Removed %1 from your app menu."), // desktop/app/src/bridge/mirror.rs
     QT_TRANSLATE_NOOP("Apps", "Removed %1 from your desktop."), // desktop/app/src/bridge/mirror.rs
     QT_TRANSLATE_NOOP("Apps", "Uninstalled %1."), // desktop/app/src/bridge/mirror.rs
-    QT_TRANSLATE_NOOP("Automations", "Triggered by %1"), // desktop/app/src/automations.rs
     QT_TRANSLATE_NOOP("Battery", "%1 has reached %2% charge"), // desktop/app/src/battery.rs
     QT_TRANSLATE_NOOP("Battery", "%1 is fully charged"), // desktop/app/src/battery.rs
     QT_TRANSLATE_NOOP("Battery", "%1% left. Charge it soon."), // desktop/app/src/battery.rs

@@ -483,6 +483,11 @@ impl std::fmt::Debug for ChatMessageRecord {
     }
 }
 
+/// Where [`Store::notify_hidden`] keeps a PC's hidden apps.
+fn notify_hidden_key(peer: &DeviceId) -> String {
+    format!("notify_hidden:{peer}")
+}
+
 /// Schema migrations, applied in order. Index + 1 is the schema version.
 const MIGRATIONS: &[&str] = &[
     // v1: trust store
@@ -1032,6 +1037,32 @@ impl Store {
         })
     }
 
+    /// The apps `peer` (a PC) hides, whose notifications stay on this phone (#701).
+    pub fn notify_hidden(&self, peer: &DeviceId) -> Result<BTreeSet<String>> {
+        self.with(|c| {
+            let json: Option<String> = c
+                .query_row("SELECT value FROM meta WHERE key = ?1", [notify_hidden_key(peer)], |r| r.get(0))
+                .optional()?;
+            Ok(json.and_then(|j| serde_json::from_str(&j).ok()).unwrap_or_default())
+        })
+    }
+
+    /// Keeps the apps `peer` hides; an empty list forgets them.
+    pub fn set_notify_hidden(&self, peer: &DeviceId, apps: &BTreeSet<String>) -> Result<()> {
+        self.with(|c| {
+            if apps.is_empty() {
+                c.execute("DELETE FROM meta WHERE key = ?1", [notify_hidden_key(peer)])?;
+            } else {
+                c.execute(
+                    "INSERT INTO meta (key, value) VALUES (?1, ?2)
+                     ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                    params![notify_hidden_key(peer), serde_json::to_string(apps).unwrap_or_default()],
+                )?;
+            }
+            Ok(())
+        })
+    }
+
     /// Keeps `entry` for `peer`, replacing an earlier one for the same user.
     pub fn save_unlock(&self, peer: &DeviceId, entry: &UnlockEntry) -> Result<()> {
         self.with(|c| {
@@ -1118,6 +1149,7 @@ impl Store {
         self.with(|c| {
             let _ = c.execute("DELETE FROM chat_messages WHERE peer = ?1", [&peer_str]);
             let _ = c.execute("DELETE FROM chat_threads WHERE peer = ?1", [&peer_str]);
+            let _ = c.execute("DELETE FROM meta WHERE key = ?1", [notify_hidden_key(id)]);
             let removed = c.execute("DELETE FROM peers WHERE id = ?1", [id.as_bytes().as_slice()])? > 0;
             // Its toggles went with it.
             self.toggle_cache().remove(id);
@@ -1141,6 +1173,7 @@ impl Store {
             tx.execute("DELETE FROM send_queue WHERE peer_id = ?1", [&peer_str])?;
             tx.execute("DELETE FROM chat_messages WHERE peer = ?1", [&peer_str])?;
             tx.execute("DELETE FROM chat_threads WHERE peer = ?1", [&peer_str])?;
+            tx.execute("DELETE FROM meta WHERE key = ?1", [notify_hidden_key(id)])?;
             let existed = tx.execute("DELETE FROM peers WHERE id = ?1", [id.as_bytes().as_slice()])? > 0;
             tx.commit()?;
             Ok((existed, rows))
@@ -3078,6 +3111,23 @@ mod tests {
         assert!(store.remove_peer(&id).unwrap());
         assert!(!store.remove_peer(&id).unwrap());
         assert!(store.list_peers().unwrap().is_empty());
+    }
+
+    #[test]
+    fn the_apps_a_pc_hides_are_kept_until_shown_or_unpaired() {
+        let store = Store::in_memory().unwrap();
+        let pc = DeviceId([4; 32]);
+        store.upsert_peer(&pc, &info("Desk"), 1).unwrap();
+        assert!(store.notify_hidden(&pc).unwrap().is_empty());
+        let hidden: BTreeSet<String> = ["com.secret".to_owned(), "com.bank".to_owned()].into();
+        store.set_notify_hidden(&pc, &hidden).unwrap();
+        assert_eq!(store.notify_hidden(&pc).unwrap(), hidden);
+        assert!(store.notify_hidden(&DeviceId([5; 32])).unwrap().is_empty(), "another PC hides nothing");
+        store.set_notify_hidden(&pc, &BTreeSet::new()).unwrap();
+        assert!(store.notify_hidden(&pc).unwrap().is_empty());
+        store.set_notify_hidden(&pc, &hidden).unwrap();
+        store.remove_peer_with_queue(&pc).unwrap();
+        assert!(store.notify_hidden(&pc).unwrap().is_empty(), "unpairing forgets them");
     }
 
     #[test]
