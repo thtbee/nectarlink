@@ -93,6 +93,7 @@ const BASE_CAPABILITIES: &[&str] = &[
     nectarlink_protocol::messages::mirror::PACE,
     nectarlink_protocol::messages::diag::REPORT,
     crate::notifications::HIDE,
+    nectarlink_protocol::messages::chat::CAP,
 ];
 
 /// This device's mutable description, sent to peers.
@@ -4729,6 +4730,62 @@ impl Node {
         for session in self.shared.live_sessions() {
             self.shared.send_deck(&session).await;
         }
+    }
+
+    // ---- Chat (docs/protocol/chat.md) ----
+
+    /// Sends a note to `peer` in the chat between them (#698) and puts it on
+    /// this device's timeline; returns its ID. `peer` has to be connected and
+    /// offer `chat.messages`.
+    pub async fn send_chat(&self, peer: DeviceId, text: String) -> Result<String> {
+        use nectarlink_protocol::messages::{ChatMessage, chat};
+        let note = ChatMessage { id: crate::chat::new_id(), text };
+        if !note.is_valid() {
+            return Err(Error::Protocol("a chat note needs text, at most 8,192 characters".into()));
+        }
+        if !self.shared.offers(&peer, chat::CAP)? {
+            return Err(Error::Unsupported);
+        }
+        self.request(peer, Envelope::new(types::CHAT_MESSAGE, &note)?).await?.expect(types::OK)?;
+        crate::chat::record(&self.shared, peer, false, &note.id, &note.text);
+        Ok(note.id)
+    }
+
+    /// Changes the text of a note this device sent `peer`. Here at once; on
+    /// `peer` if it's connected.
+    pub async fn edit_chat(&self, peer: DeviceId, id: String, text: String) -> Result<()> {
+        let edit = nectarlink_protocol::messages::ChatEdit { id, text };
+        if !edit.is_valid() {
+            return Err(Error::Protocol("a chat note needs text, at most 8,192 characters".into()));
+        }
+        if !self.shared.store.edit_chat_note(&peer, &crate::chat::ref_id(&edit.id), false, &edit.text)? {
+            return Err(Error::NotFound);
+        }
+        self.shared.emit(NodeEvent::TimelineChanged);
+        if let Some(session) = self.shared.session(&peer)
+            && let Ok(env) = Envelope::new(types::CHAT_EDIT, &edit)
+        {
+            let _ = session.send(env).await;
+        }
+        Ok(())
+    }
+
+    /// Deletes a note in the chat with `peer`, either one's. Here at once; on
+    /// `peer` if it's connected.
+    pub async fn delete_chat(&self, peer: DeviceId, id: String) -> Result<()> {
+        let delete = nectarlink_protocol::messages::ChatDelete { id };
+        if !delete.is_valid()
+            || !self.shared.store.delete_chat_note(&peer, &crate::chat::ref_id(&delete.id))?
+        {
+            return Err(Error::NotFound);
+        }
+        self.shared.emit(NodeEvent::TimelineChanged);
+        if let Some(session) = self.shared.session(&peer)
+            && let Ok(env) = Envelope::new(types::CHAT_DELETE, &delete)
+        {
+            let _ = session.send(env).await;
+        }
+        Ok(())
     }
 
     // ---- Timeline ----

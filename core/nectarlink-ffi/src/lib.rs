@@ -768,6 +768,12 @@ pub enum Event {
     },
     /// The local cross-device timeline changed.
     TimelineChanged,
+    /// A paired device sent a note in the chat between them (#698).
+    ChatReceived {
+        id: String,
+        note_id: String,
+        text: String,
+    },
     /// The LocalSend compatibility setting or discovered LocalSend peers changed.
     LocalSendChanged,
     /// A PCM audio frame arrived from a paired PC (`audio.pcm`).
@@ -1727,6 +1733,7 @@ pub enum TimelineKind {
     Photo,
     Recording,
     Session,
+    Message,
 }
 
 impl From<core::TimelineKind> for TimelineKind {
@@ -1738,6 +1745,7 @@ impl From<core::TimelineKind> for TimelineKind {
             core::TimelineKind::Photo => TimelineKind::Photo,
             core::TimelineKind::Recording => TimelineKind::Recording,
             core::TimelineKind::Session => TimelineKind::Session,
+            core::TimelineKind::Message => TimelineKind::Message,
         }
     }
 }
@@ -1751,6 +1759,7 @@ impl From<TimelineKind> for core::TimelineKind {
             TimelineKind::Photo => core::TimelineKind::Photo,
             TimelineKind::Recording => core::TimelineKind::Recording,
             TimelineKind::Session => core::TimelineKind::Session,
+            TimelineKind::Message => core::TimelineKind::Message,
         }
     }
 }
@@ -2696,6 +2705,9 @@ impl Event {
                 Event::StorageChanged { id: device.to_string(), path }
             }
             NodeEvent::TimelineChanged => Event::TimelineChanged,
+            NodeEvent::ChatReceived { device, id, text } => {
+                Event::ChatReceived { id: device.to_string(), note_id: id, text }
+            }
             NodeEvent::LocalSendChanged => Event::LocalSendChanged,
             NodeEvent::QueueChanged => Event::QueueChanged,
             NodeEvent::QueueDroppedOnUnpair { peer, peer_name, dropped_count } => {
@@ -4092,6 +4104,33 @@ impl NectarlinkNode {
             Ok(())
         })
         .await
+    }
+
+    /// Sends a note to device `id` in the chat between them (#698); its note ID.
+    pub async fn send_chat(&self, id: String, text: String) -> Result<String> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.send_chat(id, text).await?) }).await
+    }
+
+    /// Changes a note this device sent device `id`.
+    pub async fn edit_chat(&self, id: String, note_id: String, text: String) -> Result<()> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.edit_chat(id, note_id, text).await?) }).await
+    }
+
+    /// Deletes a note in the chat with device `id`, on both.
+    pub async fn delete_chat(&self, id: String, note_id: String) -> Result<()> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.delete_chat(id, note_id).await?) }).await
+    }
+
+    /// Whether paired device `id` offered `capability` (`chat.messages`, say)
+    /// when it last connected: false when its app is too old for it.
+    pub fn peer_offers(&self, id: String, capability: String) -> Result<bool> {
+        Ok(self.node.peer_offers(parse_id(&id)?, &capability))
     }
 
     /// Dismisses a paired phone's or tablet's notification there, after it

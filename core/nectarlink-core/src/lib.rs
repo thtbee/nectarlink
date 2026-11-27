@@ -10,6 +10,7 @@ mod actions;
 pub mod bluetooth;
 mod call_audio;
 mod calls;
+mod chat;
 pub mod clip_kind;
 mod clipboard;
 pub mod clipboard_history;

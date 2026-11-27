@@ -1325,6 +1325,49 @@ impl Store {
         self.with(|c| c.execute("DELETE FROM timeline WHERE id = ?1", [id]).map(|n| n > 0))
     }
 
+    /// Whether `device` already has a chat note with `ref_id` here.
+    pub fn chat_note_exists(&self, device: &DeviceId, ref_id: &str) -> Result<bool> {
+        self.with(|c| {
+            c.query_row(
+                "SELECT 1 FROM timeline WHERE kind = 'message' AND device_id = ?1 AND ref_id = ?2",
+                params![device.as_bytes().as_slice(), ref_id],
+                |_| Ok(()),
+            )
+            .optional()
+            .map(|row| row.is_some())
+        })
+    }
+
+    /// Changes the text of a chat note with `device`. Only a note in that
+    /// chat, written by `incoming` (true: the device; false: this one).
+    pub fn edit_chat_note(
+        &self,
+        device: &DeviceId,
+        ref_id: &str,
+        incoming: bool,
+        text: &str,
+    ) -> Result<bool> {
+        self.with(|c| {
+            c.execute(
+                "UPDATE timeline SET detail = ?4
+                 WHERE kind = 'message' AND device_id = ?1 AND ref_id = ?2 AND incoming = ?3",
+                params![device.as_bytes().as_slice(), ref_id, i64::from(incoming), text],
+            )
+            .map(|n| n > 0)
+        })
+    }
+
+    /// Deletes a chat note with `device`, and nothing else.
+    pub fn delete_chat_note(&self, device: &DeviceId, ref_id: &str) -> Result<bool> {
+        self.with(|c| {
+            c.execute(
+                "DELETE FROM timeline WHERE kind = 'message' AND device_id = ?1 AND ref_id = ?2",
+                params![device.as_bytes().as_slice(), ref_id],
+            )
+            .map(|n| n > 0)
+        })
+    }
+
     pub fn delete_timeline_by_ref(&self, ref_id: &str) -> Result<bool> {
         self.with(|c| c.execute("DELETE FROM timeline WHERE ref_id = ?1", [ref_id]).map(|n| n > 0))
     }
@@ -3111,6 +3154,38 @@ mod tests {
         assert!(store.remove_peer(&id).unwrap());
         assert!(!store.remove_peer(&id).unwrap());
         assert!(store.list_peers().unwrap().is_empty());
+    }
+
+    #[test]
+    fn a_chat_note_is_changed_and_deleted_only_in_its_own_chat() {
+        let store = Store::in_memory().unwrap();
+        let (a, b) = (DeviceId([6; 32]), DeviceId([7; 32]));
+        let entry = |kind, device, incoming| NewTimelineEntry {
+            kind,
+            device_id: device,
+            device_name: "D".into(),
+            incoming,
+            timestamp: 100,
+            title: String::new(),
+            detail: "text".into(),
+            target: String::new(),
+            size_bytes: 0,
+            duration_secs: 0,
+            ref_id: Some("chat:x".into()),
+        };
+        // A link that happens to carry the same ref, and B's note under it.
+        store.insert_timeline(&entry(TimelineKind::Link, a, true), 100).unwrap();
+        store.insert_timeline(&entry(TimelineKind::Message, b, true), 100).unwrap();
+        assert!(!store.chat_note_exists(&a, "chat:x").unwrap());
+        assert!(!store.edit_chat_note(&a, "chat:x", true, "changed").unwrap(), "not A's note");
+        assert!(
+            !store.edit_chat_note(&b, "chat:x", false, "changed").unwrap(),
+            "B wrote it, not this device"
+        );
+        assert!(!store.delete_chat_note(&a, "chat:x").unwrap(), "the link stays");
+        assert!(store.edit_chat_note(&b, "chat:x", true, "changed").unwrap());
+        assert!(store.delete_chat_note(&b, "chat:x").unwrap());
+        assert_eq!(store.query_timeline(&TimelineQuery::default(), &[]).unwrap().entries.len(), 1);
     }
 
     #[test]

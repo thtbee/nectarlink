@@ -50,6 +50,13 @@ pub mod types {
     /// PC to phone: the apps hidden on the PC, whose notifications stay on the phone.
     pub const NOTIFY_HIDE: &str = "notify.hide";
 
+    /// A note typed in the chat between two paired devices (#698).
+    pub const CHAT_MESSAGE: &str = "chat.message";
+    /// A note in that chat, changed by the device that wrote it.
+    pub const CHAT_EDIT: &str = "chat.edit";
+    /// A note in that chat, deleted by either device.
+    pub const CHAT_DELETE: &str = "chat.delete";
+
     pub const CLIP_SET: &str = "clip.set";
     pub const NOTIFY_DISMISS: &str = "notify.dismiss";
     pub const NOTIFY_ACTION: &str = "notify.action";
@@ -974,6 +981,62 @@ impl Notification {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NotifySnapshot {
     pub items: Vec<Notification>,
+}
+
+/// The chat between two paired devices (#698, docs/protocol/chat.md).
+pub mod chat {
+    /// Takes `chat.message`, `chat.edit` and `chat.delete`.
+    pub const CAP: &str = "chat.messages";
+    /// A note's ID: up to 64 ASCII letters, digits and `-`.
+    pub const ID_BYTES: usize = 64;
+    /// A note's text.
+    pub const TEXT_CHARS: usize = 8192;
+
+    pub(crate) fn valid_id(id: &str) -> bool {
+        !id.is_empty() && id.len() <= ID_BYTES && id.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-')
+    }
+
+    pub(crate) fn valid_text(text: &str) -> bool {
+        !text.trim().is_empty() && text.chars().count() <= TEXT_CHARS
+    }
+}
+
+/// Body of `chat.message`: a note, by the ID its writer gave it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ChatMessage {
+    pub id: String,
+    pub text: String,
+}
+
+impl ChatMessage {
+    pub fn is_valid(&self) -> bool {
+        chat::valid_id(&self.id) && chat::valid_text(&self.text)
+    }
+}
+
+/// Body of `chat.edit`: a note's new text.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ChatEdit {
+    pub id: String,
+    pub text: String,
+}
+
+impl ChatEdit {
+    pub fn is_valid(&self) -> bool {
+        chat::valid_id(&self.id) && chat::valid_text(&self.text)
+    }
+}
+
+/// Body of `chat.delete`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ChatDelete {
+    pub id: String,
+}
+
+impl ChatDelete {
+    pub fn is_valid(&self) -> bool {
+        chat::valid_id(&self.id)
+    }
 }
 
 /// Body of `notify.hide`: the apps (package names) hidden on the PC, whose
@@ -5494,6 +5557,18 @@ pub enum LinuxUnlockForget {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn chat_notes_have_a_plain_id_and_some_text() {
+        assert!(ChatMessage { id: "3f9a-01".into(), text: "on my way".into() }.is_valid());
+        for id in ["", "../x", "a b", "émoji", &"x".repeat(65)] {
+            assert!(!ChatMessage { id: id.into(), text: "hi".into() }.is_valid(), "{id:?}");
+        }
+        assert!(!ChatMessage { id: "a".into(), text: "   ".into() }.is_valid());
+        assert!(!ChatEdit { id: "a".into(), text: "x".repeat(chat::TEXT_CHARS + 1) }.is_valid());
+        assert!(ChatEdit { id: "a".into(), text: "é".repeat(chat::TEXT_CHARS) }.is_valid());
+        assert!(ChatDelete { id: "a".into() }.is_valid() && !ChatDelete { id: String::new() }.is_valid());
+    }
+
     #[test]
     fn a_hidden_app_list_keeps_names_a_notification_can_have() {
         let hide = NotifyHide {
