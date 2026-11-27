@@ -693,7 +693,24 @@ Item {
                 width: parent.width
                 readonly property bool wide: width >= 540
                 readonly property int phoneMediaRow: MediaList.revision >= 0 ? MediaList.firstFor(home.deviceId) : -1
-                readonly property int localMediaRow: MediaList.revision >= 0 ? MediaList.firstFor("local") : -1
+                // This PC's players, and the one picked on the card (#665): kept until it
+                // closes or another player starts playing, which the card then follows.
+                readonly property var pcPlayers: MediaList.revision >= 0 ? JSON.parse(MediaList.playersFor("local")) : []
+                property string pickedLocalPlayer: ""
+                readonly property string playingLocalPlayer: {
+                    const playing = pcPlayers.find(p => p.playing)
+                    return playing ? playing.id : ""
+                }
+                onPlayingLocalPlayerChanged: {
+                    if (playingLocalPlayer !== "" && playingLocalPlayer !== pickedLocalPlayer)
+                        pickedLocalPlayer = ""
+                }
+                readonly property int localMediaRow: {
+                    if (MediaList.revision < 0)
+                        return -1
+                    const picked = pickedLocalPlayer !== "" ? MediaList.rowOf("local", pickedLocalPlayer) : -1
+                    return picked >= 0 ? picked : MediaList.firstFor("local")
+                }
                 readonly property bool hasBothMedia: phoneMediaRow >= 0 && localMediaRow >= 0
                 readonly property bool phoneMediaPlaying: phoneMediaRow >= 0 && MediaList.revision >= 0 && MediaList.isPlaying(phoneMediaRow)
                 readonly property bool localMediaPlaying: localMediaRow >= 0 && MediaList.revision >= 0 && MediaList.isPlaying(localMediaRow)
@@ -1247,6 +1264,8 @@ Item {
                             hasMultipleSources: heroCard.hasBothMedia
                             phoneVolume: phoneControls.state ? phoneControls.state.volume : 65
                             onSourceSelected: (src) => heroCard.preferredMediaSource = src
+                            pcPlayers: heroCard.pcPlayers
+                            onPlayerSelected: (id) => heroCard.pickedLocalPlayer = id
                         }
                     }
 

@@ -8,6 +8,9 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Pick which of the PC's players Now playing controls.** With several players running on the PC,
+  their names sit in a row on the PC's Now playing card: click one to control it. Thanks to
+  [@jed84](https://github.com/jed84) ([#665](https://github.com/thtbee/nectarlink/issues/665)).
 - **An app you hide on the PC stays on the phone.** Its notifications and chats aren't sent to
   that PC at all any more, not only hidden there, and showing the app again brings them back.
   Thanks to [@jed84](https://github.com/jed84) and [@aihehye](https://github.com/aihehye)
