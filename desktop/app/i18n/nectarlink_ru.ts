@@ -1503,6 +1503,132 @@
     </message>
 </context>
 <context>
+    <name>Chat</name>
+    <message>
+        <location filename="rust_strings.h" line="68"/>
+        <source>A note can have up to 8192 characters.</source>
+        <translation>Заметка может содержать до 8192 символов.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="69"/>
+        <source>New note</source>
+        <translation>Новая заметка</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="70"/>
+        <source>That note was deleted.</source>
+        <translation>Эта заметка удалена.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="71"/>
+        <source>Update NectarLink on the device to chat.</source>
+        <translation>Обновите NectarLink на устройстве, чтобы переписываться.</translation>
+    </message>
+</context>
+<context>
+    <name>ChatNote</name>
+    <message>
+        <location filename="../qml/components/ChatNote.qml" line="121"/>
+        <source>Copy text</source>
+        <translation>Копировать текст</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ChatNote.qml" line="130"/>
+        <source>Edit</source>
+        <translation>Изменить</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ChatNote.qml" line="138"/>
+        <source>Delete</source>
+        <translation>Удалить</translation>
+    </message>
+</context>
+<context>
+    <name>ChatPage</name>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="19"/>
+        <source>%1 isn&apos;t connected</source>
+        <translation>%1 не подключён</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="20"/>
+        <source>Update NectarLink on %1 to chat</source>
+        <translation>Обновите NectarLink на %1, чтобы переписываться</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="66"/>
+        <source>Today</source>
+        <translation>Сегодня</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="67"/>
+        <source>Yesterday</source>
+        <translation>Вчера</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="131"/>
+        <source>No notes yet</source>
+        <translation>Заметок пока нет</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="139"/>
+        <source>What you write here shows on %1, and the other way round.</source>
+        <translation>Что вы напишете здесь, появится на %1, и наоборот.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="229"/>
+        <location filename="../qml/pages/ChatPage.qml" line="284"/>
+        <source>Editing note</source>
+        <translation>Изменение заметки</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="236"/>
+        <source>Cancel editing</source>
+        <translation>Отменить изменение</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="284"/>
+        <location filename="../qml/pages/ChatPage.qml" line="308"/>
+        <source>Note to %1</source>
+        <translation>Заметка для %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="319"/>
+        <source>Save</source>
+        <translation>Сохранить</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="319"/>
+        <source>Send</source>
+        <translation>Отправить</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="358"/>
+        <source>Delete note?</source>
+        <translation>Удалить заметку?</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="366"/>
+        <source>It&apos;s deleted on this PC and on %1.</source>
+        <translation>Она будет удалена на этом ПК и на %1.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="367"/>
+        <source>It&apos;s deleted on this PC. %1 isn&apos;t connected, so it keeps its copy.</source>
+        <translation>Она будет удалена на этом ПК. %1 не подключён, поэтому у него останется копия.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="374"/>
+        <source>Cancel</source>
+        <translation>Отмена</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="379"/>
+        <source>Delete</source>
+        <translation>Удалить</translation>
+    </message>
+</context>
+<context>
     <name>Clipboard</name>
     <message>
         <location filename="rust_strings.h" line="67"/>
@@ -5837,6 +5963,36 @@ What it needs
         <translation>Нет недавних действий</translation>
     </message>
     <message>
+        <location filename="../qml/pages/HomePage.qml" line="2595"/>
+        <source>Chat</source>
+        <translation>Чат</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="2604"/>
+        <source>Open</source>
+        <translation>Открыть</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="2605"/>
+        <source>Chat with %1</source>
+        <translation>Чат с %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="2655"/>
+        <source>Write a note to %1</source>
+        <translation>Напишите заметку для %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="2666"/>
+        <source>From %1 · %2</source>
+        <translation>С %1 · %2</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="2667"/>
+        <source>You · %1</source>
+        <translation>Вы · %1</translation>
+    </message>
+    <message>
         <location filename="../qml/pages/HomePage.qml" line="2689"/>
         <source>%1 notifications</source>
         <translation>Уведомления %1</translation>
@@ -6594,6 +6750,11 @@ What it needs
         <location filename="../qml/MainWindow.qml" line="899"/>
         <source>What&apos;s new</source>
         <translation>Что нового</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow.qml" line="937"/>
+        <source>Chat with %1</source>
+        <translation>Чат с %1</translation>
     </message>
     <message>
         <location filename="../qml/MainWindow.qml" line="1107"/>
@@ -12564,6 +12725,11 @@ What it needs
         <location filename="rust_strings.h" line="554"/>
         <source>device</source>
         <translation>устройство</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="576"/>
+        <source>Sent note to %1.</source>
+        <translation>Заметка отправлена на %1.</translation>
     </message>
 </context>
 <context>

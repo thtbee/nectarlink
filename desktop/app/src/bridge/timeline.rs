@@ -368,7 +368,7 @@ impl qobject::TimelineModel {
                     None => show_message(tr!("Timeline", "That isn't a web link.")),
                 }
             }
-            TimelineKind::Clip | TimelineKind::Session => {}
+            TimelineKind::Clip | TimelineKind::Session | TimelineKind::Message => {}
         }
     }
 
@@ -417,6 +417,10 @@ impl qobject::TimelineModel {
                     Err(_) => show_message(tr!("Timeline", "The photo couldn't be copied to the clipboard.")),
                 }
             }
+            TimelineKind::Message => match crate::win::clipboard::write(&row.entry.detail) {
+                Ok(()) => show_message(tr!("Timeline", "Copied to clipboard.")),
+                Err(e) => show_message(e),
+            },
             _ => {}
         }
     }
@@ -470,6 +474,14 @@ impl qobject::TimelineModel {
                 if !url.is_empty() {
                     crate::links::send_to(target_device, url);
                 }
+            }
+            TimelineKind::Message => {
+                let text = row.entry.detail.clone();
+                crate::chat::send(target_device, text, move |failed| {
+                    if failed.is_none() {
+                        show_message(tr!("Timeline", "Sent note to %1.", device_name));
+                    }
+                });
             }
             TimelineKind::Session => {}
         }
@@ -565,7 +577,11 @@ fn build_rows(entries: &[TimelineEntry], initial_prev_ts: Option<i64>) -> Vec<Ro
             device_name,
             title,
             subtitle,
-            full_text: clip_full_text(entry),
+            full_text: if entry.kind == TimelineKind::Message {
+                note_full_text(entry)
+            } else {
+                clip_full_text(entry)
+            },
             thumb_url,
             primary_path,
             item_count,
@@ -694,6 +710,12 @@ fn describe_entry(
                 lower.starts_with("http://") || lower.starts_with("https://") || lower.starts_with("geo:");
             (title, parts.join(" · "), String::new(), String::new(), 1, valid, false, !url.is_empty(), valid)
         }
+        TimelineKind::Message => {
+            // The first line; the whole note opens up below it.
+            let title = entry.detail.trim().lines().next().unwrap_or_default().to_owned();
+            let can = !entry.detail.trim().is_empty();
+            (title, who, String::new(), String::new(), 1, false, false, can, can)
+        }
         TimelineKind::Session => {
             let title = match entry.session_kind() {
                 Some(kind) => crate::i18n::session_title(kind),
@@ -794,9 +816,42 @@ fn clip_full_text(entry: &TimelineEntry) -> String {
     }
 }
 
+/// How much of a note's first line its row shows before it offers the rest.
+const NOTE_TITLE_CHARS: usize = 80;
+
+/// A chat note's whole text when its row's title (the first line) shows
+/// only part of it. Empty otherwise.
+fn note_full_text(entry: &TimelineEntry) -> String {
+    let text = entry.detail.trim();
+    if !text.contains('\n') && text.chars().count() <= NOTE_TITLE_CHARS {
+        return String::new();
+    }
+    match text.char_indices().nth(FULL_TEXT_MAX) {
+        Some((end, _)) => format!("{}…", &text[..end]),
+        None => text.to_owned(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn notes_show_their_first_line_and_offer_the_rest() {
+        let note = |text: &str| TimelineEntry {
+            detail: text.into(),
+            ref_id: Some("chat:a".into()),
+            ..sample_entry(TimelineKind::Message, String::new())
+        };
+        let (title, subtitle, _, _, _, can_open, can_show, can_copy, can_send) =
+            describe_entry(&note("milk\neggs"), "Pixel");
+        assert_eq!((title.as_str(), subtitle.as_str()), ("milk", "From Pixel"));
+        assert!(!can_open && !can_show && can_copy && can_send);
+        assert_eq!(note_full_text(&note("milk\neggs")), "milk\neggs");
+        assert_eq!(note_full_text(&note("milk")), "");
+        let long = "word ".repeat(20);
+        assert_eq!(note_full_text(&note(&long)), long.trim());
+    }
 
     fn sample_entry(kind: TimelineKind, target: String) -> TimelineEntry {
         TimelineEntry {

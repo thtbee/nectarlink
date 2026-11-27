@@ -65,6 +65,10 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Calls", "This phone doesn't let NectarLink reach its calls' sound."), // desktop/app/src/call_audio.rs
     QT_TRANSLATE_NOOP("Calls", "Unknown caller"), // desktop/app/src/bridge/calls.rs
     QT_TRANSLATE_NOOP("Calls", "Windows keeps NectarLink off the microphone. Turn on Settings › Privacy & security › Microphone › Let desktop apps access your microphone, then try again."), // desktop/app/src/call_audio.rs
+    QT_TRANSLATE_NOOP("Chat", "A note can have up to 8192 characters."), // desktop/app/src/chat.rs
+    QT_TRANSLATE_NOOP("Chat", "New note"), // desktop/app/src/chat.rs
+    QT_TRANSLATE_NOOP("Chat", "That note was deleted."), // desktop/app/src/chat.rs
+    QT_TRANSLATE_NOOP("Chat", "Update NectarLink on the device to chat."), // desktop/app/src/chat.rs
     QT_TRANSLATE_NOOP("Clipboard", "Copied from %1"), // desktop/app/src/clipboard.rs
     QT_TRANSLATE_NOOP("Clipboard", "Copied from %1."), // desktop/app/src/clipboard.rs
     QT_TRANSLATE_NOOP("Clipboard", "Copied to clipboard"), // desktop/app/src/clipboard.rs
@@ -570,6 +574,7 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Timeline", "Screen mirroring"), // desktop/app/src/i18n.rs
     QT_TRANSLATE_NOOP("Timeline", "Sending to %1…"), // desktop/app/src/bridge/timeline.rs
     QT_TRANSLATE_NOOP("Timeline", "Sent clip to %1."), // desktop/app/src/bridge/timeline.rs
+    QT_TRANSLATE_NOOP("Timeline", "Sent note to %1."), // desktop/app/src/bridge/timeline.rs
     QT_TRANSLATE_NOOP("Timeline", "Sent to %1"), // desktop/app/src/bridge/timeline.rs
     QT_TRANSLATE_NOOP("Timeline", "Session"), // desktop/app/src/bridge/timeline.rs
     QT_TRANSLATE_NOOP("Timeline", "That clip is no longer in clipboard history."), // desktop/app/src/bridge/timeline.rs

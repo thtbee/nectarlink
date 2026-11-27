@@ -1435,6 +1435,132 @@
     </message>
 </context>
 <context>
+    <name>Chat</name>
+    <message>
+        <location filename="../rust_strings.h" line="68"/>
+        <source>A note can have up to 8192 characters.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rust_strings.h" line="69"/>
+        <source>New note</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rust_strings.h" line="70"/>
+        <source>That note was deleted.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rust_strings.h" line="71"/>
+        <source>Update NectarLink on the device to chat.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>ChatNote</name>
+    <message>
+        <location filename="../../qml/components/ChatNote.qml" line="121"/>
+        <source>Copy text</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/components/ChatNote.qml" line="130"/>
+        <source>Edit</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/components/ChatNote.qml" line="138"/>
+        <source>Delete</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>ChatPage</name>
+    <message>
+        <location filename="../../qml/pages/ChatPage.qml" line="19"/>
+        <source>%1 isn&apos;t connected</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/ChatPage.qml" line="20"/>
+        <source>Update NectarLink on %1 to chat</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/ChatPage.qml" line="66"/>
+        <source>Today</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/ChatPage.qml" line="67"/>
+        <source>Yesterday</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/ChatPage.qml" line="131"/>
+        <source>No notes yet</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/ChatPage.qml" line="139"/>
+        <source>What you write here shows on %1, and the other way round.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/ChatPage.qml" line="229"/>
+        <location filename="../../qml/pages/ChatPage.qml" line="284"/>
+        <source>Editing note</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/ChatPage.qml" line="236"/>
+        <source>Cancel editing</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/ChatPage.qml" line="284"/>
+        <location filename="../../qml/pages/ChatPage.qml" line="308"/>
+        <source>Note to %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/ChatPage.qml" line="319"/>
+        <source>Save</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/ChatPage.qml" line="319"/>
+        <source>Send</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/ChatPage.qml" line="358"/>
+        <source>Delete note?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/ChatPage.qml" line="366"/>
+        <source>It&apos;s deleted on this PC and on %1.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/ChatPage.qml" line="367"/>
+        <source>It&apos;s deleted on this PC. %1 isn&apos;t connected, so it keeps its copy.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/ChatPage.qml" line="374"/>
+        <source>Cancel</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/ChatPage.qml" line="379"/>
+        <source>Delete</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>Clipboard</name>
     <message>
         <location filename="../rust_strings.h" line="67"/>
@@ -5503,6 +5629,36 @@ What it needs
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <location filename="../../qml/pages/HomePage.qml" line="2595"/>
+        <source>Chat</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/HomePage.qml" line="2604"/>
+        <source>Open</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/HomePage.qml" line="2605"/>
+        <source>Chat with %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/HomePage.qml" line="2655"/>
+        <source>Write a note to %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/HomePage.qml" line="2666"/>
+        <source>From %1 · %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/HomePage.qml" line="2667"/>
+        <source>You · %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <location filename="../../qml/pages/HomePage.qml" line="2689"/>
         <source>%1 notifications</source>
         <translation type="unfinished"></translation>
@@ -6253,6 +6409,11 @@ What it needs
     <message>
         <location filename="../../qml/MainWindow.qml" line="899"/>
         <source>What&apos;s new</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/MainWindow.qml" line="937"/>
+        <source>Chat with %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -12188,6 +12349,11 @@ What it needs
     <message>
         <location filename="../rust_strings.h" line="554"/>
         <source>device</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rust_strings.h" line="576"/>
+        <source>Sent note to %1.</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

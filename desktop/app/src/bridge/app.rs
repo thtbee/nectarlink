@@ -745,6 +745,19 @@ pub(crate) fn show_messages(device: DeviceId) {
     }
 }
 
+/// Brings up the chat with `device` (from any thread).
+pub(crate) fn show_chat(device: DeviceId) {
+    if let Some(qt) = controller() {
+        let _ = qt.queue(move |mut object| {
+            if let Some(idx) = core_host::host().hub.read(|s| s.devices.iter().position(|d| d.id == device)) {
+                object.as_mut().set_current_device(idx as i32);
+            }
+            object.as_mut().set_current_page(QString::from("chat"));
+            object.activate_requested();
+        });
+    }
+}
+
 /// Sets the rail's badges (from any thread).
 pub(crate) fn show_badges(texts: u32, missed: u32, devices: &str) {
     let devices = devices.to_owned();
