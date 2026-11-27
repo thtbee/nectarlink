@@ -432,6 +432,31 @@ internal class PhonePlatform(
         return inApp || inMessages
     }
 
+    /**
+     * Marks a conversation's latest received text (or the one [message] names) unread in the
+     * phone's messages, through the Elevated helper. Messaging apps such as Google Messages keep
+     * their own state besides, so their badge may not follow; the phone's messages do.
+     */
+    override fun smsMarkUnread(thread: String, message: String?): Boolean {
+        val id = thread.toLongOrNull()?.takeIf { it > 0 && thread.all { c -> c in '0'..'9' } } ?: return false
+        val (mms, number) = if (message != null) {
+            PhoneSms.parseMessageId(message) ?: return false
+        } else {
+            sms().latestReceived(id) ?: return false
+        }
+        return Elevated.markSmsUnread(mms, number)
+    }
+
+    /**
+     * Deletes a conversation ([messages] empty), or only those of its messages, from the phone's
+     * messages, through the Elevated helper. The PC asked after its user chose to: not undoable.
+     */
+    override fun smsDelete(thread: String, messages: List<String>): Boolean {
+        val id = thread.toLongOrNull()?.takeIf { it > 0 && thread.all { c -> c in '0'..'9' } } ?: return false
+        val ids = messages.map { PhoneSms.parseMessageId(it) ?: return false }
+        return Elevated.deleteSms(id, ids)
+    }
+
     private fun markReadInApp(thread: Long): Boolean {
         val listener = NotificationListener.instance ?: return false
         val people = sms().peopleOf(thread).ifEmpty { return false }

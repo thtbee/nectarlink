@@ -117,6 +117,32 @@ internal class PhoneSms(context: Context, private val onChange: () -> Unit) {
         }.orEmpty()
     }
 
+    /**
+     * The latest text or picture message received in a conversation: whether it is a picture
+     * message, and its number; null when it has none.
+     */
+    fun latestReceived(thread: Long): Pair<Boolean, Long>? = guarded(null) {
+        val text = resolver.query(
+            Telephony.Sms.CONTENT_URI,
+            arrayOf(Telephony.Sms._ID, Telephony.Sms.DATE),
+            "${Telephony.Sms.THREAD_ID} = ? AND ${Telephony.Sms.TYPE} = ?",
+            arrayOf(thread.toString(), Telephony.Sms.MESSAGE_TYPE_INBOX.toString()),
+            "${Telephony.Sms.DATE} DESC",
+        )?.use { c -> if (c.moveToFirst()) c.getLong(0) to c.getLong(1) else null }
+        val picture = resolver.query(
+            Telephony.Mms.CONTENT_URI,
+            arrayOf(Telephony.Mms._ID, Telephony.Mms.DATE),
+            "${Telephony.Mms.THREAD_ID} = ? AND ${Telephony.Mms.MESSAGE_BOX} = ?",
+            arrayOf(thread.toString(), Telephony.Mms.MESSAGE_BOX_INBOX.toString()),
+            "${Telephony.Mms.DATE} DESC",
+        )?.use { c -> if (c.moveToFirst()) c.getLong(0) to c.getLong(1) * 1000 else null }
+        when {
+            text == null && picture == null -> null
+            picture == null || text != null && text.second >= picture.second -> false to text!!.first
+            else -> true to picture.first
+        }
+    }
+
     /** The names and numbers of the people in a conversation, to find its notification. */
     fun peopleOf(thread: Long): List<String> {
         val found = threads(THREAD_LOOKUP).firstOrNull { it.id == thread.toString() } ?: return emptyList()
@@ -395,6 +421,22 @@ internal class PhoneSms(context: Context, private val onChange: () -> Unit) {
             ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
 
         fun canRead(context: Context) = granted(context, Manifest.permission.READ_SMS)
+
+        /**
+         * A message's id as the PC has it (`sms:12` for a text, `mms:7` for a picture message): whether
+         * it is a picture message, and its number; null for anything else, so nothing but numbers
+         * goes on to the helper.
+         */
+        internal fun parseMessageId(id: String): Pair<Boolean, Long>? {
+            val mms = when {
+                id.startsWith("sms:") -> false
+                id.startsWith("mms:") -> true
+                else -> return null
+            }
+            val digits = id.substring(4)
+            if (digits.length !in 1..18 || !digits.all { it in '0'..'9' }) return null
+            return digits.toLongOrNull()?.takeIf { it > 0 }?.let { mms to it }
+        }
 
         fun canSend(context: Context) = granted(context, Manifest.permission.SEND_SMS)
 
