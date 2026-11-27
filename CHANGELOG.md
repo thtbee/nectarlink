@@ -8,6 +8,9 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Nectar Island on the Mac.** The pill for calls, transfers and new notifications sits just
+  below the menu bar, on every Space, and stays when another app is in front or NectarLink has no
+  window open. It doesn't show over full-screen apps.
 - **Swipe between your devices on the phone's Home.** With two or more paired devices, their cards
   sit side by side, PCs first: swipe to go from one to the next, with dots for where you are.
   Thanks to [@kedar284](https://github.com/kedar284) ([#651](https://github.com/thtbee/nectarlink/issues/651)).
