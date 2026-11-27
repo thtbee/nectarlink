@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // macOS system audio loopback capture via ScreenCaptureKit (SCStream).
 
+#import <AVFoundation/AVFoundation.h>
 #import <CoreAudio/CoreAudio.h>
 #import <CoreGraphics/CoreGraphics.h>
 #import <CoreMedia/CoreMedia.h>
@@ -13,6 +14,8 @@
 #include <cstdio>
 #include <cstring>
 #include <vector>
+
+#include <dispatch/dispatch.h>
 
 extern "C" {
 
@@ -351,6 +354,29 @@ void mac_audio_loopback_stop(void *raw_handle)
         }
     }
     delete handle;
+}
+
+// Whether this app may record the microphone, as an AVAuthorizationStatus: 0
+// not asked yet, 1 restricted, 2 denied, 3 allowed. When the person hasn't
+// answered, it asks and waits for the answer (a couple of minutes at most).
+// -1 without an NSMicrophoneUsageDescription, as when run from a terminal
+// instead of the app bundle: macOS judges the terminal then, and asking
+// would end the process.
+int32_t mac_microphone_access(void)
+{
+    @autoreleasepool {
+        if (![NSBundle.mainBundle objectForInfoDictionaryKey:@"NSMicrophoneUsageDescription"])
+            return -1;
+        AVAuthorizationStatus status = [AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeAudio];
+        if (status == AVAuthorizationStatusNotDetermined) {
+            dispatch_semaphore_t answered = dispatch_semaphore_create(0);
+            [AVCaptureDevice requestAccessForMediaType:AVMediaTypeAudio
+                                     completionHandler:^(BOOL) { dispatch_semaphore_signal(answered); }];
+            dispatch_semaphore_wait(answered, dispatch_time(DISPATCH_TIME_NOW, 120 * NSEC_PER_SEC));
+            status = [AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeAudio];
+        }
+        return static_cast<int32_t>(status);
+    }
 }
 
 } // extern "C"

@@ -2723,7 +2723,7 @@ Item {
 
                 // Calls through this PC (call.audio): what a phone call uses here.
                 Card {
-                    visible: Qt.platform.os === "windows"
+                    visible: Qt.platform.os === "windows" || Qt.platform.os === "osx"
                     width: parent.width
                     Column {
                         width: parent.width
