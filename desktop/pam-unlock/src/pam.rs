@@ -161,7 +161,8 @@ unsafe fn authenticate(
     let args = unsafe { module_arguments(argc, argv) }?;
     let uid = unsafe { local_pam_uid(pamh, args.allow_service) }?;
     let enrollment_dir = Path::new(args.enrollment_dir.unwrap_or(DEFAULT_ENROLLMENT_DIR));
-    let runtime_dir = args.runtime_dir.map_or_else(|| PathBuf::from(format!("/run/user/{uid}")), PathBuf::from);
+    let runtime_dir =
+        args.runtime_dir.map_or_else(|| PathBuf::from(format!("/run/user/{uid}")), PathBuf::from);
     let store = EnrollmentStore::open(enrollment_dir).map_err(availability)?;
     let (enrollment, generation) = store.load(uid).map_err(availability)?;
     let mut nonce = [0; 32];
