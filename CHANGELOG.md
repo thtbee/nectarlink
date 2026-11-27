@@ -8,6 +8,11 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **The Mac app lives in the menu bar when its window is closed.** With **Stay in system tray**
+  on, closing the window also takes NectarLink out of the Dock and Cmd+Tab, leaving the menu
+  bar icon; opening it from there, or a ringing call, brings the Dock icon back. The menu bar
+  icon is now one color, white or black to match the menu bar, as the Mac's own icons are;
+  **Tray icon** in Settings › General turns the color tile back on.
 - **Swipe between your devices on the phone's Home.** With two or more paired devices, their cards
   sit side by side, PCs first: swipe to go from one to the next, with dots for where you are.
   Thanks to [@kedar284](https://github.com/kedar284) ([#651](https://github.com/thtbee/nectarlink/issues/651)).

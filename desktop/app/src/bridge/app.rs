@@ -441,6 +441,10 @@ pub mod qobject {
         /// Copies plain text to the Windows clipboard and shows a confirmation toast.
         #[qinvokable]
         fn copy_text(self: &AppController, text: &QString);
+        /// Shows or hides the Dock icon on macOS, as the main window closes to the tray or
+        /// comes back; does nothing elsewhere.
+        #[qinvokable]
+        fn set_dock_visible(self: &AppController, visible: bool);
         /// Loads a guide topic from `docs/guide/<doc_name>.md` (or built-in guide text) into the in-app reader sheet.
         #[qinvokable]
         fn open_guide_doc(self: Pin<&mut AppController>, doc_name: &QString);
@@ -2570,6 +2574,13 @@ impl qobject::AppController {
             Ok(()) => show_message(tr!("App", "Copied to clipboard.")),
             Err(_) => show_message(tr!("App", "Could not copy to the clipboard.")),
         }
+    }
+
+    pub fn set_dock_visible(&self, visible: bool) {
+        #[cfg(target_os = "macos")]
+        crate::bridge::native::ffi::mac_set_dock_visible(visible);
+        #[cfg(not(target_os = "macos"))]
+        let _ = visible;
     }
 
     pub fn open_guide_doc(mut self: Pin<&mut Self>, doc_name: &QString) {

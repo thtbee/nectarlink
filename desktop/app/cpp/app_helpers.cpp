@@ -592,7 +592,27 @@ bool mac_clipboard_write_text(rust::Str text, bool is_private)
             pboard, sel_registerName("setString:forType:"), nsStr, plainTextType);
     }
 }
+
+// Shows or hides the Dock icon (and the menu bar, and the Cmd+Tab entry): a
+// regular app has them, an accessory one lives in the menu bar tray alone.
+// Showing it again brings the app to the front.
+void mac_set_dock_visible(bool visible)
+{
+    AutoReleasePool pool;
+    id app = reinterpret_cast<id (*)(id, SEL)>(objc_msgSend)(
+        reinterpret_cast<id>(objc_getClass("NSApplication")), sel_registerName("sharedApplication"));
+    if (!app)
+        return;
+    // NSApplicationActivationPolicyRegular = 0, NSApplicationActivationPolicyAccessory = 1.
+    reinterpret_cast<bool (*)(id, SEL, long)>(objc_msgSend)(app, sel_registerName("setActivationPolicy:"), visible ? 0 : 1);
+    if (visible)
+        reinterpret_cast<void (*)(id, SEL, bool)>(objc_msgSend)(app, sel_registerName("activateIgnoringOtherApps:"), true);
+}
 #else
+void mac_set_dock_visible(bool)
+{
+}
+
 int64_t mac_clipboard_change_count()
 {
     return 0;
@@ -1006,6 +1026,30 @@ void linux_tray_set_one_colour(bool one_colour, rust::Str icon_name, rust::Str i
         // A theme icon goes to the panel by name, so a panel that recolors
         // icons (KDE Plasma) matches it to its own colors (#555).
         QIcon icon = one_colour ? QIcon::fromTheme(name) : QIcon();
+        if (icon.isNull())
+            icon = appIcon();
+        if (icon.isNull() && !path.isEmpty())
+            icon = QIcon(path);
+        tray->setIcon(icon);
+    });
+#elif defined(__APPLE__)
+    (void)icon_name;
+    const QString path = QString::fromUtf8(icon_path.data(), static_cast<qsizetype>(icon_path.size()));
+    runOnQtMainThread([one_colour, path]() {
+        auto *tray = linuxTray().icon.data();
+        if (!tray)
+            return;
+        QIcon icon;
+        if (one_colour && !path.isEmpty()) {
+            // A black glyph at 2x, as a mask: the menu bar draws it white or
+            // black to match itself (a template image).
+            QPixmap glyph(path);
+            if (!glyph.isNull()) {
+                glyph.setDevicePixelRatio(2.0);
+                icon = QIcon(glyph);
+                icon.setIsMask(true);
+            }
+        }
         if (icon.isNull())
             icon = appIcon();
         if (icon.isNull() && !path.isEmpty())

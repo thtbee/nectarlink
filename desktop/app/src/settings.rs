@@ -163,6 +163,12 @@ fn default_close_to_tray() -> bool {
     true
 }
 
+/// The menu bar's icons are one colour, black or white; the others keep the
+/// coloured tile unless asked.
+fn default_tray_one_colour() -> bool {
+    cfg!(target_os = "macos")
+}
+
 fn default_webcam_camera() -> String {
     "back".to_owned()
 }
@@ -629,8 +635,9 @@ pub struct Settings {
     #[serde(default = "default_close_to_tray", alias = "close_to_tray")]
     pub close_to_tray: bool,
     /// The tray icon in one colour, white or black to match the taskbar
-    /// (#479), instead of the coloured tile.
-    #[serde(default, alias = "tray_one_colour")]
+    /// (#479) or the menu bar, instead of the coloured tile. On by default
+    /// on macOS.
+    #[serde(default = "default_tray_one_colour", alias = "tray_one_colour")]
     pub tray_one_colour: bool,
     /// Send what's copied on this PC to connected phones.
     #[serde(alias = "auto_clipboard", alias = "clipboard_sync")]
@@ -1001,7 +1008,7 @@ impl Default for Settings {
             backdrop: true,
             comb_motion: true,
             close_to_tray: default_close_to_tray(),
-            tray_one_colour: false,
+            tray_one_colour: default_tray_one_colour(),
             auto_clipboard: true,
             clipboard_history: true,
             suggest_clipboard_actions: true,
@@ -1143,7 +1150,7 @@ impl Settings {
     }
 
     pub fn apply_runtime(&self) {
-        #[cfg(any(windows, target_os = "linux"))]
+        #[cfg(any(windows, target_os = "linux", target_os = "macos"))]
         crate::win::tray::set_one_colour(self.tray_one_colour);
         set_clipboard_auto_copy_received_files(self.clipboard_auto_copy_received_files);
         set_open_shared_files(self.open_shared_files);
@@ -1513,6 +1520,8 @@ mod tests {
         assert_eq!(s.color_mode, ColorMode::Dark);
         assert!(!s.backdrop);
         assert!(!s.close_to_tray);
+        // A file saved before the setting existed takes the platform's default.
+        assert_eq!(s.tray_one_colour, cfg!(target_os = "macos"));
         assert!(s.auto_clipboard);
         assert!(!s.local_api_enabled);
         assert_eq!(s.local_api_port, 53320);
