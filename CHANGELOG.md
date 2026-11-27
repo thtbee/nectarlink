@@ -621,6 +621,8 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **The caller's photo stays on a call's notifications** once it's answered, and on a missed call,
+  not only while it rings. Thanks to [@c4g7-dev](https://github.com/c4g7-dev) ([#694](https://github.com/thtbee/nectarlink/pull/694)).
 - **Your voice from the PC stays clear on a phone call.** When the phone got the PC's microphone
   in pieces that split a sample, the rest of the call's sound from the PC turned to noise.
   Thanks to [@farfromrefug](https://github.com/farfromrefug) ([#693](https://github.com/thtbee/nectarlink/pull/693)).
