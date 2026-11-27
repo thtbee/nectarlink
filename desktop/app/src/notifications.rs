@@ -657,6 +657,8 @@ fn text_notification(device: DeviceId, key: &str) -> Option<crate::messages::Tex
 pub fn set_app_rule(app: &str, rule: AppRule) {
     let hub = &core_host::host().hub;
     hub.update(|s| s.set_app_rule(app, rule));
+    // A hidden app's chats leave the Messages badge, and come back with it (#700).
+    crate::badges::publish();
     if rule == AppRule::Show {
         return;
     }

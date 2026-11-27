@@ -628,6 +628,8 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **The Messages badge counts only what Messages shows.** Chats from apps hidden on the PC kept a
+  badge on Messages with nothing to read there. Thanks to [@jed84](https://github.com/jed84) ([#700](https://github.com/thtbee/nectarlink/issues/700)).
 - **The caller's photo stays on a call's notifications** once it's answered, and on a missed call,
   not only while it rings. Thanks to [@c4g7-dev](https://github.com/c4g7-dev) ([#694](https://github.com/thtbee/nectarlink/pull/694)).
 - **Your voice from the PC stays clear on a phone call.** When the phone got the PC's microphone
