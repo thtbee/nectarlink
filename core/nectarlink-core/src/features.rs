@@ -987,6 +987,14 @@ pub const FEATURES: &[FeatureDef] = &[
         ],
         partial: None,
     },
+    // Choosing a file from the phone's folders in a PC app (the Messages
+    // attach picker), without mounting its storage.
+    FeatureDef {
+        id: "files.browse_phone",
+        group: FeatureGroup::Files,
+        requires: &[phone("storage.read", Unlock::Permission(Permission::Storage)), DeviceToggle("storage")],
+        partial: None,
+    },
     // Mirroring
     FeatureDef {
         id: "mirroring.view",
@@ -1769,6 +1777,12 @@ mod tests {
             m_storage.state("files.storage"),
             Some(locked(UpgradeAction::UpdateApp(Role::Desktop), Effort::Minutes(2)))
         );
+        // Browsing the phone's folders needs only the phone's side and the toggle.
+        assert_eq!(
+            m.state("files.browse_phone"),
+            Some(locked(UpgradeAction::EnableDeviceToggle("storage"), Effort::Instant))
+        );
+        assert_eq!(m_storage.state("files.browse_phone"), Some(FeatureState::Available));
         assert_eq!(
             m.state("camera.webcam"),
             Some(locked(UpgradeAction::EnableAddon("vcam"), Effort::Minutes(1)))

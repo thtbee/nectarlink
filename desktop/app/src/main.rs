@@ -53,6 +53,7 @@ mod pc_notifications;
 mod pc_storage;
 mod phone_install;
 mod phone_mic;
+mod phone_picker;
 mod phone_sound;
 mod photo_backup;
 mod photos;
@@ -1065,6 +1066,7 @@ fn main() -> ExitCode {
     pc_audio_stream::set_enabled(false);
     pc_mirror::stop_all();
     photos::clear_shared_files();
+    phone_picker::clean_up();
     local_api::stop();
     agents::stop();
     win::ble_beacon::stop();

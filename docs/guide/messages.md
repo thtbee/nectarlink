@@ -34,7 +34,7 @@ The **Messages** page on your PC brings together your phone's SMS and MMS text t
 
 ### Sending Picture Attachments (MMS)
 
-You can attach images to any SMS/MMS conversation in three ways:
+You can attach images to any SMS/MMS conversation in four ways:
 
 <p align="center">
   <img src="images/messages-mms.png" alt="Previewing a pasted image attachment in the Messages composer before sending as MMS" width="760">
@@ -42,8 +42,9 @@ You can attach images to any SMS/MMS conversation in three ways:
 
 1. **Paste from clipboard**: Copy any image on your PC and press `Ctrl+V` inside the message composer.
 2. **Drag and drop**: Drag a `.png`, `.jpg`, `.webp`, or `.gif` image file from File Explorer or the `Shelf` onto the conversation pane.
-3. **Attachment picker**: Click the attachment icon (`+` or paperclip) in the composer and choose an image file from your PC.
-4. A thumbnail preview appears above the text box. Add an optional caption and press **Enter** to send the image as an MMS through your phone's cellular connection.
+3. **Attachment picker**: Click the attachment icon (`+` or paperclip) in the composer and choose **From this computer** to pick an image or voice note file from your PC.
+4. **From the phone**: Click the attachment icon and choose **From the phone**. A picker opens with two tabs: **Photos** shows the phone's gallery, newest first, with thumbnails (videos are left out), and **Files** browses the phone's folders (click a folder to open it, the arrow goes up one level). Click a photo or file to bring it to the PC and attach it; it's staged exactly like a file picked from the PC, and the copy made on the PC is deleted once it's staged. Only pictures and voice notes can be attached, so other files in **Files** are dimmed. The entry appears only when the phone shares photos (**Photos** toggle on, photos permission given, and **Files** toggle on for transfers) or its storage (**Phone storage** toggle on and files access given on the phone); a tab the phone doesn't offer yet says what turns it on.
+5. A thumbnail preview appears above the text box. Add an optional caption and press **Enter** to send the image as an MMS through your phone's cellular connection.
 
 ### Starting a New Conversation
 

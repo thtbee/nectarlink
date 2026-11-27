@@ -1374,21 +1374,54 @@ pub fn attach_file(path_or_url: String) -> bool {
     match converted {
         Ok((mime, data)) => stage_attachment_bytes(name, mime, data),
         Err(error) => {
-            state(|s| {
-                s.staged_attachment = Some(StagedAttachment {
-                    name,
-                    mime: String::new(),
-                    data: Vec::new(),
-                    preview_path: None,
-                    preview_url: String::new(),
-                    size_text: String::new(),
-                    error,
-                });
-            });
-            changed();
+            stage_error(name, error);
             false
         }
     }
+}
+
+/// Stages `name` as an attachment that can't be sent, with `error` as the
+/// reason the composer shows.
+pub fn stage_error(name: String, error: String) {
+    state(|s| {
+        s.staged_attachment = Some(StagedAttachment {
+            name,
+            mime: String::new(),
+            data: Vec::new(),
+            preview_path: None,
+            preview_url: String::new(),
+            size_text: String::new(),
+            error,
+        });
+    });
+    changed();
+}
+
+/// Whether the composer has an attachment staged, sendable or not.
+pub fn has_attachment() -> bool {
+    state(|s| s.staged_attachment.is_some())
+}
+
+/// Whether a file with this name can be sent as an attachment: a picture or
+/// a voice note, as the attach dialog offers.
+pub fn is_attachable_name(name: &str) -> bool {
+    let ext = Path::new(name).extension().and_then(|e| e.to_str()).unwrap_or_default().to_ascii_lowercase();
+    matches!(
+        ext.as_str(),
+        "png"
+            | "jpg"
+            | "jpeg"
+            | "webp"
+            | "gif"
+            | "bmp"
+            | "m4a"
+            | "mp3"
+            | "aac"
+            | "ogg"
+            | "wav"
+            | "amr"
+            | "3gp"
+    )
 }
 
 /// Stages an image from the Windows clipboard (`Ctrl+V`) as an MMS attachment,

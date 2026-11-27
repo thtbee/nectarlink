@@ -491,6 +491,7 @@ fn dispatch(host: &CoreHost, event: &nectarlink_core::NodeEvent) {
     crate::continuity_camera::on_event(event);
     crate::calls::on_event(event);
     crate::messages::on_event(event);
+    crate::phone_picker::on_event(event);
     crate::badges::on_event(event);
     crate::mirror::on_event(event);
     crate::pc_mirror::on_event(event);
