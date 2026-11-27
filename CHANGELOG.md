@@ -621,6 +621,9 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **NectarLink leaves the Windows clipboard alone when it isn't sending it.** It read every copy,
+  whole screenshots included, even with clipboard sharing off, and could keep Snipping Tool from
+  saving a screenshot. Thanks to [@Snoopiam](https://github.com/Snoopiam) ([#688](https://github.com/thtbee/nectarlink/issues/688)).
 - **A text sent from the PC stays in the conversation** until the phone lists it. Some phones
   store a sent text late or not at all, and it vanished from the PC though it had gone out.
 - **The PC's device menu and a few settings are translated again.** The device switcher on the left
