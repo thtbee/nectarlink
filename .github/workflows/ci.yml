@@ -249,19 +249,23 @@ jobs:
           arch: clang_64
           cache: true
           aqtsource: git+https://github.com/miurahr/aqtinstall.git@5a49f2b391ae8ee1d3c0dd87f8b33c1d49a4deb7
-      - name: Release build
-        run: cargo build --locked --release -p nectarlink-desktop -p nectarlink-mcp
-      # The same packaging Nightlies and releases use, so a broken DMG shows
-      # up here first.
-      - name: Package the DMG
-        run: BIN_PATH="$PWD/target/release/nectarlink-desktop" bash desktop/packaging/macos/build-dmg.sh
-      - name: Check the DMG starts and carries its translations
+      # The same packaging Nightlies and releases use, for this runner's
+      # architecture only (they join Apple silicon and Intel into one
+      # universal app), so a broken DMG shows up here first.
+      - name: Build and package the DMG
+        run: ARCH=arm64 bash desktop/packaging/macos/build-dmg.sh
+      - name: Check the DMG starts and carries its translations and camera extension
         run: |
           MNT=$(mktemp -d)
           hdiutil attach dist/*.dmg -mountpoint "$MNT" -nobrowse -quiet
           "$MNT/NectarLink.app/Contents/MacOS/nectarlink-desktop" --version
           ls "$MNT/NectarLink.app/Contents/Resources/"nectarlink_*.qm
           codesign --verify --deep --strict "$MNT/NectarLink.app"
+          # The phone-as-webcam camera extension.
+          EXT="$MNT/NectarLink.app/Contents/Library/SystemExtensions/app.nectarlink.desktop.camera-extension.systemextension"
+          test -d "$EXT"
+          codesign --verify --strict "$EXT"
+          [ "$(lipo -archs "$EXT/Contents/MacOS/app.nectarlink.desktop.camera-extension" | tr ' ' '\n' | sort | tr '\n' ' ')" = "arm64 x86_64 " ]
           hdiutil detach "$MNT" -quiet
           rmdir "$MNT"
 

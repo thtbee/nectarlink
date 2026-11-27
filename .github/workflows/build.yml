@@ -18,6 +18,26 @@ on:
         required: true
       ANDROID_KEYSTORE_PASSWORD:
         required: true
+      # The Mac app is signed and notarized when all five are set, else ad-hoc.
+      APPLE_CERT_P12:
+        description: "Base64 of the Developer ID Application certificate and its key (.p12)"
+        required: false
+      APPLE_CERT_PASSWORD:
+        required: false
+      APPLE_API_KEY:
+        description: "Base64 of the App Store Connect API key (.p8) notarytool signs in with"
+        required: false
+      APPLE_API_KEY_ID:
+        required: false
+      APPLE_API_ISSUER:
+        required: false
+      # The Developer ID provisioning profile (base64) that lets the app install
+      # its camera extension, and an optional one for the extension itself; see
+      # desktop/vcam/macos/README.md.
+      APPLE_HOST_PROFILE:
+        required: false
+      APPLE_VCAM_PROFILE:
+        required: false
 
 permissions:
   contents: read
@@ -347,8 +367,16 @@ jobs:
           path: out/*.apk
 
   macos:
-    name: macOS DMG (Apple Silicon)
+    name: macOS DMG (universal)
     runs-on: macos-latest
+    env:
+      APPLE_CERT_P12: ${{ secrets.APPLE_CERT_P12 }}
+      APPLE_CERT_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
+      APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+      APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+      APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+      APPLE_HOST_PROFILE: ${{ secrets.APPLE_HOST_PROFILE }}
+      APPLE_VCAM_PROFILE: ${{ secrets.APPLE_VCAM_PROFILE }}
     steps:
       - uses: actions/checkout@v7
       - name: Set the version
@@ -368,15 +396,67 @@ jobs:
           arch: clang_64
           cache: true
           aqtsource: git+https://github.com/miurahr/aqtinstall.git@5a49f2b391ae8ee1d3c0dd87f8b33c1d49a4deb7
+      # A throwaway keychain, for this job only.
+      - name: Import the signing certificate and notarization key
+        if: env.APPLE_CERT_P12 != '' && env.APPLE_API_KEY != ''
+        run: |
+          keychain="$RUNNER_TEMP/signing.keychain-db"
+          password=$(uuidgen)
+          echo "$APPLE_CERT_P12" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          security create-keychain -p "$password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$password" "$keychain"
+          security import "$RUNNER_TEMP/certificate.p12" -P "$APPLE_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$keychain"
+          security set-key-partition-list -S apple-tool:,apple: -k "$password" "$keychain" > /dev/null
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+          identity=$(security find-identity -v -p codesigning "$keychain" | awk '/Developer ID Application/ { print $2; exit }')
+          if [ -z "$identity" ]; then
+            echo "::error::the certificate isn't a Developer ID Application one"
+            exit 1
+          fi
+          echo "$APPLE_API_KEY" | base64 --decode > "$RUNNER_TEMP/AuthKey.p8"
+          {
+            echo "SIGN_IDENTITY=$identity"
+            echo "KEYCHAIN_PATH=$keychain"
+            echo "APPLE_API_KEY_PATH=$RUNNER_TEMP/AuthKey.p8"
+            echo "REQUIRE_SIGNING=1"
+          } >> "$GITHUB_ENV"
+      # The profiles let the signed app install the phone-as-webcam camera
+      # extension. Without them the extension is still bundled, but macOS
+      # refuses to install it.
+      - name: Install the provisioning profiles for the camera extension
+        if: env.SIGN_IDENTITY != '' && env.APPLE_HOST_PROFILE != ''
+        run: |
+          echo "$APPLE_HOST_PROFILE" | base64 --decode > "$RUNNER_TEMP/host.provisionprofile"
+          {
+            echo "HOST_PROVISIONING_PROFILE=$RUNNER_TEMP/host.provisionprofile"
+            echo "REQUIRE_VCAM=1"
+          } >> "$GITHUB_ENV"
+          if [ -n "$APPLE_VCAM_PROFILE" ]; then
+            echo "$APPLE_VCAM_PROFILE" | base64 --decode > "$RUNNER_TEMP/vcam.provisionprofile"
+            echo "VCAM_PROVISIONING_PROFILE=$RUNNER_TEMP/vcam.provisionprofile" >> "$GITHUB_ENV"
+          fi
       - name: Build and package macOS DMG
         run: bash desktop/packaging/macos/build-dmg.sh
       - name: Check the DMG launches cleanly
         run: |
           MNT=$(mktemp -d)
           hdiutil attach dist/*.dmg -mountpoint "$MNT" -nobrowse -quiet
+          lipo -archs "$MNT/NectarLink.app/Contents/MacOS/nectarlink-desktop"
           "$MNT/NectarLink.app/Contents/MacOS/nectarlink-desktop" --version
+          # The camera extension, both architectures, signed.
+          EXT="$MNT/NectarLink.app/Contents/Library/SystemExtensions/app.nectarlink.desktop.camera-extension.systemextension"
+          test -d "$EXT"
+          codesign --verify --deep --strict "$MNT/NectarLink.app"
+          codesign --verify --strict "$EXT"
+          [ "$(lipo -archs "$EXT/Contents/MacOS/app.nectarlink.desktop.camera-extension" | tr ' ' '\n' | sort | tr '\n' ' ')" = "arm64 x86_64 " ]
           hdiutil detach "$MNT" -quiet
           rmdir "$MNT"
+      - name: Remove the signing keychain and key
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/signing.keychain-db" || true
+          rm -f "$RUNNER_TEMP/certificate.p12" "$RUNNER_TEMP/AuthKey.p8" "$RUNNER_TEMP/host.provisionprofile" "$RUNNER_TEMP/vcam.provisionprofile"
       - uses: actions/upload-artifact@v7
         with:
           name: macos
