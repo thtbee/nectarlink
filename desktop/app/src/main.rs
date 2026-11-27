@@ -18,6 +18,7 @@ mod battery;
 mod bridge;
 mod call_audio;
 mod calls;
+mod chat;
 mod clipboard;
 mod command_palette;
 mod continuity_camera;

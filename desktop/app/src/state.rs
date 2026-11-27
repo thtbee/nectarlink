@@ -641,6 +641,8 @@ impl AppState {
             NodeEvent::CameraCaptureReceived { .. } => Changes::TIMELINE,
             NodeEvent::ClipboardHistoryChanged => Changes::CLIPBOARD | Changes::TIMELINE,
             NodeEvent::TimelineChanged => Changes::TIMELINE,
+            // The note is on the timeline already (TimelineChanged).
+            NodeEvent::ChatReceived { .. } => Changes::NONE,
             NodeEvent::LocalSendChanged => Changes::LOCALSEND,
             NodeEvent::QueueChanged | NodeEvent::QueueDroppedOnUnpair { .. } => {
                 Changes::QUEUE | Changes::TRANSFERS
