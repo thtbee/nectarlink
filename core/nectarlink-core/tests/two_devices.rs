@@ -2005,6 +2005,89 @@ async fn a_held_pc_gets_no_notifications_and_catches_up_afterwards() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn apps_hidden_on_the_pc_keep_their_notifications_on_the_phone() {
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let phone_id = phone.node.device_id();
+    grant_notification_access(&phone).await;
+    phone
+        .node
+        .notifications_reset(vec![note("a", "com.chat", "Sam", false), note("b", "com.secret", "Pin", false)])
+        .await;
+    wait_for(&mut pc, "both", |e| match e {
+        NodeEvent::NotificationsReset { device, items } if *device == phone_id && items.len() == 2 => {
+            Some(())
+        }
+        _ => None,
+    })
+    .await;
+
+    // Hidden on the PC: the phone sends that app's notifications no more, and
+    // the PC's list loses the one it had.
+    pc.node.set_hidden_notification_apps(vec!["com.secret".into()]).await;
+    wait_for(&mut pc, "without the hidden app", |e| match e {
+        NodeEvent::NotificationsReset { device, items } if *device == phone_id && items.len() == 1 => {
+            assert_eq!(items[0].app, "com.chat");
+            Some(())
+        }
+        _ => None,
+    })
+    .await;
+    phone.node.notification_posted(note("c", "com.secret", "Code", false)).await;
+    phone.node.notification_posted(note("d", "com.chat", "Alex", false)).await;
+    wait_for(&mut pc, "the shown app's post", |e| match e {
+        NodeEvent::NotificationPosted { device, notification } if *device == phone_id => {
+            assert_ne!(notification.app, "com.secret", "a hidden app's notification left the phone");
+            (notification.key == "d").then_some(())
+        }
+        _ => None,
+    })
+    .await;
+
+    // Kept by the phone across a restart: nothing of the hidden app goes over
+    // when it reconnects and sends what it shows.
+    phone.node.shutdown().await;
+    let TestDevice { node: old_node, dir, .. } = phone;
+    drop(old_node);
+    let mut phone = start_in(dir, "Pixel", DeviceKind::Phone).await;
+    grant_notification_access(&phone).await;
+    wait_online(&mut phone, pc.node.device_id()).await;
+    phone
+        .node
+        .notifications_reset(vec![
+            note("e", "com.secret", "Code", false),
+            note("f", "com.chat", "Kim", false),
+        ])
+        .await;
+    wait_for(&mut pc, "after the restart", |e| match e {
+        NodeEvent::NotificationsReset { device, items } if *device == phone_id => {
+            assert!(
+                items.iter().all(|n| n.app != "com.secret"),
+                "a hidden app's notification left the phone"
+            );
+            items.iter().any(|n| n.key == "f").then_some(())
+        }
+        NodeEvent::NotificationPosted { device, notification } if *device == phone_id => {
+            assert_ne!(notification.app, "com.secret", "a hidden app's notification left the phone");
+            None
+        }
+        _ => None,
+    })
+    .await;
+
+    // Shown again: its notifications come back.
+    pc.node.set_hidden_notification_apps(Vec::new()).await;
+    wait_for(&mut pc, "the app shown again", |e| match e {
+        NodeEvent::NotificationsReset { device, items } if *device == phone_id => {
+            items.iter().any(|n| n.key == "e").then_some(())
+        }
+        _ => None,
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn notification_toggles_are_honored_on_both_devices() {
     let mut pc = device("Desktop", DeviceKind::Desktop).await;
     let mut phone = device("Pixel", DeviceKind::Phone).await;

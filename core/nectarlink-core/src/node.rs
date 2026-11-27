@@ -92,6 +92,7 @@ const BASE_CAPABILITIES: &[&str] = &[
     nectarlink_protocol::messages::UPDATE_HINT,
     nectarlink_protocol::messages::mirror::PACE,
     nectarlink_protocol::messages::diag::REPORT,
+    crate::notifications::HIDE,
 ];
 
 /// This device's mutable description, sent to peers.
@@ -1544,6 +1545,7 @@ impl Shared {
             }
             shared.send_media_state(&s).await;
             shared.send_held_notifications(&s).await;
+            shared.send_hidden_apps(&s).await;
             shared.send_notification_snapshot(&s).await;
             shared.send_call_state(&s).await;
             shared.send_toggles_state(&s).await;
@@ -4311,6 +4313,14 @@ impl Node {
     /// up with what they show when it ends.
     pub async fn hold_notifications(&self, held: bool) {
         self.shared.hold_notifications(held).await;
+    }
+
+    /// On a PC: the apps (package names) hidden here (#701). Phones that offer
+    /// `notify.hide` keep those apps' notifications to themselves; the list
+    /// goes to each phone now and whenever one connects.
+    pub async fn set_hidden_notification_apps(&self, apps: Vec<String>) {
+        let apps = nectarlink_protocol::messages::NotifyHide { apps }.sanitized();
+        self.shared.set_hidden_apps(apps).await;
     }
 
     pub async fn notification_posted(&self, notification: Notification) {

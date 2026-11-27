@@ -859,6 +859,13 @@ fn main() -> ExitCode {
         notification_store::load(&data_dir, s);
         state::Changes::APPS | state::Changes::HISTORY
     });
+    // Once the rules are loaded: the apps hidden here stay on the phones (#701).
+    // Until then the core sends phones nothing, so they keep what they were told last.
+    core_host::spawn(async {
+        if core_host::wait_for_node().await.is_some() {
+            notifications::send_hidden_apps();
+        }
+    });
     notification_store::start(data_dir.clone());
     std::thread::spawn(notifications::prune_images);
     watch_network();

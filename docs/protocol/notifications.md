@@ -21,6 +21,7 @@ a `notify.removed` must never overtake the `notify.posted` it removes.
 | `notify.reply` | phone | Handles `notify.dismiss` and `notify.action` |
 | `notify.sensitive` | phone | Includes notifications Android hides from apps as sensitive (one-time codes) |
 | `notify.show` | phone, tablet | Shows a paired phone's or tablet's notifications; a phone sends them to it as to a PC (PCs needn't offer it) |
+| `notify.hide` | any device of this version | Takes `notify.hide` and keeps the notifications of the apps a PC hides |
 
 A PC that doesn't offer anything still receives these events; a peer that
 doesn't know them ignores them (v0 §3.1).
@@ -158,6 +159,7 @@ t = "notify.removed"    b = { key: text }
 ```
 t = "notify.sync"                                    // one-way
 t = "notify.hold"      b = { held: bool }            // one-way
+t = "notify.hide"      b = { apps: [text] }          // one-way
 t = "notify.dismiss"   id = n   b = { key: text }
 t = "notify.action"    id = n   b = { key: text, action: text, reply: text? }
 t = "ok"               re = n
@@ -172,6 +174,15 @@ t = "ok"               re = n
   on reconnecting, and follows `held: false` with `notify.sync`. A phone from
   before this message answers `unsupported`, so a holding PC also drops what
   still arrives.
+- **`notify.hide`** lists the apps (package names, at most 1,024, each as a
+  notification's `app`) the user hid on this PC. The phone then sends this PC
+  nothing from them: no `notify.posted`, and `notify.snapshot` leaves them out.
+  It keeps the list with the pairing, so it already applies when the PC
+  reconnects. The whole list comes each time; an empty one hides nothing. A PC
+  sends it to phones that offer `notify.hide`, when a session starts and when
+  the list changes. A changed list makes the phone send a fresh
+  `notify.snapshot`, so a hidden app's notifications leave the PC and a shown
+  one's come back.
 - **`notify.dismiss`** dismisses the notification on the phone. Dismissing
   one that's already gone succeeds. A PC **SHOULD NOT** send it for an `ongoing`
   notification, nor remove one from its list on a "clear all": Android
@@ -192,4 +203,6 @@ when the phone doesn't offer `notify.reply`.
   same toggle on the PC).
 - Apps that mark a notification as local-only (Android `FLAG_LOCAL_ONLY`) are
   respected: such notifications are never sent.
+- An app the user hides on a PC stays on the phone: its notifications aren't
+  sent to that PC at all (`notify.hide`).
 - Implementations **MUST NOT** log notification content (v0 §11).

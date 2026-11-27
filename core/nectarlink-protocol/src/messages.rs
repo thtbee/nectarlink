@@ -47,6 +47,8 @@ pub mod types {
     pub const NOTIFY_SYNC: &str = "notify.sync";
     /// PC to phone: send nothing until told otherwise, or carry on.
     pub const NOTIFY_HOLD: &str = "notify.hold";
+    /// PC to phone: the apps hidden on the PC, whose notifications stay on the phone.
+    pub const NOTIFY_HIDE: &str = "notify.hide";
 
     pub const CLIP_SET: &str = "clip.set";
     pub const NOTIFY_DISMISS: &str = "notify.dismiss";
@@ -598,6 +600,8 @@ pub mod notify_limits {
     pub const CONVERSATION_MESSAGES: usize = 25;
     pub const SENDER_CHARS: usize = 128;
     pub const AVATAR_BYTES: usize = 16 * 1024;
+    /// Apps in a `notify.hide` list.
+    pub const HIDDEN_APPS: usize = 1024;
 }
 
 fn default_live_v() -> u32 {
@@ -967,6 +971,30 @@ impl Notification {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NotifySnapshot {
     pub items: Vec<Notification>,
+}
+
+/// Body of `notify.hide`: the apps (package names) hidden on the PC, whose
+/// notifications the phone keeps to itself. The whole list each time; an
+/// empty one sends everything again.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NotifyHide {
+    pub apps: Vec<String>,
+}
+
+impl NotifyHide {
+    /// The list within the spec's limits: names as a notification's `app`
+    /// can be (1 to 256 characters, no control characters), at most
+    /// [`notify_limits::HIDDEN_APPS`] of them, each once.
+    pub fn sanitized(self) -> std::collections::BTreeSet<String> {
+        use notify_limits::*;
+        self.apps
+            .into_iter()
+            .filter(|app| {
+                !app.is_empty() && app.chars().count() <= TITLE_CHARS && !app.chars().any(char::is_control)
+            })
+            .take(HIDDEN_APPS)
+            .collect()
+    }
 }
 
 /// Body of `notify.hold`.
@@ -5402,6 +5430,28 @@ pub enum LinuxUnlockForget {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_hidden_app_list_keeps_names_a_notification_can_have() {
+        let hide = NotifyHide {
+            apps: vec![
+                "com.whatsapp".into(),
+                "com.whatsapp".into(),
+                String::new(),
+                "bad
+name"
+                    .into(),
+                "x".repeat(257),
+                "org.telegram.messenger".into(),
+            ],
+        };
+        assert_eq!(
+            hide.sanitized().into_iter().collect::<Vec<_>>(),
+            ["com.whatsapp", "org.telegram.messenger"]
+        );
+        let many = NotifyHide { apps: (0..2000).map(|i| format!("app.{i}")).collect() };
+        assert_eq!(many.sanitized().len(), notify_limits::HIDDEN_APPS);
+    }
+
     #[test]
     fn marking_read_names_a_conversation_by_its_number_alone() {
         let mark = |thread: &str| SmsMarkRead { thread: thread.into() };
