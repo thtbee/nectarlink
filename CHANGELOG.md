@@ -621,6 +621,8 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **A text sent from the PC stays in the conversation** until the phone lists it. Some phones
+  store a sent text late or not at all, and it vanished from the PC though it had gone out.
 - **The PC's device menu and a few settings are translated again.** The device switcher on the left
   rail, Mark texts read on the phone, the Beside this PC hint and Bluetooth when there's no network
   showed in English in every language.
