@@ -2126,6 +2126,67 @@ async fn apps_hidden_on_the_pc_keep_their_notifications_on_the_phone() {
     .await;
 }
 
+fn chat_notes(dev: &TestDevice, peer: nectarlink_core::DeviceId) -> Vec<(bool, String)> {
+    let page = dev
+        .node
+        .timeline_page(&nectarlink_core::TimelineQuery {
+            kind: Some(nectarlink_core::TimelineKind::Message),
+            device: Some(peer),
+            ..nectarlink_core::TimelineQuery::default()
+        })
+        .unwrap();
+    page.entries.into_iter().map(|e| (e.incoming, e.detail)).collect()
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_chat_between_two_devices_sends_edits_and_deletes_notes() {
+    let mut pc = device("Desktop", DeviceKind::Desktop).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+
+    let id = with_timeout("send", phone.node.send_chat(pc_id, "on my way".into())).await.expect("sent");
+    let received = wait_for(&mut pc, "the note", |e| match e {
+        NodeEvent::ChatReceived { device, id, text } if *device == phone_id => {
+            Some((id.clone(), text.clone()))
+        }
+        _ => None,
+    })
+    .await;
+    assert_eq!(received, (id.clone(), "on my way".to_owned()));
+    assert_eq!(chat_notes(&pc, phone_id), vec![(true, "on my way".to_owned())]);
+    assert_eq!(chat_notes(&phone, pc_id), vec![(false, "on my way".to_owned())]);
+
+    // Its writer changes it; the other device can't.
+    let not_mine =
+        with_timeout("edit someone else's", pc.node.edit_chat(phone_id, id.clone(), "hacked".into())).await;
+    assert!(matches!(not_mine, Err(Error::NotFound)), "{not_mine:?}");
+    with_timeout("edit", phone.node.edit_chat(pc_id, id.clone(), "on my way, 5 min".into()))
+        .await
+        .expect("edited");
+    with_timeout("edit arrives", async {
+        while chat_notes(&pc, phone_id) != vec![(true, "on my way, 5 min".to_owned())] {
+            tokio::time::sleep(Duration::from_millis(25)).await;
+        }
+    })
+    .await;
+
+    // Either deletes it, on both.
+    with_timeout("delete", pc.node.delete_chat(phone_id, id.clone())).await.expect("deleted");
+    assert!(chat_notes(&pc, phone_id).is_empty());
+    with_timeout("delete arrives", async {
+        while !chat_notes(&phone, pc_id).is_empty() {
+            tokio::time::sleep(Duration::from_millis(25)).await;
+        }
+    })
+    .await;
+    let gone = with_timeout("gone", phone.node.delete_chat(pc_id, id)).await;
+    assert!(matches!(gone, Err(Error::NotFound)), "{gone:?}");
+
+    let empty = with_timeout("empty", phone.node.send_chat(pc_id, "  ".into())).await;
+    assert!(matches!(empty, Err(Error::Protocol(_))), "{empty:?}");
+}
+
 #[tokio::test(flavor = "multi_thread")]
 async fn notification_toggles_are_honored_on_both_devices() {
     let mut pc = device("Desktop", DeviceKind::Desktop).await;
