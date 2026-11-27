@@ -6646,6 +6646,18 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
         <source>Paste into active window</source>
         <translation>アクティブなウィンドウに貼り付け</translation>
     </message>
+    <message numerus="yes">
+        <location filename="../qml/MainWindow.qml" line="1"/>
+        <source>Device: %1. Switch device, %n new on the others</source>
+        <translation>
+            <numerusform>デバイス: %1。デバイスを切り替え、ほかに新着 %n 件</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow.qml" line="1"/>
+        <source>Device: %1. Switch device</source>
+        <translation>デバイス: %1。デバイスを切り替え</translation>
+    </message>
 </context>
 <context>
     <name>Media</name>
@@ -11788,6 +11800,9 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>Move the mouse past that edge of the screen to use it on that PC, and type there with this keyboard. Move it back, or press Ctrl+Alt+Esc, to return. That PC asks the first time, or turn on Remote mouse, keyboard &amp; Deck for this PC there.</source>
         <translation>画面のその端の先へマウスを動かすと、その PC でマウスを使い、このキーボードで入力できます。戻すにはマウスを戻すか Ctrl+Alt+Esc を押します。初回はその PC で確認されます。その PC でこの PC のリモートマウス、キーボード＆デッキ をオンにしても使えます。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>Bluetooth when there&apos;s no network</source>
         <translation>ネットワークがないときは Bluetooth</translation>
     </message>
@@ -11830,6 +11845,16 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>Both</source>
         <translation>両方</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Mark texts read on the phone</source>
+        <translation>スマートフォンでも既読にする</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Reading a conversation here marks it read on the phone too, in its messaging app.</source>
+        <translation>ここで会話を読むと、スマートフォンのメッセージアプリでも既読になります。</translation>
     </message>
 </context>
 <context>
@@ -13733,6 +13758,41 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
         <location filename="../qml/components/NewPill.qml" line="1"/>
         <source>New</source>
         <translation>新機能</translation>
+    </message>
+</context>
+<context>
+    <name>DeviceMenu</name>
+    <message>
+        <location filename="../qml/components/DeviceMenu.qml" line="1"/>
+        <source>Devices</source>
+        <translation>デバイス</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/DeviceMenu.qml" line="1"/>
+        <source>offline</source>
+        <translation>オフライン</translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../qml/components/DeviceMenu.qml" line="1"/>
+        <source>%n new</source>
+        <translation>
+            <numerusform>新着 %n 件</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location filename="../qml/components/DeviceMenu.qml" line="1"/>
+        <source>Pair a new device</source>
+        <translation>新しいデバイスをペアリングする</translation>
+    </message>
+</context>
+<context>
+    <name>NavItem</name>
+    <message numerus="yes">
+        <location filename="../qml/components/NavItem.qml" line="1"/>
+        <source>%1, %n new</source>
+        <translation>
+            <numerusform>%1、新着 %n 件</numerusform>
+        </translation>
     </message>
 </context>
 </TS>

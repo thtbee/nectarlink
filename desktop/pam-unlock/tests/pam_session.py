@@ -23,6 +23,7 @@ USER = dict(user=ACCOUNT.pw_uid, group=ACCOUNT.pw_gid, extra_groups=[])
 SCRIPT = [sys.executable, str(Path(__file__).resolve())]
 PAM_AUTH_ERR = 7
 PAM_PERM_DENIED = 6
+PAM_AUTHINFO_UNAVAIL = 9
 
 
 def authenticate(confdir, service, account, remote, account_only=False):
@@ -115,6 +116,14 @@ def exercise(module):
         )
         (conf / SERVICE).write_text(stack)
         (conf / "wrong-service").write_text(stack)
+        # KDE's lock screen runs kde-fingerprint beside the password; an admin opts it in.
+        (conf / "kde-fingerprint").write_text(
+            f"auth required {module} enrollment_dir={store} runtime_dir={runtime} allow_service=kde-fingerprint\n"
+            f"account required {module} allow_service=kde-fingerprint\n"
+        )
+        (conf / "bad-argument").write_text(
+            f"auth required {module} enrollment_dir={store} runtime_dir={runtime} allow_service=\n"
+        )
         socket_path = runtime / SOCKET
 
         def pam(service=SERVICE, account="nobody", remote="", account_only=False):
@@ -159,8 +168,20 @@ def exercise(module):
             server.stdin.flush()
             assert server.wait(timeout=10) == 0
 
-        result(pam(), PAM_AUTH_ERR)  # Relay missing.
+        result(pam(), PAM_AUTHINFO_UNAVAIL)  # Relay missing: NectarLink isn't running.
+        result(pam(service="kde-fingerprint"), PAM_AUTHINFO_UNAVAIL)
+        with socket.socket(socket.AF_UNIX) as stale:
+            stale.bind(str(socket_path))  # Left behind by a NectarLink that quit.
+            os.chown(socket_path, ACCOUNT.pw_uid, ACCOUNT.pw_gid)
+            os.chmod(socket_path, 0o600)
+            result(pam(), PAM_AUTHINFO_UNAVAIL)
+        socket_path.unlink()
+        record.rename(store / "parked")
+        result(pam(), PAM_AUTHINFO_UNAVAIL)  # Nothing enrolled for this account.
+        (store / "parked").rename(record)
+        result(pam(service="bad-argument"), PAM_AUTH_ERR)
         result(pam(account_only=True), 0)
+        result(pam(service="kde-fingerprint", account_only=True), 0)
         result(pam(service="wrong-service", account_only=True), PAM_PERM_DENIED)
         result(pam(account="daemon", account_only=True), PAM_PERM_DENIED)
         result(pam(remote="remote.invalid", account_only=True), PAM_PERM_DENIED)
@@ -177,6 +198,11 @@ def exercise(module):
             json.loads(server.stdout.readline())
             send(server, reply)
             result(client, PAM_AUTH_ERR)  # Same signed response in a later transaction.
+        with broker() as server:
+            client = pam(service="kde-fingerprint")
+            request, = json.loads(server.stdout.readline())
+            send(server, sign(request))
+            result(client, 0)  # Includes pam_setcred and pam_acct_mgmt with allow_service.
         for malformed in [b'{"success":true}', b'{"version":2,"signature":', b"", b" " * 1025]:
             with broker() as server:
                 client = pam()
@@ -188,7 +214,7 @@ def exercise(module):
                 client = pam()
                 request, = json.loads(server.stdout.readline())
                 if revoke:
-                    record.unlink()
+                    record.unlink()  # Revoked mid-request: a denial, never unavailable.
                 else:
                     replacement = store / "replacement"
                     replacement.write_bytes(record.read_bytes())
@@ -221,7 +247,7 @@ def exercise(module):
             socket_path.symlink_to(alternate_socket)
             result(pam(), PAM_AUTH_ERR)
             alternate_socket.unlink()
-        print("Temporary PAM service accepted one fresh signature and rejected replay, malformed replies, unavailable relay, revoked or replaced enrollment, and mismatched bindings.")
+        print("Temporary PAM service accepted one fresh signature, also under an allowed kde-fingerprint service, reported a missing relay or enrollment as unavailable, and rejected replay, malformed replies, revoked or replaced enrollment, and mismatched bindings.")
 
 
 if __name__ == "__main__":

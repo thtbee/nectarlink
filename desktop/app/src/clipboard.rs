@@ -197,6 +197,11 @@ pub fn clear_history() {
 
 /// Starts watching the Windows clipboard.
 pub fn start() {
+    // Windows reads a copy only when it will be sent (#688).
+    #[cfg(windows)]
+    clipboard::set_wanted(|| {
+        AUTO_SEND.load(Ordering::Relaxed) && core_host::try_host().is_some() && !receivers().is_empty()
+    });
     clipboard::start(on_copy);
 }
 

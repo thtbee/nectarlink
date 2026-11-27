@@ -50,4 +50,18 @@ Start a dedicated PAM transaction for `nectarlink-phone-lock` when the user expl
 
 For Quickshell, copy [PhoneUnlock.qml](examples/PhoneUnlock.qml) into your locker configuration. Bind its `locked` property to the secure lock state, call `start()` from an accessible control and `cancel()` when the user cancels or starts typing a password, and connect `authenticated` to the locker's existing unlock handler.
 
-To remove the integration, remove the locker action, revoke the enrollment, and remove the dedicated PAM service, module and enrollment command installed above. Restart NectarLink so it refreshes its advertised capabilities.
+### KDE Plasma
+
+KDE's lock screen has no setting for another unlock method. It does start a second PAM transaction, on the `kde-fingerprint` service, as the locked user every time the screen locks, beside the password. NectarLink can answer in that transaction. The phone then asks for your fingerprint every time the PC locks while NectarLink runs, and the PC unlocks when you approve. You don't need to press anything on the PC.
+
+Keep the `nectarlink-phone-lock` service installed as above, because NectarLink offers phone unlock only when that service exists. Then add NectarLink to `/etc/pam.d/kde-fingerprint` as root, after any pre-auth lockout line and before the fingerprint reader's line:
+
+```text
+auth sufficient libpam_nectarlink_phone_unlock.so allow_service=kde-fingerprint
+```
+
+`allow_service` lets the module run in that one other service. The module still accepts only a local, non-root account in a transaction started by that same account. If no phone is enrolled or NectarLink isn't running, the module reports `PAM_AUTHINFO_UNAVAIL` at once and the stack goes on to the fingerprint reader. While the phone's request is open, which can last up to 30 seconds, a fingerprint reader listed after it waits. Type your password at any time.
+
+If your distribution has no `kde-fingerprint` service, create it with the NectarLink line followed by `auth required pam_deny.so`. To undo it, remove the NectarLink line, or the file if you created it.
+
+To remove the integration, remove the locker action or the `kde-fingerprint` line, revoke the enrollment, and remove the dedicated PAM service, module and enrollment command installed above. Restart NectarLink so it refreshes its advertised capabilities.

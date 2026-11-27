@@ -11,10 +11,13 @@ import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -68,7 +71,13 @@ fun QrScanner(onLink: (String) -> Unit, modifier: Modifier = Modifier) {
     if (granted) {
         CameraPreview(onLink, modifier)
     } else {
-        Column(modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            modifier = modifier
+                .verticalScroll(rememberScrollState())
+                .padding(24.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
             Text(
                 stringResource(R.string.camera_permission_needed),
                 style = MaterialTheme.typography.bodyMedium,
