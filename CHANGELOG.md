@@ -8,6 +8,12 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Send with NectarLink in the first level of File Explorer's menu.** Right-click files or
+  folders and choose **Send to *your phone* with NectarLink**, or **Send with NectarLink** and
+  then a phone when you have more than one: on Windows 11 that's without **Show more options**.
+  Like the Share sheet, it needs NectarLink's package registered, which Windows allows with
+  Developer Mode on; **Send to** stays where it was. Thanks to
+  [@FlootingDream](https://github.com/FlootingDream) ([#451](https://github.com/thtbee/nectarlink/issues/451)).
 - **Pick which of the PC's players Now playing controls.** With several players running on the PC,
   their names sit in a row on the PC's Now playing card: click one to control it. Thanks to
   [@jed84](https://github.com/jed84) ([#665](https://github.com/thtbee/nectarlink/issues/665)).
