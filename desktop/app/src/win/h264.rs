@@ -901,8 +901,8 @@ mod tests {
     #[test]
     #[ignore = "benchmark; needs BENCH_4K_H264"]
     fn bench_decode_4k() {
-        let path = std::env::var("BENCH_4K_H264").expect("BENCH_4K_H264");
-        let stream = std::fs::read(path).unwrap();
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("target/bench-4k.h264");
+        let stream = std::fs::read(&path).expect("put the 4K sample at desktop/app/target/bench-4k.h264");
         let units = access_units(&stream);
         for gpu in [false, true] {
             let mut decoder =
