@@ -1752,6 +1752,18 @@ impl Store {
         })
     }
 
+    /// Deletes one message of a chat conversation, by its row ID.
+    pub fn delete_chat_message(&self, peer: &DeviceId, thread_id: &str, id: i64) -> Result<bool> {
+        let peer_str = peer.to_string();
+        self.with(|c| {
+            c.execute(
+                "DELETE FROM chat_messages WHERE peer = ?1 AND thread_id = ?2 AND id = ?3",
+                params![peer_str, thread_id, id],
+            )
+            .map(|n| n > 0)
+        })
+    }
+
     pub fn delete_chat_thread(&self, peer: &DeviceId, thread_id: &str) -> Result<bool> {
         let peer_str = peer.to_string();
         self.with(|c| {
@@ -3477,6 +3489,14 @@ mod tests {
         let thread = store.chat_thread(&peer, &tid).unwrap().unwrap();
         assert!(!thread.can_reply());
         assert_eq!(store.chat_messages(&peer, &tid, 20).unwrap().len(), 3);
+
+        // One message can go on its own, and only from its own conversation.
+        let msgs = store.chat_messages(&peer, &tid, 20).unwrap();
+        let doomed = msgs[0].id;
+        assert!(!store.delete_chat_message(&peer, "chat:other:thread", doomed).unwrap());
+        assert!(store.delete_chat_message(&peer, &tid, doomed).unwrap());
+        assert!(!store.delete_chat_message(&peer, &tid, doomed).unwrap());
+        assert_eq!(store.chat_messages(&peer, &tid, 20).unwrap().len(), 2);
 
         assert!(store.delete_chat_thread(&peer, &tid).unwrap());
         assert!(store.chat_threads(&peer).unwrap().is_empty());

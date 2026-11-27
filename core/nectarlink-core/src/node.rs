@@ -3923,6 +3923,16 @@ impl Node {
         self.shared.store.mark_chat_thread_read(peer.borrow(), thread_id).unwrap_or(false)
     }
 
+    /// Deletes one message (by row ID) of a locally stored `MessagingStyle` chat thread.
+    pub fn delete_chat_message(
+        &self,
+        peer: impl std::borrow::Borrow<DeviceId>,
+        thread_id: &str,
+        id: i64,
+    ) -> bool {
+        self.shared.store.delete_chat_message(peer.borrow(), thread_id, id).unwrap_or(false)
+    }
+
     /// Deletes a single `MessagingStyle` chat thread and its messages.
     pub fn delete_chat_thread(&self, peer: impl std::borrow::Borrow<DeviceId>, thread_id: &str) -> bool {
         self.shared.store.delete_chat_thread(peer.borrow(), thread_id).unwrap_or(false)
