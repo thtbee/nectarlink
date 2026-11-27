@@ -213,7 +213,7 @@ current Android.
 ### 3.11 Ambient & signature experiences (what makes NectarLink special)
 | Feature | Tier |
 |---|---|
-| **Nectar Island** (optional extra, off by default (`nectar_island: false`), with per-trigger toggles when enabled): a small, animated pill at the top of the PC screen showing live phone activity (call, timer, music, transfer, Live Update, OTP, voice recording). Expands on hover. A nice touch, not a pillar (done) | P2 |
+| **Nectar Island** (on by default (`nectar_island: true`), with per-trigger toggles): a small, animated pill at the top of the PC screen showing live phone activity (call, timer, music, transfer, Live Update, OTP, voice recording). Expands on hover. A nice touch, not a pillar (done) | P2 |
 | **Shelf**: slide-out edge panel with the latest photo, screenshot, clipboard and recent files. Drag anything in to send (done) | P1 |
 | **Command Palette** (global hotkey): "send clipboard", "find my phone", "text Mom", "open last photo", "mirror Spotify", "record voice" (done) | P1 |
 | **Material You sync**: the PC app takes its accent and theme from the phone's wallpaper colors, so both apps look like one (done) | P1 |

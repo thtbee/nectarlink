@@ -22,7 +22,9 @@ NectarLink mirrors your phone's notifications to your PC in real time. You can r
 1. Open **NectarLink** on your PC and stay on **Home**. Active notifications from your connected phone appear in the **Notifications** card, displaying each app's icon, title, body text, timestamp, and any attached photo or big picture.
 2. When an app posts multiple notifications, NectarLink groups them under a collapsible app header showing the count. Click the header to expand or collapse that app's alerts, or click **Clear group** (`x`) to dismiss all notifications from that app at once.
 3. Click the `x` button on any individual notification card (or dismiss the Windows popup) to clear it. Dismissals synchronize both ways: clearing a notification on your PC removes it from your phone's notification shade, and swiping it away on your phone removes it from your PC. After you dismiss a notification or group on the PC, a brief **Undo** bar lets you restore it locally if you clicked by mistake.
-4. Click a notification card on your PC while `Elevated` is active (on Android 11+) to open that phone app directly on your PC in its own `app window`.
+4. **Clear** in the `Nectar Island` panel is local to the Island: it hides those alerts there, while Home keeps every one and its history. A newer post under the same key shows on the Island again. With **Alerts** on, the Island replaces the Windows popup toast, so a phone notification is announced once.
+5. Click a notification card on your PC while `Elevated` is active (on Android 11+) to open that phone app directly on your PC in its own `app window`.
+6. If the phone already shows notifications but Home stays empty, click **Refresh** under **No notifications**. That asks the phone for what it shows now. If it stays empty, check the phone's notification access and set NectarLink's battery use to **Unrestricted** (see [Troubleshooting](troubleshooting.md)).
 
 ### Replying Inline and Running Notification Actions
 

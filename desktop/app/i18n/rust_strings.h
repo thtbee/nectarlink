@@ -49,6 +49,7 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Apps", "Removed %1 from your app menu."), // desktop/app/src/bridge/mirror.rs
     QT_TRANSLATE_NOOP("Apps", "Removed %1 from your desktop."), // desktop/app/src/bridge/mirror.rs
     QT_TRANSLATE_NOOP("Apps", "Uninstalled %1."), // desktop/app/src/bridge/mirror.rs
+    QT_TRANSLATE_NOOP("Apps", "Wireless debugging isn't ready. Turn it on in NectarLink on the phone, then try again."), // desktop/app/src/bridge/mirror.rs
     QT_TRANSLATE_NOOP("Automations", "Triggered by %1"), // desktop/app/src/automations.rs
     QT_TRANSLATE_NOOP("Battery", "%1 has reached %2% charge"), // desktop/app/src/battery.rs
     QT_TRANSLATE_NOOP("Battery", "%1 is fully charged"), // desktop/app/src/battery.rs
@@ -207,19 +208,36 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Deck", "Enter the text snippet to type."), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Invalid action configuration."), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Invalid tile properties."), // desktop/app/src/deck.rs
+    QT_TRANSLATE_NOOP("Deck", "Launch app"), // desktop/app/src/deck.rs
+    QT_TRANSLATE_NOOP("Deck", "Lock PC"), // desktop/app/src/deck.rs
+    QT_TRANSLATE_NOOP("Deck", "Main"), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Media key"), // desktop/app/src/bridge/deck.rs
+    QT_TRANSLATE_NOOP("Deck", "Mic mute"), // desktop/app/src/deck.rs
+    QT_TRANSLATE_NOOP("Deck", "Mute audio"), // desktop/app/src/deck.rs
+    QT_TRANSLATE_NOOP("Deck", "Next"), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Off"), // desktop/app/src/bridge/deck.rs
     QT_TRANSLATE_NOOP("Deck", "On"), // desktop/app/src/bridge/deck.rs
     QT_TRANSLATE_NOOP("Deck", "On / off"), // desktop/app/src/bridge/deck.rs
+    QT_TRANSLATE_NOOP("Deck", "Open website"), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Page not found."), // desktop/app/src/deck.rs
+    QT_TRANSLATE_NOOP("Deck", "Play / pause"), // desktop/app/src/deck.rs
+    QT_TRANSLATE_NOOP("Deck", "Previous"), // desktop/app/src/deck.rs
+    QT_TRANSLATE_NOOP("Deck", "Run command"), // desktop/app/src/deck.rs
+    QT_TRANSLATE_NOOP("Deck", "Screenshot"), // desktop/app/src/deck.rs
+    QT_TRANSLATE_NOOP("Deck", "Shortcut"), // desktop/app/src/deck.rs
+    QT_TRANSLATE_NOOP("Deck", "Show desktop"), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Step %1: %2"), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Step %1: restart, shut down and macros can't be steps."), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Step %1: wait at most 10 seconds."), // desktop/app/src/deck.rs
+    QT_TRANSLATE_NOOP("Deck", "Switch window"), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "This page already has the maximum number of tiles (24)."), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Tile not found."), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Turning off"), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Turning on"), // desktop/app/src/deck.rs
+    QT_TRANSLATE_NOOP("Deck", "Type text"), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Use a single key (a-z, 0-9, f1-f12, enter, tab, space, escape, arrows, etc.)."), // desktop/app/src/deck.rs
+    QT_TRANSLATE_NOOP("Deck", "Volume down"), // desktop/app/src/deck.rs
+    QT_TRANSLATE_NOOP("Deck", "Volume up"), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Web address must start with http:// or https://."), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Doctor", "%1 Open NectarLink on the phone and keep both on the same network. If the phone asks to run in the background, allow it."), // desktop/app/src/doctor.rs
     QT_TRANSLATE_NOOP("Doctor", "%1 announces itself at %2, which isn't in a private range such as 192.168.x.x. NectarLink connects on such a network once both apps are up to date. Until then, turn on Connect over mobile data on both, or connect with a USB cable."), // desktop/app/src/doctor.rs

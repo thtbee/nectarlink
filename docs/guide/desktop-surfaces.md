@@ -11,7 +11,7 @@ Beyond the main window, NectarLink integrates into Windows 11 with fast, low-ove
 | Feature | Requirements |
 | :--- | :--- |
 | **`Shelf` edge panel (`Ctrl+Alt+S`)** | Windows 11 app running (window open or in the system tray). |
-| **`Nectar Island`** | Turn on **Nectar Island** in PC **Settings › General** (off by default). |
+| **`Nectar Island`** | On by default in PC **Settings › General**. |
 | **`Timeline`** | Enabled by default on both Windows and Android (retains up to 5,000 items or 90 days by default). |
 | **`Command Palette` (`Ctrl+Alt+Space`)** | Windows 11 app running (window open or in the system tray). |
 | **Rich `Handoff` (links, maps, video timestamps, documents)** | `Standard` power level. **Files** toggle enabled in **Settings › Devices**. |
@@ -45,13 +45,21 @@ The `Shelf` is a lightweight edge panel on your PC that gives you instant drag-a
 
 To set it up:
 
-1. Turn on **Nectar Island** in PC **Settings › General** (it is **off by default**).
+1. **Nectar Island** is on by default in PC **Settings › General**; turn it off there if you don't want it.
 2. In the **Island triggers** row right below it, choose which activities appear in the pill:
    - **Calls** (on by default): Incoming caller ID with Answer/Decline buttons and live call duration.
    - **Transfers** (on by default): Live file transfer progress bars and `Waiting to send` count.
    - **Media** (on by default): Now-playing track artwork, title, and transport controls.
-   - **Alerts** (off by default): Phone notifications, one-time verification codes, active timers/Live Updates, and incoming voice recordings.
-3. Hover over or click `Nectar Island` to expand its interactive controls, or let it collapse back into a minimal pill when idle. `Nectar Island` automatically hides itself when you are running a full-screen game or video, or when Windows Do Not Disturb is active.
+   - **Alerts** (on by default): Phone notifications, one-time verification codes, active timers/Live Updates, and incoming voice recordings.
+   - **PC** (on by default): Take over this computer's own media too, even with no phone connected.
+3. Hover over `Nectar Island` and the pill stretches into one surface: now-playing controls on top, then the follow-source chips, synced lyrics, and every phone notification waiting on this PC, with its actions, reply, one-time code and dismiss. There is no second panel window. Click the pill to pin it, so it stays reachable while the pointer moves away; a double-click (or **Reset position**) puts the pill back at its default spot.
+4. Drag the pill anywhere on the primary screen. Windows and X11 remember where it is across restarts, and **Settings › General › Island position** shows **Custom** while it is out of place. On Wayland the compositor decides where the window opens.
+5. **Clear** in the stretched card empties the Island only: Home keeps those notifications and their history, and a newer post under the same key comes back. While **Alerts** is on, a phone notification plays the system notification sound but no Windows popup toast; the Island is the prompt. At the right end of the pill, after the player controls and a separator, a 24×24 count shows unread phone notifications: red with the number (99+ at most), grey **0** when there are none.
+6. **This PC's players** feed the Island as well, even with no phone connected. The **Phone** and **PC** chips in the stretched card pick which side the Island follows right now. With both sides playing, **Settings › General › When both play** picks **Phone** (the default) or **This PC**. Media outranks notification alerts, while calls and transfers still come first. **Show when idle** keeps the pill on screen with nothing playing.
+7. The Island's **current line and surrounding lines of synced lyrics** are fetched for the playing track and follow its position. If a track has no synced lyrics, that row simply says so.
+8. Windows can occasionally hide a tool window (a full-screen app, a display change); the Island notices and shows itself again without needing to toggle the feature. NectarLink's own Windows media-control session (a phone's track shown in the PC flyout) is never read back as a PC player, so the phone doesn't get a second, identical player in its media shade.
+
+`Nectar Island` hides itself when it has nothing to show unless **Show when idle** is on.
 
 ### 3. Cross-Device `Timeline`
 
@@ -143,7 +151,7 @@ For power users who use **PowerToys Command Palette**, **AutoHotkey**, **Raycast
 
 ## What the Options Do
 
-- **Nectar Island** and **Island triggers** (`Settings › General` on PC, default: **Off**): Enables the top-of-screen activity pill and selects which triggers (`Calls`, `Transfers`, `Media`, `Alerts`) expand it.
+- **Nectar Island** and **Island triggers** (`Settings › General` on PC, default: **On**, with **Calls**, **Transfers**, **Media** and **Alerts** on): Enables the top-of-screen activity pill and selects which triggers expand it.
 - **Command palette / File shelf / Take photo / Scan document shortcuts** (`Settings › Shortcuts & Rules` on PC): Customizes the global Windows hotkeys (`Ctrl+Alt+Space`, `Ctrl+Alt+S`, `Ctrl+Alt+C`, `Ctrl+Alt+D`), with a **Reset** button next to each.
 - **Trigger-action rules** (`Settings › Shortcuts & Rules` on PC): Manages "When X, Do Y" automation rules.
 - **Cross-device timeline** (`Settings › Storage & Privacy` on PC and `Settings › Features & Data › Data & storage` on Android, default: **90d**): Sets auto-purge retention (**30d**, **90d**, **1y**, or **All** up to 5,000 items) and provides a **Clear** button.
