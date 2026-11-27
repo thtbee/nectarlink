@@ -114,10 +114,22 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "filterByApp"]
         fn filter_by_app(self: &Messages, app: &QString);
-        /// Deletes a persisted MessagingStyle chat conversation locally.
+        /// Marks conversations unread (a JSON array of IDs) until opened. Only on this PC.
         #[qinvokable]
-        #[cxx_name = "deleteChatThread"]
-        fn delete_chat_thread(self: &Messages, thread: &QString);
+        #[cxx_name = "markThreadsUnread"]
+        fn mark_threads_unread(self: &Messages, ids: &QString);
+        /// Deletes conversations (a JSON array of IDs) from this PC; the phone keeps its own.
+        #[qinvokable]
+        #[cxx_name = "deleteThreads"]
+        fn delete_threads(self: &Messages, ids: &QString);
+        /// Deletes messages of the open conversation (a JSON array of IDs) from this PC.
+        #[qinvokable]
+        #[cxx_name = "deleteMessages"]
+        fn delete_messages(self: &Messages, ids: &QString);
+        /// Marks the open conversation unread and leaves it. Only on this PC.
+        #[qinvokable]
+        #[cxx_name = "markOpenUnread"]
+        fn mark_open_unread(self: &Messages);
         /// Stages an image file (from drag-and-drop or file picker) as an MMS attachment.
         #[qinvokable]
         #[cxx_name = "attachFile"]
@@ -188,6 +200,11 @@ impl cxx_qt::Initialize for qobject::Messages {
     }
 }
 
+/// The IDs of a JSON array of strings the page sends.
+fn ids_of(json: &QString) -> Vec<String> {
+    serde_json::from_str(&String::from(json)).unwrap_or_default()
+}
+
 impl qobject::Messages {
     fn update_view(mut self: Pin<&mut Self>) {
         let view = messages::view();
@@ -203,10 +220,12 @@ impl qobject::Messages {
         if differs(|v| &v.threads) {
             self.as_mut().set_threads(QString::from(&view.threads.to_string()));
         }
-        self.as_mut().set_thread(QString::from(view.thread.as_deref().unwrap_or_default()));
+        // The messages before the conversation they belong to: the page resets its list
+        // when the conversation changes, and must find the new conversation's messages.
         if differs(|v| &v.messages) {
             self.as_mut().set_messages(QString::from(&view.messages.to_string()));
         }
+        self.as_mut().set_thread(QString::from(view.thread.as_deref().unwrap_or_default()));
         self.as_mut().set_more(view.more);
         self.as_mut().set_loading_older(view.loading_older);
         self.as_mut().set_sending(view.sending);
@@ -305,8 +324,20 @@ impl qobject::Messages {
         messages::set_app_filter(String::from(app));
     }
 
-    pub fn delete_chat_thread(&self, thread: &QString) {
-        messages::delete_chat_thread(String::from(thread));
+    pub fn mark_threads_unread(&self, ids: &QString) {
+        messages::mark_threads_unread(ids_of(ids));
+    }
+
+    pub fn delete_threads(&self, ids: &QString) {
+        messages::delete_threads(ids_of(ids));
+    }
+
+    pub fn delete_messages(&self, ids: &QString) {
+        messages::delete_messages(ids_of(ids));
+    }
+
+    pub fn mark_open_unread(&self) {
+        messages::mark_open_unread();
     }
 
     pub fn attach_file(&self, path_or_url: &QString) -> bool {

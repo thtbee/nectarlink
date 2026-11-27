@@ -182,6 +182,81 @@ mod tests {
         }
     }
 
+    /// `snake_case` as cxx-qt names it for C++.
+    fn camel(snake: &str) -> String {
+        let mut out = String::new();
+        let mut up = false;
+        for c in snake.chars() {
+            if c == '_' {
+                up = true;
+            } else if up {
+                out.extend(c.to_uppercase());
+                up = false;
+            } else {
+                out.push(c);
+            }
+        }
+        out
+    }
+
+    fn cxx_name(attributes: &[String]) -> Option<String> {
+        let attribute = attributes.iter().find(|a| a.contains("cxx_name"))?;
+        Some(attribute.split('"').nth(1)?.to_owned())
+    }
+
+    /// A QML call named like a property's setter (`setFoo` for `foo`) runs the setter, which
+    /// only changes the property: an invokable with that name never runs. Every bridge file
+    /// is checked.
+    #[test]
+    fn no_invokable_is_named_like_a_property_setter() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/bridge");
+        let mut checked = 0;
+        for entry in std::fs::read_dir(dir).unwrap().flatten() {
+            let path = entry.path();
+            if path.extension().is_none_or(|e| e != "rs") {
+                continue;
+            }
+            let source = std::fs::read_to_string(&path).unwrap();
+            let mut setters = Vec::new();
+            let mut invokables = Vec::new();
+            let mut attributes: Vec<String> = Vec::new();
+            for line in source.lines().map(str::trim) {
+                if let Some(rest) = line.strip_prefix("#[qproperty(") {
+                    // `READ` alone (with `NOTIFY`) leaves out the setter.
+                    let writable = !line.contains("READ") || line.contains("WRITE");
+                    let mut parts = rest.split(',').map(str::trim);
+                    let name = parts.nth(1).unwrap_or_default().trim_end_matches(")]");
+                    let name = cxx_name(&[line.to_owned()]).unwrap_or_else(|| camel(name));
+                    let mut chars = name.chars();
+                    let first = chars.next().map(|c| c.to_uppercase().to_string()).unwrap_or_default();
+                    if writable {
+                        setters.push(format!("set{first}{}", chars.as_str()));
+                    }
+                } else if line.starts_with("#[") {
+                    attributes.push(line.to_owned());
+                } else if let Some(rest) = line.strip_prefix("fn ") {
+                    if attributes.iter().any(|a| a == "#[qinvokable]") {
+                        let rust = rest.split('(').next().unwrap_or_default();
+                        invokables.push(cxx_name(&attributes).unwrap_or_else(|| camel(rust)));
+                    }
+                    attributes.clear();
+                } else if !line.starts_with("//") {
+                    attributes.clear();
+                }
+            }
+            checked += invokables.len();
+            for name in &invokables {
+                assert!(
+                    !setters.contains(name),
+                    "{}: the invokable `{name}` is also the setter of a property; name it otherwise",
+                    path.display()
+                );
+            }
+        }
+        // The scan found the bridge's invokables at all.
+        assert!(checked > 100, "{checked}");
+    }
+
     #[test]
     fn unchanged_rows_need_no_edits_and_moves_touch_only_the_moved_row() {
         let rows = [(1, "a"), (2, "b"), (3, "c")];

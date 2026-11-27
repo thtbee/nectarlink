@@ -12,6 +12,11 @@ QtObject {
     property bool controls: false
     property string caller: ""
     property string number: ""
+    property string contacts: "[]"
+    property bool canDial: false
+    property bool dialing: false
+    function ensureContacts(device) {}
+    function dial(number) {}
     function answer() {}
     function end() {}
     function setMute(on) {}

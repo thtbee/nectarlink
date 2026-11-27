@@ -323,19 +323,39 @@ fn counts(device: DeviceId, watched: bool) -> (u32, u32) {
     let hidden = core_host::try_host()
         .map(|host| host.hub.read(crate::state::AppState::hidden_apps))
         .unwrap_or_default();
+    // Deleted here, they don't count; marked unread counts one each.
+    let local = crate::messages_local::read(device);
+    let counted = |id: &str, date: i64| !local.thread_hidden(id, date);
+    let mut chat_ids: Vec<String> = Vec::new();
     let chats: u32 = match (&r.chats, core_host::node()) {
-        (Some(base), Some(node)) => node
-            .chat_threads(device)
-            .iter()
-            .filter(|t| {
-                t.updated_ms > base.get(&t.thread_id).copied().unwrap_or(0)
-                    && open.as_deref() != Some(t.thread_id.as_str())
-                    && !hidden.contains(&t.app)
-            })
-            .map(|t| t.unread)
-            .sum(),
+        (Some(base), Some(node)) => {
+            let threads = crate::messages::chat_threads_of(&node, device);
+            chat_ids = threads
+                .iter()
+                .filter(|t| counted(&t.thread_id, t.updated_ms))
+                .map(|t| t.thread_id.clone())
+                .collect();
+            threads
+                .iter()
+                .filter(|t| {
+                    counted(&t.thread_id, t.updated_ms)
+                        && t.updated_ms > base.get(&t.thread_id).copied().unwrap_or(0)
+                        && open.as_deref() != Some(t.thread_id.as_str())
+                        && !hidden.contains(&t.app)
+                })
+                .map(|t| t.unread)
+                .sum()
+        }
         _ => 0,
     };
+    let texts: Vec<Conversation> = texts.into_iter().filter(|c| counted(&c.id, c.date)).collect();
+    let marked = local
+        .marked_unread()
+        .filter(|id| {
+            open.as_deref() != Some(*id)
+                && (texts.iter().any(|c| c.id == *id) || chat_ids.iter().any(|c| c == id))
+        })
+        .count() as u32;
     let texts = match &r.texts {
         // Reading the files of what was read here only when something could count.
         Some(base)
@@ -360,7 +380,7 @@ fn counts(device: DeviceId, watched: bool) -> (u32, u32) {
         }
         Some(seen)
     });
-    (texts + chats, calls_seen.map_or(0, |seen| unseen_missed(&missed, seen)))
+    (texts + chats + marked, calls_seen.map_or(0, |seen| unseen_missed(&missed, seen)))
 }
 
 /// Works out the counts and tells the rail if they changed.
