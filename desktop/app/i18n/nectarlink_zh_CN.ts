@@ -7662,6 +7662,11 @@ What it needs
         <source>PC speaker</source>
         <translation>电脑扬声器</translation>
     </message>
+    <message>
+        <location filename="../qml/components/NowPlaying.qml" line="1"/>
+        <source>Time shown: %1. Click to switch</source>
+        <translation>显示的时间：%1。点击切换</translation>
+    </message>
 </context>
 <context>
     <name>Obs</name>
@@ -11839,6 +11844,31 @@ What it needs
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>A phone paired with this PC in Bluetooth settings stays connected without Wi-Fi or data, for notifications, texts, calls and the clipboard. Turn it on in the phone&apos;s Settings too.</source>
         <translation>在蓝牙设置中与此电脑配对的手机，在没有 Wi-Fi 或移动数据时仍保持连接，用于通知、短信、通话和剪贴板。也请在手机的设置中打开。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Now playing time</source>
+        <translation>正在播放的时间</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>What the time on the right of Now playing on Home shows. Clicking it there switches too.</source>
+        <translation>主页“正在播放”右侧显示的时间。在那里点击它也会切换。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Remaining</source>
+        <translation>剩余</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Total</source>
+        <translation>总时长</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Both</source>
+        <translation>两者</translation>
     </message>
 </context>
 <context>

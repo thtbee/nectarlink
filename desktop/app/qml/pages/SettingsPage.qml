@@ -1213,6 +1213,25 @@ Item {
 
                         Divider { width: parent.width }
 
+                        // The right-hand time on Home's Now playing card (#658).
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.play
+                            title: qsTr("Now playing time")
+                            description: qsTr("What the time on the right of Now playing on Home shows. Clicking it there switches too.")
+                            Segmented {
+                                options: [
+                                    { value: "remaining", label: qsTr("Remaining") },
+                                    { value: "total", label: qsTr("Total") },
+                                    { value: "both", label: qsTr("Both") }
+                                ]
+                                value: ["total", "both"].indexOf(Preferences.mediaTime) >= 0 ? Preferences.mediaTime : "remaining"
+                                onPicked: (v) => Preferences.mediaTime = v
+                            }
+                        }
+
+                        Divider { width: parent.width }
+
                         // Row 1: Start with Windows | Stay in system tray
                         Item {
                             id: startupPairRow

@@ -7627,6 +7627,11 @@ Nó cần gì
         <source>PC speaker</source>
         <translation>Loa PC</translation>
     </message>
+    <message>
+        <location filename="../qml/components/NowPlaying.qml" line="1"/>
+        <source>Time shown: %1. Click to switch</source>
+        <translation>Thời gian hiển thị: %1. Bấm để chuyển</translation>
+    </message>
 </context>
 <context>
     <name>Obs</name>
@@ -11792,6 +11797,31 @@ Nó cần gì
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>A phone paired with this PC in Bluetooth settings stays connected without Wi-Fi or data, for notifications, texts, calls and the clipboard. Turn it on in the phone&apos;s Settings too.</source>
         <translation>Điện thoại đã ghép nối với máy tính này trong cài đặt Bluetooth vẫn kết nối khi không có Wi-Fi hay dữ liệu, cho thông báo, tin nhắn, cuộc gọi và bộ nhớ tạm. Hãy bật cả trong cài đặt của điện thoại.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Now playing time</source>
+        <translation>Thời gian ở Đang phát</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>What the time on the right of Now playing on Home shows. Clicking it there switches too.</source>
+        <translation>Thời gian ở bên phải Đang phát trên Trang chủ hiển thị gì. Bấm vào đó cũng chuyển đổi.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Remaining</source>
+        <translation>Còn lại</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Total</source>
+        <translation>Tổng</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Both</source>
+        <translation>Cả hai</translation>
     </message>
 </context>
 <context>
