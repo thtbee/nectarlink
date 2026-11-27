@@ -6453,6 +6453,21 @@ Nó cần gì
         <source>This feature is turned off for this phone in Settings › Devices.</source>
         <translation>Tính năng này đã bị tắt cho điện thoại này trong Cài đặt › Thiết bị.</translation>
     </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="32"/>
+        <source>Needs Windows 11</source>
+        <translation>Cần Windows 11</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="32"/>
+        <source>Needs a newer Windows</source>
+        <translation>Cần Windows mới hơn</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="34"/>
+        <source>Needs Android %1</source>
+        <translation>Cần Android %1</translation>
+    </message>
 </context>
 <context>
     <name>MainWindow</name>
@@ -7626,6 +7641,11 @@ Nó cần gì
         <location filename="../qml/components/NowPlaying.qml" line="825"/>
         <source>PC speaker</source>
         <translation>Loa PC</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/NowPlaying.qml" line="1"/>
+        <source>Time shown: %1. Click to switch</source>
+        <translation>Thời gian hiển thị: %1. Bấm để chuyển</translation>
     </message>
 </context>
 <context>
@@ -11802,6 +11822,31 @@ Nó cần gì
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>How this PC shows on your phones and other PCs. Leave it empty to use the computer&apos;s name, %1.</source>
         <translation>Tên máy tính này hiển thị trên điện thoại và các máy tính khác của bạn. Để trống để dùng tên máy, %1.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Now playing time</source>
+        <translation>Thời gian ở Đang phát</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>What the time on the right of Now playing on Home shows. Clicking it there switches too.</source>
+        <translation>Thời gian ở bên phải Đang phát trên Trang chủ hiển thị gì. Bấm vào đó cũng chuyển đổi.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Remaining</source>
+        <translation>Còn lại</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Total</source>
+        <translation>Tổng</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Both</source>
+        <translation>Cả hai</translation>
     </message>
 </context>
 <context>

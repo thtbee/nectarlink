@@ -6459,6 +6459,21 @@ What it needs
         <source>This feature is turned off for this phone in Settings › Devices.</source>
         <translation>Эта функция выключена для этого телефона в Настройки › Устройства.</translation>
     </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="32"/>
+        <source>Needs Windows 11</source>
+        <translation>Нужна Windows 11</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="32"/>
+        <source>Needs a newer Windows</source>
+        <translation>Нужна более новая Windows</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="34"/>
+        <source>Needs Android %1</source>
+        <translation>Нужен Android %1</translation>
+    </message>
 </context>
 <context>
     <name>MainWindow</name>
@@ -7636,6 +7651,11 @@ What it needs
         <location filename="../qml/components/NowPlaying.qml" line="825"/>
         <source>PC speaker</source>
         <translation>Динамик ПК</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/NowPlaying.qml" line="1"/>
+        <source>Time shown: %1. Click to switch</source>
+        <translation>Показано время: %1. Нажмите, чтобы переключить</translation>
     </message>
 </context>
 <context>
@@ -11812,6 +11832,31 @@ What it needs
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>How this PC shows on your phones and other PCs. Leave it empty to use the computer&apos;s name, %1.</source>
         <translation>Как этот ПК отображается на ваших телефонах и других ПК. Оставьте пустым, чтобы использовать имя компьютера, %1.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Now playing time</source>
+        <translation>Время в «Сейчас играет»</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>What the time on the right of Now playing on Home shows. Clicking it there switches too.</source>
+        <translation>Что показывает время справа в «Сейчас играет» на главной. Нажатие на него там тоже переключает.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Remaining</source>
+        <translation>Осталось</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Total</source>
+        <translation>Всего</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Both</source>
+        <translation>Оба</translation>
     </message>
 </context>
 <context>

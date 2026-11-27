@@ -6448,6 +6448,21 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
         <source>This feature is turned off for this phone in Settings › Devices.</source>
         <translation>この機能は、「設定」＞「デバイス」でこのスマートフォン向けにオフになっています。</translation>
     </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="32"/>
+        <source>Needs Windows 11</source>
+        <translation>Windows 11 が必要</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="32"/>
+        <source>Needs a newer Windows</source>
+        <translation>新しい Windows が必要</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="34"/>
+        <source>Needs Android %1</source>
+        <translation>Android %1 が必要</translation>
+    </message>
 </context>
 <context>
     <name>MainWindow</name>
@@ -7621,6 +7636,11 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
         <location filename="../qml/components/NowPlaying.qml" line="825"/>
         <source>PC speaker</source>
         <translation>PCスピーカー</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/NowPlaying.qml" line="1"/>
+        <source>Time shown: %1. Click to switch</source>
+        <translation>表示中の時間: %1。クリックで切り替え</translation>
     </message>
 </context>
 <context>
@@ -11785,6 +11805,31 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>How this PC shows on your phones and other PCs. Leave it empty to use the computer&apos;s name, %1.</source>
         <translation>スマートフォンや他の PC でのこの PC の表示名です。空欄にするとコンピューター名 %1 を使います。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Now playing time</source>
+        <translation>再生中の時間表示</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>What the time on the right of Now playing on Home shows. Clicking it there switches too.</source>
+        <translation>ホームの「再生中」の右側に表示する時間です。そこをクリックしても切り替わります。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Remaining</source>
+        <translation>残り</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Total</source>
+        <translation>全体</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Both</source>
+        <translation>両方</translation>
     </message>
 </context>
 <context>

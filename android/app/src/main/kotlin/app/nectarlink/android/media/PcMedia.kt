@@ -42,8 +42,9 @@ import kotlinx.coroutines.launch
  * goes to the PC through [send]; the PC's new state comes back as an update.
  *
  * While a PC player plays and [volumeKeys] is on, the session's volume is
- * the PC's: Android then sends the phone's volume buttons to it (unless
- * the phone plays something itself), and [setPcAudio] passes them on.
+ * the PC's: Android then sends the phone's volume buttons to it, and
+ * [setPcAudio] passes them on. Not while the phone plays something itself
+ * ([phonePlaying]): the buttons are the phone's then (#643).
  *
  * Applies snapshots in arrival order and decodes artwork off the main thread.
  */
@@ -212,6 +213,16 @@ class PcMedia(
         session?.let { route(it) }
     }
 
+    /** Whether something plays on the phone itself: its volume buttons stay its own then. */
+    private var phonePlaying = false
+
+    /** Something on the phone started or stopped playing (#643). */
+    fun phonePlaying(playing: Boolean) = main.post {
+        if (playing == phonePlaying) return@post
+        phonePlaying = playing
+        session?.let { route(it) }
+    }
+
     /** Whether the volume buttons may set a playing PC's volume (Settings). */
     fun volumeKeys(enabled: Boolean) = main.post {
         if (enabled == volumeKeys) return@post
@@ -329,12 +340,13 @@ class PcMedia(
     }
 
     /**
-     * Gives the session the shown PC's volume while that PC plays and its
-     * volume is known, and the phone's media volume otherwise.
+     * Gives the session the shown PC's volume while that PC plays, its volume
+     * is known and nothing plays on the phone, and the phone's media volume
+     * otherwise.
      */
     private fun route(session: MediaSession) {
         val (pc, player) = shown ?: return
-        val level = levels[pc]?.takeIf { volumeKeys && player.playing }
+        val level = levels[pc]?.takeIf { volumeKeys && player.playing && !phonePlaying }
         if (level == null) {
             if (remote != null) {
                 remote = null

@@ -6480,6 +6480,21 @@ Neler gerekir
         <source>This feature is turned off for this phone in Settings › Devices.</source>
         <translation>Bu özellik bu telefon için Ayarlar › Cihazlar bölümünde kapalı.</translation>
     </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="32"/>
+        <source>Needs Windows 11</source>
+        <translation>Windows 11 gerekir</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="32"/>
+        <source>Needs a newer Windows</source>
+        <translation>Daha yeni bir Windows gerekir</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="34"/>
+        <source>Needs Android %1</source>
+        <translation>Android %1 gerekir</translation>
+    </message>
 </context>
 <context>
     <name>MainWindow</name>
@@ -7657,6 +7672,11 @@ Neler gerekir
         <location filename="../qml/components/NowPlaying.qml" line="825"/>
         <source>PC speaker</source>
         <translation>Bilgisayar hoparlörü</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/NowPlaying.qml" line="1"/>
+        <source>Time shown: %1. Click to switch</source>
+        <translation>Gösterilen süre: %1. Değiştirmek için tıklayın</translation>
     </message>
 </context>
 <context>
@@ -11845,6 +11865,31 @@ Neler gerekir
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>How this PC shows on your phones and other PCs. Leave it empty to use the computer&apos;s name, %1.</source>
         <translation>Bu bilgisayarın telefonlarınızda ve diğer bilgisayarlarda nasıl görüneceği. Bilgisayar adını (%1) kullanmak için boş bırakın.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Now playing time</source>
+        <translation>Şimdi çalıyor süresi</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>What the time on the right of Now playing on Home shows. Clicking it there switches too.</source>
+        <translation>Ana sayfadaki Şimdi çalıyor&apos;un sağındaki sürenin ne gösterdiği. Oraya tıklamak da değiştirir.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Remaining</source>
+        <translation>Kalan</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Total</source>
+        <translation>Toplam</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Both</source>
+        <translation>İkisi</translation>
     </message>
 </context>
 <context>

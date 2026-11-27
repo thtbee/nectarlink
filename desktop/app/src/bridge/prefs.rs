@@ -69,6 +69,8 @@ pub mod qobject {
         #[qproperty(QString, own_name, cxx_name = "ownName")]
         /// The app's language: "" for the system's, "en", "zh_CN".
         #[qproperty(QString, language)]
+        /// What Now playing's right-hand time shows: "remaining", "total" or "both" (#658).
+        #[qproperty(QString, media_time)]
         /// Quiet phone notification pop-ups on the PC while the phone is in Do Not Disturb.
         #[qproperty(bool, sync_dnd)]
         /// In mirroring and app windows, Enter sends and Ctrl+Enter makes a new line.
@@ -425,6 +427,7 @@ pub struct PreferencesRust {
     mute_while_watched: bool,
     own_name: QString,
     language: QString,
+    media_time: QString,
     sync_dnd: bool,
     enter_sends: bool,
     right_click_long_press: bool,
@@ -544,6 +547,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_mute_while_watched(settings.mute_while_watched);
         self.as_mut().set_own_name(QString::from(&settings.own_name));
         self.as_mut().set_language(QString::from(&settings.language));
+        self.as_mut().set_media_time(QString::from(&settings.media_time));
         crate::pc_mirror::set_mute_while_watched(settings.mute_while_watched);
         crate::calls::set_pause_media_on_call(settings.pause_media_on_call);
         self.as_mut().set_sync_dnd(settings.sync_dnd);
@@ -660,6 +664,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().on_amoled_changed(|p| p.save()).release();
         self.as_mut().on_backdrop_changed(|p| p.save()).release();
         self.as_mut().on_comb_motion_changed(|p| p.save()).release();
+        self.as_mut().on_media_time_changed(|p| p.save()).release();
         self.as_mut().on_close_to_tray_changed(|p| p.save()).release();
         self.as_mut()
             .on_tray_one_colour_changed(|p| {
@@ -1466,6 +1471,7 @@ impl qobject::Preferences {
             mute_while_watched: p.mute_while_watched,
             own_name: String::from(&p.own_name).trim().to_owned(),
             language: String::from(&p.language),
+            media_time: String::from(&p.media_time),
             sync_dnd: p.sync_dnd,
             enter_sends: p.enter_sends,
             right_click_long_press: p.right_click_long_press,

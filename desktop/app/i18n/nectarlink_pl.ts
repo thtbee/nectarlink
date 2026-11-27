@@ -6490,6 +6490,21 @@ Wymagania
         <source>This feature is turned off for this phone in Settings › Devices.</source>
         <translation>Ta funkcja jest wyłączona dla tego telefonu w Ustawienia › Urządzenia.</translation>
     </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="32"/>
+        <source>Needs Windows 11</source>
+        <translation>Wymaga Windows 11</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="32"/>
+        <source>Needs a newer Windows</source>
+        <translation>Wymaga nowszego Windows</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/LockChip.qml" line="34"/>
+        <source>Needs Android %1</source>
+        <translation>Wymaga Androida %1</translation>
+    </message>
 </context>
 <context>
     <name>MainWindow</name>
@@ -7671,6 +7686,11 @@ Wymagania
         <location filename="../qml/components/NowPlaying.qml" line="825"/>
         <source>PC speaker</source>
         <translation>Głośnik komputera</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/NowPlaying.qml" line="1"/>
+        <source>Time shown: %1. Click to switch</source>
+        <translation>Pokazany czas: %1. Kliknij, aby przełączyć</translation>
     </message>
 </context>
 <context>
@@ -11859,6 +11879,31 @@ Wymagania
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>How this PC shows on your phones and other PCs. Leave it empty to use the computer&apos;s name, %1.</source>
         <translation>Jak ten komputer wyświetla się na twoich telefonach i innych komputerach. Zostaw puste, aby użyć nazwy komputera, %1.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Now playing time</source>
+        <translation>Czas w W trakcie odtwarzania</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>What the time on the right of Now playing on Home shows. Clicking it there switches too.</source>
+        <translation>Co pokazuje czas po prawej w W trakcie odtwarzania na stronie głównej. Kliknięcie go tam też przełącza.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Remaining</source>
+        <translation>Pozostało</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Total</source>
+        <translation>Całość</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Both</source>
+        <translation>Oba</translation>
     </message>
 </context>
 <context>
