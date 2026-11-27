@@ -101,6 +101,15 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "firstFor"]
         fn first_for(self: &MediaList, device: &QString) -> i32;
+        /// A device's players ("local" for this PC), as JSON
+        /// `[{ "id", "app", "playing" }]` in row order (#665).
+        #[qinvokable]
+        #[cxx_name = "playersFor"]
+        fn players_for(self: &MediaList, device: &QString) -> QString;
+        /// The row of one of a device's players, or -1 once it's gone.
+        #[qinvokable]
+        #[cxx_name = "rowOf"]
+        fn row_of(self: &MediaList, device: &QString, player: &QString) -> i32;
         /// Whether the player at `row` is currently playing.
         #[qinvokable]
         #[cxx_name = "isPlaying"]
@@ -164,6 +173,25 @@ const ROLES: &[&str] = &[
     "canSeek",
 ];
 const USER_ROLE: i32 = 0x0100;
+
+/// Whether `row` is a player of `device`: "local" for this PC, else a device ID.
+fn of_device(row: &PlayerView, device: &str) -> bool {
+    if device == "local" {
+        row.device == media::LOCAL_DEVICE
+    } else {
+        row.device != media::LOCAL_DEVICE && row.device.to_string() == device
+    }
+}
+
+/// [`qobject::MediaList::players_for`]'s JSON.
+fn players_json(rows: &[PlayerView], device: &str) -> String {
+    let players: Vec<serde_json::Value> = rows
+        .iter()
+        .filter(|r| of_device(r, device))
+        .map(|r| serde_json::json!({ "id": r.player.id, "app": r.player.app, "playing": r.player.playing }))
+        .collect();
+    serde_json::Value::Array(players).to_string()
+}
 
 fn role_value(row: &PlayerView, role: &str) -> QVariant {
     let text = |s: &str| QVariant::from(&QString::from(s));
@@ -306,17 +334,22 @@ impl qobject::MediaList {
 
     pub fn first_for(&self, device: &QString) -> i32 {
         let device = String::from(device);
-        let matches_dev = |r: &PlayerView| {
-            if device == "local" {
-                r.device == media::LOCAL_DEVICE
-            } else {
-                r.device != media::LOCAL_DEVICE && r.device.to_string() == device
-            }
-        };
         self.rows
             .iter()
-            .position(|r| matches_dev(r) && r.player.playing)
-            .or_else(|| self.rows.iter().position(matches_dev))
+            .position(|r| of_device(r, &device) && r.player.playing)
+            .or_else(|| self.rows.iter().position(|r| of_device(r, &device)))
+            .map_or(-1, |row| row as i32)
+    }
+
+    pub fn players_for(&self, device: &QString) -> QString {
+        QString::from(&players_json(&self.rows, &String::from(device)))
+    }
+
+    pub fn row_of(&self, device: &QString, player: &QString) -> i32 {
+        let (device, player) = (String::from(device), String::from(player));
+        self.rows
+            .iter()
+            .position(|r| of_device(r, &device) && r.player.id == player)
             .map_or(-1, |row| row as i32)
     }
 
@@ -416,6 +449,50 @@ mod tests {
     use nectarlink_core::{DeviceId, MediaPlayer};
 
     use super::*;
+
+    fn player(device: DeviceId, id: &str, app: &str, playing: bool) -> PlayerView {
+        PlayerView {
+            device,
+            player: MediaPlayer {
+                id: id.into(),
+                app: app.into(),
+                title: None,
+                artist: None,
+                album: None,
+                playing,
+                duration: None,
+                position: None,
+                actions: Vec::new(),
+                art_key: None,
+                art: None,
+            },
+            art: None,
+            at: UNIX_EPOCH,
+        }
+    }
+
+    #[test]
+    fn a_devices_players_are_listed_in_row_order() {
+        let phone = DeviceId([4; 32]);
+        let rows = vec![
+            player(phone, "com.music", "Music", true),
+            player(media::LOCAL_DEVICE, "spotify", "Spotify", false),
+            player(media::LOCAL_DEVICE, "aimp", "AIMP", true),
+        ];
+        let json: serde_json::Value = serde_json::from_str(&players_json(&rows, "local")).unwrap();
+        assert_eq!(
+            json,
+            serde_json::json!([
+                { "id": "spotify", "app": "Spotify", "playing": false },
+                { "id": "aimp", "app": "AIMP", "playing": true },
+            ])
+        );
+        assert_eq!(
+            serde_json::from_str::<serde_json::Value>(&players_json(&rows, &phone.to_string())).unwrap()[0]["id"],
+            "com.music"
+        );
+        assert_eq!(players_json(&rows, "nobody"), "[]");
+    }
 
     #[test]
     fn roles_describe_the_player() {

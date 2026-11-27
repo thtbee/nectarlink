@@ -129,6 +129,10 @@ The other PC can be on Windows or Linux; a Mac can't take another PC's mouse yet
 When more than one thing plays, or something plays on the phone itself, the phone's Home shows **Now playing**: every player on your PCs and on the phone, a page each to swipe through. Each has play and pause, previous and next, and the position in the track where the app allows seeking. A PC's player has that PC's volume and output; one on the phone has the phone's media volume and **Choose where it plays**, Android's own output switcher (its volume panel before Android 14). The phone's own players need notification access, as for showing them on the PC.
 ### The PC's Wi-Fi and Bluetooth on the phone
 
+### Now playing on the PC
+
+The PC's Home shows what plays on the phone and on this PC, with **Phone** and **PC** to switch between them. When several players run on this PC, such as Spotify and a video player, their names sit in a row under the header: click one to control it. The card stays on that player until it closes or another player starts playing, which it then follows.
+
 On a Windows or Linux PC that has them, the PC's card on the phone's Home and the bar at the top of **Deck** show whether its Wi-Fi and Bluetooth are on, and tapping one switches it. Turning the PC's Wi-Fi off asks first: if the phone reaches the PC over Wi-Fi, the two lose the connection until Wi-Fi is back on at the PC. It needs **PC actions** or **Remote input** on for that phone in PC **Settings › Devices**, like the PC's volume. On Linux, NetworkManager and BlueZ decide whether your user may switch them.
 
 ### 4. Phone Controls on PC Home

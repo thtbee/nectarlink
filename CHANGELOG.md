@@ -8,6 +8,9 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Pick which of the PC's players Now playing controls.** With several players running on the PC,
+  their names sit in a row on the PC's Now playing card: click one to control it. Thanks to
+  [@jed84](https://github.com/jed84) ([#665](https://github.com/thtbee/nectarlink/issues/665)).
 - **A setup video.** The README shows the whole setup in 74 seconds: installing the phone app,
   pairing by QR code, Assist and Elevated. Thanks to [@aihehye](https://github.com/aihehye) ([#641](https://github.com/thtbee/nectarlink/discussions/641)).
 - **The Mac app lives in the menu bar when its window is closed.** With **Stay in system tray**
