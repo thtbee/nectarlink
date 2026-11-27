@@ -8,6 +8,9 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Now playing shows the time you want.** The time on the right of Now playing on the PC's Home
+  can show what's left, the whole length, or both: click it to switch, or pick in Settings ›
+  General. Thanks to [@jed84](https://github.com/jed84) ([#658](https://github.com/thtbee/nectarlink/issues/658)).
 - **One mouse and keyboard for two PCs.** Set another paired PC **Beside this PC** on the left
   or right, and the mouse goes over that edge of the screen onto it, with the keyboard typing
   there, no phone needed. The other PC asks first. From Windows, to Windows or Linux. Thanks to

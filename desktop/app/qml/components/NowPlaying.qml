@@ -653,12 +653,32 @@ Card {
                 width: parent.width
                 height: elapsedText.height
                 Txt { id: elapsedText; role: "caption"; size: 10; muted: true; text: card.clockFromSec(card.shownSeconds) }
+                // Remaining, the whole length, or both (#658); a click goes to the next.
                 Txt {
+                    id: timeText
+                    readonly property string mode: ["remaining", "total", "both"].indexOf(Preferences.mediaTime) >= 0
+                        ? Preferences.mediaTime : "remaining"
+                    readonly property string remaining: "-" + card.clockFromSec(card.remainingSeconds)
+                    readonly property string total: card.clockFromSec(Math.floor(card.duration / 1000))
                     anchors.right: parent.right
                     role: "caption"
                     size: 10
-                    muted: true
-                    text: "-" + card.clockFromSec(card.remainingSeconds)
+                    muted: !timeMouse.containsMouse
+                    text: mode === "total" ? total : mode === "both" ? remaining + " / " + total : remaining
+                    Accessible.role: Accessible.Button
+                    Accessible.name: qsTr("Time shown: %1. Click to switch").arg(text)
+                    Accessible.onPressAction: timeText.next()
+                    function next() {
+                        Preferences.mediaTime = mode === "remaining" ? "total" : mode === "total" ? "both" : "remaining"
+                    }
+                    MouseArea {
+                        id: timeMouse
+                        anchors.fill: parent
+                        anchors.margins: -4
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: timeText.next()
+                    }
                 }
             }
         }

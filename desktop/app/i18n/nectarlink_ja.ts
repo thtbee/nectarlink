@@ -7622,6 +7622,11 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
         <source>PC speaker</source>
         <translation>PCスピーカー</translation>
     </message>
+    <message>
+        <location filename="../qml/components/NowPlaying.qml" line="1"/>
+        <source>Time shown: %1. Click to switch</source>
+        <translation>表示中の時間: %1。クリックで切り替え</translation>
+    </message>
 </context>
 <context>
     <name>Obs</name>
@@ -11775,6 +11780,31 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>A phone paired with this PC in Bluetooth settings stays connected without Wi-Fi or data, for notifications, texts, calls and the clipboard. Turn it on in the phone&apos;s Settings too.</source>
         <translation>Bluetooth 設定でこの PC とペアリングしたスマートフォンは、Wi-Fi やモバイルデータがなくても通知、メッセージ、通話、クリップボードのために接続されたままになります。スマートフォンの設定でもオンにしてください。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Now playing time</source>
+        <translation>再生中の時間表示</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>What the time on the right of Now playing on Home shows. Clicking it there switches too.</source>
+        <translation>ホームの「再生中」の右側に表示する時間です。そこをクリックしても切り替わります。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Remaining</source>
+        <translation>残り</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Total</source>
+        <translation>全体</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Both</source>
+        <translation>両方</translation>
     </message>
 </context>
 <context>
