@@ -2,7 +2,6 @@
 //! Automations ("When X, Do Y", §3.11 P2): lightweight event-driven rules
 //! persisted in `settings.json` (`automation_rules`).
 
-use crate::i18n::tr;
 use std::{
     collections::HashMap,
     sync::{Mutex, OnceLock},
@@ -77,12 +76,40 @@ fn execute_rule(rule: &AutomationRule) {
     if let Err(e) = res {
         tracing::warn!(rule = %rule.name, trigger = %rule.trigger, error = %e, "automation action failed");
     } else {
-        let _ = crate::pc_notifications::forward_to_phones(
-            "NectarLink Automations",
-            &rule.name,
-            &tr!("Automations", "Triggered by %1", rule.trigger),
+        // What ran and why, in the words Settings uses; only a confirmation, so brief.
+        crate::pc_notifications::forward_briefly(
+            "NectarLink",
+            &action_label(&rule.action_kind),
+            &trigger_label(&rule.trigger),
+            std::time::Duration::from_secs(10),
         );
     }
+}
+
+/// A trigger as Settings › Automations names it (its translations are the page's).
+fn trigger_label(trigger: &str) -> String {
+    let text = match trigger {
+        TRIGGER_PHONE_CONNECTED => "When phone connects",
+        TRIGGER_PHONE_DISCONNECTED => "When phone disconnects",
+        TRIGGER_CALL_RINGING => "When phone rings",
+        TRIGGER_CALL_ENDED => "When call ends",
+        TRIGGER_BATTERY_LOW => "When phone battery is low",
+        other => return other.replace('_', " "),
+    };
+    crate::i18n::translate("SettingsPage", text)
+}
+
+/// An action as Settings › Automations names it.
+fn action_label(action: &str) -> String {
+    let text = match action {
+        ACTION_LOCK_PC => "Lock this PC",
+        ACTION_PAUSE_PC_MEDIA => "Pause PC media",
+        ACTION_MUTE_PC => "Mute PC audio",
+        ACTION_UNMUTE_PC => "Unmute PC audio",
+        ACTION_RUN_COMMAND => "Run command",
+        other => return other.replace('_', " "),
+    };
+    crate::i18n::translate("SettingsPage", text)
 }
 
 /// Evaluates all enabled rules in `settings::automation_rules()` matching `trigger`

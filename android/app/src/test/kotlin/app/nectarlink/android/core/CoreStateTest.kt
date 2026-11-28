@@ -233,6 +233,9 @@ class CoreStateTest {
         assertEquals(0xFF3E6A8Au, state.device("p1")!!.accent)
 
         assertEquals(state, state.reduce(Event.TimelineChanged))
+        // A note is on the timeline; its notification is Core's, nothing to fold.
+        assertEquals(state, state.reduce(Event.ChatReceived("p1", "n1", "hi")))
+        assertEquals(false, Event.ChatReceived("p1", "n1", "hi").affectsCoreState())
     }
 
     @Test

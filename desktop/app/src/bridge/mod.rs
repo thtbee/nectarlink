@@ -12,6 +12,8 @@ pub mod app;
 #[allow(unsafe_code)]
 pub mod calls;
 #[allow(unsafe_code)]
+pub mod chat;
+#[allow(unsafe_code)]
 pub mod deck;
 #[allow(unsafe_code)]
 pub mod devices;

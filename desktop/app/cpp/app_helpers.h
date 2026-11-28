@@ -72,6 +72,7 @@ rust::Vec<uint8_t> decode_image(rust::Slice<const uint8_t> bytes);
 int64_t mac_clipboard_change_count();
 rust::String mac_clipboard_read_text(bool &is_private);
 bool mac_clipboard_write_text(rust::Str text, bool is_private);
+void mac_set_dock_visible(bool visible);
 
 int64_t mac_local_offset_ms(int64_t at_ms);
 uint64_t mac_free_space(rust::Str path, bool &ok);

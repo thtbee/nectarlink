@@ -1518,6 +1518,175 @@
     </message>
 </context>
 <context>
+    <name>Chat</name>
+    <message>
+        <location filename="rust_strings.h" line="68"/>
+        <source>A note can have up to 8192 characters.</source>
+        <translation>Bir not en fazla 8192 karakter olabilir.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="69"/>
+        <source>New note</source>
+        <translation>Yeni not</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="70"/>
+        <source>That note was deleted.</source>
+        <translation>Bu not silindi.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="71"/>
+        <source>Update NectarLink on the device to chat.</source>
+        <translation>Sohbet etmek için cihazdaki NectarLink&apos;i güncelleyin.</translation>
+    </message>
+</context>
+<context>
+    <name>ChatAttachment</name>
+    <message>
+        <location filename="../qml/components/ChatAttachment.qml" line="34"/>
+        <source>%1 · Moved or deleted</source>
+        <translation>%1 · Taşındı veya silindi</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ChatAttachment.qml" line="34"/>
+        <source>Moved or deleted</source>
+        <translation>Taşındı veya silindi</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ChatAttachment.qml" line="203"/>
+        <source>Open</source>
+        <translation>Aç</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ChatAttachment.qml" line="212"/>
+        <source>Show in folder</source>
+        <translation>Klasörde göster</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ChatAttachment.qml" line="220"/>
+        <source>Remove from chat</source>
+        <translation>Sohbetten kaldır</translation>
+    </message>
+</context>
+<context>
+    <name>ChatNote</name>
+    <message>
+        <location filename="../qml/components/ChatNote.qml" line="121"/>
+        <source>Copy text</source>
+        <translation>Metni kopyala</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ChatNote.qml" line="130"/>
+        <source>Edit</source>
+        <translation>Düzenle</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ChatNote.qml" line="138"/>
+        <source>Delete</source>
+        <translation>Sil</translation>
+    </message>
+</context>
+<context>
+    <name>ChatPage</name>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="19"/>
+        <source>%1 isn&apos;t connected</source>
+        <translation>%1 bağlı değil</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="20"/>
+        <source>Update NectarLink on %1 to chat</source>
+        <translation>Sohbet etmek için %1 cihazında NectarLink&apos;i güncelleyin</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="66"/>
+        <source>Today</source>
+        <translation>Bugün</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="67"/>
+        <source>Yesterday</source>
+        <translation>Dün</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="131"/>
+        <source>No notes yet</source>
+        <translation>Henüz not yok</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="139"/>
+        <source>What you write here shows on %1, and the other way round.</source>
+        <translation>Burada yazdıklarınız %1 cihazında görünür, tersi de geçerli.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="229"/>
+        <location filename="../qml/pages/ChatPage.qml" line="284"/>
+        <source>Editing note</source>
+        <translation>Not düzenleniyor</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="236"/>
+        <source>Cancel editing</source>
+        <translation>Düzenlemeyi iptal et</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="284"/>
+        <location filename="../qml/pages/ChatPage.qml" line="308"/>
+        <source>Note to %1</source>
+        <translation>%1 için not</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="319"/>
+        <source>Save</source>
+        <translation>Kaydet</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="319"/>
+        <source>Send</source>
+        <translation>Gönder</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="358"/>
+        <source>Delete note?</source>
+        <translation>Not silinsin mi?</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="366"/>
+        <source>It&apos;s deleted on this PC and on %1.</source>
+        <translation>Bu bilgisayardan ve %1 cihazından silinir.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="367"/>
+        <source>It&apos;s deleted on this PC. %1 isn&apos;t connected, so it keeps its copy.</source>
+        <translation>Bu bilgisayardan silinir. %1 bağlı olmadığından kendi kopyasını tutar.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="374"/>
+        <source>Cancel</source>
+        <translation>İptal</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="379"/>
+        <source>Delete</source>
+        <translation>Sil</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="343"/>
+        <source>Send files</source>
+        <translation>Dosya gönder</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="441"/>
+        <source>Send files to %1</source>
+        <translation>%1 cihazına dosya gönder</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="482"/>
+        <source>Drop to send to %1</source>
+        <translation>%1 cihazına göndermek için bırakın</translation>
+    </message>
+</context>
+<context>
     <name>Clipboard</name>
     <message>
         <location filename="rust_strings.h" line="67"/>
@@ -2404,6 +2573,36 @@
         <source>Off</source>
         <translation>Kapalı</translation>
     </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Can&apos;t open that picture.</source>
+        <translation>Bu görüntü açılamıyor.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>That picture is over 20 MB. Choose a smaller one.</source>
+        <translation>Bu görüntü 20 MB&apos;tan büyük. Daha küçük bir görüntü seçin.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Can&apos;t read that picture. Try a PNG or JPEG.</source>
+        <translation>Bu görüntü okunamıyor. PNG veya JPEG deneyin.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>That picture has too much detail to send to a phone. Try a simpler one.</source>
+        <translation>Bu görüntüde telefona göndermek için fazla ayrıntı var. Daha sade bir görüntü deneyin.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Can&apos;t save the picture.</source>
+        <translation>Görüntü kaydedilemiyor.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>The picture is missing. Choose it again.</source>
+        <translation>Görüntü bulunamadı. Yeniden seçin.</translation>
+    </message>
 </context>
 <context>
     <name>DeckPage</name>
@@ -2742,8 +2941,8 @@
     </message>
     <message>
         <location filename="../qml/pages/DeckPage.qml" line="667"/>
-        <source>Phones see only each tile&apos;s label and icon. Paths and commands stay on this PC.</source>
-        <translation>Telefonlar her kutucuğun yalnızca etiketini ve simgesini görür. Yollar ve komutlar bu bilgisayarda kalır.</translation>
+        <source>Phones see only each tile&apos;s label, icon and picture. Paths and commands stay on this PC.</source>
+        <translation>Telefonlar her kutucuğun yalnızca etiketini, simgesini ve resmini görür. Yollar ve komutlar bu bilgisayarda kalır.</translation>
     </message>
     <message>
         <location filename="../qml/pages/DeckPage.qml" line="712"/>
@@ -2917,6 +3116,46 @@
         <location filename="../qml/pages/DeckPage.qml" line="1"/>
         <source>Choose what turning it off does:</source>
         <translation>Kapatınca ne yapacağını seçin:</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Choose a picture</source>
+        <translation>Bir görüntü seçin</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Pictures (*.png *.jpg *.jpeg *.bmp *.gif *.webp)</source>
+        <translation>Görüntüler (*.png *.jpg *.jpeg *.bmp *.gif *.webp)</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Picture</source>
+        <translation>Görüntü</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Choose…</source>
+        <translation>Seç…</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Remove</source>
+        <translation>Kaldır</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Getting the picture ready…</source>
+        <translation>Görüntü hazırlanıyor…</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Shown instead of the icon, here and on phones.</source>
+        <translation>Burada ve telefonlarda simgenin yerine gösterilir.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Optional. Square pictures look best.</source>
+        <translation>İsteğe bağlı. Kare görüntüler en iyi görünür.</translation>
     </message>
 </context>
 <context>
@@ -5372,6 +5611,36 @@ Neler gerekir
         <translation>Telefon sesi düzeyi</translation>
     </message>
     <message>
+        <location filename="../qml/pages/HomePage.qml" line="2595"/>
+        <source>Chat</source>
+        <translation>Sohbet</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="2604"/>
+        <source>Open</source>
+        <translation>Aç</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="2605"/>
+        <source>Chat with %1</source>
+        <translation>%1 ile sohbet</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="2655"/>
+        <source>Write a note to %1</source>
+        <translation>%1 için bir not yazın</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="2666"/>
+        <source>From %1 · %2</source>
+        <translation>Kaynak: %1 · %2</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="2667"/>
+        <source>You · %1</source>
+        <translation>Siz · %1</translation>
+    </message>
+    <message>
         <location filename="../qml/pages/HomePage.qml" line="2731"/>
         <source>Copy text</source>
         <translation>Metni kopyala</translation>
@@ -5647,7 +5916,7 @@ Neler gerekir
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1905"/>
         <source>Mirror</source>
-        <translation>Yansıt</translation>
+        <translation>Ayna görüntüsü</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1974"/>
@@ -6617,6 +6886,11 @@ Neler gerekir
         <translation>Yenilikler</translation>
     </message>
     <message>
+        <location filename="../qml/MainWindow.qml" line="937"/>
+        <source>Chat with %1</source>
+        <translation>%1 ile sohbet</translation>
+    </message>
+    <message>
         <location filename="../qml/MainWindow.qml" line="1107"/>
         <source>%1 is ringing this PC</source>
         <translation>%1 bu bilgisayarı çaldırıyor</translation>
@@ -6677,6 +6951,28 @@ Neler gerekir
         <location filename="../qml/MainWindow.qml" line="1263"/>
         <source>Paste into active window</source>
         <translation>Etkin pencereye yapıştır</translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../qml/MainWindow.qml" line="1"/>
+        <source>Device: %1. Switch device, %n new on the others</source>
+        <translation>
+            <numerusform>Cihaz: %1. Cihaz değiştir, diğerlerinde %n yeni</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow.qml" line="1"/>
+        <source>Device: %1. Switch device</source>
+        <translation>Cihaz: %1. Cihaz değiştir</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow.qml" line="1"/>
+        <source>Play this PC&apos;s sound on %1?</source>
+        <translation>Bu bilgisayarın sesi %1 üzerinde çalınsın mı?</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow.qml" line="1"/>
+        <source>%1 asked to play everything this PC plays, calls included, on itself.</source>
+        <translation>%1, bu bilgisayarın çaldığı her şeyi, aramalar dahil, kendisinde çalmak istiyor.</translation>
     </message>
 </context>
 <context>
@@ -9308,6 +9604,11 @@ Neler gerekir
         <translation>NectarLink ile %1 cihazına gönder</translation>
     </message>
     <message>
+        <location filename="rust_strings.h" line="534"/>
+        <source>Send with NectarLink</source>
+        <translation>NectarLink ile gönder</translation>
+    </message>
+    <message>
         <location filename="rust_strings.h" line="505"/>
         <source>Sending to %1…</source>
         <translation>%1 cihazına gönderiliyor…</translation>
@@ -11848,6 +12149,9 @@ Neler gerekir
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>Move the mouse past that edge of the screen to use it on that PC, and type there with this keyboard. Move it back, or press Ctrl+Alt+Esc, to return. That PC asks the first time, or turn on Remote mouse, keyboard &amp; Deck for this PC there.</source>
         <translation>Fareyi ekranın o kenarından öteye götürerek o bilgisayarda kullanın ve bu klavyeyle orada yazın. Geri dönmek için fareyi geri götürün ya da Ctrl+Alt+Esc&apos;ye basın. O bilgisayar ilk seferde sorar veya orada bu bilgisayar için Uzaktan fare, klavye ve Deck&apos;i açın.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>Bluetooth when there&apos;s no network</source>
         <translation>Ağ yokken Bluetooth</translation>
     </message>
@@ -11890,6 +12194,21 @@ Neler gerekir
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>Both</source>
         <translation>İkisi</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Mark texts read on the phone</source>
+        <translation>Mesajları telefonda da okundu olarak işaretle</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Reading a conversation here marks it read on the phone too, in its messaging app.</source>
+        <translation>Burada okunan bir konuşma, telefondaki mesajlaşma uygulamasında da okundu olarak işaretlenir.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>One color turns white or black to match the menu bar.</source>
+        <translation>Tek renk, menü çubuğuna uyacak şekilde beyaz ya da siyah olur.</translation>
     </message>
 </context>
 <context>
@@ -12572,6 +12891,11 @@ Neler gerekir
         <location filename="rust_strings.h" line="554"/>
         <source>device</source>
         <translation>cihaz</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="576"/>
+        <source>Sent note to %1.</source>
+        <translation>Not %1 cihazına gönderildi.</translation>
     </message>
 </context>
 <context>
@@ -13307,8 +13631,8 @@ Neler gerekir
     </message>
     <message>
         <location filename="../qml/pages/WalkthroughPage.qml" line="108"/>
-        <source>No accounts, no cloud servers, and no telemetry.</source>
-        <translation>Hesap yok, bulut sunucusu yok, telemetri yok.</translation>
+        <source>No accounts and no cloud servers. Only an anonymous daily count, which you can turn off.</source>
+        <translation>Hesap yok, bulut sunucusu yok. Yalnızca kapatabileceğiniz anonim bir günlük sayım var.</translation>
     </message>
     <message>
         <location filename="../qml/pages/WalkthroughPage.qml" line="109"/>
@@ -13820,6 +14144,41 @@ Neler gerekir
         <location filename="../qml/components/NewPill.qml" line="1"/>
         <source>New</source>
         <translation>Yeni</translation>
+    </message>
+</context>
+<context>
+    <name>DeviceMenu</name>
+    <message>
+        <location filename="../qml/components/DeviceMenu.qml" line="1"/>
+        <source>Devices</source>
+        <translation>Cihazlar</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/DeviceMenu.qml" line="1"/>
+        <source>offline</source>
+        <translation>çevrimdışı</translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../qml/components/DeviceMenu.qml" line="1"/>
+        <source>%n new</source>
+        <translation>
+            <numerusform>%n yeni</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location filename="../qml/components/DeviceMenu.qml" line="1"/>
+        <source>Pair a new device</source>
+        <translation>Yeni cihaz eşleştir</translation>
+    </message>
+</context>
+<context>
+    <name>NavItem</name>
+    <message numerus="yes">
+        <location filename="../qml/components/NavItem.qml" line="1"/>
+        <source>%1, %n new</source>
+        <translation>
+            <numerusform>%1, %n yeni</numerusform>
+        </translation>
     </message>
 </context>
 </TS>

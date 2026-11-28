@@ -87,7 +87,8 @@ object ReceivedFiles {
         }
         val uri = checkNotNull(resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values))
         try {
-            checkNotNull(resolver.openOutputStream(uri)).use { out -> file.inputStream().use { it.copyTo(out) } }
+            // 1 MiB at a time: the default 8 KiB made publishing a big file take a while.
+            checkNotNull(resolver.openOutputStream(uri)).use { out -> file.inputStream().use { it.copyTo(out, COPY_BUFFER) } }
             resolver.update(uri, ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) }, null, null)
         } catch (e: Exception) {
             resolver.delete(uri, null, null)
@@ -110,7 +111,9 @@ object ReceivedFiles {
             )
             n++
         }
-        file.copyTo(target)
+        file.copyTo(target, bufferSize = COPY_BUFFER)
         return FileProvider.getUriForFile(context, "${context.packageName}.files", target)
     }
+
+    private const val COPY_BUFFER = 1 shl 20
 }

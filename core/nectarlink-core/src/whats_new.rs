@@ -150,6 +150,10 @@ impl Seen {
 /// shows; on a new install everything counts as seen.
 pub fn note_start(dir: &Path, updated: bool) {
     let mut seen = Seen::load(dir);
+    // Most starts have nothing to note: then the changelog isn't parsed.
+    if !updated && !(seen.seen.is_empty() && !seen.pending) {
+        return;
+    }
     let releases = parse(CHANGELOG);
     if updated {
         let known: HashSet<&String> = seen.seen.iter().collect();
@@ -158,11 +162,9 @@ pub fn note_start(dir: &Path, updated: bool) {
             return;
         }
         seen.pending = true;
-    } else if seen.seen.is_empty() && !seen.pending {
+    } else {
         seen.seen = ids_of(&releases[..releases.len().min(1)]).cloned().collect();
         seen.version = releases.first().map(|r| r.version.clone()).unwrap_or_default();
-    } else {
-        return;
     }
     seen.save(dir);
 }

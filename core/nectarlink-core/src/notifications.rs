@@ -8,15 +8,15 @@
 //! user's dismissals, replies and actions go back as requests.
 
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{BTreeSet, HashMap, HashSet},
     sync::{Arc, Mutex},
 };
 
 use nectarlink_protocol::{
     DeviceId, Envelope, ErrorCode,
     messages::{
-        Notification, NotifyAction, NotifyHold, NotifyKey, NotifySnapshot, notify_limits::SNAPSHOT_ITEMS,
-        types,
+        Notification, NotifyAction, NotifyHide, NotifyHold, NotifyKey, NotifySnapshot,
+        notify_limits::SNAPSHOT_ITEMS, types,
     },
 };
 
@@ -32,6 +32,8 @@ use crate::{
 pub(crate) const TOGGLE: &str = "notifications";
 /// Offered by phones and tablets that show a paired device's notifications.
 pub const SHOW: &str = "notify.show";
+/// Understands `notify.hide`: keeps the notifications of apps a PC hides (#701).
+pub const HIDE: &str = "notify.hide";
 
 /// A snapshot stays well under the 1 MiB frame limit (v0 §3).
 const SNAPSHOT_BUDGET: usize = 768 * 1024;
@@ -67,6 +69,11 @@ struct FeedState {
     items: HashMap<String, Notification>,
     icons: HashMap<String, Vec<u8>>,
     peer_icons: HashMap<(DeviceId, String), Vec<u8>>,
+    /// On a phone: the apps each PC hides, read from the store once.
+    hidden: HashMap<DeviceId, BTreeSet<String>>,
+    /// On a PC: the apps hidden here, once the app has said (`None` before:
+    /// nothing is sent, so a phone keeps what it was last told).
+    hiding: Option<BTreeSet<String>>,
 }
 
 impl Feed {
@@ -102,7 +109,9 @@ impl Feed {
     }
 
     pub(crate) fn clear_peer(&self, peer: &DeviceId) {
-        self.lock().peer_icons.retain(|(p, _), _| p != peer);
+        let mut state = self.lock();
+        state.peer_icons.retain(|(p, _), _| p != peer);
+        state.hidden.remove(peer);
     }
 
     pub(crate) fn clear_all(&self) {
@@ -139,10 +148,11 @@ impl Feed {
         Some(n)
     }
 
-    fn remove(&self, key: &str) -> bool {
+    /// Forgets a notification; returns its app, or `None` if it wasn't here.
+    fn remove(&self, key: &str) -> Option<String> {
         let mut state = self.lock();
         state.active = true;
-        state.items.remove(key).is_some()
+        state.items.remove(key).map(|n| n.app)
     }
 
     fn reset(&self, items: Vec<Notification>) {
@@ -160,9 +170,10 @@ impl Feed {
 
     /// The newest notifications that fit a frame, each app's icon attached
     /// once unless `session` already got it.
-    fn snapshot(&self, session: &Session) -> NotifySnapshot {
+    fn snapshot(&self, session: &Session, hidden: &BTreeSet<String>) -> NotifySnapshot {
         let state = self.lock();
-        let mut items: Vec<&Notification> = state.items.values().collect();
+        let mut items: Vec<&Notification> =
+            state.items.values().filter(|n| !hidden.contains(&n.app)).collect();
         items.sort_by(|a, b| {
             b.live
                 .is_some()
@@ -277,6 +288,45 @@ impl Shared {
             .is_some_and(|p| role_of(&p.info) == Some(Role::Desktop) || p.caps.contains(SHOW))
     }
 
+    /// On a phone: the apps `peer` hides, whose notifications stay here.
+    fn hidden_by(&self, peer: &DeviceId) -> BTreeSet<String> {
+        if let Some(hidden) = self.notifications.lock().hidden.get(peer) {
+            return hidden.clone();
+        }
+        let hidden = self.store.notify_hidden(peer).unwrap_or_default();
+        self.notifications.lock().hidden.insert(*peer, hidden.clone());
+        hidden
+    }
+
+    /// On a PC: sets the apps hidden here and tells connected phones, which
+    /// then keep those apps' notifications to themselves.
+    pub(crate) async fn set_hidden_apps(&self, apps: BTreeSet<String>) {
+        let changed = {
+            let mut state = self.notifications.lock();
+            let changed = state.hiding.as_ref() != Some(&apps);
+            state.hiding = Some(apps);
+            changed
+        };
+        if changed {
+            for session in self.live_sessions() {
+                self.send_hidden_apps(&session).await;
+            }
+        }
+    }
+
+    /// On a PC: tells a phone that understands it which apps are hidden here.
+    pub(crate) async fn send_hidden_apps(&self, session: &Arc<Session>) {
+        let Some(apps) = self.notifications.lock().hiding.clone() else { return };
+        let understands =
+            self.store.get_peer(&session.peer).ok().flatten().is_some_and(|p| p.caps.contains(HIDE));
+        if understands
+            && let Ok(env) =
+                Envelope::new(types::NOTIFY_HIDE, &NotifyHide { apps: apps.into_iter().collect() })
+        {
+            let _ = session.send(env).await;
+        }
+    }
+
     /// Sends this phone's notifications to one PC: everything when the
     /// user allows it, an empty list (which clears the PC) when not.
     pub(crate) async fn send_notification_snapshot(&self, session: &Arc<Session>) {
@@ -287,7 +337,7 @@ impl Shared {
             return;
         }
         let snapshot = if self.notifications_allowed(&session.peer) {
-            self.notifications.snapshot(session)
+            self.notifications.snapshot(session, &self.hidden_by(&session.peer))
         } else {
             session.sent_icons().clear();
             NotifySnapshot { items: Vec::new() }
@@ -325,6 +375,10 @@ impl Shared {
     pub(crate) async fn notification_posted(&self, notification: Notification) {
         let Some(n) = self.notifications.post(notification) else { return };
         for session in self.notification_targets() {
+            // An app the PC hides: its notifications stay on this phone (#701).
+            if self.hidden_by(&session.peer).contains(&n.app) {
+                continue;
+            }
             if let Ok(env) =
                 Envelope::new(types::NOTIFY_POSTED, &self.notifications.for_session(&n, &session))
             {
@@ -334,11 +388,13 @@ impl Shared {
     }
 
     pub(crate) async fn notification_removed(&self, key: String) {
-        if !self.notifications.remove(&key) {
-            return;
-        }
+        let Some(app) = self.notifications.remove(&key) else { return };
         let Ok(env) = Envelope::new(types::NOTIFY_REMOVED, &NotifyKey { key }) else { return };
         for session in self.notification_targets() {
+            // A key names its app, so a hidden app's removals stay here too (#701).
+            if self.hidden_by(&session.peer).contains(&app) {
+                continue;
+            }
             let _ = session.send(env.clone()).await;
         }
     }
@@ -416,9 +472,23 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
             let NotifyHold { held } = env.body()?;
             session.hold_notifications(held);
         }
+        types::NOTIFY_HIDE => {
+            let apps = env.body::<NotifyHide>()?.sanitized();
+            if apps != shared.hidden_by(&peer) {
+                if let Err(e) = shared.store.set_notify_hidden(&peer, &apps) {
+                    tracing::warn!(error = %e, "can't keep the apps a PC hides");
+                }
+                shared.notifications.lock().hidden.insert(peer, apps);
+                // What that PC should have now: a newly hidden app's notifications
+                // leave it, a shown one's come back.
+                shared.send_notification_snapshot(session).await;
+            }
+        }
         types::NOTIFY_DISMISS => {
             let NotifyKey { key } = env.body()?;
-            let reply = match allowed(shared, &peer) {
+            // Dismissing needs no capability: a PC clears its own forwarded
+            // notifications (#705), and a device that can't answers unsupported.
+            let reply = match toggle_allowed(shared, &peer) {
                 Err(reply) => reply,
                 Ok(()) => {
                     let platform = shared.platform.clone();
@@ -467,6 +537,11 @@ fn allowed(shared: &Shared, peer: &DeviceId) -> std::result::Result<(), Envelope
     if !shared.we_offer("notify.reply") {
         return Err(Envelope::error(ErrorCode::Unsupported, "notification actions are not available"));
     }
+    toggle_allowed(shared, peer)
+}
+
+/// Whether the user lets `peer` have this device's notifications.
+fn toggle_allowed(shared: &Shared, peer: &DeviceId) -> std::result::Result<(), Envelope> {
     if !shared.notifications_allowed(peer) {
         return Err(Envelope::error(ErrorCode::Denied, "notifications are off for this device"));
     }

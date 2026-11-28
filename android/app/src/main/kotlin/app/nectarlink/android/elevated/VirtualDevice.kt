@@ -35,12 +35,23 @@ internal class VirtualDevice private constructor(private val device: Any) {
     @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     fun createVirtualDisplay(name: String, width: Int, height: Int, dpi: Int, surface: Surface, flags: Int): VirtualDisplay {
         val config = VirtualDisplayConfig.Builder(name, width, height, dpi).setFlags(flags).setSurface(surface).build()
-        return device.javaClass
+        val display = device.javaClass
             .getMethod("createVirtualDisplay", VirtualDisplayConfig::class.java, Executor::class.java, VirtualDisplay.Callback::class.java)
             .invoke(device, config, null, null) as VirtualDisplay
+        deviceId?.let { id -> display.display?.displayId?.let { owners[it] = id } }
+        return display
     }
 
+    /**
+     * This device's ID (VirtualDevice.getDeviceId), which its own clipboard
+     * goes by: apps on its displays use that clipboard, not the phone's (#713).
+     */
+    private val deviceId: Int? = runCatching { device.javaClass.getMethod("getDeviceId").invoke(device) as Int }
+        .onFailure { System.err.println("no virtual device ID: $it") }
+        .getOrNull()
+
     fun close() {
+        deviceId?.let { id -> owners.values.removeAll { it == id } }
         runCatching { device.javaClass.getMethod("close").invoke(device) }
             .onFailure { System.err.println("can't close the virtual device: $it") }
         synchronized(lock) {
@@ -53,6 +64,12 @@ internal class VirtualDevice private constructor(private val device: Any) {
     }
 
     companion object {
+        /** The displays made on virtual devices, and the ID of the device each is on. */
+        private val owners = java.util.concurrent.ConcurrentHashMap<Int, Int>()
+
+        /** The ID of the virtual device that owns display [displayId], if one does. */
+        fun deviceIdOf(displayId: Int): Int? = owners[displayId]
+
         private const val SHELL = "com.android.shell"
         private const val APP_STREAMING = "android.app.role.COMPANION_DEVICE_APP_STREAMING"
         /**

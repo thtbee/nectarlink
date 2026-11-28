@@ -27,10 +27,6 @@
     <binary>nectarlink-desktop</binary>
     <mediatype>x-scheme-handler/nectarlink</mediatype>
     <mediatype>x-scheme-handler/tel</mediatype>
-    <mediatype>x-scheme-handler/sms</mediatype>
-    <mediatype>x-scheme-handler/smsto</mediatype>
-    <mediatype>x-scheme-handler/mms</mediatype>
-    <mediatype>x-scheme-handler/mmsto</mediatype>
   </provides>
   <content_rating type="oars-1.1" />
   <releases>

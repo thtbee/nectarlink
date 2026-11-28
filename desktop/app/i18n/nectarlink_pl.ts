@@ -1518,6 +1518,175 @@
     </message>
 </context>
 <context>
+    <name>Chat</name>
+    <message>
+        <location filename="rust_strings.h" line="68"/>
+        <source>A note can have up to 8192 characters.</source>
+        <translation>Notatka może mieć do 8192 znaków.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="69"/>
+        <source>New note</source>
+        <translation>Nowa notatka</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="70"/>
+        <source>That note was deleted.</source>
+        <translation>Ta notatka została usunięta.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="71"/>
+        <source>Update NectarLink on the device to chat.</source>
+        <translation>Zaktualizuj NectarLink na urządzeniu, aby czatować.</translation>
+    </message>
+</context>
+<context>
+    <name>ChatAttachment</name>
+    <message>
+        <location filename="../qml/components/ChatAttachment.qml" line="34"/>
+        <source>%1 · Moved or deleted</source>
+        <translation>%1 · Przeniesiono lub usunięto</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ChatAttachment.qml" line="34"/>
+        <source>Moved or deleted</source>
+        <translation>Przeniesiono lub usunięto</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ChatAttachment.qml" line="203"/>
+        <source>Open</source>
+        <translation>Otwórz</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ChatAttachment.qml" line="212"/>
+        <source>Show in folder</source>
+        <translation>Pokaż w folderze</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ChatAttachment.qml" line="220"/>
+        <source>Remove from chat</source>
+        <translation>Usuń z czatu</translation>
+    </message>
+</context>
+<context>
+    <name>ChatNote</name>
+    <message>
+        <location filename="../qml/components/ChatNote.qml" line="121"/>
+        <source>Copy text</source>
+        <translation>Kopiuj tekst</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ChatNote.qml" line="130"/>
+        <source>Edit</source>
+        <translation>Edytuj</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ChatNote.qml" line="138"/>
+        <source>Delete</source>
+        <translation>Usuń</translation>
+    </message>
+</context>
+<context>
+    <name>ChatPage</name>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="19"/>
+        <source>%1 isn&apos;t connected</source>
+        <translation>%1 nie jest połączone</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="20"/>
+        <source>Update NectarLink on %1 to chat</source>
+        <translation>Zaktualizuj NectarLink na %1, aby czatować</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="66"/>
+        <source>Today</source>
+        <translation>Dzisiaj</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="67"/>
+        <source>Yesterday</source>
+        <translation>Wczoraj</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="131"/>
+        <source>No notes yet</source>
+        <translation>Brak notatek</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="139"/>
+        <source>What you write here shows on %1, and the other way round.</source>
+        <translation>To, co tu napiszesz, pojawi się na %1, i odwrotnie.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="229"/>
+        <location filename="../qml/pages/ChatPage.qml" line="284"/>
+        <source>Editing note</source>
+        <translation>Edytowanie notatki</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="236"/>
+        <source>Cancel editing</source>
+        <translation>Anuluj edycję</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="284"/>
+        <location filename="../qml/pages/ChatPage.qml" line="308"/>
+        <source>Note to %1</source>
+        <translation>Notatka do %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="319"/>
+        <source>Save</source>
+        <translation>Zapisz</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="319"/>
+        <source>Send</source>
+        <translation>Wyślij</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="358"/>
+        <source>Delete note?</source>
+        <translation>Usunąć notatkę?</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="366"/>
+        <source>It&apos;s deleted on this PC and on %1.</source>
+        <translation>Zostanie usunięta na tym komputerze i na %1.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="367"/>
+        <source>It&apos;s deleted on this PC. %1 isn&apos;t connected, so it keeps its copy.</source>
+        <translation>Zostanie usunięta na tym komputerze. %1 nie jest połączone, więc zachowa swoją kopię.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="374"/>
+        <source>Cancel</source>
+        <translation>Anuluj</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="379"/>
+        <source>Delete</source>
+        <translation>Usuń</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="343"/>
+        <source>Send files</source>
+        <translation>Wyślij pliki</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="441"/>
+        <source>Send files to %1</source>
+        <translation>Wyślij pliki do %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="482"/>
+        <source>Drop to send to %1</source>
+        <translation>Upuść, aby wysłać do %1</translation>
+    </message>
+</context>
+<context>
     <name>Clipboard</name>
     <message>
         <location filename="rust_strings.h" line="67"/>
@@ -2404,6 +2573,36 @@
         <source>Off</source>
         <translation>Wył.</translation>
     </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Can&apos;t open that picture.</source>
+        <translation>Nie można otworzyć tego obrazu.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>That picture is over 20 MB. Choose a smaller one.</source>
+        <translation>Ten obraz ma ponad 20 MB. Wybierz mniejszy.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Can&apos;t read that picture. Try a PNG or JPEG.</source>
+        <translation>Nie można odczytać tego obrazu. Spróbuj PNG lub JPEG.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>That picture has too much detail to send to a phone. Try a simpler one.</source>
+        <translation>Ten obraz ma za dużo szczegółów, by wysłać go na telefon. Spróbuj prostszego.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Can&apos;t save the picture.</source>
+        <translation>Nie można zapisać obrazu.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>The picture is missing. Choose it again.</source>
+        <translation>Brakuje obrazu. Wybierz go ponownie.</translation>
+    </message>
 </context>
 <context>
     <name>DeckPage</name>
@@ -2742,8 +2941,8 @@
     </message>
     <message>
         <location filename="../qml/pages/DeckPage.qml" line="667"/>
-        <source>Phones see only each tile&apos;s label and icon. Paths and commands stay on this PC.</source>
-        <translation>Na telefonach widać tylko etykietę i ikonę każdego kafelka. Ścieżki i polecenia pozostają na tym komputerze.</translation>
+        <source>Phones see only each tile&apos;s label, icon and picture. Paths and commands stay on this PC.</source>
+        <translation>Na telefonach widać tylko etykietę, ikonę i obraz każdego kafelka. Ścieżki i polecenia pozostają na tym komputerze.</translation>
     </message>
     <message>
         <location filename="../qml/pages/DeckPage.qml" line="712"/>
@@ -2917,6 +3116,46 @@
         <location filename="../qml/pages/DeckPage.qml" line="1"/>
         <source>Choose what turning it off does:</source>
         <translation>Wybierz, co robi wyłączenie:</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Choose a picture</source>
+        <translation>Wybierz obraz</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Pictures (*.png *.jpg *.jpeg *.bmp *.gif *.webp)</source>
+        <translation>Obrazy (*.png *.jpg *.jpeg *.bmp *.gif *.webp)</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Picture</source>
+        <translation>Obraz</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Choose…</source>
+        <translation>Wybierz…</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Remove</source>
+        <translation>Usuń</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Getting the picture ready…</source>
+        <translation>Przygotowywanie obrazu…</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Shown instead of the icon, here and on phones.</source>
+        <translation>Widoczny zamiast ikony, tutaj i na telefonach.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Optional. Square pictures look best.</source>
+        <translation>Opcjonalnie. Najlepiej wyglądają kwadratowe obrazy.</translation>
     </message>
 </context>
 <context>
@@ -5856,6 +6095,36 @@ Wymagania
         <translation>Brak ostatniej aktywności</translation>
     </message>
     <message>
+        <location filename="../qml/pages/HomePage.qml" line="2595"/>
+        <source>Chat</source>
+        <translation>Czat</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="2604"/>
+        <source>Open</source>
+        <translation>Otwórz</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="2605"/>
+        <source>Chat with %1</source>
+        <translation>Czat z %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="2655"/>
+        <source>Write a note to %1</source>
+        <translation>Napisz notatkę do %1</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="2666"/>
+        <source>From %1 · %2</source>
+        <translation>Z %1 · %2</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/HomePage.qml" line="2667"/>
+        <source>You · %1</source>
+        <translation>Ty · %1</translation>
+    </message>
+    <message>
         <location filename="../qml/pages/HomePage.qml" line="2689"/>
         <source>%1 notifications</source>
         <translation>Powiadomienia: %1</translation>
@@ -6054,7 +6323,7 @@ Wymagania
     <message>
         <location filename="../qml/pages/HomePage.qml" line="3341"/>
         <source>Ring PC</source>
-        <translation>Włącz dźwięk na komputerze</translation>
+        <translation>Zadzwoń na komputer</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="3357"/>
@@ -6627,6 +6896,11 @@ Wymagania
         <translation>Co nowego</translation>
     </message>
     <message>
+        <location filename="../qml/MainWindow.qml" line="937"/>
+        <source>Chat with %1</source>
+        <translation>Czat z %1</translation>
+    </message>
+    <message>
         <location filename="../qml/MainWindow.qml" line="1107"/>
         <source>%1 is ringing this PC</source>
         <translation>%1 uruchamia dzwonek na tym komputerze</translation>
@@ -6687,6 +6961,30 @@ Wymagania
         <location filename="../qml/MainWindow.qml" line="1263"/>
         <source>Paste into active window</source>
         <translation>Wklej do aktywnego okna</translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../qml/MainWindow.qml" line="1"/>
+        <source>Device: %1. Switch device, %n new on the others</source>
+        <translation>
+            <numerusform>Urządzenie: %1. Przełącz urządzenie, na pozostałych %n nowy</numerusform>
+            <numerusform>Urządzenie: %1. Przełącz urządzenie, na pozostałych %n nowe</numerusform>
+            <numerusform>Urządzenie: %1. Przełącz urządzenie, na pozostałych %n nowych</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow.qml" line="1"/>
+        <source>Device: %1. Switch device</source>
+        <translation>Urządzenie: %1. Przełącz urządzenie</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow.qml" line="1"/>
+        <source>Play this PC&apos;s sound on %1?</source>
+        <translation>Odtwarzać dźwięk tego komputera na %1?</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow.qml" line="1"/>
+        <source>%1 asked to play everything this PC plays, calls included, on itself.</source>
+        <translation>%1 prosi o odtwarzanie u siebie wszystkiego, co gra ten komputer, także rozmów.</translation>
     </message>
 </context>
 <context>
@@ -9322,6 +9620,11 @@ Wymagania
         <translation>Wyślij do %1 przez NectarLink</translation>
     </message>
     <message>
+        <location filename="rust_strings.h" line="534"/>
+        <source>Send with NectarLink</source>
+        <translation>Wyślij przez NectarLink</translation>
+    </message>
+    <message>
         <location filename="rust_strings.h" line="505"/>
         <source>Sending to %1…</source>
         <translation>Wysyłanie do %1…</translation>
@@ -10634,7 +10937,7 @@ Wymagania
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="2584"/>
         <source>Microphone for calls</source>
-        <translation>Mikrofon telefonu do rozmów</translation>
+        <translation>Mikrofon do rozmów</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="2588"/>
@@ -11862,6 +12165,9 @@ Wymagania
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>Move the mouse past that edge of the screen to use it on that PC, and type there with this keyboard. Move it back, or press Ctrl+Alt+Esc, to return. That PC asks the first time, or turn on Remote mouse, keyboard &amp; Deck for this PC there.</source>
         <translation>Przesuń mysz za tę krawędź ekranu, aby używać jej na tamtym komputerze i pisać tam tą klawiaturą. Wróć, przesuwając ją z powrotem lub naciskając Ctrl+Alt+Esc. Tamten komputer pyta za pierwszym razem; możesz też włączyć tam Zdalna mysz, klawiatura i Deck dla tego komputera.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>Bluetooth when there&apos;s no network</source>
         <translation>Bluetooth, gdy nie ma sieci</translation>
     </message>
@@ -11904,6 +12210,21 @@ Wymagania
         <location filename="../qml/pages/SettingsPage.qml" line="1"/>
         <source>Both</source>
         <translation>Oba</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Mark texts read on the phone</source>
+        <translation>Oznaczaj wiadomości jako przeczytane na telefonie</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>Reading a conversation here marks it read on the phone too, in its messaging app.</source>
+        <translation>Przeczytanie rozmowy tutaj oznacza ją jako przeczytaną także w aplikacji do wiadomości na telefonie.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/SettingsPage.qml" line="1"/>
+        <source>One color turns white or black to match the menu bar.</source>
+        <translation>Jeden kolor zmienia się na biały lub czarny, pasując do paska menu.</translation>
     </message>
 </context>
 <context>
@@ -12590,6 +12911,11 @@ Wymagania
         <location filename="rust_strings.h" line="554"/>
         <source>device</source>
         <translation>urządzenie</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="576"/>
+        <source>Sent note to %1.</source>
+        <translation>Wysłano notatkę do %1.</translation>
     </message>
 </context>
 <context>
@@ -13325,8 +13651,8 @@ Wymagania
     </message>
     <message>
         <location filename="../qml/pages/WalkthroughPage.qml" line="108"/>
-        <source>No accounts, no cloud servers, and no telemetry.</source>
-        <translation>Bez kont, serwerów w chmurze i telemetrii.</translation>
+        <source>No accounts and no cloud servers. Only an anonymous daily count, which you can turn off.</source>
+        <translation>Bez kont i serwerów w chmurze. Tylko anonimowe codzienne zliczanie, które możesz wyłączyć.</translation>
     </message>
     <message>
         <location filename="../qml/pages/WalkthroughPage.qml" line="109"/>
@@ -13838,6 +14164,45 @@ Wymagania
         <location filename="../qml/components/NewPill.qml" line="1"/>
         <source>New</source>
         <translation>Nowe</translation>
+    </message>
+</context>
+<context>
+    <name>DeviceMenu</name>
+    <message>
+        <location filename="../qml/components/DeviceMenu.qml" line="1"/>
+        <source>Devices</source>
+        <translation>Urządzenia</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/DeviceMenu.qml" line="1"/>
+        <source>offline</source>
+        <translation>offline</translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../qml/components/DeviceMenu.qml" line="1"/>
+        <source>%n new</source>
+        <translation>
+            <numerusform>%n nowy</numerusform>
+            <numerusform>%n nowe</numerusform>
+            <numerusform>%n nowych</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location filename="../qml/components/DeviceMenu.qml" line="1"/>
+        <source>Pair a new device</source>
+        <translation>Sparuj nowe urządzenie</translation>
+    </message>
+</context>
+<context>
+    <name>NavItem</name>
+    <message numerus="yes">
+        <location filename="../qml/components/NavItem.qml" line="1"/>
+        <source>%1, %n new</source>
+        <translation>
+            <numerusform>%1, %n nowy</numerusform>
+            <numerusform>%1, %n nowe</numerusform>
+            <numerusform>%1, %n nowych</numerusform>
+        </translation>
     </message>
 </context>
 </TS>

@@ -39,6 +39,11 @@ struct UiTile {
     subtitle: String,
     /// A toggle tile that's on (#640).
     on: bool,
+    /// The ID of the picture shown instead of the icon, or "" (#490).
+    image: String,
+    /// A `file:` URL for that picture, or "" when there's none on disk.
+    #[serde(rename = "imageUrl")]
+    image_url: String,
 }
 
 #[derive(Serialize)]
@@ -174,6 +179,8 @@ impl qobject::DeckController {
                             status,
                             subtitle,
                             on,
+                            image: t.image.clone().unwrap_or_default(),
+                            image_url: t.image.as_deref().map(deck::image_url).unwrap_or_default(),
                         }
                     })
                     .collect(),
@@ -250,6 +257,7 @@ impl qobject::DeckController {
         alt: bool,
         shift: bool,
         win_mod: bool,
+        image: &QString,
     ) -> QString {
         let action =
             match deck::build_action(&String::from(kind), &String::from(param), ctrl, alt, shift, win_mod) {
@@ -263,6 +271,7 @@ impl qobject::DeckController {
             &String::from(icon),
             &String::from(color),
             action,
+            Some(String::from(image).as_str()),
         ) {
             Ok(_) => {
                 self.refresh();
@@ -290,5 +299,32 @@ impl qobject::DeckController {
 
     pub fn set_page_active(&self, active: bool) {
         deck::set_page_active(active);
+    }
+
+    /// Makes the picture file at `url` a tile picture, off the UI thread;
+    /// `image_chosen` tells the editor its ID and URL, or what went wrong.
+    pub fn choose_image(self: Pin<&mut Self>, url: &QString) {
+        let file = std::path::PathBuf::from(String::from(&self.url_to_local_path(url)));
+        let qt = self.qt_thread();
+        let work = move || {
+            let (id, url, error) = match deck::add_image(&file) {
+                Ok(id) => {
+                    let url = deck::image_url(&id);
+                    (id, url, String::new())
+                }
+                Err(e) => (String::new(), String::new(), e),
+            };
+            let _ = qt.queue(move |object| {
+                object.image_chosen(QString::from(&id), QString::from(&url), QString::from(&error))
+            });
+        };
+        if let Err(e) = std::thread::Builder::new().name("deck-picture".into()).spawn(work) {
+            tracing::warn!(error = %e, "couldn't start preparing a deck picture");
+        }
+    }
+
+    /// A `file:` URL for the tile picture `id`, or "" when it's not on disk.
+    pub fn image_url(&self, id: &QString) -> QString {
+        QString::from(&deck::image_url(&String::from(id)))
     }
 }

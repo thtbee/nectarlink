@@ -139,6 +139,33 @@ impl QueueKind {
             QueueKind::Files | QueueKind::Folder | QueueKind::HandoffDocument | QueueKind::Recording
         )
     }
+
+    /// Which of a device's two lanes this kind waits in.
+    #[must_use]
+    pub(crate) const fn lane(self) -> QueueLane {
+        if self.is_file_based() { QueueLane::Files } else { QueueLane::Messages }
+    }
+}
+
+/// A device's queue drains in two lanes, each in the order it was queued:
+/// files one after another, and the small things (clipboard, links, alerts,
+/// camera requests) alongside them, so a copied text never waits behind a
+/// large file.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) enum QueueLane {
+    Files,
+    Messages,
+}
+
+impl QueueLane {
+    /// An SQL condition on `kind` that holds for this lane's items (a test
+    /// keeps it in step with [`QueueKind::is_file_based`]).
+    const fn kind_sql(self) -> &'static str {
+        match self {
+            QueueLane::Files => "kind IN ('files', 'folder', 'handoff_document', 'recording')",
+            QueueLane::Messages => "kind NOT IN ('files', 'folder', 'handoff_document', 'recording')",
+        }
+    }
 }
 
 /// On-disk file reference and integrity snapshot for a queued file transfer.
@@ -158,6 +185,9 @@ pub struct QueuedFileSpec {
     /// `true` if the file was copied into `<data_dir>/queue_staging/<id>/` from an ephemeral FD/URI.
     #[serde(default)]
     pub staged: bool,
+    /// BLAKE3 digest (hex) of a staged copy, taken while it was made.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub blake3: Option<String>,
 }
 
 impl QueuedFileSpec {
@@ -481,6 +511,11 @@ impl std::fmt::Debug for ChatMessageRecord {
             .field("self_sent", &self.self_sent)
             .finish_non_exhaustive()
     }
+}
+
+/// Where [`Store::notify_hidden`] keeps a PC's hidden apps.
+fn notify_hidden_key(peer: &DeviceId) -> String {
+    format!("notify_hidden:{peer}")
 }
 
 /// Schema migrations, applied in order. Index + 1 is the schema version.
@@ -1032,6 +1067,32 @@ impl Store {
         })
     }
 
+    /// The apps `peer` (a PC) hides, whose notifications stay on this phone (#701).
+    pub fn notify_hidden(&self, peer: &DeviceId) -> Result<BTreeSet<String>> {
+        self.with(|c| {
+            let json: Option<String> = c
+                .query_row("SELECT value FROM meta WHERE key = ?1", [notify_hidden_key(peer)], |r| r.get(0))
+                .optional()?;
+            Ok(json.and_then(|j| serde_json::from_str(&j).ok()).unwrap_or_default())
+        })
+    }
+
+    /// Keeps the apps `peer` hides; an empty list forgets them.
+    pub fn set_notify_hidden(&self, peer: &DeviceId, apps: &BTreeSet<String>) -> Result<()> {
+        self.with(|c| {
+            if apps.is_empty() {
+                c.execute("DELETE FROM meta WHERE key = ?1", [notify_hidden_key(peer)])?;
+            } else {
+                c.execute(
+                    "INSERT INTO meta (key, value) VALUES (?1, ?2)
+                     ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                    params![notify_hidden_key(peer), serde_json::to_string(apps).unwrap_or_default()],
+                )?;
+            }
+            Ok(())
+        })
+    }
+
     /// Keeps `entry` for `peer`, replacing an earlier one for the same user.
     pub fn save_unlock(&self, peer: &DeviceId, entry: &UnlockEntry) -> Result<()> {
         self.with(|c| {
@@ -1118,6 +1179,7 @@ impl Store {
         self.with(|c| {
             let _ = c.execute("DELETE FROM chat_messages WHERE peer = ?1", [&peer_str]);
             let _ = c.execute("DELETE FROM chat_threads WHERE peer = ?1", [&peer_str]);
+            let _ = c.execute("DELETE FROM meta WHERE key = ?1", [notify_hidden_key(id)]);
             let removed = c.execute("DELETE FROM peers WHERE id = ?1", [id.as_bytes().as_slice()])? > 0;
             // Its toggles went with it.
             self.toggle_cache().remove(id);
@@ -1141,6 +1203,7 @@ impl Store {
             tx.execute("DELETE FROM send_queue WHERE peer_id = ?1", [&peer_str])?;
             tx.execute("DELETE FROM chat_messages WHERE peer = ?1", [&peer_str])?;
             tx.execute("DELETE FROM chat_threads WHERE peer = ?1", [&peer_str])?;
+            tx.execute("DELETE FROM meta WHERE key = ?1", [notify_hidden_key(id)])?;
             let existed = tx.execute("DELETE FROM peers WHERE id = ?1", [id.as_bytes().as_slice()])? > 0;
             tx.commit()?;
             Ok((existed, rows))
@@ -1292,6 +1355,49 @@ impl Store {
         self.with(|c| c.execute("DELETE FROM timeline WHERE id = ?1", [id]).map(|n| n > 0))
     }
 
+    /// Whether `device` already has a chat note with `ref_id` here.
+    pub fn chat_note_exists(&self, device: &DeviceId, ref_id: &str) -> Result<bool> {
+        self.with(|c| {
+            c.query_row(
+                "SELECT 1 FROM timeline WHERE kind = 'message' AND device_id = ?1 AND ref_id = ?2",
+                params![device.as_bytes().as_slice(), ref_id],
+                |_| Ok(()),
+            )
+            .optional()
+            .map(|row| row.is_some())
+        })
+    }
+
+    /// Changes the text of a chat note with `device`. Only a note in that
+    /// chat, written by `incoming` (true: the device; false: this one).
+    pub fn edit_chat_note(
+        &self,
+        device: &DeviceId,
+        ref_id: &str,
+        incoming: bool,
+        text: &str,
+    ) -> Result<bool> {
+        self.with(|c| {
+            c.execute(
+                "UPDATE timeline SET detail = ?4
+                 WHERE kind = 'message' AND device_id = ?1 AND ref_id = ?2 AND incoming = ?3",
+                params![device.as_bytes().as_slice(), ref_id, i64::from(incoming), text],
+            )
+            .map(|n| n > 0)
+        })
+    }
+
+    /// Deletes a chat note with `device`, and nothing else.
+    pub fn delete_chat_note(&self, device: &DeviceId, ref_id: &str) -> Result<bool> {
+        self.with(|c| {
+            c.execute(
+                "DELETE FROM timeline WHERE kind = 'message' AND device_id = ?1 AND ref_id = ?2",
+                params![device.as_bytes().as_slice(), ref_id],
+            )
+            .map(|n| n > 0)
+        })
+    }
+
     pub fn delete_timeline_by_ref(&self, ref_id: &str) -> Result<bool> {
         self.with(|c| c.execute("DELETE FROM timeline WHERE ref_id = ?1", [ref_id]).map(|n| n > 0))
     }
@@ -1304,6 +1410,7 @@ impl Store {
         self.with(|c| c.execute("DELETE FROM timeline", []))
     }
 
+    #[cfg(test)]
     pub fn get_timeline(&self, id: i64) -> Result<Option<TimelineEntry>> {
         self.with(|c| {
             c.query_row(&format!("{SELECT_TIMELINE} WHERE id = ?1"), [id], row_to_timeline).optional()
@@ -2103,17 +2210,42 @@ impl Store {
         })
     }
 
-    /// Returns the head-of-line (`seq ASC LIMIT 1`) `'waiting'` item for `peer` along with its
-    /// decoded `QueuePayload`, optional `payload_blob`, and `next_retry_ms`.
-    pub fn head_waiting_item_for_peer(&self, peer: &DeviceId) -> Result<Option<DecodedQueueRow>> {
+    /// Whether `peer` has clipboard items, links, alerts or camera requests
+    /// waiting or on their way: a new one queues behind them to keep their
+    /// order. Files don't count; they have a lane of their own ([`QueueLane`]).
+    pub fn has_active_messages_for_peer(&self, peer: &DeviceId) -> Result<bool> {
+        let peer_str = peer.to_string();
+        self.with(|c| {
+            let found: Option<i64> = c
+                .query_row(
+                    &format!(
+                        "SELECT 1 FROM send_queue WHERE peer_id = ?1 AND status IN ('waiting', 'sending') AND {} LIMIT 1",
+                        QueueLane::Messages.kind_sql()
+                    ),
+                    [&peer_str],
+                    |r| r.get(0),
+                )
+                .optional()?;
+            Ok(found.is_some())
+        })
+    }
+
+    /// Returns the head-of-line (`seq ASC LIMIT 1`) `'waiting'` item in `lane` for `peer` along
+    /// with its decoded `QueuePayload`, optional `payload_blob`, and `next_retry_ms`.
+    pub(crate) fn head_waiting_item_for_peer(
+        &self,
+        peer: &DeviceId,
+        lane: QueueLane,
+    ) -> Result<Option<DecodedQueueRow>> {
         let peer_str = peer.to_string();
         self.with(|c| {
             let raw = c
                 .query_row(
                     &format!(
                         "{SELECT_SEND_QUEUE_WITH_BLOB}
-                         WHERE peer_id = ?1 AND status = 'waiting'
-                         ORDER BY seq ASC LIMIT 1"
+                         WHERE peer_id = ?1 AND status = 'waiting' AND {}
+                         ORDER BY seq ASC LIMIT 1",
+                        lane.kind_sql()
                     ),
                     [&peer_str],
                     raw_queue_row_with_blob,
@@ -2137,15 +2269,25 @@ impl Store {
         })
     }
 
-    /// Distinct peers that currently have at least one `'waiting'` item in `send_queue`.
-    pub fn peers_with_waiting_queue(&self) -> Result<Vec<DeviceId>> {
+    /// Each device and lane with an item waiting.
+    pub(crate) fn lanes_with_waiting_items(&self) -> Result<Vec<(DeviceId, QueueLane)>> {
         self.with(|c| {
-            let mut stmt = c.prepare_cached(
-                "SELECT DISTINCT peer_id FROM send_queue WHERE status = 'waiting' ORDER BY seq ASC",
-            )?;
-            let peer_strs: Vec<String> =
-                stmt.query_map([], |r| r.get(0))?.collect::<rusqlite::Result<Vec<_>>>()?;
-            Ok(peer_strs.into_iter().filter_map(|s| s.parse::<DeviceId>().ok()).collect())
+            let mut stmt =
+                c.prepare_cached("SELECT DISTINCT peer_id, kind FROM send_queue WHERE status = 'waiting'")?;
+            let rows = stmt
+                .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))?
+                .collect::<rusqlite::Result<Vec<_>>>()?;
+            let mut lanes = Vec::new();
+            for (peer, kind) in rows {
+                let (Ok(peer), Some(kind)) = (peer.parse::<DeviceId>(), QueueKind::from_str_opt(&kind))
+                else {
+                    continue;
+                };
+                if !lanes.contains(&(peer, kind.lane())) {
+                    lanes.push((peer, kind.lane()));
+                }
+            }
+            Ok(lanes)
         })
     }
 
@@ -2463,6 +2605,10 @@ const fn bytes_from_len(len: usize) -> u64 {
     len as u64
 }
 
+/// How often, and how many times, a staged copy that couldn't be removed is tried again.
+const STAGE_CLEANUP_EVERY: std::time::Duration = std::time::Duration::from_millis(100);
+const STAGE_CLEANUP_TRIES: u32 = 100;
+
 fn cleanup_staged_payload(data_dir: Option<&Path>, id: &str, payload: Option<&QueuePayload>) {
     // Staged copies live in `<data_dir>/queue_staging/<id>/` and nowhere else,
     // so nothing outside it is deleted, whatever a (damaged) row says.
@@ -2471,7 +2617,21 @@ fn cleanup_staged_payload(data_dir: Option<&Path>, id: &str, payload: Option<&Qu
         return;
     }
     let stage = dir.join("queue_staging").join(id);
-    let _ = std::fs::remove_dir_all(&stage);
+    if std::fs::remove_dir_all(&stage).is_err() && stage.exists() {
+        // On Windows a file still open (the send that just finished letting go
+        // of it) can't be deleted yet: try again for a while, off this thread,
+        // so the copy isn't left behind for good.
+        let stage = stage.clone();
+        let _ = std::thread::Builder::new().name("queue-cleanup".into()).spawn(move || {
+            for _ in 0..STAGE_CLEANUP_TRIES {
+                std::thread::sleep(STAGE_CLEANUP_EVERY);
+                if std::fs::remove_dir_all(&stage).is_ok() || !stage.exists() {
+                    return;
+                }
+            }
+            tracing::debug!("a staged copy couldn't be removed");
+        });
+    }
     if let Some(p) = payload {
         for spec in p.files_vec() {
             let inside = spec.path.starts_with(&stage)
@@ -3078,6 +3238,55 @@ mod tests {
         assert!(store.remove_peer(&id).unwrap());
         assert!(!store.remove_peer(&id).unwrap());
         assert!(store.list_peers().unwrap().is_empty());
+    }
+
+    #[test]
+    fn a_chat_note_is_changed_and_deleted_only_in_its_own_chat() {
+        let store = Store::in_memory().unwrap();
+        let (a, b) = (DeviceId([6; 32]), DeviceId([7; 32]));
+        let entry = |kind, device, incoming| NewTimelineEntry {
+            kind,
+            device_id: device,
+            device_name: "D".into(),
+            incoming,
+            timestamp: 100,
+            title: String::new(),
+            detail: "text".into(),
+            target: String::new(),
+            size_bytes: 0,
+            duration_secs: 0,
+            ref_id: Some("chat:x".into()),
+        };
+        // A link that happens to carry the same ref, and B's note under it.
+        store.insert_timeline(&entry(TimelineKind::Link, a, true), 100).unwrap();
+        store.insert_timeline(&entry(TimelineKind::Message, b, true), 100).unwrap();
+        assert!(!store.chat_note_exists(&a, "chat:x").unwrap());
+        assert!(!store.edit_chat_note(&a, "chat:x", true, "changed").unwrap(), "not A's note");
+        assert!(
+            !store.edit_chat_note(&b, "chat:x", false, "changed").unwrap(),
+            "B wrote it, not this device"
+        );
+        assert!(!store.delete_chat_note(&a, "chat:x").unwrap(), "the link stays");
+        assert!(store.edit_chat_note(&b, "chat:x", true, "changed").unwrap());
+        assert!(store.delete_chat_note(&b, "chat:x").unwrap());
+        assert_eq!(store.query_timeline(&TimelineQuery::default(), &[]).unwrap().entries.len(), 1);
+    }
+
+    #[test]
+    fn the_apps_a_pc_hides_are_kept_until_shown_or_unpaired() {
+        let store = Store::in_memory().unwrap();
+        let pc = DeviceId([4; 32]);
+        store.upsert_peer(&pc, &info("Desk"), 1).unwrap();
+        assert!(store.notify_hidden(&pc).unwrap().is_empty());
+        let hidden: BTreeSet<String> = ["com.secret".to_owned(), "com.bank".to_owned()].into();
+        store.set_notify_hidden(&pc, &hidden).unwrap();
+        assert_eq!(store.notify_hidden(&pc).unwrap(), hidden);
+        assert!(store.notify_hidden(&DeviceId([5; 32])).unwrap().is_empty(), "another PC hides nothing");
+        store.set_notify_hidden(&pc, &BTreeSet::new()).unwrap();
+        assert!(store.notify_hidden(&pc).unwrap().is_empty());
+        store.set_notify_hidden(&pc, &hidden).unwrap();
+        store.remove_peer_with_queue(&pc).unwrap();
+        assert!(store.notify_hidden(&pc).unwrap().is_empty(), "unpairing forgets them");
     }
 
     #[test]
@@ -4080,6 +4289,7 @@ mod tests {
                         size: 1024,
                         mtime_ms: now_ms,
                         staged: false,
+                        blake3: None,
                     }],
                 },
                 None,
@@ -4137,6 +4347,7 @@ mod tests {
                     size: MAX_QUEUE_ACTIVE_BYTES + 1,
                     mtime_ms: now_ms,
                     staged: false,
+                    blake3: None,
                 }],
             },
             None,
@@ -4189,6 +4400,7 @@ mod tests {
                 size: meta.len(),
                 mtime_ms: file_mtime_ms(&meta),
                 staged: true,
+                blake3: None,
             }
         };
 
@@ -4290,6 +4502,7 @@ mod tests {
             size: 1,
             mtime_ms: 0,
             staged: true,
+            blake3: None,
         };
         // A damaged row: a staged file outside staging, and a path escaping it.
         let payload = QueuePayload::Files {
@@ -4319,6 +4532,59 @@ mod tests {
         assert!(store.retry_queue_item(id, 2_000).unwrap(), "Retry is the way back");
         assert!(store.mark_queue_sending(id).unwrap());
         assert!(store.mark_queue_retry_or_wait(id, 1, 0, None).unwrap());
+    }
+
+    #[test]
+    fn files_and_messages_wait_in_lanes_of_their_own() {
+        for kind in [
+            QueueKind::Files,
+            QueueKind::Folder,
+            QueueKind::Clipboard,
+            QueueKind::ClipboardImage,
+            QueueKind::Link,
+            QueueKind::HandoffDocument,
+            QueueKind::Recording,
+            QueueKind::TaskNotify,
+            QueueKind::CameraRequest,
+        ] {
+            let quoted = format!("'{}'", kind.as_str());
+            assert_eq!(QueueLane::Files.kind_sql().contains(&quoted), kind.is_file_based(), "{kind:?}");
+            assert_eq!(kind.lane() == QueueLane::Files, kind.is_file_based(), "{kind:?}");
+        }
+
+        let store = Store::in_memory().unwrap();
+        let peer = DeviceId([0x57; 32]);
+        store.upsert_peer(&peer, &info("Pixel 9"), 100).unwrap();
+        let file = QueuedFileSpec {
+            path: PathBuf::from("big.mkv"),
+            name: "big.mkv".into(),
+            folder: None,
+            size: 1 << 30,
+            mtime_ms: 1,
+            staged: false,
+            blake3: None,
+        };
+        store
+            .enqueue_send_item("q-file", &peer, &QueuePayload::Files { files: vec![file] }, None, 1_000)
+            .unwrap();
+        assert!(!store.has_active_messages_for_peer(&peer).unwrap(), "a file holds up no clip");
+        let clip = QueuePayload::Clipboard { text: "copied".into(), html: None, rtf: None };
+        store.enqueue_send_item("q-clip", &peer, &clip, None, 1_001).unwrap();
+        let link = QueuePayload::Link { url: "https://example.com".into(), title: None };
+        store.enqueue_send_item("q-link", &peer, &link, None, 1_002).unwrap();
+        assert!(store.has_active_messages_for_peer(&peer).unwrap());
+
+        let mut lanes = store.lanes_with_waiting_items().unwrap();
+        lanes.sort_by_key(|(_, lane)| *lane == QueueLane::Messages);
+        assert_eq!(lanes, [(peer, QueueLane::Files), (peer, QueueLane::Messages)]);
+        let head = |lane| store.head_waiting_item_for_peer(&peer, lane).unwrap().map(|(item, ..)| item.id);
+        assert_eq!(head(QueueLane::Files).as_deref(), Some("q-file"));
+        assert_eq!(head(QueueLane::Messages).as_deref(), Some("q-clip"), "oldest first within a lane");
+
+        // The file on its way doesn't stop the next message.
+        assert!(store.mark_queue_sending("q-file").unwrap());
+        assert_eq!(head(QueueLane::Files), None);
+        assert_eq!(head(QueueLane::Messages).as_deref(), Some("q-clip"));
     }
 
     #[test]
@@ -4352,6 +4618,7 @@ mod tests {
                         size: MAX_QUEUE_ACTIVE_BYTES - 10,
                         mtime_ms: now_ms,
                         staged: false,
+                        blake3: None,
                     }],
                 },
                 None,

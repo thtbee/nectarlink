@@ -399,6 +399,7 @@ pub mod qobject {
             alt: bool,
             shift: bool,
             win_mod: bool,
+            image: &QString,
         ) -> QString;
         #[qinvokable]
         fn test_tile(self: Pin<&mut DeckController>, tile_id: &QString);
@@ -406,6 +407,15 @@ pub mod qobject {
         fn url_to_local_path(self: &DeckController, url: &QString) -> QString;
         #[qinvokable]
         fn set_page_active(self: &DeckController, active: bool);
+        /// Makes the picture file at `url` a tile picture, off the UI thread
+        /// (#490); `image_chosen` follows.
+        #[qinvokable]
+        fn choose_image(self: Pin<&mut DeckController>, url: &QString);
+        #[qinvokable]
+        fn image_url(self: &DeckController, id: &QString) -> QString;
+        /// A chosen picture is ready: its ID and `file:` URL, or `error`.
+        #[qsignal]
+        fn image_chosen(self: Pin<&mut DeckController>, id: QString, url: QString, error: QString);
     }
 
     impl cxx_qt::Threading for Preferences {}
@@ -679,7 +689,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().on_close_to_tray_changed(|p| p.save()).release();
         self.as_mut()
             .on_tray_one_colour_changed(|p| {
-                #[cfg(any(windows, target_os = "linux"))]
+                #[cfg(any(windows, target_os = "linux", target_os = "macos"))]
                 crate::win::tray::set_one_colour(p.tray_one_colour);
                 p.save();
             })
@@ -1484,6 +1494,8 @@ impl qobject::Preferences {
             comb_motion: p.comb_motion,
             close_to_tray: p.close_to_tray,
             tray_one_colour: p.tray_one_colour,
+            // Whatever is saved now is the choice, not the old default.
+            tray_icon_default_applied: true,
             auto_clipboard: p.auto_clipboard,
             clipboard_history: p.clipboard_history,
             suggest_clipboard_actions: p.suggest_clipboard_actions,
@@ -1568,6 +1580,7 @@ impl qobject::Preferences {
             nectar_island_pc_media: p.nectar_island_pc_media,
             automation_rules: crate::settings::automation_rules(),
             stream_pc_audio_to_phone: p.stream_pc_audio_to_phone,
+            pc_audio_phones: crate::settings::pc_audio_phones(),
             share_pc_storage: p.share_pc_storage,
             forward_pc_notifications_to_phone: p.forward_pc_notifications_to_phone,
             phone_beside: p.phone_beside.to_string(),

@@ -47,6 +47,15 @@ pub mod types {
     pub const NOTIFY_SYNC: &str = "notify.sync";
     /// PC to phone: send nothing until told otherwise, or carry on.
     pub const NOTIFY_HOLD: &str = "notify.hold";
+    /// PC to phone: the apps hidden on the PC, whose notifications stay on the phone.
+    pub const NOTIFY_HIDE: &str = "notify.hide";
+
+    /// A note typed in the chat between two paired devices (#698).
+    pub const CHAT_MESSAGE: &str = "chat.message";
+    /// A note in that chat, changed by the device that wrote it.
+    pub const CHAT_EDIT: &str = "chat.edit";
+    /// A note in that chat, deleted by either device.
+    pub const CHAT_DELETE: &str = "chat.delete";
 
     pub const CLIP_SET: &str = "clip.set";
     pub const NOTIFY_DISMISS: &str = "notify.dismiss";
@@ -119,6 +128,9 @@ pub mod types {
     pub const DECK_LAYOUT: &str = "deck.layout";
     pub const DECK_STATE: &str = "deck.state";
     pub const DECK_PRESS: &str = "deck.press";
+    /// Asks a PC for a Deck tile's image (#490); answered with [`DECK_IMAGE_DATA`].
+    pub const DECK_IMAGE: &str = "deck.image";
+    pub const DECK_IMAGE_DATA: &str = "deck.image.data";
     pub const PC_AUDIO_SET: &str = "pc.audio.set";
     pub const PC_RADIO_SET: &str = "pc.radio.set";
     pub const STORAGE_LIST: &str = "storage.list";
@@ -598,6 +610,8 @@ pub mod notify_limits {
     pub const CONVERSATION_MESSAGES: usize = 25;
     pub const SENDER_CHARS: usize = 128;
     pub const AVATAR_BYTES: usize = 16 * 1024;
+    /// Apps in a `notify.hide` list.
+    pub const HIDDEN_APPS: usize = 1024;
 }
 
 fn default_live_v() -> u32 {
@@ -967,6 +981,86 @@ impl Notification {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct NotifySnapshot {
     pub items: Vec<Notification>,
+}
+
+/// The chat between two paired devices (#698, docs/protocol/chat.md).
+pub mod chat {
+    /// Takes `chat.message`, `chat.edit` and `chat.delete`.
+    pub const CAP: &str = "chat.messages";
+    /// A note's ID: up to 64 ASCII letters, digits and `-`.
+    pub const ID_BYTES: usize = 64;
+    /// A note's text.
+    pub const TEXT_CHARS: usize = 8192;
+
+    pub(crate) fn valid_id(id: &str) -> bool {
+        !id.is_empty() && id.len() <= ID_BYTES && id.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-')
+    }
+
+    pub(crate) fn valid_text(text: &str) -> bool {
+        !text.trim().is_empty() && text.chars().count() <= TEXT_CHARS
+    }
+}
+
+/// Body of `chat.message`: a note, by the ID its writer gave it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ChatMessage {
+    pub id: String,
+    pub text: String,
+}
+
+impl ChatMessage {
+    pub fn is_valid(&self) -> bool {
+        chat::valid_id(&self.id) && chat::valid_text(&self.text)
+    }
+}
+
+/// Body of `chat.edit`: a note's new text.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ChatEdit {
+    pub id: String,
+    pub text: String,
+}
+
+impl ChatEdit {
+    pub fn is_valid(&self) -> bool {
+        chat::valid_id(&self.id) && chat::valid_text(&self.text)
+    }
+}
+
+/// Body of `chat.delete`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ChatDelete {
+    pub id: String,
+}
+
+impl ChatDelete {
+    pub fn is_valid(&self) -> bool {
+        chat::valid_id(&self.id)
+    }
+}
+
+/// Body of `notify.hide`: the apps (package names) hidden on the PC, whose
+/// notifications the phone keeps to itself. The whole list each time; an
+/// empty one sends everything again.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NotifyHide {
+    pub apps: Vec<String>,
+}
+
+impl NotifyHide {
+    /// The list within the spec's limits: names as a notification's `app`
+    /// can be (1 to 256 characters, no control characters), at most
+    /// [`notify_limits::HIDDEN_APPS`] of them, each once.
+    pub fn sanitized(self) -> std::collections::BTreeSet<String> {
+        use notify_limits::*;
+        self.apps
+            .into_iter()
+            .filter(|app| {
+                !app.is_empty() && app.chars().count() <= TITLE_CHARS && !app.chars().any(char::is_control)
+            })
+            .take(HIDDEN_APPS)
+            .collect()
+    }
 }
 
 /// Body of `notify.hold`.
@@ -4297,6 +4391,10 @@ pub struct DeckTile {
     /// step, #490). Left out when false.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub needs_commands: bool,
+    /// The ID of the picture the user gave it, shown instead of its icon;
+    /// the phone gets it with `deck.image` (#490). Left out when none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<String>,
 }
 
 /// Never prints the user label (protocol v0 §11).
@@ -4318,6 +4416,7 @@ impl DeckTile {
             && deck_icons::ALL.contains(&self.icon.as_str())
             && deck_colors::ALL.contains(&self.color.as_str())
             && deck_kinds::ALL.contains(&self.kind.as_str())
+            && self.image.as_deref().is_none_or(deck_image::is_valid_id)
     }
 
     pub fn sanitized(self) -> Option<Self> {
@@ -4356,6 +4455,8 @@ impl DeckTile {
             color,
             kind: self.kind,
             needs_commands: self.needs_commands,
+            // A picture that can't be fetched is no picture: the icon shows.
+            image: self.image.filter(|id| deck_image::is_valid_id(id)),
         })
     }
 }
@@ -4453,6 +4554,7 @@ impl DeckLayout {
             color: deck_kinds::default_color(kind).into(),
             kind: kind.into(),
             needs_commands: false,
+            image: None,
         };
         DeckLayout {
             pages: vec![DeckPage {
@@ -4614,6 +4716,59 @@ impl DeckState {
             },
             _ => None,
         }
+    }
+}
+
+/// Deck tile pictures (#490, `docs/protocol/deck.md` §2.7).
+pub mod deck_image {
+    /// An image's ID: the first 16 bytes of its PNG's SHA-256, in lowercase hex.
+    pub const ID_LEN: usize = 32;
+    /// A tile picture's PNG, at most.
+    pub const MAX_BYTES: usize = 64 * 1024;
+    /// Its width and height, at most.
+    pub const MAX_SIDE: u32 = 256;
+
+    pub fn is_valid_id(id: &str) -> bool {
+        id.len() == ID_LEN && id.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
+    }
+
+    /// Whether `png` is a PNG a tile may show: its signature and header,
+    /// [`MAX_BYTES`] at most and [`MAX_SIDE`] wide and high at most. Only the
+    /// header is read; whoever shows it still decodes it with care.
+    pub fn is_valid_png(png: &[u8]) -> bool {
+        const SIGNATURE: &[u8] = b"\x89PNG\r\n\x1a\n";
+        if png.len() > MAX_BYTES || png.len() < 24 || !png.starts_with(SIGNATURE) || &png[12..16] != b"IHDR" {
+            return false;
+        }
+        let side = |at: usize| u32::from_be_bytes([png[at], png[at + 1], png[at + 2], png[at + 3]]);
+        (1..=MAX_SIDE).contains(&side(16)) && (1..=MAX_SIDE).contains(&side(20))
+    }
+}
+
+/// Body of `deck.image`: asks the PC for the picture a tile names (#490).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeckImageGet {
+    pub id: String,
+}
+
+impl DeckImageGet {
+    pub fn is_valid(&self) -> bool {
+        deck_image::is_valid_id(&self.id)
+    }
+}
+
+/// Body of `deck.image.data`: a tile's picture, a PNG.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeckImage {
+    pub id: String,
+    #[serde(with = "serde_bytes")]
+    pub png: Vec<u8>,
+}
+
+/// Never prints the picture.
+impl std::fmt::Debug for DeckImage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DeckImage").field("id", &self.id).field("bytes", &self.png.len()).finish()
     }
 }
 
@@ -5402,6 +5557,40 @@ pub enum LinuxUnlockForget {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn chat_notes_have_a_plain_id_and_some_text() {
+        assert!(ChatMessage { id: "3f9a-01".into(), text: "on my way".into() }.is_valid());
+        for id in ["", "../x", "a b", "émoji", &"x".repeat(65)] {
+            assert!(!ChatMessage { id: id.into(), text: "hi".into() }.is_valid(), "{id:?}");
+        }
+        assert!(!ChatMessage { id: "a".into(), text: "   ".into() }.is_valid());
+        assert!(!ChatEdit { id: "a".into(), text: "x".repeat(chat::TEXT_CHARS + 1) }.is_valid());
+        assert!(ChatEdit { id: "a".into(), text: "é".repeat(chat::TEXT_CHARS) }.is_valid());
+        assert!(ChatDelete { id: "a".into() }.is_valid() && !ChatDelete { id: String::new() }.is_valid());
+    }
+
+    #[test]
+    fn a_hidden_app_list_keeps_names_a_notification_can_have() {
+        let hide = NotifyHide {
+            apps: vec![
+                "com.whatsapp".into(),
+                "com.whatsapp".into(),
+                String::new(),
+                "bad
+name"
+                    .into(),
+                "x".repeat(257),
+                "org.telegram.messenger".into(),
+            ],
+        };
+        assert_eq!(
+            hide.sanitized().into_iter().collect::<Vec<_>>(),
+            ["com.whatsapp", "org.telegram.messenger"]
+        );
+        let many = NotifyHide { apps: (0..2000).map(|i| format!("app.{i}")).collect() };
+        assert_eq!(many.sanitized().len(), notify_limits::HIDDEN_APPS);
+    }
+
     #[test]
     fn marking_read_names_a_conversation_by_its_number_alone() {
         let mark = |thread: &str| SmsMarkRead { thread: thread.into() };
@@ -6629,6 +6818,34 @@ mod tests {
     }
 
     #[test]
+    fn deck_tile_pictures_are_small_square_pngs_named_by_hex_ids() {
+        let png = |w: u32, h: u32, len: usize| {
+            let mut bytes = b"\x89PNG\r\n\x1a\n\0\0\0\rIHDR".to_vec();
+            bytes.extend_from_slice(&w.to_be_bytes());
+            bytes.extend_from_slice(&h.to_be_bytes());
+            bytes.resize(len, 0);
+            bytes
+        };
+        assert!(deck_image::is_valid_png(&png(192, 192, 4000)));
+        assert!(deck_image::is_valid_png(&png(256, 128, 4000)));
+        assert!(!deck_image::is_valid_png(&png(257, 192, 4000)), "too wide");
+        assert!(!deck_image::is_valid_png(&png(0, 192, 4000)));
+        assert!(!deck_image::is_valid_png(&png(192, 192, deck_image::MAX_BYTES + 1)), "too big");
+        assert!(!deck_image::is_valid_png(b"GIF89a not a png at all, but long enough"));
+
+        assert!(deck_image::is_valid_id("0123456789abcdef0123456789abcdef"));
+        assert!(!deck_image::is_valid_id("0123456789ABCDEF0123456789ABCDEF"));
+        assert!(!deck_image::is_valid_id("../../etc/passwd0123456789abcdef"));
+        assert!(DeckImageGet { id: "0123456789abcdef0123456789abcdef".into() }.is_valid());
+
+        let image = DeckImage { id: "0123456789abcdef0123456789abcdef".into(), png: png(64, 64, 100) };
+        let env = Envelope::new(types::DECK_IMAGE_DATA, &image).unwrap();
+        let back: DeckImage = Envelope::from_cbor(&env.to_cbor()).unwrap().body().unwrap();
+        assert_eq!(back, image);
+        assert!(!format!("{image:?}").contains("PNG"), "never prints the picture");
+    }
+
+    #[test]
     fn deck_layout_state_and_press_validate_sanitize_and_round_trip() {
         let layout = DeckLayout::default_layout();
         assert!(layout.is_valid());
@@ -6668,9 +6885,11 @@ mod tests {
             color: "unknown_color".into(),
             kind: deck_kinds::RUN_COMMAND.into(),
             needs_commands: false,
+            image: Some("not-an-image-id".into()),
         }
         .sanitized()
         .unwrap();
+        assert_eq!(fallback.image, None, "an image ID that can't be fetched is dropped");
         assert_eq!(fallback.label, "Buildnow");
         assert_eq!(fallback.icon, deck_icons::TERMINAL);
         assert_eq!(fallback.color, deck_colors::CORAL);

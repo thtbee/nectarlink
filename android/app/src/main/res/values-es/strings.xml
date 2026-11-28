@@ -1277,7 +1277,7 @@
     <!-- 16. App streams -->
     <string name="guide_apps_title">Transmisiones de aplicaciones</string>
     <string name="guide_apps_summary">Abre aplicaciones de Android individuales en ventanas propias en tu PC mientras la pantalla de tu teléfono sigue siendo independiente.</string>
-    <string name="guide_apps_where">Ajustes › Permisos › Control desde tu PC › Pulsaciones y teclas reales (depuración inalámbrica)</string>
+    <string name="guide_apps_where">Ajustes › Permisos › Control desde tu PC › Elevated</string>
     <string name="guide_apps_needs">Elevated (depuración inalámbrica)</string>
     <string name="guide_apps_need_1">Elevated, configurado mediante depuración inalámbrica.</string>
     <string name="guide_apps_need_2">PC emparejado y conectado.</string>
@@ -1352,10 +1352,10 @@
     <!-- 22. Elevated -->
     <string name="guide_elevated_title">Elevated</string>
     <string name="guide_elevated_summary">Pulsaciones y teclas reales, transmisiones de aplicaciones, sincronización del portapapeles en segundo plano y controles de llamadas mediante depuración inalámbrica.</string>
-    <string name="guide_elevated_where">Ajustes › Permisos › Control desde tu PC › Pulsaciones y teclas reales (depuración inalámbrica)</string>
+    <string name="guide_elevated_where">Ajustes › Permisos › Control desde tu PC › Elevated</string>
     <string name="guide_elevated_needs">Depuración inalámbrica</string>
     <string name="guide_elevated_need_1">Opciones de desarrollador y depuración inalámbrica activadas.</string>
-    <string name="guide_elevated_phone_1">Abre Ajustes › Permisos › Control desde tu PC y toca Configurar en Pulsaciones y teclas reales.</string>
+    <string name="guide_elevated_phone_1">Abre Ajustes › Permisos › Control desde tu PC y toca Configurar en Elevated.</string>
     <string name="guide_elevated_phone_2">En Depuración inalámbrica, toca Emparejar dispositivo con código de emparejamiento e introduce el código de 6 dígitos en la notificación.</string>
     <string name="guide_elevated_pc_1">Usa transmisiones de aplicaciones, sincronización del portapapeles en segundo plano y entrada de baja latencia desde tu PC.</string>
     <string name="guide_elevated_opt_1">Configurar / Desactivar: empareja o detiene el componente local de depuración inalámbrica.</string>
@@ -1715,4 +1715,35 @@
     <string name="settings_own_name">Nombre de este teléfono</string>
     <string name="settings_own_name_change">Cambiar</string>
     <string name="settings_own_name_hint">Cómo aparece este teléfono en tus PC. Déjalo vacío para usar %1$s.</string>
+    <string name="action_chat">Chat</string>
+    <string name="channel_chat">Chat</string>
+    <string name="chat_you">Tú</string>
+    <string name="chat_empty">Escribe una nota y aparecerá en %1$s.</string>
+    <string name="chat_composer_hint">Nota</string>
+    <string name="chat_composer_label">Nota para %1$s</string>
+    <string name="chat_send">Enviar</string>
+    <string name="chat_save">Guardar</string>
+    <string name="chat_editing">Editando nota</string>
+    <string name="chat_offline">Conecta %1$s para enviar notas.</string>
+    <string name="chat_too_old">Actualiza NectarLink en %1$s para enviar notas.</string>
+    <string name="chat_too_long">Una nota puede tener hasta %1$d caracteres.</string>
+    <string name="chat_not_connected">%1$s no está conectado.</string>
+    <string name="chat_action_copy">Copiar</string>
+    <string name="chat_action_edit">Editar</string>
+    <string name="chat_action_delete">Eliminar</string>
+    <string name="chat_delete_title">¿Eliminar esta nota?</string>
+    <string name="chat_delete_text">También se elimina en %1$s.</string>
+    <string name="chat_delete_text_offline">%1$s no está conectado, así que allí se queda.</string>
+    <string name="chat_note_mine">Tú, %1$s: %2$s</string>
+    <string name="chat_note_from">%1$s, %2$s: %3$s</string>
+    <string name="chat_note_options">Opciones de la nota</string>
+    <string name="chat_earlier">Notas anteriores</string>
+    <string name="chat_attach">Adjuntar</string>
+    <string name="chat_attach_media">Fotos y vídeos</string>
+    <string name="chat_attach_files">Archivos</string>
+    <string name="chat_action_share">Compartir</string>
+    <string name="chat_action_remove">Quitar del chat</string>
+    <string name="chat_file_missing">No está en este dispositivo</string>
+    <string name="chat_file_options">Opciones del archivo</string>
+    <string name="timeline_filter_notes">Notas</string>
 </resources>

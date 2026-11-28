@@ -70,6 +70,7 @@ If your desktop PC lacks speakers, or you want to walk around the room while lis
 1. Toggle **Phone as speaker** on from either side:
    - **On your PC**: Click **Phone as speaker** on the Home screen, or turn on **Stream PC audio to phone** in **Settings › Camera & Audio**.
    - **On your phone**: Tap **Use phone as speaker** in the **PC audio** card on the Android Home screen.
+     The first time a phone asks, the PC asks you first, since everything it plays, calls included, would go to that phone: **Allow** for this time, or **Allow for this device**.
 2. Both switches stay synchronized in real time. Your PC captures system playback via Windows WASAPI loopback and streams it as uncompressed 16-bit PCM in small QUIC datagrams. The phone plays it through a regular media `AudioTrack`, so its own speaker tuning and sound effects still apply, and keeps about 40 ms buffered to absorb Wi-Fi jitter.
    - Audio goes to the phone that turned **Use phone as speaker** on. When you turn it on from the PC, it goes to the first connected phone.
 3. From the **PC audio** card on your phone (or in `Deck`), you can also adjust your PC's master volume slider, toggle mute, and switch between your PC's connected audio output devices.

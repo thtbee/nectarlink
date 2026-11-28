@@ -50,6 +50,17 @@ static LAST_SUGGESTION: Mutex<Option<(DeviceId, ClipSuggestion)>> = Mutex::new(N
 /// written to disk.
 static THUMBS: Mutex<Option<HashMap<String, String>>> = Mutex::new(None);
 static MAKING_THUMBS: AtomicBool = AtomicBool::new(false);
+/// A preview was asked for while one was being made: the worker refreshes when
+/// it's done, so it's asked for again.
+static THUMBS_ASKED: AtomicBool = AtomicBool::new(false);
+/// Images whose preview couldn't be made this session: not tried again (#730).
+/// Kept apart from the previews, which forget images that leave the history,
+/// while the Timeline can still point at one.
+static NO_THUMB: Mutex<Option<std::collections::HashSet<String>>> = Mutex::new(None);
+
+fn no_thumb<T>(f: impl FnOnce(&mut std::collections::HashSet<String>) -> T) -> T {
+    f(NO_THUMB.lock().unwrap_or_else(|e| e.into_inner()).get_or_insert_with(Default::default))
+}
 /// The longest side of a preview, in pixels (the sheet shows them at most
 /// 180 × 80, so this stays sharp at 150% scaling).
 const THUMB_SIZE: u32 = 240;
@@ -67,6 +78,9 @@ pub fn thumb_for_clip(id: &str) -> Option<String> {
     let cached = thumbs(|t| t.get(id).cloned());
     if let Some(url) = cached {
         return (!url.is_empty()).then_some(url);
+    }
+    if no_thumb(|n| n.contains(id)) {
+        return None;
     }
     if let Some(node) = core_host::node() {
         make_thumbs(node, vec![id.to_owned()]);
@@ -116,6 +130,7 @@ pub fn history_json() -> String {
         let missing: Vec<String> = entries
             .iter()
             .filter(|e| e.kind == ClipboardItemKind::Image && !t.contains_key(&e.id))
+            .filter(|e| !no_thumb(|n| n.contains(&e.id)))
             .map(|e| e.id.clone())
             .collect();
         (t.clone(), missing)
@@ -150,9 +165,12 @@ pub fn history_json() -> String {
 /// (the sheet shows a plain image tile) so it isn't retried every refresh.
 fn make_thumbs(node: Node, ids: Vec<String>) {
     if MAKING_THUMBS.swap(true, Ordering::AcqRel) {
-        return; // the running worker refreshes the list, which retries the rest
+        // The running worker refreshes the list when it's done, which asks again.
+        THUMBS_ASKED.store(true, Ordering::Release);
+        return;
     }
     std::thread::spawn(move || {
+        let mut made = false;
         for id in ids {
             let url = node
                 .clipboard_history_image(&id)
@@ -162,10 +180,19 @@ fn make_thumbs(node: Node, ids: Vec<String>) {
                 })
                 .map(|png| format!("data:image/png;base64,{}", BASE64.encode(&png)))
                 .unwrap_or_default();
+            if url.is_empty() {
+                no_thumb(|n| n.insert(id.clone()));
+            } else {
+                made = true;
+            }
             thumbs(|t| t.insert(id, url));
         }
         MAKING_THUMBS.store(false, Ordering::Release);
-        core_host::host().hub.changed(Changes::CLIPBOARD | Changes::TIMELINE);
+        // Only when there's a new preview to show: refreshing after one that
+        // couldn't be made asked for it again, over and over (#730).
+        if made || THUMBS_ASKED.swap(false, Ordering::AcqRel) {
+            core_host::host().hub.changed(Changes::CLIPBOARD | Changes::TIMELINE);
+        }
     });
 }
 
@@ -197,6 +224,11 @@ pub fn clear_history() {
 
 /// Starts watching the Windows clipboard.
 pub fn start() {
+    // Windows reads a copy only when it will be sent (#688).
+    #[cfg(windows)]
+    clipboard::set_wanted(|| {
+        AUTO_SEND.load(Ordering::Relaxed) && core_host::try_host().is_some() && !receivers().is_empty()
+    });
     clipboard::start(on_copy);
 }
 

@@ -27,8 +27,8 @@ use windows::{
         System::{
             DataExchange::{
                 AddClipboardFormatListener, CloseClipboard, EmptyClipboard, GetClipboardData,
-                GetClipboardOwner, IsClipboardFormatAvailable, OpenClipboard, RegisterClipboardFormatW,
-                SetClipboardData,
+                GetClipboardOwner, GetClipboardSequenceNumber, IsClipboardFormatAvailable, OpenClipboard,
+                RegisterClipboardFormatW, SetClipboardData,
             },
             LibraryLoader::GetModuleHandleW,
             Memory::{GMEM_MOVEABLE, GlobalAlloc, GlobalLock, GlobalSize, GlobalUnlock},
@@ -36,8 +36,9 @@ use windows::{
         UI::{
             Shell::{DROPFILES, DragQueryFileW, HDROP},
             WindowsAndMessaging::{
-                CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, HWND_MESSAGE, MSG,
-                RegisterClassExW, WINDOW_EX_STYLE, WINDOW_STYLE, WM_CLIPBOARDUPDATE, WNDCLASSEXW,
+                CreateWindowExW, DefWindowProcW, DispatchMessageW, GetMessageW, HWND_MESSAGE, KillTimer, MSG,
+                RegisterClassExW, SetTimer, WINDOW_EX_STYLE, WINDOW_STYLE, WM_CLIPBOARDUPDATE, WM_TIMER,
+                WNDCLASSEXW,
             },
         },
     },
@@ -52,6 +53,17 @@ const CF_DIBV5: u32 = 17;
 /// Copied bitmaps larger than this aren't read (an 8K screenshot is
 /// about 130 MB raw).
 const MAX_BITMAP_BYTES: usize = 160 * 1024 * 1024;
+/// What the watcher reads of a copied image for sending (#688): a PNG over
+/// what a phone takes can't be sent, and a bitmap past a 5K screen's is
+/// left alone rather than held open while tens of MB are copied.
+const WATCH_MAX_PNG_BYTES: usize = nectarlink_core::CLIP_MAX_IMAGE_BYTES as usize;
+const WATCH_MAX_BITMAP_BYTES: usize = 64 * 1024 * 1024;
+/// How long the clipboard has to stay unchanged before a copy is read: apps
+/// such as Snipping Tool write in steps (a bitmap, then a PNG a few hundred
+/// ms later), and reading in between would get in their way (#688).
+const SETTLE: Duration = Duration::from_millis(400);
+/// The watcher's timer for [`SETTLE`].
+const SETTLE_TIMER: usize = 1;
 
 /// A copied image, as the app offered it.
 #[derive(Clone, PartialEq, Eq)]
@@ -114,6 +126,27 @@ static LAST_REPORTED: Mutex<Option<u64>> = Mutex::new(None);
 /// (such as the Android emulator's QEMU clipboard pipe) immediately echoes the
 /// same plain text without rich formats, we preserve the rich formats.
 static LAST_WRITTEN_RICH: Mutex<Option<WrittenRich>> = Mutex::new(None);
+/// Whether anything takes what's copied now (#688). Until it says yes, a copy
+/// isn't read: the clipboard stays free for the app that wrote it.
+static WANTED: OnceLock<fn() -> bool> = OnceLock::new();
+/// The clipboard's sequence number when the watcher last read it, so a
+/// change it already read isn't read again.
+static LAST_SEQUENCE: Mutex<Option<u32>> = Mutex::new(None);
+
+/// Sets what [`start`]'s watcher asks before it opens the clipboard for a copy.
+pub fn set_wanted(wanted: fn() -> bool) {
+    let _ = WANTED.set(wanted);
+}
+
+/// A rich text NectarLink wrote in the last 2 s, which a bridge may echo back
+/// as plain text: then the copy is read to put the formats back.
+fn rich_echo_possible() -> bool {
+    LAST_WRITTEN_RICH
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .as_ref()
+        .is_some_and(|(at, ..)| at.elapsed() < Duration::from_secs(2))
+}
 
 fn fingerprint(clip: &Clip) -> Option<u64> {
     let mut hasher = DefaultHasher::new();
@@ -185,7 +218,22 @@ fn run() -> windows::core::Result<()> {
 
 unsafe extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {
     if msg == WM_CLIPBOARDUPDATE {
-        on_clipboard_changed(hwnd);
+        // Read once it has settled: each change starts the wait again.
+        // SAFETY: a timer on this thread's own window, killed when it fires.
+        unsafe { SetTimer(Some(hwnd), SETTLE_TIMER, SETTLE.as_millis() as u32, None) };
+        return LRESULT(0);
+    }
+    if msg == WM_TIMER && wparam.0 == SETTLE_TIMER {
+        // SAFETY: the timer set above.
+        let _ = unsafe { KillTimer(Some(hwnd), SETTLE_TIMER) };
+        // SAFETY: no preconditions.
+        let sequence = unsafe { GetClipboardSequenceNumber() };
+        let mut last = LAST_SEQUENCE.lock().unwrap_or_else(|e| e.into_inner());
+        if *last != Some(sequence) {
+            *last = Some(sequence);
+            drop(last);
+            on_clipboard_changed(hwnd);
+        }
         return LRESULT(0);
     }
     // SAFETY: default handling for everything else.
@@ -198,7 +246,11 @@ fn on_clipboard_changed(hwnd: HWND) {
     if unsafe { GetClipboardOwner() }.is_ok_and(|owner| owner == hwnd) {
         return;
     }
-    let clip = read_with(Some(hwnd), true);
+    // Nothing takes it: leave the clipboard alone, unopened (#688).
+    if !WANTED.get().is_none_or(|wanted| wanted()) && !rich_echo_possible() {
+        return;
+    }
+    let clip = read_limited(Some(hwnd), true, WATCH_MAX_PNG_BYTES, WATCH_MAX_BITMAP_BYTES);
     // A password manager's: the listener decides, by the user's choice.
     if matches!(clip, Clip::Private) {
         if let Some(on_copy) = ON_COPY.get() {
@@ -448,17 +500,23 @@ fn set_block(format: u32, data: &[u8]) -> Result<(), String> {
 }
 
 /// The clipboard, opened; closed when dropped. Other apps hold it briefly
-/// while they write, so opening retries for a moment.
+/// while they write, so opening tries again a few times, waiting longer
+/// each time rather than asking the busy app again at once (#688).
 struct Opened;
+
+/// The waits between tries to open the clipboard: about 0.6 s in all.
+const OPEN_RETRY_WAITS_MS: [u64; 6] = [10, 20, 40, 80, 160, 320];
 
 impl Opened {
     fn open(owner: Option<HWND>) -> Option<Opened> {
-        for _ in 0..20 {
+        for wait in std::iter::once(0).chain(OPEN_RETRY_WAITS_MS) {
+            if wait > 0 {
+                std::thread::sleep(Duration::from_millis(wait));
+            }
             // SAFETY: opening the clipboard for this thread; closed in Drop.
             if unsafe { OpenClipboard(owner) }.is_ok() {
                 return Some(Opened);
             }
-            std::thread::sleep(Duration::from_millis(15));
         }
         None
     }
@@ -479,6 +537,12 @@ fn format(name: &str) -> u32 {
 }
 
 fn read_with(owner: Option<HWND>, skip_private: bool) -> Clip {
+    read_limited(owner, skip_private, MAX_BITMAP_BYTES, MAX_BITMAP_BYTES)
+}
+
+/// [`read_with`], reading a PNG of at most `max_png` bytes, or a bitmap of at
+/// most `max_bitmap`; a larger image reads as [`Clip::Empty`].
+fn read_limited(owner: Option<HWND>, skip_private: bool, max_png: usize, max_bitmap: usize) -> Clip {
     // SAFETY: format availability checks need no open clipboard.
     let has = |format: u32| format != 0 && unsafe { IsClipboardFormatAvailable(format) }.is_ok();
     let png = format("PNG");
@@ -503,27 +567,12 @@ fn read_with(owner: Option<HWND>, skip_private: bool) -> Clip {
             .into_iter()
             .filter(|&(format, _)| has(format))
             .find_map(|(format, is_png)| {
-                let bytes = read_block(format)?;
+                let bytes = read_block_up_to(format, if is_png { max_png } else { max_bitmap })?;
                 Some(Clip::Image(if is_png { Image::Png(bytes) } else { Image::Bitmap(bytes) }))
             })
             .unwrap_or(Clip::Empty);
     }
-    // SAFETY: the clipboard is open; the data handle is valid until it's
-    // closed, and the text is read within the block's size.
-    let text = unsafe {
-        let Ok(handle) = GetClipboardData(CF_UNICODETEXT) else { return Clip::Empty };
-        let block = HGLOBAL(handle.0);
-        let units = GlobalSize(block) / 2;
-        let data = GlobalLock(block).cast::<u16>();
-        if data.is_null() {
-            return Clip::Empty;
-        }
-        let slice = std::slice::from_raw_parts(data, units);
-        let len = slice.iter().position(|&c| c == 0).unwrap_or(units);
-        let text = String::from_utf16_lossy(&slice[..len]);
-        let _ = GlobalUnlock(block);
-        text
-    };
+    let Some(text) = read_unicode_text() else { return Clip::Empty };
     if text.trim().is_empty() {
         return Clip::Empty;
     }
@@ -624,16 +673,73 @@ pub(crate) fn decode_cf_rtf(bytes: &[u8]) -> Option<String> {
     s.starts_with("{\\rtf").then(|| s.to_owned())
 }
 
+/// The clipboard's text (`CF_UNICODETEXT`). The clipboard must be open.
+fn read_unicode_text() -> Option<String> {
+    // SAFETY: the caller opened the clipboard; the data handle is valid until
+    // it's closed, and the text is read within the block's size.
+    unsafe {
+        let handle = GetClipboardData(CF_UNICODETEXT).ok()?;
+        let block = HGLOBAL(handle.0);
+        let units = GlobalSize(block) / 2;
+        let data = GlobalLock(block).cast::<u16>();
+        if data.is_null() {
+            return None;
+        }
+        let slice = std::slice::from_raw_parts(data, units);
+        let len = slice.iter().position(|&c| c == 0).unwrap_or(units);
+        let text = String::from_utf16_lossy(&slice[..len]);
+        let _ = GlobalUnlock(block);
+        Some(text)
+    }
+}
+
+/// The copied text, for a glance at it (the Shelf): only text, never an
+/// image or rich formats, and read only when the clipboard changed since the
+/// last glance (#688). Content marked private reads as nothing.
+pub fn peek_text() -> Option<String> {
+    static LAST: Mutex<Option<(u32, Option<String>)>> = Mutex::new(None);
+    // SAFETY: no preconditions.
+    let sequence = unsafe { GetClipboardSequenceNumber() };
+    let mut last = LAST.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some((seen, text)) = last.as_ref()
+        && *seen == sequence
+    {
+        return text.clone();
+    }
+    // SAFETY: format availability checks need no open clipboard.
+    let has = |format: u32| format != 0 && unsafe { IsClipboardFormatAvailable(format) }.is_ok();
+    let private =
+        has(format("ExcludeClipboardContentFromMonitorProcessing")) || has(format("Clipboard Viewer Ignore"));
+    let text = if has(CF_UNICODETEXT) && !private {
+        Opened::open(window()).and_then(|_open| {
+            if let Some(0) = read_dword(format("CanIncludeInClipboardHistory")) {
+                return None;
+            }
+            read_unicode_text().filter(|t| !t.trim().is_empty())
+        })
+    } else {
+        None
+    };
+    *last = Some((sequence, text.clone()));
+    text
+}
+
 /// A format's raw bytes, if present and not too large. The clipboard must
 /// be open.
 fn read_block(format: u32) -> Option<Vec<u8>> {
+    read_block_up_to(format, MAX_BITMAP_BYTES)
+}
+
+/// [`read_block`], for a block of at most `max` bytes: a larger one is left
+/// where it is, unread.
+fn read_block_up_to(format: u32, max: usize) -> Option<Vec<u8>> {
     // SAFETY: the caller opened the clipboard; the block is read within its
     // size while locked.
     unsafe {
         let handle = GetClipboardData(format).ok()?;
         let block = HGLOBAL(handle.0);
         let size = GlobalSize(block);
-        if size == 0 || size > MAX_BITMAP_BYTES {
+        if size == 0 || size > max {
             return None;
         }
         let data = GlobalLock(block).cast::<u8>();
