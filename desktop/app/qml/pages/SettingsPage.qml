@@ -3044,6 +3044,43 @@ Item {
                         Divider { width: parent.width }
                         ListRow {
                             width: parent.width
+                            newKey: "screen-edge-drop"
+                            iconPath: Icons.send
+                            title: qsTr("Screen-edge file drop")
+                            description: Qt.platform.os === "windows"
+                                ? qsTr("Slide out a drop pill when you drag files to the screen edge.")
+                                : qsTr("Windows only.")
+                            opacity: Qt.platform.os === "windows" ? 1.0 : 0.5
+                            Toggle {
+                                label: qsTr("Screen-edge file drop")
+                                enabled: Qt.platform.os === "windows"
+                                checked: Preferences.screenEdgeDrop
+                                onToggled: (on) => Preferences.screenEdgeDrop = on
+                            }
+                        }
+
+                        Divider {
+                            width: parent.width
+                            visible: Qt.platform.os === "windows" && Preferences.screenEdgeDrop
+                        }
+                        ListRow {
+                            width: parent.width
+                            visible: Qt.platform.os === "windows" && Preferences.screenEdgeDrop
+                            title: qsTr("Drop edge")
+                            description: qsTr("Which screen edge catches dragged files.")
+                            Segmented {
+                                options: [
+                                    { value: "left", label: qsTr("Left edge") },
+                                    { value: "right", label: qsTr("Right edge") }
+                                ]
+                                value: Preferences.screenEdgeDropSide
+                                onPicked: (val) => Preferences.screenEdgeDropSide = val
+                            }
+                        }
+
+                        Divider { width: parent.width }
+                        ListRow {
+                            width: parent.width
                             stackBelow: true
                             iconPath: Icons.mic
                             title: qsTr("Voice recordings")

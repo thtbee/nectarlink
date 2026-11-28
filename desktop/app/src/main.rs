@@ -1097,6 +1097,8 @@ fn main() -> ExitCode {
     photos::clear_shared_files();
     local_api::stop();
     agents::stop();
+    #[cfg(windows)]
+    win::edge_drop::stop();
     win::ble_beacon::stop();
     webcam::shutdown();
     storage::shutdown();

@@ -106,6 +106,7 @@ windows = { workspace = true, features = [
     "Win32_System_RemoteDesktop",
     "Win32_System_Shutdown",
     "Win32_System_SystemInformation",
+    "Win32_System_SystemServices",
     "Win32_NetworkManagement_WiFi",
     "Win32_System_Threading",
     "Win32_System_Time",

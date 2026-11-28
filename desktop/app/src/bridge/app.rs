@@ -168,6 +168,14 @@ pub mod qobject {
         /// Slide-out edge Shelf state and JSON items (`""` while closed so nothing runs while hidden).
         #[qproperty(bool, shelf_open)]
         #[qproperty(QString, shelf_items)]
+        /// Screen-edge file drop pill state (created only while dragging or confirming a drop).
+        #[qproperty(bool, edge_drop_open)]
+        #[qproperty(bool, edge_drop_hovering)]
+        #[qproperty(bool, edge_drop_sent)]
+        #[qproperty(bool, edge_drop_online)]
+        #[qproperty(bool, edge_drop_open_on_device)]
+        #[qproperty(i32, edge_drop_file_count)]
+        #[qproperty(QString, edge_drop_phone_name)]
         /// Pre-encoded QR code path and module size for the Android release APK link.
         #[qproperty(QString, apk_qr_path)]
         #[qproperty(i32, apk_qr_size)]
@@ -204,6 +212,12 @@ pub mod qobject {
         /// Applies Win32 `WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW | WS_EX_TOPMOST` to the Shelf window.
         #[qinvokable]
         fn style_shelf_window(self: &AppController);
+        /// Styles and positions the floating screen-edge drop pill window without stealing focus.
+        #[qinvokable]
+        fn style_edge_drop_window(self: &AppController);
+        /// Closes the screen-edge drop pill window once its slide-out animation completes.
+        #[qinvokable]
+        fn finish_edge_drop_close(self: Pin<&mut AppController>);
         /// Starts a native OS drag-out operation for a Shelf item (photo, screenshot, clip, or file).
         #[qinvokable]
         fn start_shelf_drag(
@@ -587,6 +601,13 @@ pub struct AppControllerRust {
     localsend_peers_json: QString,
     shelf_open: bool,
     shelf_items: QString,
+    edge_drop_open: bool,
+    edge_drop_hovering: bool,
+    edge_drop_sent: bool,
+    edge_drop_online: bool,
+    edge_drop_open_on_device: bool,
+    edge_drop_file_count: i32,
+    edge_drop_phone_name: QString,
     apk_qr_path: QString,
     apk_qr_size: i32,
     apk_qr_svg: QString,
@@ -2424,6 +2445,23 @@ impl qobject::AppController {
         win::tray::apply_no_activate_style_by_title(&crate::i18n::translate("IslandWindow", "Nectar Island"));
     }
 
+    pub fn style_edge_drop_window(&self) {
+        #[cfg(windows)]
+        win::edge_drop::position_pill_window(&edge_drop_title());
+        #[cfg(not(windows))]
+        win::tray::apply_no_activate_style_by_title(&edge_drop_title());
+    }
+
+    pub fn finish_edge_drop_close(mut self: Pin<&mut Self>) {
+        if self.edge_drop_hovering {
+            return;
+        }
+        self.as_mut().set_edge_drop_sent(false);
+        self.as_mut().set_edge_drop_file_count(0);
+        self.as_mut().set_edge_drop_open_on_device(false);
+        self.as_mut().set_edge_drop_open(false);
+    }
+
     pub fn start_shelf_drag(&self, kind: &QString, id_or_path: &QString, text: &QString) -> bool {
         let kind_str = String::from(kind);
         let s = String::from(id_or_path).trim().to_owned();
@@ -3861,6 +3899,89 @@ fn refresh_home_if_needed(device: DeviceId, force_sms: bool, force_calls: bool, 
 /// so in another language the English one isn't there.
 fn shelf_title() -> String {
     crate::i18n::translate("ShelfWindow", "NectarLink Shelf")
+}
+
+fn edge_drop_title() -> String {
+    crate::i18n::translate("EdgeDropWindow", "NectarLink Drop")
+}
+
+#[cfg(windows)]
+pub(crate) fn has_online_phone() -> bool {
+    core_host::host().hub.read(|s| s.devices.iter().any(|d| matches!(d.link, LinkState::Online { .. })))
+}
+
+#[cfg(windows)]
+fn resolve_online_drop_device(current_device_idx: i32) -> Option<(DeviceId, String)> {
+    core_host::host().hub.read(|s| {
+        let idx = current_device_idx.max(0) as usize;
+        let chosen = s
+            .devices
+            .get(idx)
+            .filter(|d| matches!(d.link, LinkState::Online { .. }))
+            .or_else(|| s.devices.iter().find(|d| matches!(d.link, LinkState::Online { .. })));
+        chosen.map(|d| (d.id, d.info.name.clone()))
+    })
+}
+
+#[cfg(windows)]
+pub(crate) fn on_edge_drop_enter(open_on_device: bool) {
+    let Some(qt) = controller() else { return };
+    let _ = qt.queue(move |mut object| {
+        let name =
+            resolve_online_drop_device(object.current_device).map_or_else(|| tr!("App", "phone"), |(_, n)| n);
+        object.as_mut().set_edge_drop_phone_name(QString::from(&name));
+        object.as_mut().set_edge_drop_sent(false);
+        object.as_mut().set_edge_drop_online(true);
+        object.as_mut().set_edge_drop_file_count(0);
+        object.as_mut().set_edge_drop_open_on_device(open_on_device);
+        object.as_mut().set_edge_drop_hovering(true);
+        object.as_mut().set_edge_drop_open(true);
+        win::edge_drop::position_pill_window(&edge_drop_title());
+    });
+}
+
+#[cfg(windows)]
+pub(crate) fn on_edge_drop_shift(open_on_device: bool) {
+    let Some(qt) = controller() else { return };
+    let _ = qt.queue(move |mut object| {
+        if object.edge_drop_hovering && object.edge_drop_open_on_device != open_on_device {
+            object.as_mut().set_edge_drop_open_on_device(open_on_device);
+        }
+    });
+}
+
+#[cfg(windows)]
+pub(crate) fn on_edge_drop_leave() {
+    let Some(qt) = controller() else { return };
+    let _ = qt.queue(|mut object| {
+        object.as_mut().set_edge_drop_hovering(false);
+    });
+}
+
+#[cfg(windows)]
+pub(crate) fn on_edge_drop_files(paths: Vec<std::path::PathBuf>, open_on_device: bool) {
+    let Some(qt) = controller() else { return };
+    let _ = qt.queue(move |mut object| {
+        let count = i32::try_from(paths.len()).unwrap_or(i32::MAX);
+        let Some((device, device_name)) = resolve_online_drop_device(object.current_device) else {
+            object.as_mut().set_edge_drop_hovering(false);
+            show_message(tr!("App", "No phone is connected."));
+            return;
+        };
+        if open_on_device {
+            crate::transfers::send_handoff(device, paths);
+        } else {
+            crate::transfers::send(device, paths);
+        }
+        show_message(tr!("App", "Sending to %1…", device_name));
+        object.as_mut().set_edge_drop_phone_name(QString::from(&device_name));
+        object.as_mut().set_edge_drop_file_count(count);
+        object.as_mut().set_edge_drop_online(true);
+        object.as_mut().set_edge_drop_open_on_device(open_on_device);
+        object.as_mut().set_edge_drop_hovering(false);
+        object.as_mut().set_edge_drop_sent(true);
+        object.as_mut().set_edge_drop_open(true);
+    });
 }
 
 fn feature_state_map(state: Option<FeatureState>) -> QMap<QMapPair_QString_QVariant> {

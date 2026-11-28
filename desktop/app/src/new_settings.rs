@@ -20,6 +20,7 @@ pub const NEW: &[(&str, &str)] = &[
     ("unlock-pc", "devices"),
     ("frame-rate", "camera_audio"),
     ("keep-popups-paused", "notifications"),
+    ("screen-edge-drop", "files_sync"),
     ("daily-count", "storage"),
     ("notification-history", "storage"),
     ("bluetooth-link", "connection"),

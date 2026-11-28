@@ -145,6 +145,10 @@ pub mod qobject {
         #[qproperty(bool, clipboard_auto_copy_received_files)]
         /// Open a single file shared from the phone when it arrives.
         #[qproperty(bool, open_shared_files)]
+        /// Slide out a floating drop pill when dragging files to the screen edge (Windows).
+        #[qproperty(bool, screen_edge_drop)]
+        /// Screen edge for the file drop pill (`"left"` or `"right"`).
+        #[qproperty(QString, screen_edge_drop_side)]
         #[qproperty(bool, sync_wifi_only)]
         #[qproperty(bool, sync_passwords)]
         #[qproperty(bool, keep_popups_paused, cxx_name = "keepPopupsPaused")]
@@ -482,6 +486,8 @@ pub struct PreferencesRust {
     local_api_token_path: QString,
     clipboard_auto_copy_received_files: bool,
     open_shared_files: bool,
+    screen_edge_drop: bool,
+    screen_edge_drop_side: QString,
     sync_wifi_only: bool,
     sync_passwords: bool,
     keep_popups_paused: bool,
@@ -617,6 +623,8 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_local_api_token_path(QString::from(&token_path.to_string_lossy().into_owned()));
         self.as_mut().set_clipboard_auto_copy_received_files(settings.clipboard_auto_copy_received_files);
         self.as_mut().set_open_shared_files(settings.open_shared_files);
+        self.as_mut().set_screen_edge_drop(settings.screen_edge_drop);
+        self.as_mut().set_screen_edge_drop_side(QString::from(&settings.screen_edge_drop_side));
         self.as_mut().set_sync_wifi_only(settings.sync_wifi_only);
         self.as_mut().set_sync_passwords(settings.sync_passwords);
         self.as_mut().set_keep_popups_paused(settings.keep_popups_paused);
@@ -968,6 +976,24 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut()
             .on_open_shared_files_changed(|p| {
                 crate::settings::set_open_shared_files(p.open_shared_files);
+                p.save();
+            })
+            .release();
+        self.as_mut()
+            .on_screen_edge_drop_changed(|p| {
+                crate::settings::set_screen_edge_drop(
+                    p.screen_edge_drop,
+                    &String::from(&p.screen_edge_drop_side),
+                );
+                p.save();
+            })
+            .release();
+        self.as_mut()
+            .on_screen_edge_drop_side_changed(|p| {
+                crate::settings::set_screen_edge_drop(
+                    p.screen_edge_drop,
+                    &String::from(&p.screen_edge_drop_side),
+                );
                 p.save();
             })
             .release();
@@ -1555,6 +1581,11 @@ impl qobject::Preferences {
             local_api_private: p.local_api_private,
             clipboard_auto_copy_received_files: p.clipboard_auto_copy_received_files,
             open_shared_files: p.open_shared_files,
+            screen_edge_drop: p.screen_edge_drop,
+            screen_edge_drop_side: match String::from(&p.screen_edge_drop_side).as_str() {
+                side if side.eq_ignore_ascii_case("left") => "left".to_owned(),
+                _ => "right".to_owned(),
+            },
             sync_wifi_only: p.sync_wifi_only,
             sync_passwords: p.sync_passwords,
             keep_popups_paused: p.keep_popups_paused,

@@ -507,7 +507,10 @@ fn dispatch(host: &CoreHost, event: &nectarlink_core::NodeEvent) {
     crate::automations::on_event(event);
     crate::agents::on_event(event);
     #[cfg(windows)]
-    crate::win::pointer_hooks::on_event(event);
+    {
+        crate::win::pointer_hooks::on_event(event);
+        crate::win::edge_drop::on_event(event);
+    }
     crate::bridge::app::on_home_event(event);
 }
 

@@ -29,4 +29,6 @@ QtObject {
     property bool nectarIslandPcMedia: false
     property bool nectarIslandNotifications: true
     property bool nectarIslandTransfers: true
+    property bool screenEdgeDrop: false
+    property string screenEdgeDropSide: "right"
 }
