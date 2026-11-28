@@ -22,6 +22,47 @@ Item {
     readonly property var availableApps: { try { return JSON.parse(Messages.availableApps) } catch (e) { return [] } }
     readonly property var openThread: threads.find(t => t.id === Messages.thread) || null
     readonly property bool ready: Messages.status === "ready"
+    // The lists follow the phone's by changing only what differs, so a list
+    // keeps its place (and the pictures its bubbles loaded) when one is read again.
+    SyncModel { id: threadModel }
+    SyncModel { id: messageModel }
+    // What is selected: conversations in the list, or messages in the open one.
+    Selection { id: threadSel }
+    Selection { id: msgSel }
+    readonly property var threadOrder: shownThreads.map(t => t.id)
+    readonly property var selectedThreads: threadSel.inOrder(threadOrder)
+    readonly property var selectedMessages: msgSel.inOrder(messageOrder)
+    // Oldest first, as the messages are read.
+    readonly property var messageOrder: messages.map(m => m.id)
+    // The open conversation, newest first: the list runs from the bottom up, so it
+    // opens at the newest and keeps its place when older messages come in above.
+    // Each row knows the message before it, for its day and sender.
+    readonly property var messageRows: {
+        const out = []
+        for (let i = messages.length - 1; i >= 0; i--) {
+            const before = i > 0 ? messages[i - 1] : null
+            out.push(Object.assign({}, messages[i], {
+                hasPrev: before !== null,
+                prevDate: before ? before.date : 0,
+                prevSender: before ? (before.sender || "") : ""
+            }))
+        }
+        return out
+    }
+    onShownThreadsChanged: {
+        threadModel.sync(shownThreads)
+        threadSel.prune(threadOrder)
+    }
+    onMessageRowsChanged: {
+        messageModel.sync(messageRows)
+        msgSel.prune(messageOrder)
+    }
+    // A conversation opens at its newest message, whatever was read before.
+    function resetMessages() {
+        messageModel.clear()
+        messageModel.sync(messageRows)
+        messageList.positionViewAtBeginning()
+    }
     // Conversations matching the search box.
     readonly property string query: search.text.trim().toLocaleLowerCase()
     readonly property var shownThreads: query.length === 0 ? threads
@@ -69,11 +110,121 @@ Item {
         }
     }
 
+    // Where to save the picture being looked at.
+    FileDialog {
+        id: saveImageDialog
+        title: qsTr("Save picture")
+        fileMode: FileDialog.SaveFile
+        nameFilters: [qsTr("Pictures (*.jpg *.jpeg *.png *.gif *.webp)"), qsTr("All files (*)")]
+        onAccepted: {
+            if (selectedFile.toString().length > 0)
+                Messages.saveImage(msgImagePreviewSheet.imageUrl, selectedFile.toString())
+        }
+    }
+
     // Back to the list: nothing open.
     function closeChat() {
         Messages.closeThread()
         composing = false
         toField.text = ""
+    }
+
+    // ---- What can be done with conversations and messages ----
+    function markThreadsUnread(ids) {
+        Messages.markThreadsUnread(JSON.stringify(ids))
+        threadSel.clear()
+    }
+    // The text of the selected messages, oldest first.
+    function textOf(ids) {
+        return messages.filter(m => ids.indexOf(m.id) >= 0 && m.body.length > 0).map(m => m.body).join("\n")
+    }
+    // Deleting asks first.
+    property var pendingDelete: ({ kind: "threads", ids: [] })
+    function askDelete(kind, ids) {
+        pendingDelete = { kind: kind, ids: ids }
+        deleteSheet.open()
+    }
+    function confirmDelete() {
+        deleteSheet.close()
+        const ids = JSON.stringify(pendingDelete.ids)
+        if (pendingDelete.kind === "threads") {
+            Messages.deleteThreads(ids)
+            threadSel.clear()
+        } else {
+            Messages.deleteMessages(ids)
+            msgSel.clear()
+        }
+    }
+
+    // The menus: what applies to the item under the pointer, or to the whole
+    // selection when it is part of it.
+    property string menuKind: ""
+    property var menuTargets: []
+    function threadEntries(n, selecting) {
+        const out = []
+        if (!selecting)
+            out.push({ key: "select", label: qsTr("Select"), icon: Icons.checkSquare })
+        out.push({ key: "unread", icon: Icons.mail, label: n > 1 ? qsTr("Mark %n as unread", "", n) : qsTr("Mark as unread") })
+        out.push({
+            key: "delete", icon: Icons.trash, danger: true,
+            label: n > 1 ? qsTr("Delete %n conversation(s)", "", n) : qsTr("Delete")
+        })
+        return out
+    }
+    function openThreadMenu(source, x, y, thread) {
+        const inSelection = threadSel.has(thread.id)
+        menuKind = "thread"
+        menuTargets = inSelection ? threadSel.inOrder(threadOrder) : [thread.id]
+        menu.openAt(source, x, y, threadEntries(menuTargets.length, inSelection))
+    }
+    function messageEntries(ids, selecting) {
+        const n = ids.length
+        const out = []
+        if (!selecting)
+            out.push({ key: "select", label: qsTr("Select"), icon: Icons.checkSquare })
+        if (textOf(ids).length > 0)
+            out.push({ key: "copy", label: n > 1 ? qsTr("Copy text of %n messages", "", n) : qsTr("Copy text"), icon: Icons.copy })
+        out.push({ key: "unread", icon: Icons.mail, label: n > 1 ? qsTr("Mark %n messages as unread", "", n) : qsTr("Mark as unread") })
+        out.push({
+            key: "delete", icon: Icons.trash, danger: true,
+            label: n > 1 ? qsTr("Delete %n messages", "", n) : qsTr("Delete message")
+        })
+        return out
+    }
+    function openMessageMenu(source, x, y, message) {
+        const inSelection = msgSel.has(message.id)
+        menuKind = "message"
+        menuTargets = inSelection ? msgSel.inOrder(messageOrder) : [message.id]
+        menu.openAt(source, x, y, messageEntries(menuTargets, inSelection))
+    }
+    // The open conversation's own menu (its "more" button).
+    function openConversationMenu(source) {
+        if (!page.openThread)
+            return
+        menuKind = "conversation"
+        menuTargets = [page.openThread.id]
+        menu.openAt(source, 0, source.height + 4, [
+            { key: "select", label: qsTr("Select messages"), icon: Icons.checkSquare },
+            { key: "unread", label: qsTr("Mark as unread"), icon: Icons.mail },
+            { key: "delete", label: qsTr("Delete"), icon: Icons.trash, danger: true }
+        ])
+    }
+    function menuChosen(key) {
+        const ids = menuTargets
+        if (menuKind === "thread") {
+            if (key === "select") threadSel.toggle(ids[0])
+            else if (key === "unread") markThreadsUnread(ids)
+            else if (key === "delete") askDelete("threads", ids)
+        } else if (menuKind === "message") {
+            if (key === "select") msgSel.toggle(ids[0])
+            else if (key === "copy") Messages.copy(textOf(ids))
+            else if (key === "unread") { msgSel.clear(); Messages.markOpenUnread() }
+            else if (key === "delete") askDelete("messages", ids)
+        } else if (menuKind === "conversation") {
+            if (key === "select") msgSel.start()
+            else if (key === "unread") markThreadsUnread(ids)
+            else if (key === "delete") askDelete("threads", ids)
+        }
     }
 
     // A stable color for a contact (in Bloom).
@@ -147,8 +298,8 @@ Item {
         function onComposeToChanged() { page.applyComposeTarget() }
         function onThreadChanged() {
             page.switchDraft()
-            // A conversation opens at its latest message, whatever was read before.
-            messageList.openedAtEnd()
+            msgSel.clear()
+            page.resetMessages()
             if (Messages.thread.length > 0) {
                 page.composing = false
                 Qt.callLater(() => composer.focusText())
@@ -158,7 +309,7 @@ Item {
             page.focusId = Messages.focusMessage
             if (page.focusId.length > 0) {
                 focusTimer.restart()
-                messageList.keepPlace()
+                messageList.showFocused()
             }
         }
     }
@@ -171,12 +322,25 @@ Item {
         }
     }
     // Leaving the page closes the open conversation.
-    onActiveChanged: active ? load() : closeChat()
+    onActiveChanged: {
+        if (active) {
+            load()
+        } else {
+            closeChat()
+            threadSel.clear()
+        }
+    }
     // Read only while it can be seen: not with the window closed to the tray or minimized.
     readonly property bool onScreen: active && Window.window !== null && Window.window.visible
         && Window.window.visibility !== Window.Minimized
     onOnScreenChanged: Messages.setOnScreen(onScreen)
-    Component.onCompleted: { load(); switchDraft(); Messages.setOnScreen(onScreen) }
+    Component.onCompleted: {
+        threadModel.sync(shownThreads)
+        messageModel.sync(messageRows)
+        load()
+        switchDraft()
+        Messages.setOnScreen(onScreen)
+    }
     // What's typed stays for when you come back, even from another page.
     Component.onDestruction: {
         Messages.setOnScreen(false)
@@ -185,10 +349,35 @@ Item {
         Messages.closeThread()
     }
 
+    // Escape lets go of what a menu, a sheet or a selection has, then leaves the conversation.
+    readonly property bool escapeFree: !menu.opened && !deleteSheet.opened && !msgImagePreviewSheet.opened
+        && !threadSel.active && !msgSel.active
     Shortcut {
         sequence: "Esc"
-        enabled: page.active && (!!page.openThread || page.composing)
+        enabled: page.active && page.escapeFree && (!!page.openThread || page.composing)
         onActivated: page.closeChat()
+    }
+    Shortcut {
+        sequence: "Esc"
+        enabled: page.active && !menu.opened && !deleteSheet.opened && !msgImagePreviewSheet.opened
+            && (threadSel.active || msgSel.active)
+        onActivated: {
+            if (msgSel.active)
+                msgSel.clear()
+            else
+                threadSel.clear()
+        }
+    }
+    Shortcut {
+        sequences: [StandardKey.SelectAll]
+        enabled: page.active && (threadSel.active || msgSel.active) && !input.activeFocus
+            && !search.activeFocus && !toField.activeFocus
+        onActivated: {
+            if (msgSel.active)
+                msgSel.selectAll(page.messageOrder)
+            else
+                threadSel.selectAll(page.threadOrder)
+        }
     }
     Shortcut {
         sequences: [StandardKey.Find]
@@ -215,7 +404,7 @@ Item {
         toField.text = ""
         toField.forceActiveFocus()
     }
-    onDeviceIdChanged: { composing = false; switchDraft(); load() }
+    onDeviceIdChanged: { composing = false; threadSel.clear(); msgSel.clear(); switchDraft(); load() }
 
     // What was typed in each conversation, so text written for one is never
     // sent to another and comes back when you return to it. Kept by the app,
@@ -309,6 +498,7 @@ Item {
                 anchors.left: parent.left
                 anchors.leftMargin: 20
                 anchors.verticalCenter: parent.verticalCenter
+                visible: !threadSel.active
                 text: qsTr("Conversations")
                 role: "title"
             }
@@ -317,6 +507,7 @@ Item {
                 anchors.right: parent.right
                 anchors.rightMargin: 10
                 anchors.verticalCenter: parent.verticalCenter
+                visible: !threadSel.active
                 iconPath: Icons.plus
                 label: qsTr("New message (Ctrl+N)")
                 tonal: page.composing
@@ -324,12 +515,65 @@ Item {
                 onClicked: page.startNew()
             }
             IconButton {
+                id: refreshButton
                 anchors.right: newButton.left
                 anchors.verticalCenter: parent.verticalCenter
+                visible: !threadSel.active
                 iconPath: Icons.refresh
                 label: qsTr("Refresh")
                 enabled: Messages.status !== "loading"
                 onClicked: Messages.refresh()
+            }
+            IconButton {
+                anchors.right: refreshButton.left
+                anchors.verticalCenter: parent.verticalCenter
+                visible: !threadSel.active
+                objectName: "selectThreads"
+                iconPath: Icons.checkSquare
+                label: qsTr("Select conversations (or Ctrl+click)")
+                enabled: page.shownThreads.length > 0
+                onClicked: threadSel.start()
+            }
+            // Selecting: how many, and what to do with them.
+            Row {
+                anchors.left: parent.left
+                anchors.leftMargin: 10
+                anchors.right: parent.right
+                anchors.rightMargin: 10
+                anchors.verticalCenter: parent.verticalCenter
+                visible: threadSel.active
+                spacing: 2
+                IconButton {
+                    anchors.verticalCenter: parent.verticalCenter
+                    iconPath: Icons.close
+                    label: qsTr("Cancel selection (Esc)")
+                    onClicked: threadSel.clear()
+                }
+                Txt {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: Math.max(40, parent.width - 3 * 36 - 6)
+                    leftPadding: 6
+                    elide: Text.ElideRight
+                    role: "body"
+                    weight: 500
+                    text: qsTr("%n selected", "", threadSel.count)
+                }
+                IconButton {
+                    anchors.verticalCenter: parent.verticalCenter
+                    objectName: "unreadSelected"
+                    enabled: threadSel.count > 0
+                    iconPath: Icons.mail
+                    label: qsTr("Mark as unread")
+                    onClicked: page.markThreadsUnread(threadSel.inOrder(page.threadOrder))
+                }
+                IconButton {
+                    anchors.verticalCenter: parent.verticalCenter
+                    objectName: "deleteSelected"
+                    enabled: threadSel.count > 0
+                    iconPath: Icons.trash
+                    label: qsTr("Delete")
+                    onClicked: page.askDelete("threads", threadSel.inOrder(page.threadOrder))
+                }
             }
         }
 
@@ -442,18 +686,21 @@ Item {
         WheelScroll { flick: threadList }
         ListView {
             id: threadList
+            objectName: "threadList"
             anchors.top: appFilterBar.bottom
             anchors.topMargin: 8
             anchors.bottom: parent.bottom
             width: parent.width
             clip: true
             boundsBehavior: Flickable.StopAtBounds
-            model: page.shownThreads
+            model: threadModel
             delegate: ThreadRow {
+                required property string json
                 width: threadList.width
-                thread: modelData
+                thread: JSON.parse(json)
             }
             Txt {
+                objectName: "emptyThreads"
                 anchors.centerIn: parent
                 visible: (page.ready || Messages.hasChatThreads) && page.shownThreads.length === 0
                 role: "body"
@@ -538,6 +785,7 @@ Item {
                 anchors.left: parent.left
                 anchors.leftMargin: 12
                 anchors.verticalCenter: parent.verticalCenter
+                visible: !msgSel.active
                 iconPath: Icons.back
                 label: qsTr("Back to conversations (Esc)")
                 onClicked: page.closeChat()
@@ -545,12 +793,11 @@ Item {
             Column {
                 anchors.left: backButton.right
                 anchors.leftMargin: 8
-                anchors.right: callThreadButton.visible ? callThreadButton.left
-                    : deleteChatButton.visible ? deleteChatButton.left : parent.right
-                anchors.rightMargin: (callThreadButton.visible || deleteChatButton.visible) ? 8 : 24
+                anchors.right: headerActions.visible ? headerActions.left : parent.right
+                anchors.rightMargin: headerActions.visible ? 8 : 24
                 anchors.verticalCenter: parent.verticalCenter
                 spacing: 2
-                visible: !page.composing
+                visible: !page.composing && !msgSel.active
                 Row {
                     width: parent.width
                     spacing: 8
@@ -588,27 +835,89 @@ Item {
                     elide: Text.ElideRight
                 }
             }
-            IconButton {
-                id: callThreadButton
+            Row {
+                id: headerActions
                 anchors.right: parent.right
                 anchors.rightMargin: 14
                 anchors.verticalCenter: parent.verticalCenter
-                visible: !page.composing && !!page.openThread && !page.openThread.isChat && !page.openThread.group
-                    && page.openThread.addresses.length > 0 && PhoneCall.canDial
-                enabled: !PhoneCall.dialing
-                iconPath: Icons.call
-                label: page.openThread ? qsTr("Call %1").arg(page.openThread.title) : qsTr("Call")
-                onClicked: if (page.openThread) PhoneCall.dial(page.openThread.addresses)
+                spacing: 2
+                visible: !page.composing && !!page.openThread && !msgSel.active
+                IconButton {
+                    iconPath: Icons.checkSquare
+                    label: qsTr("Select messages")
+                    onClicked: msgSel.start()
+                }
+                IconButton {
+                    id: callThreadButton
+                    visible: !!page.openThread && !page.openThread.isChat && !page.openThread.group
+                        && page.openThread.addresses.length > 0 && PhoneCall.canDial
+                    enabled: !PhoneCall.dialing
+                    iconPath: Icons.call
+                    label: page.openThread ? qsTr("Call %1").arg(page.openThread.title) : qsTr("Call")
+                    onClicked: if (page.openThread) PhoneCall.dial(page.openThread.addresses)
+                }
+                IconButton {
+                    id: moreButton
+                    objectName: "moreButton"
+                    iconPath: Icons.more
+                    label: qsTr("More")
+                    onClicked: page.openConversationMenu(moreButton)
+                }
             }
-            IconButton {
-                id: deleteChatButton
+            // Selecting messages: how many, and what to do with them.
+            Row {
+                anchors.left: parent.left
+                anchors.leftMargin: 12
                 anchors.right: parent.right
                 anchors.rightMargin: 14
                 anchors.verticalCenter: parent.verticalCenter
-                visible: !page.composing && !!page.openThread && !!page.openThread.isChat
-                iconPath: Icons.trash
-                label: qsTr("Remove conversation from PC")
-                onClicked: if (page.openThread) Messages.deleteChatThread(page.openThread.id)
+                visible: msgSel.active
+                spacing: 2
+                IconButton {
+                    objectName: "cancelMessageSelection"
+                    anchors.verticalCenter: parent.verticalCenter
+                    iconPath: Icons.close
+                    label: qsTr("Cancel selection (Esc)")
+                    onClicked: msgSel.clear()
+                }
+                Txt {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: Math.max(60, parent.width - 4 * 36 - 8)
+                    leftPadding: 8
+                    elide: Text.ElideRight
+                    role: "title"
+                    text: qsTr("%n selected", "", msgSel.count)
+                }
+                IconButton {
+                    anchors.verticalCenter: parent.verticalCenter
+                    objectName: "copySelectedMessages"
+                    enabled: msgSel.count > 0 && page.textOf(msgSel.inOrder(page.messageOrder)).length > 0
+                    iconPath: Icons.copy
+                    label: qsTr("Copy text")
+                    onClicked: {
+                        Messages.copy(page.textOf(msgSel.inOrder(page.messageOrder)))
+                        msgSel.clear()
+                    }
+                }
+                IconButton {
+                    anchors.verticalCenter: parent.verticalCenter
+                    objectName: "unreadSelectedMessages"
+                    enabled: msgSel.count > 0
+                    iconPath: Icons.mail
+                    label: msgSel.count > 1 ? qsTr("Mark %n messages as unread", "", msgSel.count) : qsTr("Mark as unread")
+                    onClicked: {
+                        msgSel.clear()
+                        Messages.markOpenUnread()
+                    }
+                }
+                IconButton {
+                    anchors.verticalCenter: parent.verticalCenter
+                    objectName: "deleteSelectedMessages"
+                    enabled: msgSel.count > 0
+                    iconPath: Icons.trash
+                    label: qsTr("Delete")
+                    onClicked: page.askDelete("messages", msgSel.inOrder(page.messageOrder))
+                }
             }
             // New message: who to.
             Row {
@@ -754,14 +1063,12 @@ Item {
 
         ScrollRail { flick: messageList }
         WheelScroll {
-            id: wheelScroll
             flick: messageList
-            // Same as a drag: the reader is somewhere else than the latest.
-            onMoved: { messageList.followLatest = false; page.focusId = "" }
-            onSettled: messageList.notePlace()
+            onMoved: page.focusId = ""
         }
         ListView {
             id: messageList
+            objectName: "messageList"
             anchors.top: chatHeader.bottom
             anchors.bottom: attachmentBar.visible ? attachmentBar.top : composer.top
             anchors.bottomMargin: 8
@@ -770,99 +1077,48 @@ Item {
             clip: true
             spacing: 6
             cacheBuffer: 960
-            // A short conversation sits at the bottom, by the box.
-            topMargin: Math.max(16, height - contentHeight - bottomMargin)
-            bottomMargin: 8
+            // Newest at the bottom, listed first: a short conversation sits by the box,
+            // a new message shows when the newest is, and older ones loaded above don't
+            // move what's in view. Nothing has to scroll to the end, or keep a place.
+            verticalLayoutDirection: ListView.BottomToTop
             boundsBehavior: Flickable.StopAtBounds
-            model: page.messages
-            // The latest at the bottom; scrolling up loads older ones. Every refresh
-            // replaces the whole list, which puts a list view back at the top, and
-            // pictures grow a bubble once loaded: stay where the reader was. By the
-            // message at the top of the view, since a list of bubbles of different
-            // heights only estimates how tall it is. Only the reader's own scrolling
-            // lets go of the latest: a list being rebuilt moves by itself.
-            property bool followLatest: true
-            property string keptId: ""
-            property real keptOffset: 0
-            // Being rebuilt: nothing it does then is the reader's.
-            property bool settling: false
-            readonly property bool readerMoving: moving || dragging || flicking || wheelScroll.active
-            function openedAtEnd() {
-                followLatest = true
-                keptId = ""
-                Qt.callLater(keepPlace)
+            model: messageModel
+            function showFocused() {
+                const index = messageModel.indexOfId(page.focusId)
+                if (index >= 0)
+                    positionViewAtIndex(index, ListView.Contain)
             }
-            function keepPlace() {
-                if (page.focusId.length > 0) {
-                    const at = page.messages.findIndex(m => m.id === page.focusId)
-                    if (at >= 0) {
-                        // The latest is at the end, and goes on following.
-                        followLatest = at === page.messages.length - 1
-                        if (followLatest)
-                            positionViewAtEnd()
-                        else
-                            positionViewAtIndex(at, ListView.Contain)
-                        return
-                    }
-                }
-                if (followLatest) {
-                    positionViewAtEnd()
+            // Near the top, by scrolling or because the messages loaded don't fill the
+            // view (some of them were deleted here).
+            function loadOlderIfNeeded(short) {
+                if (!Messages.more || Messages.loadingOlder || count === 0)
                     return
-                }
-                const index = page.messages.findIndex(m => m.id === keptId)
-                if (index < 0)
+                if (!short && contentY - originY > 240)
                     return
-                positionViewAtIndex(index, ListView.Beginning)
-                const bubble = itemAtIndex(index)
-                if (bubble)
-                    contentY = bubble.y + keptOffset
-            }
-            function notePlace() {
-                // From originY, which moves as bubbles load. Closer than one wheel notch.
-                followLatest = originY + contentHeight + bottomMargin - contentY - height <= 8
-                // Bubbles have gaps between them: look a little lower if this hits one.
-                let index = indexAt(width / 2, contentY)
-                if (index < 0)
-                    index = indexAt(width / 2, contentY + spacing + 1)
-                const bubble = index >= 0 ? itemAtIndex(index) : null
-                if (bubble) {
-                    keptId = page.messages[index].id
-                    keptOffset = contentY - bubble.y
-                }
-            }
-            // Near the top, by the reader's own scrolling.
-            function loadOlderIfNeeded() {
-                if (settling || !readerMoving || !Messages.more || count === 0 || Messages.loadingOlder)
-                    return
-                if (contentY - (originY - topMargin) > 160)
-                    return
-                notePlace()
-                followLatest = false
                 Messages.loadOlder()
             }
-            onModelChanged: {
-                settling = true
-                forceLayout()
-                keepPlace()
-                settling = false
+            function fill() {
+                if (contentHeight < height)
+                    loadOlderIfNeeded(true)
             }
-            onContentHeightChanged: if (followLatest || page.focusId.length > 0) Qt.callLater(keepPlace)
-            onHeightChanged: if (followLatest || page.focusId.length > 0) Qt.callLater(keepPlace)
-            onContentYChanged: loadOlderIfNeeded()
-            // Before it ends, or the height changing as bubbles load pulls the reader
-            // back down mid-scroll.
-            onMovementStarted: { followLatest = false; page.focusId = "" }
-            onMovementEnded: notePlace()
-            onFlickEnded: notePlace()
-            header: Item {
+            onContentYChanged: loadOlderIfNeeded(false)
+            onCountChanged: Qt.callLater(fill)
+            onMovementStarted: page.focusId = ""
+            header: Item { width: messageList.width; height: 8 }
+            // At the top: older messages loading.
+            footer: Item {
                 width: messageList.width
-                height: Messages.loadingOlder ? 40 : 0
+                height: Messages.loadingOlder ? 56 : 16
                 Spinner { anchors.centerIn: parent; visible: Messages.loadingOlder }
             }
+            Connections {
+                target: Messages
+                function onLoadingOlderChanged() { Qt.callLater(messageList.fill) }
+            }
             delegate: Bubble {
+                required property string json
                 width: messageList.width
-                message: modelData
-                previous: index > 0 ? page.messages[index - 1] : null
+                message: JSON.parse(json)
             }
             Txt {
                 anchors.centerIn: parent
@@ -968,7 +1224,7 @@ Item {
                 else
                     Messages.send(input.text)
                 // Your own message is where you look next, wherever you had scrolled to.
-                messageList.openedAtEnd()
+                messageList.positionViewAtBeginning()
                 input.text = ""
                 Messages.saveDraft(page.draftKey, "")
                 page.composing = false
@@ -1124,6 +1380,8 @@ Item {
         id: row
         property var thread
         readonly property bool selected: thread.id === Messages.thread
+        // Chosen among others to delete, mark unread...
+        readonly property bool picked: threadSel.has(thread.id)
         readonly property bool isChat: !!thread.isChat
         // Only the phone's own SMS app can mark texts read, so the one being
         // read here would otherwise keep its unread look.
@@ -1137,9 +1395,17 @@ Item {
             page.composing = false
             Messages.openThread(thread.id)
         }
+        // A click: Ctrl (Cmd) toggles it, Shift selects up to it, and while
+        // selecting any click does; otherwise it opens.
+        function activate(modifiers) {
+            const ctrl = (modifiers & Qt.ControlModifier) !== 0
+            const shift = (modifiers & Qt.ShiftModifier) !== 0
+            if (!threadSel.click(thread.id, page.threadOrder, ctrl, shift))
+                open()
+        }
         Keys.onPressed: (event) => {
             if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
-                open()
+                activate(event.modifiers)
                 event.accepted = true
             }
         }
@@ -1149,7 +1415,8 @@ Item {
             anchors.leftMargin: 8
             anchors.rightMargin: 8
             radius: Theme.radiusLg
-            color: row.selected ? Theme.secondaryContainer
+            color: row.picked ? Theme.primaryContainer
+                 : row.selected ? Theme.secondaryContainer
                  : rowHover.hovered ? Qt.rgba(Theme.surfaceContent.r, Theme.surfaceContent.g, Theme.surfaceContent.b, 0.06)
                  : "transparent"
             border.width: Theme.focusVisible(row) ? 2 : 0
@@ -1196,6 +1463,24 @@ Item {
                     sourceSize: Qt.size(28, 28)
                     fillMode: Image.PreserveAspectCrop
                 }
+            }
+        }
+        // Chosen: a check over the picture; selecting: a ring to choose it by.
+        Rectangle {
+            x: face.x - 4
+            y: face.y - 4
+            width: 22; height: 22
+            radius: 11
+            visible: threadSel.active
+            color: row.picked ? Theme.primary : Theme.surface
+            border.width: 2
+            border.color: row.picked ? Theme.primary : Theme.outline
+            Icon {
+                anchors.centerIn: parent
+                width: 12; height: 12
+                visible: row.picked
+                path: Icons.check
+                color: Theme.primaryContent
             }
         }
         Column {
@@ -1286,15 +1571,32 @@ Item {
             }
         }
         HoverHandler { id: rowHover; cursorShape: Qt.PointingHandCursor }
-        TapHandler { onTapped: row.open() }
+        // Click, or right-click (press and hold on a touch screen) for what can be done with it.
+        MouseArea {
+            anchors.fill: parent
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
+            onClicked: (mouse) => {
+                if (mouse.button === Qt.RightButton)
+                    page.openThreadMenu(row, mouse.x, mouse.y, row.thread)
+                else
+                    row.activate(mouse.modifiers)
+            }
+            onPressAndHold: (mouse) => {
+                if (mouse.source !== Qt.MouseEventNotSynthesized)
+                    page.openThreadMenu(row, mouse.x, mouse.y, row.thread)
+            }
+        }
     }
 
     // A message: right-aligned when sent from the phone.
     component Bubble: Item {
         id: bubble
         property var message
-        property var previous: null
+        // The message before it (the page adds what is needed of it to each row).
+        readonly property var previous: message.hasPrev ? ({ date: message.prevDate, sender: message.prevSender }) : null
         readonly property bool mine: message.outgoing
+        // Chosen among others to copy, delete...
+        readonly property bool picked: msgSel.has(message.id)
         readonly property real maxWidth: Math.min(width * 0.72, 520)
         readonly property bool hasUrl: message.body.indexOf("http://") >= 0 || message.body.indexOf("https://") >= 0
         readonly property bool newDay: {
@@ -1309,6 +1611,14 @@ Item {
         height: day.height + sender.height + content.height + meta.height + codeRow.height + 4
 
         HoverHandler { id: bubbleHover }
+
+        // Chosen: tinted from edge to edge, with a check in the margin.
+        Rectangle {
+            anchors.fill: parent
+            anchors.topMargin: day.height
+            visible: bubble.picked
+            color: Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, 0.14)
+        }
 
         // The day, above its first message.
         Txt {
@@ -1351,15 +1661,19 @@ Item {
             Column {
                 id: pictures
                 width: bubble.message.images.length > 0 ? Math.min(260, bubble.maxWidth) : 0
+                // By count, so a picture arriving only changes its own source: a new list
+                // of the same pictures would build every one of them again.
                 Repeater {
-                    model: bubble.message.images
+                    model: bubble.message.images.length
                     delegate: Item {
                         id: picItem
-                        required property string modelData
+                        required property int index
+                        readonly property string modelData: bubble.message.images[index] || ""
                         width: pictures.width
-                        height: modelData.length > 0 && picture.status === Image.Ready
-                            ? Math.min(320, width * picture.implicitImageHeight / Math.max(1, picture.implicitImageWidth))
-                            : 140
+                        // A frame of one size, loaded or not: a bubble that changes height as its
+                        // picture arrives moves everything above it. The picture is cropped to it
+                        // and shown whole when opened.
+                        height: Math.round(width * 0.7)
                         activeFocusOnTab: modelData.length > 0
                         Accessible.role: Accessible.Button
                         Accessible.name: qsTr("Open image attachment")
@@ -1387,7 +1701,12 @@ Item {
                             visible: Theme.focusVisible(picItem)
                         }
                         Spinner { anchors.centerIn: parent; visible: parent.modelData.length === 0 }
-                        TapHandler { onTapped: if (parent.modelData.length > 0) msgImagePreviewSheet.openFor(parent.modelData) }
+                        // Not while selecting: a click then chooses the message.
+                        TapHandler {
+                            enabled: !msgSel.active
+                            acceptedModifiers: Qt.NoModifier
+                            onTapped: if (parent.modelData.length > 0) msgImagePreviewSheet.openFor(parent.modelData)
+                        }
                         HoverHandler { cursorShape: parent.modelData.length > 0 ? Qt.PointingHandCursor : Qt.ArrowCursor }
                     }
                 }
@@ -1398,10 +1717,11 @@ Item {
                 width: content.audioList.length > 0 ? Math.min(240, bubble.maxWidth) : 0
                 spacing: 4
                 Repeater {
-                    model: content.audioList
+                    model: content.audioList.length
                     delegate: Rectangle {
                         id: audioPill
-                        required property var modelData
+                        required property int index
+                        readonly property var modelData: content.audioList[index]
                         width: audiosCol.width
                         height: 44
                         radius: 14
@@ -1459,7 +1779,7 @@ Item {
                     ? (bubble.hasUrl ? page.linkified(bubble.message.body) : bubble.message.body)
                     : qsTr("Attachment (open it on the phone)")
                 readOnly: true
-                selectByMouse: true
+                selectByMouse: !msgSel.active
                 wrapMode: TextEdit.Wrap
                 textFormat: bubble.hasUrl ? TextEdit.RichText : TextEdit.PlainText
                 onLinkActivated: (link) => Qt.openUrlExternally(link)
@@ -1470,6 +1790,61 @@ Item {
                 color: bubble.mine ? Theme.primaryContainerContent : Theme.surfaceContent
                 selectionColor: Theme.primary
                 selectedTextColor: Theme.primaryContent
+            }
+        }
+        // A ring to choose it by while selecting, a check when chosen.
+        Rectangle {
+            x: 3
+            anchors.verticalCenter: content.verticalCenter
+            width: 18; height: 18
+            radius: 9
+            visible: msgSel.active
+            color: bubble.picked ? Theme.primary : "transparent"
+            border.width: 2
+            border.color: bubble.picked ? Theme.primary : Theme.outline
+            Icon {
+                anchors.centerIn: parent
+                width: 10; height: 10
+                visible: bubble.picked
+                path: Icons.check
+                color: Theme.primaryContent
+            }
+        }
+        // Clicks that select, above the text so that it still takes the rest: Ctrl
+        // (Cmd) toggles, Shift selects up to it, and any click does while selecting.
+        // Right-click, or press and hold on a touch screen, opens the menu.
+        Item {
+            id: pointer
+            anchors.fill: parent
+            anchors.topMargin: day.height
+            z: 5
+            function pick(modifiers) {
+                msgSel.click(bubble.message.id, page.messageOrder,
+                    (modifiers & Qt.ControlModifier) !== 0, (modifiers & Qt.ShiftModifier) !== 0)
+            }
+            TapHandler {
+                acceptedButtons: Qt.RightButton
+                onTapped: (point) => page.openMessageMenu(pointer, point.position.x, point.position.y, bubble.message)
+            }
+            TapHandler {
+                acceptedDevices: PointerDevice.TouchScreen
+                onLongPressed: page.openMessageMenu(pointer, point.position.x, point.position.y, bubble.message)
+            }
+            TapHandler {
+                acceptedButtons: Qt.LeftButton
+                acceptedModifiers: Qt.ControlModifier
+                onTapped: pointer.pick(Qt.ControlModifier)
+            }
+            TapHandler {
+                acceptedButtons: Qt.LeftButton
+                acceptedModifiers: Qt.ShiftModifier
+                onTapped: pointer.pick(Qt.ShiftModifier)
+            }
+            TapHandler {
+                enabled: msgSel.active
+                acceptedButtons: Qt.LeftButton
+                acceptedModifiers: Qt.NoModifier
+                onTapped: pointer.pick(Qt.NoModifier)
             }
         }
         // Ringed for a moment when a clicked notification brought it here.
@@ -1542,6 +1917,7 @@ Item {
     // Inline lightbox preview for MMS image attachments.
     Sheet {
         id: msgImagePreviewSheet
+        objectName: "imageSheet"
         property string imageUrl: ""
         cardWidth: 680
         function openFor(url) {
@@ -1589,21 +1965,98 @@ Item {
                     mipmap: true
                 }
             }
-            Row {
-                anchors.right: parent.right
+            // Right to left: Done is the last, at the right.
+            Flow {
+                width: parent.width
+                layoutDirection: Qt.RightToLeft
                 spacing: 8
+                Button {
+                    text: qsTr("Done")
+                    onClicked: msgImagePreviewSheet.close()
+                }
                 Button {
                     variant: "tonal"
                     iconPath: Icons.photo
                     text: qsTr("Open externally")
                     onClicked: Qt.openUrlExternally(msgImagePreviewSheet.imageUrl)
                 }
+                // The system's share sheet: on Windows and on a Mac.
                 Button {
-                    text: qsTr("Done")
-                    onClicked: msgImagePreviewSheet.close()
+                    objectName: "shareImage"
+                    visible: Qt.platform.os === "windows" || Qt.platform.os === "osx"
+                    variant: "tonal"
+                    iconPath: Icons.share
+                    text: qsTr("Share")
+                    onClicked: Messages.shareImage(msgImagePreviewSheet.imageUrl)
+                }
+                Button {
+                    objectName: "saveImage"
+                    variant: "tonal"
+                    iconPath: Icons.download
+                    text: qsTr("Save as…")
+                    onClicked: {
+                        saveImageDialog.currentFile = Messages.imageSaveSuggestion(msgImagePreviewSheet.imageUrl)
+                        saveImageDialog.open()
+                    }
+                }
+                Button {
+                    objectName: "copyImage"
+                    variant: "tonal"
+                    iconPath: Icons.copy
+                    text: qsTr("Copy image")
+                    onClicked: Messages.copyImage(msgImagePreviewSheet.imageUrl)
                 }
             }
         }
+    }
+
+    // Deleting asks first, and says what it does: it is only on this PC.
+    Sheet {
+        id: deleteSheet
+        objectName: "deleteSheet"
+        cardWidth: 420
+        readonly property int count: page.pendingDelete.ids.length
+        readonly property bool threads: page.pendingDelete.kind === "threads"
+        Column {
+            width: parent.width
+            spacing: 14
+            Txt {
+                width: parent.width
+                wrapMode: Text.WordWrap
+                role: "headline"
+                text: deleteSheet.threads ? qsTr("Delete %n conversation(s)?", "", deleteSheet.count)
+                    : qsTr("Delete %n message(s)?", "", deleteSheet.count)
+            }
+            Txt {
+                width: parent.width
+                wrapMode: Text.WordWrap
+                role: "body"
+                muted: true
+                text: deleteSheet.count > 1 ? qsTr("Removes them from this PC. They stay on your phone.")
+                    : qsTr("Removes it from this PC. It stays on your phone.")
+            }
+            Row {
+                anchors.right: parent.right
+                spacing: 8
+                Button {
+                    variant: "text"
+                    text: qsTr("Cancel")
+                    onClicked: deleteSheet.close()
+                }
+                Button {
+                    objectName: "confirmDelete"
+                    text: qsTr("Delete")
+                    iconPath: Icons.trash
+                    onClicked: page.confirmDelete()
+                }
+            }
+        }
+    }
+
+    ContextMenu {
+        id: menu
+        objectName: "contextMenu"
+        onChosen: (key) => page.menuChosen(key)
     }
 
     Rectangle {

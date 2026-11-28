@@ -42,6 +42,7 @@ mod mark;
 mod media;
 mod media_file;
 mod messages;
+mod messages_local;
 mod mirror;
 mod new_settings;
 mod notification_store;

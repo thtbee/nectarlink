@@ -22,7 +22,7 @@ use nectarlink_core::{
 use serde_json::{Value, json};
 
 use crate::{
-    core_host,
+    core_host, messages_local,
     state::{AppState, Changes},
 };
 
@@ -461,24 +461,31 @@ pub fn view() -> View {
     state(|s| {
         // A filter on an app that has since been hidden shows everything.
         let app_filter = if hidden.contains(&s.app_filter) { "" } else { s.app_filter.as_str() };
+        // What was deleted or marked unread here (not on the phone).
+        let local = s.device.map(messages_local::read).unwrap_or_default();
         let mut combined: Vec<(i64, String, Value)> = Vec::new();
         if app_filter.is_empty() || app_filter == "sms" {
             for t in &s.threads {
+                if local.thread_hidden(&t.id, t.date) {
+                    continue;
+                }
                 let mut json = thread_json(t, s.photos.get(&t.id));
                 if s.seen.get(&t.id).is_some_and(|seen| *seen >= t.date) {
                     json["unread"] = json!(0);
                 }
+                mark_thread(&mut json, &local, &t.id, t.date);
                 combined.push((t.date, t.id.clone(), json));
             }
         }
         if app_filter != "sms" {
             for ct in s.chat_threads.iter().filter(|ct| !hidden.contains(&ct.app)) {
-                if app_filter.is_empty() || ct.app == app_filter {
-                    combined.push((
-                        ct.updated_ms,
-                        ct.thread_id.clone(),
-                        chat_thread_json(ct, s.photos.get(&ct.thread_id), s.app_icons.get(&ct.app)),
-                    ));
+                if (app_filter.is_empty() || ct.app == app_filter)
+                    && !local.thread_hidden(&ct.thread_id, ct.updated_ms)
+                {
+                    let mut json =
+                        chat_thread_json(ct, s.photos.get(&ct.thread_id), s.app_icons.get(&ct.app));
+                    mark_thread(&mut json, &local, &ct.thread_id, ct.updated_ms);
+                    combined.push((ct.updated_ms, ct.thread_id.clone(), json));
                 }
             }
         }
@@ -516,6 +523,7 @@ pub fn view() -> View {
             Value::Array(
                 ordered
                     .iter()
+                    .filter(|m| !local.message_hidden(&m.thread_id, &chat_message_key(m), m.time_ms))
                     .map(|m| chat_message_json(m, s.failed_replies.iter().any(|f| f.id == m.id)))
                     .collect(),
             )
@@ -523,10 +531,12 @@ pub fn view() -> View {
             // In a group, who sent each message (by contact name when known).
             let thread = s.thread.as_ref().and_then(|id| s.threads.iter().find(|t| &t.id == id));
             let group = thread.filter(|t| t.addresses.len() > 1);
+            let open = s.thread.as_deref().unwrap_or_default();
             Value::Array(
                 s.messages
                     .iter()
                     .rev()
+                    .filter(|m| !local.message_hidden(open, &m.id, m.date))
                     .map(|m| message_json(m, &s.pictures, group.map(|t| sender_of(t, &m.address))))
                     .collect(),
             )
@@ -598,6 +608,31 @@ pub fn title_of(thread: &SmsThread) -> String {
         .map(|(i, address)| thread.names.get(i).filter(|n| !n.trim().is_empty()).unwrap_or(address).clone())
         .collect::<Vec<_>>()
         .join(", ")
+}
+
+/// Shows what was done to a conversation here: marked unread counts as one
+/// unread text, a deleted latest text leaves no snippet.
+fn mark_thread(json: &mut Value, local: &messages_local::Local, id: &str, date: i64) {
+    let marked = local.is_marked_unread(id);
+    if marked {
+        let unread = json["unread"].as_u64().unwrap_or(0).max(1);
+        json["unread"] = json!(unread);
+    }
+    if local.snippet_hidden(id, date) {
+        json["snippet"] = json!("");
+    }
+    json["markedUnread"] = json!(marked);
+}
+
+/// A chat message's key among those deleted here.
+fn chat_message_key(m: &ChatMessageRecord) -> String {
+    messages_local::chat_message_key(
+        &m.thread_id,
+        m.sender.as_deref().unwrap_or_default(),
+        &m.text,
+        m.time_ms,
+        m.self_sent,
+    )
 }
 
 fn thread_json(t: &SmsThread, photo: Option<&PathBuf>) -> Value {
@@ -736,20 +771,134 @@ pub fn set_app_filter(app: String) {
     }
 }
 
-/// Deletes a persisted MessagingStyle chat conversation locally.
-pub fn delete_chat_thread(thread_id: String) {
-    let Some(device) = state(|s| s.device) else { return };
-    let Some(node) = core_host::node() else { return };
-    if node.delete_chat_thread(device, &thread_id) {
-        state(|s| {
-            s.chat_threads.retain(|t| t.thread_id != thread_id);
-            if s.thread.as_deref() == Some(&thread_id) {
-                s.thread = None;
-                s.chat_messages.clear();
-            }
-        });
-        changed();
+/// The date of `thread`'s latest message: as listed, or newer when the open
+/// conversation has one the list doesn't yet.
+fn thread_date(s: &State, thread: &str) -> Option<i64> {
+    if thread.starts_with("chat:") {
+        return s.chat_threads.iter().find(|t| t.thread_id == thread).map(|t| t.updated_ms);
     }
+    let listed = s.threads.iter().find(|t| t.id == thread).map(|t| t.date);
+    let newest = (s.thread.as_deref() == Some(thread)).then(|| s.messages.first().map(|m| m.date)).flatten();
+    listed.into_iter().chain(newest).max()
+}
+
+/// Leaves `ids`' conversation if it's open: deleted or marked unread, it's done with.
+fn close_if_open(ids: &[String]) {
+    if state(|s| s.thread.as_ref().is_some_and(|t| ids.contains(t))) {
+        close_thread();
+    }
+}
+
+/// What the page (and the badges) show changed with what was done to conversations.
+fn managed(device: DeviceId) {
+    changed();
+    let threads = state(|s| s.threads.clone());
+    crate::bridge::app::update_home_sms(device, &threads);
+    crate::badges::publish();
+}
+
+/// Marks conversations unread, until they're opened. Only on this PC.
+pub fn mark_threads_unread(ids: Vec<String>) {
+    let Some(device) = state(|s| s.device) else { return };
+    messages_local::update(device, |l| {
+        for id in &ids {
+            l.mark_unread(id);
+        }
+    });
+    close_if_open(&ids);
+    managed(device);
+}
+
+/// Marks the open conversation unread from here (all of it, as one unread
+/// text), and leaves it. Only on this PC.
+pub fn mark_open_unread() {
+    if let Some(thread) = state(|s| s.thread.clone()) {
+        mark_threads_unread(vec![thread]);
+    }
+}
+
+/// Deletes conversations from this PC. A text conversation stays on the phone
+/// and shows again, with only the newer texts, when one arrives; a chat read
+/// from notifications is removed from the PC's own store.
+pub fn delete_threads(ids: Vec<String>) {
+    let Some((device, dates)) = state(|s| {
+        let dates: Vec<(String, i64)> =
+            ids.iter().filter_map(|id| Some((id.clone(), thread_date(s, id)?))).collect();
+        Some((s.device?, dates))
+    }) else {
+        return;
+    };
+    if let Some(node) = core_host::node() {
+        for (id, _) in dates.iter().filter(|(id, _)| id.starts_with("chat:")) {
+            node.delete_chat_thread(device, id);
+        }
+    }
+    messages_local::update(device, |l| {
+        for (id, date) in &dates {
+            l.delete_thread(id, *date);
+        }
+    });
+    close_if_open(&ids);
+    state(|s| {
+        s.chat_threads.retain(|t| !ids.contains(&t.thread_id));
+        s.recent.retain(|(t, _)| !ids.contains(t));
+    });
+    managed(device);
+}
+
+/// Deletes messages of the open conversation from this PC, by the IDs the page
+/// shows. Texts stay on the phone and stay hidden here; chat messages are
+/// removed from the PC's own store as well.
+pub fn delete_messages(ids: Vec<String>) {
+    let Some((device, thread, newest, keys, rows, date)) = state(|s| {
+        let thread = s.thread.clone()?;
+        let date = thread_date(s, &thread)?;
+        let local = messages_local::read(s.device?);
+        if thread.starts_with("chat:") {
+            let wanted: Vec<&ChatMessageRecord> =
+                s.chat_messages.iter().filter(|m| ids.contains(&m.id.to_string())).collect();
+            let newest = s
+                .chat_messages
+                .iter()
+                .filter(|m| !local.message_hidden(&thread, &chat_message_key(m), m.time_ms))
+                .max_by_key(|m| (m.time_ms, m.id))
+                .is_some_and(|m| wanted.iter().any(|w| w.id == m.id));
+            let rows: Vec<i64> = wanted.iter().map(|m| m.id).collect();
+            Some((
+                s.device?,
+                thread,
+                newest,
+                wanted.iter().map(|m| chat_message_key(m)).collect(),
+                rows,
+                date,
+            ))
+        } else {
+            let newest = s
+                .messages
+                .iter()
+                .find(|m| !local.message_hidden(&thread, &m.id, m.date))
+                .is_some_and(|m| ids.contains(&m.id));
+            Some((s.device?, thread, newest, ids.clone(), Vec::new(), date))
+        }
+    }) else {
+        return;
+    };
+    let is_chat = thread.starts_with("chat:");
+    messages_local::update(device, |l| {
+        l.delete_messages(&thread, keys.iter().map(String::as_str), newest.then_some(date));
+    });
+    if is_chat {
+        if let Some(node) = core_host::node() {
+            for id in rows.iter().filter(|id| **id > 0) {
+                node.delete_chat_message(device, &thread, *id);
+            }
+        }
+        state(|s| {
+            s.chat_messages.retain(|m| !rows.contains(&m.id));
+            s.failed_replies.retain(|m| !rows.contains(&m.id));
+        });
+    }
+    managed(device);
 }
 
 /// Shows `device`'s messages (again: reloads).
@@ -772,11 +921,36 @@ pub fn open_device(device: DeviceId) {
     load_threads();
 }
 
+/// `device`'s chat conversations from the store, newest first, minus what was
+/// deleted here. A deleted one that comes back (the app repeats its recent
+/// messages in the next notification) counts as unread only what is newer.
+pub(crate) fn chat_threads_of(node: &nectarlink_core::Node, device: DeviceId) -> Vec<ChatThreadRecord> {
+    let mut threads = node.chat_threads(device);
+    let local = messages_local::read(device);
+    if threads.iter().any(|t| local.cleared_at(&t.thread_id).is_some()) {
+        for t in &mut threads {
+            if let Some(at) = local.cleared_at(&t.thread_id).filter(|at| t.updated_ms > *at && t.unread > 0) {
+                let newer = node
+                    .chat_messages(device, &t.thread_id, PAGE)
+                    .iter()
+                    .filter(|m| !m.self_sent && m.time_ms > at)
+                    .count();
+                t.unread = t.unread.min(u32::try_from(newer).unwrap_or(u32::MAX));
+            }
+        }
+    }
+    // A newer message ends what deleting the latest one blanked.
+    messages_local::update(device, |l| {
+        l.reconcile(threads.iter().map(|t| (t.thread_id.as_str(), t.updated_ms)))
+    });
+    threads
+}
+
 /// Synchronously refreshes persisted `MessagingStyle` chat threads from SQLite.
 pub fn load_chat_threads() {
     let Some((device, generation)) = state(|s| s.device.map(|d| (d, s.generation))) else { return };
     let Some(node) = core_host::node() else { return };
-    let chat_threads = node.chat_threads(device);
+    let chat_threads = chat_threads_of(&node, device);
     let (photos, app_icons) = save_chat_assets(device, &chat_threads);
     // Another phone was picked meanwhile: what was read here is for the old one.
     let open_chat = state(|s| {
@@ -801,7 +975,7 @@ pub fn load_chat_threads() {
     if let Some(thread) = open_chat {
         let _ = node.mark_chat_thread_read(device, &thread);
         let msgs = node.chat_messages(device, &thread, PAGE);
-        let refreshed = node.chat_threads(device);
+        let refreshed = chat_threads_of(&node, device);
         state(|s| {
             if s.generation != generation {
                 return;
@@ -855,6 +1029,10 @@ pub fn load_threads() {
             }
             match result {
                 Ok(threads) => {
+                    // A newer message ends what deleting the latest one blanked.
+                    messages_local::update(device, |l| {
+                        l.reconcile(threads.iter().map(|t| (t.id.as_str(), t.date)));
+                    });
                     crate::bridge::app::update_home_sms(device, &threads);
                     s.threads = threads;
                     s.photos.extend(photos);
@@ -968,11 +1146,15 @@ pub fn open_thread(thread: String) {
     if let Some((device, seen)) = seen {
         std::thread::spawn(move || save_seen(device, &seen));
     }
+    // Opened: no longer marked unread.
+    if let Some(device) = device {
+        messages_local::update(device, |l| l.clear_unread(&thread));
+    }
     if is_chat {
         if let (Some(device), Some(node)) = (device, core_host::node()) {
             let _ = node.mark_chat_thread_read(device, &thread);
             let msgs = node.chat_messages(device, &thread, PAGE);
-            let refreshed = node.chat_threads(device);
+            let refreshed = chat_threads_of(&node, device);
             state(|s| {
                 s.chat_threads = refreshed;
                 if s.thread.as_deref() == Some(&thread) {
@@ -1039,9 +1221,10 @@ pub fn start_chat(device: DeviceId, number: String, name: String) {
 /// background thread loading if not yet cached.
 pub fn palette_recipients(device: DeviceId) -> Vec<(String, String, String)> {
     let mut out = Vec::new();
+    let local = messages_local::read(device);
     let should_load_sms = state(|s| {
         if s.device == Some(device) {
-            for t in &s.threads {
+            for t in s.threads.iter().filter(|t| !local.thread_hidden(&t.id, t.date)) {
                 let title = title_of(t);
                 let addr = t.addresses.first().cloned().unwrap_or_default();
                 out.push((title, addr, t.id.clone()));
@@ -1055,7 +1238,10 @@ pub fn palette_recipients(device: DeviceId) -> Vec<(String, String, String)> {
         }
     });
     if let Some(node) = core_host::node() {
-        for ct in node.chat_threads(device) {
+        for ct in chat_threads_of(&node, device)
+            .into_iter()
+            .filter(|t| !local.thread_hidden(&t.thread_id, t.updated_ms))
+        {
             let app_label = if ct.app_name.trim().is_empty() { ct.app } else { ct.app_name };
             out.push((ct.title, app_label, ct.thread_id));
         }
@@ -1215,6 +1401,73 @@ async fn fetch_pictures(device: DeviceId, generation: u64, parts: Vec<String>) {
         }
         changed();
     }
+}
+
+// ---- Pictures in a conversation ----
+
+/// The cached file for a picture's URL, when it is one of this page's own.
+fn cached_picture(url: &str) -> Result<PathBuf, String> {
+    let path = url_to_path(url);
+    let own = path.file_name().and_then(|n| n.to_str()).is_some_and(is_message_cache_file);
+    let same = |a: &Path, b: &Path| match (std::fs::canonicalize(a), std::fs::canonicalize(b)) {
+        (Ok(a), Ok(b)) => a == b,
+        _ => a == b,
+    };
+    if own && path.parent().is_some_and(|dir| same(dir, &files_dir())) && path.is_file() {
+        Ok(path)
+    } else {
+        Err("not a picture of a conversation".to_owned())
+    }
+}
+
+/// The picture's MIME type, from what the file starts with.
+fn picture_mime(bytes: &[u8]) -> &'static str {
+    if bytes.starts_with(b"\x89PNG\r\n\x1a\n") { "image/png" } else { "image/jpeg" }
+}
+
+/// Where the Save dialog for a picture starts: a file URL for "Picture" in
+/// the Pictures folder (else Downloads), with the picture's own extension.
+pub fn picture_save_suggestion(url: &str) -> String {
+    let ext = Path::new(&url_to_path(url))
+        .extension()
+        .and_then(|e| e.to_str())
+        .filter(|e| !e.is_empty())
+        .unwrap_or("jpg")
+        .to_owned();
+    let dir = dirs::picture_dir().or_else(dirs::download_dir).unwrap_or_default();
+    crate::icons::file_url(&dir.join(format!("Picture.{ext}")))
+}
+
+/// Puts a picture on the clipboard.
+pub fn copy_picture(url: &str) -> Result<(), String> {
+    let bytes = std::fs::read(cached_picture(url)?).map_err(|e| e.to_string())?;
+    crate::win::clipboard::write_image(picture_mime(&bytes), &bytes)
+}
+
+/// Saves a picture where the user chose (a file URL or a path).
+pub fn save_picture(url: &str, to: &str) -> Result<(), String> {
+    let from = cached_picture(url)?;
+    let to = url_to_path(to);
+    if to.as_os_str().is_empty() || to.is_dir() {
+        return Err("no file chosen".to_owned());
+    }
+    std::fs::copy(from, to).map(|_| ()).map_err(|e| e.to_string())
+}
+
+/// Opens the system's share sheet for a picture, where there is one (Windows
+/// and macOS). Has to run on Qt's thread.
+pub fn share_picture(url: &str) -> Result<(), String> {
+    let from = cached_picture(url)?;
+    let ext = from.extension().and_then(|e| e.to_str()).unwrap_or("jpg");
+    let staged = crate::photos::stage_for_share(
+        &crate::photos::share_dir(),
+        vec![(from.clone(), format!("Picture.{ext}"))],
+        true,
+    );
+    if staged.is_empty() {
+        return Err("can't get the picture ready to share".to_owned());
+    }
+    crate::win::share::show(&staged)
 }
 
 // ---- MMS Attachment Staging ----
@@ -1482,7 +1735,7 @@ fn send_chat_reply(thread_id: String, body: String) {
     let Some(node) = core_host::node() else { return };
     core_host::spawn(async move {
         let result = node.reply_chat_thread(device, &thread_id, text).await;
-        let refreshed_threads = node.chat_threads(device);
+        let refreshed_threads = chat_threads_of(&node, device);
         let refreshed_messages = node.chat_messages(device, &thread_id, PAGE);
         state(|s| {
             s.sending = false;
@@ -1843,6 +2096,7 @@ pub fn on_event(event: &NodeEvent) {
             load_threads();
         }
         NodeEvent::DeviceRemoved(d) => {
+            messages_local::forget(*d);
             // The files don't say which phone they came from, so all of them go
             // and another open phone fetches its own again.
             clear_cache();
@@ -2173,5 +2427,61 @@ mod tests {
         );
         assert_eq!(url_to_path("file://server/share/a.png"), PathBuf::from("//server/share/a.png"));
         assert_eq!(url_to_path("/already/a/path.png"), PathBuf::from("/already/a/path.png"));
+    }
+
+    #[test]
+    fn what_was_done_to_a_conversation_shows_in_its_row() {
+        let mut local = messages_local::Local::default();
+        let mut row = json!({ "unread": 0, "snippet": "see you" });
+        mark_thread(&mut row, &local, "7", 100);
+        assert_eq!((row["unread"].as_u64(), row["markedUnread"].as_bool()), (Some(0), Some(false)));
+
+        // Marked unread counts as one text, and more when the phone has more.
+        local.mark_unread("7");
+        local.delete_messages("7", ["sms:1"], Some(100));
+        mark_thread(&mut row, &local, "7", 100);
+        assert_eq!((row["unread"].as_u64(), row["markedUnread"].as_bool()), (Some(1), Some(true)));
+        assert_eq!(row["snippet"].as_str(), Some(""));
+        let mut busy = json!({ "unread": 4, "snippet": "x" });
+        mark_thread(&mut busy, &local, "7", 100);
+        assert_eq!(busy["unread"], 4);
+
+        // A newer message: its own text.
+        let mut fresh = json!({ "unread": 1, "snippet": "new text" });
+        mark_thread(&mut fresh, &local, "7", 200);
+        assert_eq!(fresh["snippet"].as_str(), Some("new text"));
+    }
+
+    /// A deleted conversation leaves the list, and shows again with a newer message.
+    #[test]
+    fn a_deleted_conversation_leaves_the_list_until_a_newer_message() {
+        let device = DeviceId([9; 32]);
+        let threads = ["1", "2", "3"].map(|id| {
+            sms_thread(id, "Person", &format!("+1555{id}"), "hello", 100 + id.parse::<i64>().unwrap())
+        });
+        state(|s| {
+            *s = State { device: Some(device), threads: threads.to_vec(), ..State::default() };
+        });
+        messages_local::update(device, |l| l.delete_thread("2", 102));
+        let ids = |v: &View| -> Vec<String> {
+            v.threads.as_array().unwrap().iter().map(|t| t["id"].as_str().unwrap().to_owned()).collect()
+        };
+
+        assert_eq!(ids(&view()), ["3", "1"]);
+        state(|s| s.threads[1].date = 500);
+        assert_eq!(ids(&view()), ["2", "3", "1"]);
+
+        messages_local::forget(device);
+        state(|s| *s = State::default());
+    }
+
+    #[test]
+    fn a_picture_is_saved_under_its_own_kind_of_name() {
+        assert_eq!(picture_mime(b"\x89PNG\r\n\x1a\nrest"), "image/png");
+        assert_eq!(picture_mime(b"\xff\xd8\xff\xe0"), "image/jpeg");
+        assert_eq!(picture_mime(b""), "image/jpeg");
+        let suggestion = picture_save_suggestion("file:///cache/sms-part-1.png");
+        assert!(suggestion.starts_with("file://") && suggestion.ends_with("/Picture.png"), "{suggestion}");
+        assert!(picture_save_suggestion("file:///cache/sms-part-2").ends_with("/Picture.jpg"));
     }
 }

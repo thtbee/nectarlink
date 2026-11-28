@@ -1774,7 +1774,7 @@ pub fn share_items(ids: Vec<String>) {
 
 /// Where shared files wait for the app picked in the sheet to read them. Emptied
 /// by the next share and when the app quits.
-fn share_dir() -> PathBuf {
+pub(crate) fn share_dir() -> PathBuf {
     std::env::temp_dir().join("NectarLink-share")
 }
 
@@ -1788,7 +1788,7 @@ fn file_name_of(path: &Path) -> String {
 
 /// Puts `files` (path and the name to give it) alone in `dir`, returning where each
 /// one ended up. One that can't be put there is left out.
-fn stage_for_share(dir: &Path, files: Vec<(PathBuf, String)>, keep_source: bool) -> Vec<PathBuf> {
+pub(crate) fn stage_for_share(dir: &Path, files: Vec<(PathBuf, String)>, keep_source: bool) -> Vec<PathBuf> {
     let _ = std::fs::remove_dir_all(dir);
     if let Err(error) = std::fs::create_dir_all(dir) {
         tracing::warn!(%error, "can't make the folder for shared files");

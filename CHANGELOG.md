@@ -8,6 +8,16 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Delete, mark unread and select conversations and messages.** Right-click a conversation (or
+  press and hold on a touch screen) in Messages for **Mark as unread** and **Delete**. A message
+  has **Copy text**, **Mark as unread** (**Mark 3 messages as unread** for a selection) and **Delete message** in its own menu, and
+  the open conversation has **Mark as unread** and **Delete** in its **More** menu. **Select** (or
+  Ctrl+click, Cmd+click on a Mac) picks several, Shift+click a range, **Esc** lets go, and a toolbar
+  shows how many with what to do with them. This is on the PC only: the phone keeps every
+  conversation and message. A deleted conversation shows again, with only what is newer, when a
+  text arrives.
+- **Copy, save and share a picture from a conversation.** The picture viewer in Messages has
+  **Copy image**, **Save as…** and, on Windows and on a Mac, **Share** (the system's share sheet).
 - **Share photos from the Mac too.** The Photos page's **Share** button, for a selection and in
   the viewer, now opens the macOS share menu as it opens the share sheet on Windows
   ([#174](https://github.com/thtbee/nectarlink/issues/174)).
@@ -658,6 +668,11 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **Messages stays where you were.** Choosing an unread conversation low in the list no longer
+  sends the list back to the top, and opening a conversation no longer makes its messages blink
+  and jump while it loads: a conversation opens at its newest message once, and older messages
+  loaded above, a picture arriving or a new text don't move what you are reading. A picture in a
+  conversation now shows in a frame of one size (cropped to it; **click it** to see it whole).
 - **A clipboard picture that couldn't be previewed no longer keeps a CPU core busy.** The PC
   tried to make its preview again and again, hundreds of times a second, for as long as it ran.
   Thanks to [@leeefun](https://github.com/leeefun) ([#730](https://github.com/thtbee/nectarlink/issues/730)).

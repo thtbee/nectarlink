@@ -408,6 +408,9 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Messages", "Attachment is %1 (MMS supports up to 900 KB)"), // desktop/app/src/messages.rs
     QT_TRANSLATE_NOOP("Messages", "Group texts can't be sent from the PC yet."), // desktop/app/src/messages.rs
     QT_TRANSLATE_NOOP("Messages", "Only image or voice-note audio files can be attached."), // desktop/app/src/messages.rs
+    QT_TRANSLATE_NOOP("Messages", "Picture saved."), // desktop/app/src/bridge/messages.rs
+    QT_TRANSLATE_NOOP("Messages", "The picture couldn't be saved."), // desktop/app/src/bridge/messages.rs
+    QT_TRANSLATE_NOOP("Messages", "The share sheet couldn't be opened."), // desktop/app/src/bridge/messages.rs
     QT_TRANSLATE_NOOP("Messages", "The text wasn't sent: this conversation isn't loaded yet. Try again in a moment."), // desktop/app/src/messages.rs
     QT_TRANSLATE_NOOP("Mirror", "Couldn't start recording."), // desktop/app/src/mirror.rs
     QT_TRANSLATE_NOOP("Mirror", "Lowering the picture so this PC keeps up"), // desktop/app/src/mirror.rs
