@@ -31,6 +31,10 @@ val appVersionCode: Int = run {
     major * 10_000_000 + minor * 100_000 + patch * 1_000 + build
 }
 
+/** The ABIs the Rust core is built for (`nectarlink.abis`): devices and the x86_64 emulator by default. */
+val rustAbis: List<String> =
+    (findProperty("nectarlink.abis") as String?)?.split(",")?.map(String::trim) ?: listOf("arm64-v8a", "x86_64")
+
 android {
     namespace = "app.nectarlink.android"
     compileSdk = 37
@@ -43,6 +47,9 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         versionCode = appVersionCode
         versionName = appVersion
+        // Only those ABIs go into the APK. JNA, Conscrypt and others bring native
+        // libraries for more (x86, mips), which can't run the app without the core.
+        ndk { abiFilters += rustAbis }
     }
 
     // Only the languages the app offers (res/xml/locales_config.xml) go into the APK: a
@@ -177,8 +184,6 @@ abstract class BundleFonts : DefaultTask() {
 }
 
 val workspaceDir: Directory = rootProject.layout.projectDirectory.dir("..")
-val rustAbis: List<String> =
-    (findProperty("nectarlink.abis") as String?)?.split(",")?.map(String::trim) ?: listOf("arm64-v8a", "x86_64")
 
 androidComponents {
     onVariants { variant ->
