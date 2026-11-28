@@ -270,6 +270,12 @@ pub(crate) struct Shared {
     pub(crate) usb_inbound: Mutex<std::collections::HashSet<DeviceId>>,
     /// USB peers that are only paired by hand (Android emulators).
     pub(crate) usb_manual_pair: Mutex<std::collections::HashSet<DeviceId>>,
+    /// Phone: the nonces PCs gave it through adb, each good for one tunnel.
+    pub(crate) usb_nonces: crate::usb::UsbNonces,
+    /// Bridge ports of the USB tunnels adb opened: the ones this PC opened, and the ones
+    /// a PC opened into this phone with a nonce it gave first. Pairing over one needs no
+    /// pairing mode ([`Shared::may_pair_over_usb`]).
+    pub(crate) usb_adb_ports: Mutex<std::collections::HashSet<u16>>,
     /// Wakes the PC-side ADB watcher immediately on `refresh()`.
     pub(crate) usb_poke: Notify,
     /// Wakes the persistent send-queue coordinator when items are enqueued, retried, or sessions change.
@@ -879,6 +885,7 @@ impl Shared {
     pub(crate) fn unregister_usb_bridge_port(&self, port: u16) {
         lock(&self.usb_bridge_ports).remove(&port);
         lock(&self.usb_pending).remove(&port);
+        lock(&self.usb_adb_ports).remove(&port);
     }
 
     pub(crate) fn cancel_pending_usb_port(&self, port: u16) {
@@ -933,6 +940,31 @@ impl Shared {
             }
             _ => false,
         })
+    }
+
+    /// Whether pairing over `conn` may go without pairing mode: it comes through a USB
+    /// cable's tunnel that adb opened ([`Shared::usb_adb_ports`]), and adb is on. Any app
+    /// on a phone can reach the tunnel's port: a tunnel adb didn't open still carries
+    /// sessions of PCs already paired (their keys are checked), but pairs only in pairing
+    /// mode.
+    pub(crate) fn may_pair_over_usb(&self, conn: &Connection) -> bool {
+        if !self.is_usb_connection(conn) || !self.platform.adb_may_be_connected() {
+            return false;
+        }
+        let peer = crate::device_id(&conn.remote_id());
+        // The ports this connection came in on, and the tunnel this peer proved it is on.
+        let mut ports: Vec<u16> = conn
+            .paths()
+            .iter()
+            .filter_map(|p| match p.remote_addr() {
+                iroh::TransportAddr::Ip(addr) if self.is_usb_addr_for(&peer, addr) => Some(addr.port()),
+                _ => None,
+            })
+            .collect();
+        ports.extend(self.usb_peer_addr(&peer).map(|addr| addr.port()));
+        ports.retain(|port| !self.is_bt_port(*port));
+        let adb_ports = lock(&self.usb_adb_ports);
+        ports.iter().any(|port| adb_ports.contains(port))
     }
 
     /// Verifies that if `conn` uses a local USB bridge port, its QUIC TLS `DeviceId`
@@ -1037,14 +1069,20 @@ impl Shared {
         }
     }
 
+    /// Phone: a PC opened a tunnel into this phone; `from_adb` when its hello carried a
+    /// nonce this phone was given through adb.
     pub(crate) fn on_usb_tunnel_accepted(
         self: &Arc<Self>,
         peer: DeviceId,
         name: String,
         bridge_addr: SocketAddr,
         cancel: CancellationToken,
+        from_adb: bool,
     ) {
         let port = bridge_addr.port();
+        if from_adb {
+            lock(&self.usb_adb_ports).insert(port);
+        }
         if let Some(old) = lock(&self.usb_pending).insert(
             port,
             PendingUsbTunnel {
@@ -1083,6 +1121,14 @@ impl Shared {
         on_verified: Option<Box<dyn FnOnce() + Send>>,
     ) {
         let port = bridge_addr.port();
+        // This PC opened it, through adb (or through a Bluetooth link, which never
+        // counts as a cable). Unless it already ended: the port may come back for another.
+        // Under the bridge ports' lock, so it can't end in between.
+        let bridges = lock(&self.usb_bridge_ports);
+        if bridges.contains_key(&port) {
+            lock(&self.usb_adb_ports).insert(port);
+        }
+        drop(bridges);
         if let Some(old) = lock(&self.usb_pending).insert(
             port,
             PendingUsbTunnel {
@@ -2107,6 +2153,8 @@ impl Node {
             usb_helpers: Mutex::new(HashMap::new()),
             usb_inbound: Mutex::new(std::collections::HashSet::new()),
             usb_manual_pair: Mutex::new(std::collections::HashSet::new()),
+            usb_nonces: crate::usb::UsbNonces::default(),
+            usb_adb_ports: Mutex::new(std::collections::HashSet::new()),
             usb_poke: Notify::new(),
             queue_notify: Arc::new(Notify::new()),
             queue_active_peers: Mutex::new(std::collections::HashSet::new()),
@@ -2377,9 +2425,23 @@ impl Node {
     }
 
     /// Connects a PC-side USB tunnel to a forwarded phone loopback TCP address
-    /// (`127.0.0.1:<port>`) and returns the phone's [`DeviceId`].
-    pub async fn connect_usb_tunnel(&self, forwarded_tcp: SocketAddr) -> Result<DeviceId> {
-        crate::usb::connect_usb_tunnel(&self.shared, forwarded_tcp).await
+    /// (`127.0.0.1:<port>`) and returns the phone's [`DeviceId`]. `nonce` is one
+    /// the phone was just given through adb ([`Node::allow_usb_nonce`]): without it,
+    /// the phone pairs over this tunnel only in pairing mode.
+    pub async fn connect_usb_tunnel(
+        &self,
+        forwarded_tcp: SocketAddr,
+        nonce: Option<&str>,
+    ) -> Result<DeviceId> {
+        crate::usb::connect_usb_tunnel(&self.shared, forwarded_tcp, nonce).await
+    }
+
+    /// Phone: keeps a nonce a PC sent through adb (the app's wake broadcast, which only
+    /// the shell may send), for the hello of the tunnel the PC opens next. Pairing over
+    /// a tunnel needs no pairing mode only when its hello carries such a nonce. Each one
+    /// is good once, for two minutes. Returns whether `nonce` was one (32 hex digits).
+    pub fn allow_usb_nonce(&self, nonce: &str) -> bool {
+        self.shared.usb_nonces.allow(nonce, std::time::Instant::now())
     }
 
     /// Phone: starts (once) the loopback listener the platform pipes each
