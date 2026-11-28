@@ -8,8 +8,9 @@ use std::sync::Arc;
 use nectarlink_protocol::{
     DeviceId, Envelope, ErrorCode, MAX_FRAME_LEN,
     messages::{
-        CallSims, SmsAttachment, SmsChanged, SmsMarkRead, SmsMessage, SmsMessages, SmsMessagesGet,
-        SmsPartData, SmsPartGet, SmsSend, SmsThread, SmsThreads, SmsThreadsGet, calls, sms, types,
+        CallSims, SmsAttachment, SmsChanged, SmsDelete, SmsMarkRead, SmsMarkUnread, SmsMessage, SmsMessages,
+        SmsMessagesGet, SmsPartData, SmsPartGet, SmsSend, SmsThread, SmsThreads, SmsThreadsGet, calls, sms,
+        types,
     },
 };
 
@@ -108,6 +109,50 @@ pub(crate) async fn mark_read(shared: &Shared, session: &Session, thread: String
     Ok(())
 }
 
+/// Asks a phone to mark a conversation's latest received text (or the one
+/// `message` names) unread in its own messages. `Unsupported` from a phone
+/// that doesn't offer it.
+pub(crate) async fn mark_unread(
+    shared: &Shared,
+    session: &Session,
+    thread: String,
+    message: Option<String>,
+) -> Result<()> {
+    allowed(shared, &session.peer)?;
+    if !peer_offers(shared, session, sms::MARK_UNREAD) {
+        return Err(Error::Unsupported);
+    }
+    let body = SmsMarkUnread { thread, message };
+    if !body.is_valid() {
+        return Err(Error::Protocol("invalid conversation".into()));
+    }
+    let env = Envelope::new(types::SMS_MARK_UNREAD, &body)?;
+    session.request(env, crate::session::REQUEST_TIMEOUT).await?.expect(types::OK)?;
+    Ok(())
+}
+
+/// Asks a phone to delete a conversation (`messages` empty) or those of its
+/// messages from its own messages. Not undoable. `Unsupported` from a phone
+/// that doesn't offer it.
+pub(crate) async fn delete(
+    shared: &Shared,
+    session: &Session,
+    thread: String,
+    messages: Vec<String>,
+) -> Result<()> {
+    allowed(shared, &session.peer)?;
+    if !peer_offers(shared, session, sms::DELETE) {
+        return Err(Error::Unsupported);
+    }
+    let body = SmsDelete { thread, messages };
+    if !body.is_valid() {
+        return Err(Error::Protocol("invalid conversation".into()));
+    }
+    let env = Envelope::new(types::SMS_DELETE, &body)?;
+    session.request(env, crate::session::REQUEST_TIMEOUT).await?.expect(types::OK)?;
+    Ok(())
+}
+
 fn peer_offers(shared: &Shared, session: &Session, cap: &str) -> bool {
     shared.store.get_peer(&session.peer).ok().flatten().is_some_and(|record| record.caps.contains(cap))
 }
@@ -176,6 +221,8 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
         types::SMS_PART,
         types::SMS_SIMS,
         types::SMS_MARK_READ,
+        types::SMS_MARK_UNREAD,
+        types::SMS_DELETE,
     ]
     .contains(&env.t.as_str())
     {
@@ -201,6 +248,8 @@ async fn answer(shared: &Arc<Shared>, session: &Session, env: &Envelope) -> Resu
         types::SMS_SEND => sms::SEND,
         types::SMS_SIMS => sms::SIMS,
         types::SMS_MARK_READ => sms::MARK_READ,
+        types::SMS_MARK_UNREAD => sms::MARK_UNREAD,
+        types::SMS_DELETE => sms::DELETE,
         _ => sms::READ,
     };
     if !shared.offers_locally(needs) {
@@ -255,6 +304,28 @@ async fn answer(shared: &Arc<Shared>, session: &Session, env: &Envelope) -> Resu
             }
             blocking(Box::new(move || {
                 platform.sms_mark_read(&request.thread).map(|()| Envelope::empty(types::OK))
+            }))
+            .await
+        }
+        types::SMS_MARK_UNREAD => {
+            let request: SmsMarkUnread = env.body()?;
+            if !request.is_valid() {
+                return Ok(Envelope::error(ErrorCode::BadMessage, "invalid conversation"));
+            }
+            blocking(Box::new(move || {
+                platform
+                    .sms_mark_unread(&request.thread, request.message.as_deref())
+                    .map(|()| Envelope::empty(types::OK))
+            }))
+            .await
+        }
+        types::SMS_DELETE => {
+            let request: SmsDelete = env.body()?;
+            if !request.is_valid() {
+                return Ok(Envelope::error(ErrorCode::BadMessage, "invalid conversation"));
+            }
+            blocking(Box::new(move || {
+                platform.sms_delete(&request.thread, &request.messages).map(|()| Envelope::empty(types::OK))
             }))
             .await
         }

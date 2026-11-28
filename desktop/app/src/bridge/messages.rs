@@ -39,6 +39,10 @@ pub mod qobject {
         #[qproperty(QString, compose_name, cxx_name = "composeName")]
         /// Active app filter ("" = All, "sms" = SMS only, or package name).
         #[qproperty(QString, app_filter, cxx_name = "appFilter")]
+        /// The phone deletes texts when asked: deleting here can delete there too.
+        #[qproperty(bool, phone_can_delete, cxx_name = "phoneCanDelete")]
+        /// Marking unread here marks the phone's own messages too.
+        #[qproperty(bool, unread_syncs, cxx_name = "unreadSyncs")]
         /// Filter chips JSON array (`[{ key, label }, ...]`).
         #[qproperty(QString, available_apps, cxx_name = "availableApps")]
         /// True when at least one MessagingStyle chat thread exists for this phone.
@@ -114,10 +118,42 @@ pub mod qobject {
         #[qinvokable]
         #[cxx_name = "filterByApp"]
         fn filter_by_app(self: &Messages, app: &QString);
-        /// Deletes a persisted MessagingStyle chat conversation locally.
+        /// Marks conversations unread (a JSON array of IDs) until opened, and on the phone
+        /// when it offers it (`unreadSyncs`).
         #[qinvokable]
-        #[cxx_name = "deleteChatThread"]
-        fn delete_chat_thread(self: &Messages, thread: &QString);
+        #[cxx_name = "markThreadsUnread"]
+        fn mark_threads_unread(self: &Messages, ids: &QString);
+        /// Deletes conversations (a JSON array of IDs) from this PC; the phone keeps its own
+        /// unless `onPhone` (the user chose it, and the phone offers it: `phoneCanDelete`).
+        #[qinvokable]
+        #[cxx_name = "deleteThreads"]
+        fn delete_threads(self: &Messages, ids: &QString, on_phone: bool);
+        /// Deletes messages of the open conversation (a JSON array of IDs) from this PC, and
+        /// from the phone when `onPhone` (the user chose it, and the phone offers it).
+        #[qinvokable]
+        #[cxx_name = "deleteMessages"]
+        fn delete_messages(self: &Messages, ids: &QString, on_phone: bool);
+        /// Marks messages of the open conversation (a JSON array of IDs) unread, on the phone
+        /// when it offers it (`unreadSyncs`), and leaves the conversation.
+        #[qinvokable]
+        #[cxx_name = "markMessagesUnread"]
+        fn mark_messages_unread(self: &Messages, ids: &QString);
+        /// Puts a picture of the conversation (its file URL) on the clipboard.
+        #[qinvokable]
+        #[cxx_name = "copyImage"]
+        fn copy_image(self: &Messages, url: &QString);
+        /// Saves a picture of the conversation (its file URL) to a file chosen in the Save dialog.
+        #[qinvokable]
+        #[cxx_name = "saveImage"]
+        fn save_image(self: &Messages, url: &QString, to: &QString);
+        /// A file URL for the Save dialog to start from, for that picture.
+        #[qinvokable]
+        #[cxx_name = "imageSaveSuggestion"]
+        fn image_save_suggestion(self: &Messages, url: &QString) -> QString;
+        /// Opens the system share sheet for a picture of the conversation (Windows and macOS).
+        #[qinvokable]
+        #[cxx_name = "shareImage"]
+        fn share_image(self: &Messages, url: &QString);
         /// Stages an image file (from drag-and-drop or file picker) as an MMS attachment.
         #[qinvokable]
         #[cxx_name = "attachFile"]
@@ -158,6 +194,8 @@ pub struct MessagesRust {
     compose_to: QString,
     compose_name: QString,
     app_filter: QString,
+    phone_can_delete: bool,
+    unread_syncs: bool,
     available_apps: QString,
     has_chat_threads: bool,
     current_is_chat: bool,
@@ -188,6 +226,11 @@ impl cxx_qt::Initialize for qobject::Messages {
     }
 }
 
+/// The IDs of a JSON array of strings the page sends.
+fn ids_of(json: &QString) -> Vec<String> {
+    serde_json::from_str(&String::from(json)).unwrap_or_default()
+}
+
 impl qobject::Messages {
     fn update_view(mut self: Pin<&mut Self>) {
         let view = messages::view();
@@ -203,16 +246,20 @@ impl qobject::Messages {
         if differs(|v| &v.threads) {
             self.as_mut().set_threads(QString::from(&view.threads.to_string()));
         }
-        self.as_mut().set_thread(QString::from(view.thread.as_deref().unwrap_or_default()));
+        // The messages before the conversation they belong to: the page resets its list
+        // when the conversation changes, and must find the new conversation's messages.
         if differs(|v| &v.messages) {
             self.as_mut().set_messages(QString::from(&view.messages.to_string()));
         }
+        self.as_mut().set_thread(QString::from(view.thread.as_deref().unwrap_or_default()));
         self.as_mut().set_more(view.more);
         self.as_mut().set_loading_older(view.loading_older);
         self.as_mut().set_sending(view.sending);
         self.as_mut().set_compose_to(QString::from(view.compose_to.as_deref().unwrap_or_default()));
         self.as_mut().set_compose_name(QString::from(view.compose_name.as_deref().unwrap_or_default()));
         self.as_mut().set_app_filter(QString::from(&view.app_filter));
+        self.as_mut().set_phone_can_delete(view.phone_can_delete);
+        self.as_mut().set_unread_syncs(view.unread_syncs);
         if differs(|v| &v.available_apps) {
             self.as_mut().set_available_apps(QString::from(&view.available_apps.to_string()));
         }
@@ -305,8 +352,51 @@ impl qobject::Messages {
         messages::set_app_filter(String::from(app));
     }
 
-    pub fn delete_chat_thread(&self, thread: &QString) {
-        messages::delete_chat_thread(String::from(thread));
+    pub fn mark_threads_unread(&self, ids: &QString) {
+        messages::mark_threads_unread(ids_of(ids));
+    }
+
+    pub fn delete_threads(&self, ids: &QString, on_phone: bool) {
+        messages::delete_threads(ids_of(ids), on_phone);
+    }
+
+    pub fn delete_messages(&self, ids: &QString, on_phone: bool) {
+        messages::delete_messages(ids_of(ids), on_phone);
+    }
+
+    pub fn mark_messages_unread(&self, ids: &QString) {
+        messages::mark_messages_unread(ids_of(ids));
+    }
+
+    pub fn copy_image(&self, url: &QString) {
+        match messages::copy_picture(&String::from(url)) {
+            Ok(()) => crate::bridge::app::show_message(tr!("App", "Copied to clipboard.")),
+            Err(reason) => {
+                tracing::warn!(reason, "can't copy a picture");
+                crate::bridge::app::show_message(tr!("App", "Could not copy to the clipboard."));
+            }
+        }
+    }
+
+    pub fn save_image(&self, url: &QString, to: &QString) {
+        match messages::save_picture(&String::from(url), &String::from(to)) {
+            Ok(()) => crate::bridge::app::show_message(tr!("Messages", "Picture saved.")),
+            Err(reason) => {
+                tracing::warn!(reason, "can't save a picture");
+                crate::bridge::app::show_message(tr!("Messages", "The picture couldn't be saved."));
+            }
+        }
+    }
+
+    pub fn image_save_suggestion(&self, url: &QString) -> QString {
+        QString::from(&messages::picture_save_suggestion(&String::from(url)))
+    }
+
+    pub fn share_image(&self, url: &QString) {
+        if let Err(reason) = messages::share_picture(&String::from(url)) {
+            tracing::warn!(reason, "can't open the share sheet");
+            crate::bridge::app::show_message(tr!("Messages", "The share sheet couldn't be opened."));
+        }
     }
 
     pub fn attach_file(&self, path_or_url: &QString) -> bool {

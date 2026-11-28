@@ -165,6 +165,12 @@ internal class GuardedPlatform(context: Context, private val inner: Platform) : 
 
     override fun smsMarkRead(thread: String): Boolean = guard("smsMarkRead", false) { inner.smsMarkRead(thread) }
 
+    override fun smsMarkUnread(thread: String, message: String?): Boolean =
+        guard("smsMarkUnread", false) { inner.smsMarkUnread(thread, message) }
+
+    override fun smsDelete(thread: String, messages: List<String>): Boolean =
+        guard("smsDelete", false) { inner.smsDelete(thread, messages) }
+
     override fun smsPart(id: String): SmsPartData? = guard("smsPart", null) { inner.smsPart(id) }
 
     override fun setPhoneToggle(id: String, value: PhoneToggleValue): Boolean = guard("setPhoneToggle", false) { inner.setPhoneToggle(id, value) }

@@ -168,6 +168,126 @@ object InputServer {
         arrayOf("appops", "set", "com.android.shell", "WRITE_SMS", previousMode),
     )
 
+    /** Texts (`sms`) and picture messages (`mms`) of a conversation, by their numbers in the phone's messages. */
+    internal class SmsIds(val sms: List<Long>, val mms: List<Long>) {
+        val isEmpty get() = sms.isEmpty() && mms.isEmpty()
+    }
+
+    /**
+     * The messages a comma-separated list names (`sms:12,mms:7`, from the app, which checked
+     * them), or null if anything in it isn't `sms:` or `mms:` and a number.
+     */
+    internal fun parseSmsIds(csv: String): SmsIds? {
+        val sms = mutableListOf<Long>()
+        val mms = mutableListOf<Long>()
+        for (token in csv.split(',')) {
+            val (kind, number) = token.split(':', limit = 2).takeIf { it.size == 2 } ?: return null
+            val id = digitsToLong(number)?.takeIf { it > 0 } ?: return null
+            when (kind) {
+                "sms" -> sms += id
+                "mms" -> mms += id
+                else -> return null
+            }
+        }
+        return SmsIds(sms, mms)
+    }
+
+    private fun digitsToLong(text: String?): Long? =
+        text?.takeIf { it.length in 1..18 && it.all { c -> c in '0'..'9' } }?.toLongOrNull()
+
+    internal class SmsUnreadRequest(val seq: Long, val mms: Boolean, val id: Long)
+
+    /** `<seq> sms|mms <id>`, or null when it's anything else. */
+    internal fun parseSmsUnreadRequest(rest: String): SmsUnreadRequest? {
+        val (seq, kind, id) = rest.trim().split(' ').takeIf { it.size == 3 } ?: return null
+        return SmsUnreadRequest(
+            digitsToLong(seq) ?: return null,
+            when (kind) {
+                "sms" -> false
+                "mms" -> true
+                else -> return null
+            },
+            digitsToLong(id)?.takeIf { it > 0 } ?: return null,
+        )
+    }
+
+    internal class SmsDeleteRequest(val seq: Long, val thread: Long, val ids: SmsIds?)
+
+    /**
+     * `<seq> <thread>` (a whole conversation) or `<seq> <thread> <sms:1,mms:2>` (some of its
+     * messages), or null when it's anything else. A list that doesn't parse is nothing, not a
+     * whole conversation.
+     */
+    internal fun parseSmsDeleteRequest(rest: String): SmsDeleteRequest? {
+        val parts = rest.trim().split(' ')
+        if (parts.size !in 2..3) return null
+        val seq = digitsToLong(parts[0]) ?: return null
+        val thread = digitsToLong(parts[1])?.takeIf { it > 0 } ?: return null
+        val ids = parts.getOrNull(2)?.let { parseSmsIds(it)?.takeIf { ids -> !ids.isEmpty } ?: return null }
+        return SmsDeleteRequest(seq, thread, ids)
+    }
+
+    /**
+     * The commands that mark one received message unread: the same allow, change and put back as
+     * [smsReadCommands], on a text (`content://sms/<id>`) or a picture message (`content://mms/<id>`).
+     */
+    internal fun smsUnreadCommands(mms: Boolean, id: Long, previousMode: String): List<Array<String>> = listOf(
+        arrayOf("appops", "set", "com.android.shell", "WRITE_SMS", "allow"),
+        arrayOf(
+            "content", "update", "--uri", "content://${if (mms) "mms" else "sms"}/$id",
+            "--bind", "read:i:0",
+        ),
+        arrayOf("appops", "set", "com.android.shell", "WRITE_SMS", previousMode),
+    )
+
+    /** What reads back whether a message is still unread (see [parseReadFlag]). */
+    internal fun smsUnreadCheck(mms: Boolean, id: Long): Array<String> =
+        arrayOf("content", "query", "--uri", "content://${if (mms) "mms" else "sms"}/$id", "--projection", "read")
+
+    /** The `read` column in `content query` output (`Row: 0 read=0`), or null when it isn't there. */
+    internal fun parseReadFlag(output: String): Int? =
+        Regex("""\bread=(\d+)""").find(output)?.groupValues?.get(1)?.toIntOrNull()
+
+    /** The selection of a deletion: a whole conversation, or only the messages `ids` of it. */
+    private fun smsDeleteWhere(thread: Long, ids: List<Long>?): String =
+        if (ids == null) "thread_id=$thread" else "thread_id=$thread AND _id IN (${ids.joinToString(",")})"
+
+    /**
+     * The commands that delete a conversation (no [ids]), or only those of its messages: the same
+     * allow, change and put back as [smsReadCommands]. Texts and picture messages are two stores;
+     * the thread's number scopes every deletion to it.
+     */
+    internal fun smsDeleteCommands(thread: Long, ids: SmsIds?, previousMode: String): List<Array<String>> {
+        val stores = if (ids == null) {
+            listOf("sms" to null, "mms" to null)
+        } else {
+            listOf("sms" to ids.sms, "mms" to ids.mms).filter { it.second!!.isNotEmpty() }
+        }
+        return listOf(arrayOf("appops", "set", "com.android.shell", "WRITE_SMS", "allow")) +
+            stores.map { (store, list) ->
+                arrayOf("content", "delete", "--uri", "content://$store", "--where", smsDeleteWhere(thread, list))
+            } +
+            listOf(arrayOf("appops", "set", "com.android.shell", "WRITE_SMS", previousMode))
+    }
+
+    /** What lists the messages a deletion should have removed (see [parseRowCount]), per store. */
+    internal fun smsDeleteChecks(thread: Long, ids: SmsIds?): List<Array<String>> {
+        val stores = if (ids == null) {
+            listOf("sms" to null, "mms" to null)
+        } else {
+            listOf("sms" to ids.sms, "mms" to ids.mms).filter { it.second!!.isNotEmpty() }
+        }
+        return stores.map { (store, list) ->
+            arrayOf("content", "query", "--uri", "content://$store", "--projection", "_id", "--where", smsDeleteWhere(thread, list))
+        }
+    }
+
+    /** How many rows `content query` printed, or null when its output isn't a result at all. */
+    internal fun parseRowCount(output: String): Int? {
+        val rows = output.lineSequence().count { it.startsWith("Row:") }
+        return if (rows > 0 || output.trim().startsWith("No result found")) rows else null
+    }
+
     @JvmStatic
     fun main(args: Array<String>) {
         // The app that starts the helper (over adb, USB or Shizuku) passes the
@@ -963,6 +1083,10 @@ object InputServer {
                     }
                 }
                 "R" -> if (display < 0) rest.trim().toLongOrNull()?.takeIf { it > 0 }?.let { markSmsRead(it) }
+                // `SU <seq> sms|mms <id>`: mark a received message unread.
+                "SU" -> if (display < 0) parseSmsUnreadRequest(rest)?.let { markSmsUnread(it.seq, it.mms, it.id) }
+                // `SD <seq> <thread> [<sms:1,mms:2...>]`: delete a conversation, or some of its messages.
+                "SD" -> if (display < 0) parseSmsDeleteRequest(rest)?.let { deleteSms(it.seq, it.thread, it.ids) }
                 "P" -> if (display < 0) setDisplayPower(rest.trim() != "0")
                 "B" -> if (display < 0) {
                     setClipboard(rest)
@@ -1191,32 +1315,65 @@ object InputServer {
         private fun allowedCommand(cmd: String): Boolean = isAllowedCommand(cmd)
 
         /**
-         * Marks a conversation's received texts read. The phone's messages only
-         * take writes from the default SMS app, and drop the shell's silently
-         * while its SMS write app-op is `ignore` (the default): allowed for the
-         * one change, then back to the mode it had. One at a time, off this
-         * thread, which carries input.
+         * Runs the commands [build] makes (from the mode the SMS write app-op had) as the one
+         * change the phone's messages take from the shell. The phone's messages only take writes
+         * from the default SMS app, and drop the shell's silently while its SMS write app-op is
+         * `ignore` (the default): allowed for the one change, then back to the mode it had, even
+         * when a command fails. One at a time. False when a command couldn't be run.
+         */
+        private fun writeSms(build: (String) -> List<Array<String>>): Boolean = synchronized(smsReadLock) {
+            // A mode that can't be read is put back as `default`, as it
+            // is unless something changed it.
+            val previous = capture(smsWriteMode)?.let(::parseAppOpMode) ?: "default"
+            val commands = build(previous)
+            var ran = true
+            try {
+                for (cmd in commands.dropLast(1)) {
+                    ran = runCatching { Runtime.getRuntime().exec(cmd).waitFor() }.isSuccess && ran
+                }
+            } finally {
+                runCatching { Runtime.getRuntime().exec(commands.last()).waitFor() }
+            }
+            ran
+        }
+
+        /** What a command prints (errors too), or null when it can't be run. */
+        private fun capture(cmd: Array<String>): String? = runCatching {
+            val proc = ProcessBuilder(*cmd).redirectErrorStream(true).start()
+            val out = proc.inputStream.bufferedReader().readText()
+            proc.waitFor()
+            out
+        }.getOrNull()
+
+        /**
+         * Marks a conversation's received texts read, off this thread, which carries input.
          */
         private fun markSmsRead(thread: Long) {
+            Thread { writeSms { previous -> smsReadCommands(thread, previous) } }.start()
+        }
+
+        /**
+         * Marks one received message unread, and tells the app how it went (`SW <seq> ok|fail`):
+         * ok only when the message reads back unread, because the phone's messages ignore a
+         * write they don't take without saying so.
+         */
+        private fun markSmsUnread(seq: Long, mms: Boolean, id: Long) {
             Thread {
-                synchronized(smsReadLock) {
-                    // A mode that can't be read is put back as `default`, as it
-                    // is unless something changed it.
-                    val previous = runCatching {
-                        val proc = Runtime.getRuntime().exec(smsWriteMode)
-                        val out = proc.inputStream.bufferedReader().readText()
-                        proc.waitFor()
-                        parseAppOpMode(out)
-                    }.getOrNull() ?: "default"
-                    val commands = smsReadCommands(thread, previous)
-                    try {
-                        for (cmd in commands.dropLast(1)) {
-                            runCatching { Runtime.getRuntime().exec(cmd).waitFor() }
-                        }
-                    } finally {
-                        runCatching { Runtime.getRuntime().exec(commands.last()).waitFor() }
-                    }
-                }
+                val ok = writeSms { previous -> smsUnreadCommands(mms, id, previous) } &&
+                    capture(smsUnreadCheck(mms, id))?.let(::parseReadFlag) == 0
+                reply("SW $seq ${if (ok) "ok" else "fail"}")
+            }.start()
+        }
+
+        /**
+         * Deletes a conversation (no [ids]) or some of its messages, and tells the app how it
+         * went (`SW <seq> ok|fail`): ok only when nothing of it reads back.
+         */
+        private fun deleteSms(seq: Long, thread: Long, ids: SmsIds?) {
+            Thread {
+                val ok = writeSms { previous -> smsDeleteCommands(thread, ids, previous) } &&
+                    smsDeleteChecks(thread, ids).all { capture(it)?.let(::parseRowCount) == 0 }
+                reply("SW $seq ${if (ok) "ok" else "fail"}")
             }.start()
         }
 

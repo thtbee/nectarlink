@@ -890,6 +890,12 @@ object Elevated {
         Thread {
             runCatching {
                 local.inputStream.bufferedReader().lineSequence().forEach { line ->
+                    if (line.startsWith("SW ")) {
+                        // `SW <seq> ok|fail`: how a messages change went.
+                        val (seq, result) = line.removePrefix("SW ").split(' ').takeIf { it.size == 2 } ?: return@forEach
+                        seq.toLongOrNull()?.let { smsWrites.remove(it) }?.complete(result == "ok")
+                        return@forEach
+                    }
                     if (line.startsWith("FI ") || line.startsWith("FP ")) {
                         pointerReplies.offer(line)
                         return@forEach
@@ -1426,6 +1432,48 @@ object Elevated {
         return send(writer, "R $thread")
     }
 
+    private val smsWriteSeq = java.util.concurrent.atomic.AtomicLong()
+    private val smsWrites = java.util.concurrent.ConcurrentHashMap<Long, java.util.concurrent.CompletableFuture<Boolean>>()
+
+    /**
+     * Sends [line] (with the number of this change first, as `%d`) to the helper and waits for it
+     * to say how the change to the phone's messages went. False when the helper isn't running,
+     * says it didn't change, or doesn't answer. Not on the main thread.
+     */
+    private fun smsWrite(line: (Long) -> String): Boolean {
+        val writer = input ?: return false
+        val seq = smsWriteSeq.incrementAndGet()
+        val done = java.util.concurrent.CompletableFuture<Boolean>()
+        smsWrites[seq] = done
+        try {
+            if (!sendNow(writer, line(seq))) return false
+            return runCatching { done.get(SMS_WRITE_MS, java.util.concurrent.TimeUnit.MILLISECONDS) }.getOrDefault(false)
+        } finally {
+            smsWrites.remove(seq)
+        }
+    }
+
+    /**
+     * Marks one received message of the phone's messages unread through the helper (the shell may
+     * change them once allowed; see [InputServer]). True only when it reads back unread.
+     */
+    fun markSmsUnread(mms: Boolean, id: Long): Boolean {
+        if (id <= 0) return false
+        return smsWrite { "SU $it ${if (mms) "mms" else "sms"} $id" }
+    }
+
+    /**
+     * Deletes a conversation of the phone's messages ([ids] empty), or only those of its messages
+     * (`sms:12`, `mms:7`), through the helper. True only when nothing of it reads back.
+     */
+    fun deleteSms(thread: Long, ids: List<Pair<Boolean, Long>>): Boolean {
+        if (thread <= 0 || ids.any { it.second <= 0 }) return false
+        return smsWrite { seq ->
+            val list = ids.joinToString(",") { (mms, id) -> "${if (mms) "mms" else "sms"}:$id" }
+            if (list.isEmpty()) "SD $seq $thread" else "SD $seq $thread $list"
+        }
+    }
+
     /** Runs an allowed shell command through the Elevated helper or system service. */
     fun runCommand(command: String): Boolean {
         val requiredCap = SystemServiceBridge.requiredCapability(command, context.packageName)
@@ -1610,6 +1658,8 @@ object Elevated {
 
     private const val POINTER_START_MS = 5_000L
     private const val POINTER_WHERE_MS = 2_000L
+    /** Changing the phone's messages is a few shell commands, and a long conversation takes a while. */
+    private const val SMS_WRITE_MS = 30_000L
 
     private val keys = mapOf(
         "back" to KeyEvent.KEYCODE_BACK,

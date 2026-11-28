@@ -151,8 +151,9 @@ pub use nectarlink_protocol::{
         },
         ringer_modes, screen_limits,
         sms::{
-            MARK_READ as SMS_MARK_READ, MAX_ATTACHMENT_BYTES as SMS_MAX_ATTACHMENT_BYTES,
-            MAX_ATTACHMENTS as SMS_MAX_ATTACHMENTS, READ as SMS_READ, SEND as SMS_SEND, SHOW as SMS_SHOW,
+            DELETE as SMS_DELETE, MARK_READ as SMS_MARK_READ, MARK_UNREAD as SMS_MARK_UNREAD,
+            MAX_ATTACHMENT_BYTES as SMS_MAX_ATTACHMENT_BYTES, MAX_ATTACHMENTS as SMS_MAX_ATTACHMENTS,
+            MAX_DELETE as SMS_MAX_DELETE, READ as SMS_READ, SEND as SMS_SEND, SHOW as SMS_SHOW,
             SIMS as SMS_SIMS,
         },
         storage::{MOUNT as STORAGE_MOUNT, READ as STORAGE_READ, WRITE as STORAGE_WRITE},

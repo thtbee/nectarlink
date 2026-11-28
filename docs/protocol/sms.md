@@ -17,6 +17,8 @@ only in memory. New-message alerts come from the phone's own notifications
 | `sms.show` | PC | Shows messages, and wants `sms.changed` |
 | `sms.sims` | phone | Lists the SIMs it texts from, and sends on the one a PC picks |
 | `sms.mark_read` | phone | Marks a conversation's received texts read in the phone's messages when a PC asks (Elevated only) |
+| `sms.mark_unread` | phone | Marks a conversation's latest received text unread in the phone's messages when a PC asks (Elevated only) |
+| `sms.delete` | phone | Deletes a conversation, or some of its messages, from the phone's messages when a PC asks (Elevated only) |
 
 Both devices must allow it: the `messages` device toggle, on by default,
 on each side.
@@ -45,6 +47,12 @@ t = "sms.sims"      re = n   b = { sims: [ { id: text, label: text } ], ? defaul
 t = "sms.mark_read" id = n   b = { thread: text }
 t = "ok"            re = n
 
+t = "sms.mark_unread" id = n b = { thread: text, ? message: text }
+t = "ok"            re = n
+
+t = "sms.delete"    id = n   b = { thread: text, ? messages: [ text ] }   // at most 100 messages
+t = "ok"            re = n
+
 t = "sms.changed"            b = { ? thread: text }                       // phone → PC
 
 attachment = {
@@ -61,6 +69,7 @@ thread = {
   ? snippet: text,        // The latest message's text, or a description like "Picture"
   date: int,              // The latest message, in Unix milliseconds
   ? unread: uint,
+  ? fresh: uint,          // Of the unread, the new ones not yet seen on the phone (with a notification); absent: all of them
   ? photo: bytes,         // One-person conversations: the contact's photo, a JPEG of at most 16 KiB
 }
 
@@ -127,21 +136,58 @@ itself the SMS write app-op for the one change, then restores the mode it read f
 doesn't answers `UNSUPPORTED`. The PC sends it only if the user turned on
 **Mark texts read on the phone**, which is off by default.
 
-### 2.5 Changes
+### 2.5 Marking unread
 
-The phone sends `sms.changed` to PCs that offer `sms.show` when its
-messages change (a text arrived or was sent), with the conversation when
-it knows it. PCs then ask again for what they show.
+`sms.mark_unread` asks the phone to mark a received text of a conversation
+unread in its own messages: `message` (an id from `sms.messages`, `sms:` or
+`mms:` and digits) if given, else the conversation's latest received text, text
+or picture message. The user said marking that one is enough: the phone shows
+the conversation unread, with one unread text. `thread` is a number as in §2.4,
+anything else (and a `message` that isn't an id) is `BAD_MESSAGE`.
 
-## 3. Limits of this version
+Only the Elevated helper can do it, in the same way as the shell's marking read
+(§2.4): the phone's messages take writes from the default SMS app, and from the
+shell once it allows itself the SMS write app-op for the one change, which it
+puts back as it was. The phone reads the message back and answers `ok` only
+when it reads unread, because the messages store ignores a write it doesn't
+allow without saying so; any other failure is `INTERNAL`. A phone that offers
+`sms.mark_unread` has the helper running (and may read texts); one that doesn't
+answers `UNSUPPORTED`. A PC sends it only if the user turned on **Sync read
+state with the phone**, the same setting that sends `sms.mark_read`, which is off
+by default.
 
-- Texts are sent to one number at a time; replying in a group needs MMS
-  and isn't part of this version.
-- Phones can't mark messages as read for other apps: Android lets only the
-  default SMS app change the messages store.
-- Android 15 and later keep texts with one-time codes from other apps for
-  a few hours; such conversations look empty in the meantime.
+A messaging app such as Google Messages keeps its own state besides the phone's
+messages, so its badge may not change in every app; the phone's messages
+database does.
 
-## 4. Privacy
+### 2.6 Deleting
 
-Numbers, names, text and pictures are never logged (v0 §11).
+`sms.delete` asks the phone to delete a whole conversation (no `messages`), or
+only the messages named, from its own messages, texts and picture messages
+(`sms:12`, `mms:7`, as `sms.messages` lists them; at most 100, anything else is
+`BAD_MESSAGE`). It cannot be undone and is **sent only when the user chooses it
+for that deletion**: a PC shows the choice each time and never sends it by
+default or for something else. A list of `messages` that is empty is a whole
+conversation, so a PC that names messages sends none rather than an empty list.
+
+As with §2.5, only the Elevated helper does it, one change at a time, with
+nothing but numbers in the shell's commands: a conversation is
+`content delete` by its `thread_id` on both the texts and the picture messages,
+and messages by their numbers and the `thread_id`, so a number of another
+conversation deletes nothing. The phone reads back and answers `ok` only when
+nothing it was asked to delete remains; the phone's messages drop an emptied
+conversation. A failure, for instance a phone whose messages the shell cannot
+write, is `INTERNAL`; `DENIED` when messages are off for the PC; `UNSUPPORTED`
+from a phone that doesn't offer `sms.delete`.
+
+A PC answers a failure in plain words and keeps what it did on its own side.
+
+### 2.7 What a PC keeps to itself
+
+`sms.mark_read`, `sms.mark_unread` and `sms.delete` are all the protocol has for
+changing the phone's messages. What a PC keeps itself, where the phone can't or the
+user didn't choose to (a delete on this PC only, or a conversation marked unread on a phone
+that doesn't offer it), is by conversation (the phone's
+`thread`) and message (`id`) and as of the date of the latest message at the time, so a
+newer message shows again. It sends nothing to the phone for it, and drops it when the
+phone is unpaired. There is no archive: Android has no API for it, so a PC doesn't offer one.

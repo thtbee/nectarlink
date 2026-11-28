@@ -62,6 +62,10 @@ struct RecordingPlatform {
     texts: Mutex<Vec<(Vec<String>, String)>>,
     mms_sent: Mutex<Vec<MmsRecord>>,
     marked_read: Mutex<Vec<String>>,
+    marked_unread: Mutex<Vec<(String, Option<String>)>>,
+    deleted: Mutex<Vec<(String, Vec<String>)>>,
+    /// Makes the phone's messages refuse a delete.
+    delete_refused: std::sync::atomic::AtomicBool,
     mirror_asks: Mutex<Vec<String>>,
     mirror_reject: std::sync::atomic::AtomicBool,
     /// Says no computer can be reaching it through adb.
@@ -355,6 +359,7 @@ impl Platform for RecordingPlatform {
             snippet: format!("text {i}"),
             date: 1_790_000_000_000 - i64::from(i),
             unread: i % 2,
+            fresh: None,
             photo: None,
         };
         Ok((0..5).map(thread).take(limit as usize).collect())
@@ -410,6 +415,17 @@ impl Platform for RecordingPlatform {
     }
     fn sms_mark_read(&self, thread: &str) -> Result<(), String> {
         self.marked_read.lock().unwrap().push(thread.to_owned());
+        Ok(())
+    }
+    fn sms_mark_unread(&self, thread: &str, message: Option<&str>) -> Result<(), String> {
+        self.marked_unread.lock().unwrap().push((thread.to_owned(), message.map(str::to_owned)));
+        Ok(())
+    }
+    fn sms_delete(&self, thread: &str, messages: &[String]) -> Result<(), String> {
+        if self.delete_refused.load(std::sync::atomic::Ordering::Relaxed) {
+            return Err("not allowed".into());
+        }
+        self.deleted.lock().unwrap().push((thread.to_owned(), messages.to_vec()));
         Ok(())
     }
     fn sms_part(&self, id: &str) -> Result<(String, Vec<u8>), String> {
@@ -3439,6 +3455,59 @@ async fn the_pc_reads_and_sends_texts_through_the_phone() {
     // A conversation is a number: nothing else goes to the phone.
     assert!(matches!(pc.node.sms_mark_read(phone_id, "3 OR 1=1".into()).await, Err(Error::Protocol(_))));
     assert_eq!(phone.platform.marked_read.lock().unwrap().len(), 1);
+
+    // Marking unread and deleting are offered on their own: a phone that offers neither
+    // (the helper isn't running) is asked for nothing.
+    assert!(matches!(pc.node.sms_mark_unread(phone_id, "3".into(), None).await, Err(Error::Unsupported)));
+    assert!(matches!(pc.node.sms_delete(phone_id, "3".into(), vec![]).await, Err(Error::Unsupported)));
+    phone
+        .node
+        .update_power(
+            PowerLevel::NotApplicable,
+            vec![
+                nectarlink_core::SMS_READ.into(),
+                nectarlink_core::SMS_SEND.into(),
+                nectarlink_core::SMS_SIMS.into(),
+                nectarlink_core::SMS_MARK_READ.into(),
+                nectarlink_core::SMS_MARK_UNREAD.into(),
+                nectarlink_core::SMS_DELETE.into(),
+            ],
+        )
+        .await;
+    loop {
+        match with_timeout("mark unread", pc.node.sms_mark_unread(phone_id, "3".into(), Some("mms:9".into())))
+            .await
+        {
+            Ok(()) => break,
+            Err(Error::Unsupported) => tokio::time::sleep(std::time::Duration::from_millis(50)).await,
+            Err(e) => panic!("can't mark unread: {e:?}"),
+        }
+    }
+    pc.node.sms_mark_unread(phone_id, "3".into(), None).await.unwrap();
+    assert_eq!(
+        *phone.platform.marked_unread.lock().unwrap(),
+        [("3".to_owned(), Some("mms:9".to_owned())), ("3".to_owned(), None)]
+    );
+    pc.node.sms_delete(phone_id, "3".into(), vec![]).await.unwrap();
+    pc.node.sms_delete(phone_id, "4".into(), vec!["sms:7".into(), "mms:8".into()]).await.unwrap();
+    assert_eq!(
+        *phone.platform.deleted.lock().unwrap(),
+        [("3".to_owned(), vec![]), ("4".to_owned(), vec!["sms:7".to_owned(), "mms:8".to_owned()])]
+    );
+    // Only numbers reach the phone, and the PC never sends anything else.
+    for bad in ["3 OR 1=1", "", "3;reboot"] {
+        assert!(matches!(pc.node.sms_mark_unread(phone_id, bad.into(), None).await, Err(Error::Protocol(_))));
+        assert!(matches!(pc.node.sms_delete(phone_id, bad.into(), vec![]).await, Err(Error::Protocol(_))));
+    }
+    assert!(matches!(
+        pc.node.sms_delete(phone_id, "3".into(), vec!["sms:1) OR (1=1".into()]).await,
+        Err(Error::Protocol(_))
+    ));
+    assert_eq!(phone.platform.deleted.lock().unwrap().len(), 2);
+    // A phone whose messages refuse the delete says so, and the PC hears it as a failure.
+    phone.platform.delete_refused.store(true, std::sync::atomic::Ordering::Relaxed);
+    assert!(matches!(pc.node.sms_delete(phone_id, "3".into(), vec![]).await, Err(Error::Protocol(_))));
+    phone.platform.delete_refused.store(false, std::sync::atomic::Ordering::Relaxed);
 
     // The phone says what changed.
     phone.node.sms_changed(Some("1".into())).await;
