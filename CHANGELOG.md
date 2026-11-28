@@ -658,6 +658,9 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **A clipboard picture that couldn't be previewed no longer keeps a CPU core busy.** The PC
+  tried to make its preview again and again, hundreds of times a second, for as long as it ran.
+  Thanks to [@leeefun](https://github.com/leeefun) ([#730](https://github.com/thtbee/nectarlink/issues/730)).
 - **A phone asks before it plays the PC's sound.** Use phone as speaker, turned on from a phone,
   sent everything the PC played, calls included, to that phone without a word on the PC. The first
   time a phone asks, the PC now asks you, and remembers a phone you allow.
