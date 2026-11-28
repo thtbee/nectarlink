@@ -458,9 +458,9 @@ const NOT_PAIRING: &[u8] = b"not pairing";
 /// Handles an incoming pairing connection (host side of both flows).
 pub(crate) async fn accept(shared: Arc<Shared>, conn: Connection) {
     let peer = crate::device_id(&conn.remote_id());
-    // Over the USB tunnel pairing needs no pairing mode, but only while adb
-    // could be what reached the tunnel: any app on the phone can reach it too.
-    let is_usb = shared.is_usb_connection(&conn) && shared.platform.adb_may_be_connected();
+    // Over a USB tunnel adb opened pairing needs no pairing mode, but any app on the
+    // phone can reach the tunnel's port too: one it opened pairs only in pairing mode.
+    let is_usb = shared.may_pair_over_usb(&conn);
     let ceremony = shared.pairing.ceremony();
     // The QR code shown when this started, if one was: it may be ended once
     // this pairs, but not a newer one.

@@ -4607,6 +4607,13 @@ impl NectarlinkNode {
         self.node.set_usb_only(enabled);
     }
 
+    /// Phone: keeps a nonce a PC sent through adb (the USB wake broadcast), so
+    /// the tunnel it opens next may pair without pairing mode. Returns whether
+    /// it was one (32 hex digits).
+    pub fn allow_usb_nonce(&self, nonce: String) -> bool {
+        self.node.allow_usb_nonce(&nonce)
+    }
+
     pub fn relay_snapshot(&self) -> RelaySnapshot {
         use core::relays::RelayRegion as Region;
         let snapshot = self.node.relay_snapshot();
