@@ -1704,6 +1704,37 @@
     <string name="settings_own_name">Bu telefonun adı</string>
     <string name="settings_own_name_change">Değiştir</string>
     <string name="settings_own_name_hint">Bu telefonun bilgisayarlarınızda nasıl görüneceği. %1$s kullanmak için boş bırakın.</string>
+    <string name="action_chat">Sohbet</string>
+    <string name="channel_chat">Sohbet</string>
+    <string name="chat_you">Siz</string>
+    <string name="chat_empty">Bir not yazın; %1$s cihazında görünür.</string>
+    <string name="chat_composer_hint">Not</string>
+    <string name="chat_composer_label">%1$s için not</string>
+    <string name="chat_send">Gönder</string>
+    <string name="chat_save">Kaydet</string>
+    <string name="chat_editing">Not düzenleniyor</string>
+    <string name="chat_offline">Not göndermek için %1$s cihazına bağlanın.</string>
+    <string name="chat_too_old">Not göndermek için %1$s cihazında NectarLink\'i güncelleyin.</string>
+    <string name="chat_too_long">Bir not en fazla %1$d karakter olabilir.</string>
+    <string name="chat_not_connected">%1$s bağlı değil.</string>
+    <string name="chat_action_copy">Kopyala</string>
+    <string name="chat_action_edit">Düzenle</string>
+    <string name="chat_action_delete">Sil</string>
+    <string name="chat_delete_title">Bu not silinsin mi?</string>
+    <string name="chat_delete_text">%1$s cihazında da silinir.</string>
+    <string name="chat_delete_text_offline">%1$s bağlı değil, bu yüzden orada kalır.</string>
+    <string name="chat_note_mine">Siz, %1$s: %2$s</string>
+    <string name="chat_note_from">%1$s, %2$s: %3$s</string>
+    <string name="chat_note_options">Not seçenekleri</string>
+    <string name="chat_earlier">Önceki notlar</string>
+    <string name="chat_attach">Ekle</string>
+    <string name="chat_attach_media">Fotoğraflar ve videolar</string>
+    <string name="chat_attach_files">Dosyalar</string>
+    <string name="chat_action_share">Paylaş</string>
+    <string name="chat_action_remove">Sohbetten kaldır</string>
+    <string name="chat_file_missing">Bu cihazda yok</string>
+    <string name="chat_file_options">Dosya seçenekleri</string>
+    <string name="timeline_filter_notes">Notlar</string>
 </resources>
 
 

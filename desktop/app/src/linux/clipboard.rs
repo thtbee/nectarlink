@@ -641,6 +641,14 @@ pub fn read_private_text() -> Option<String> {
     }
 }
 
+/// The copied text, for a glance at it (the Shelf).
+pub fn peek_text() -> Option<String> {
+    match read() {
+        Clip::Text { text, .. } if !text.trim().is_empty() => Some(text),
+        _ => None,
+    }
+}
+
 /// Reads the current clipboard contents.
 pub fn read() -> Clip {
     if let Some(os_clip) = read_from_os(true) {

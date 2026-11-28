@@ -19,9 +19,16 @@
 //!    even when Wi-Fi is off.
 //! 5. If the two devices are not paired yet, the PC automatically initiates the
 //!    nearby 6-digit SAS code ceremony over the USB tunnel; the phone accepts
-//!    the ceremony on a verified USB loopback connection without requiring manual
-//!    host mode, and both users must confirm the 6-digit code before any trust
+//!    the ceremony without requiring manual host mode only on a tunnel adb
+//!    opened, and both users must confirm the 6-digit code before any trust
 //!    is stored.
+//!
+//! Any app on the phone can reach the tunnel's loopback port, so the phone can't
+//! tell adb from another app by the connection alone. Before it opens a tunnel to
+//! a phone it isn't paired with, the PC sends a one-time nonce through adb (a
+//! broadcast to a receiver only the shell may reach, see [`Wake`]) and puts the
+//! same nonce in its hello. The phone takes pairing without pairing mode only on
+//! a tunnel whose hello carried a nonce it was given that way ([`UsbNonces`]).
 
 use std::{
     collections::HashMap,
@@ -64,6 +71,11 @@ const SPARE_PORT_MAX_DELAY: Duration = Duration::from_secs(30);
 /// a wedged adb) never closes by itself, so without this the worker would sit
 /// in it and never open a new one until the cable is replugged.
 const TUNNEL_SILENCE_LIMIT: Duration = Duration::from_secs(60);
+/// How much a tunnel gathers per write, and reads ahead, between UDP and TCP.
+const RELAY_BATCH_BYTES: usize = 256 * 1024;
+/// Room for one framed datagram: its 2-byte length and up to 65,535 bytes.
+const FRAME_ROOM: usize = 2 + u16::MAX as usize;
+const _: () = assert!(RELAY_BATCH_BYTES >= FRAME_ROOM);
 
 /// The phone app's id, and the pieces of it the PC starts through adb. Both
 /// are protected by `android.permission.DUMP`, which only the shell holds.
@@ -99,6 +111,94 @@ impl Wake {
             Wake::Service => {
                 format!("am start-foreground-service -n {PHONE_PACKAGE}/{WAKE_SERVICE} -a {WAKE_ACTION}")
             }
+        }
+    }
+}
+
+/// The wake broadcast, carrying a nonce the PC's next hello repeats. Only the shell
+/// may send it, so a hello with that nonce came from whoever holds adb. Older apps
+/// ignore the extra.
+fn nonce_command(nonce: &str) -> String {
+    format!("{} --es {NONCE_EXTRA} {nonce}", Wake::Process.command())
+}
+
+/// The wake broadcast's extra holding the nonce.
+const NONCE_EXTRA: &str = "nonce";
+/// Random bytes in a nonce; it travels as twice as many lowercase hex digits.
+const NONCE_BYTES: usize = 16;
+/// How long a phone keeps a nonce it was given: a PC sends it right before the hello.
+const NONCE_TTL: Duration = Duration::from_secs(120);
+/// Nonces a phone keeps at most; the oldest goes first.
+const MAX_NONCES: usize = 4;
+
+/// A fresh nonce for one tunnel, as lowercase hex.
+fn new_nonce() -> String {
+    let bytes: [u8; NONCE_BYTES] = rand::random();
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
+}
+
+fn parse_nonce(nonce: &str) -> Option<[u8; NONCE_BYTES]> {
+    let digits = nonce.as_bytes();
+    if digits.len() != NONCE_BYTES * 2 || !digits.iter().all(u8::is_ascii_hexdigit) {
+        return None;
+    }
+    let mut out = [0u8; NONCE_BYTES];
+    let nibble = |digit: u8| char::from(digit).to_digit(16).map(|v| v as u8);
+    for (byte, [high, low]) in out.iter_mut().zip(digits.as_chunks::<2>().0) {
+        *byte = (nibble(*high)? << 4) | nibble(*low)?;
+    }
+    Some(out)
+}
+
+/// The nonces this phone was given through adb, each good for one tunnel within
+/// [`NONCE_TTL`].
+#[derive(Default)]
+pub(crate) struct UsbNonces {
+    given: Mutex<Vec<([u8; NONCE_BYTES], Instant)>>,
+}
+
+impl UsbNonces {
+    /// Keeps `nonce`, if it is one. Returns whether it was.
+    pub(crate) fn allow(&self, nonce: &str, now: Instant) -> bool {
+        let Some(nonce) = parse_nonce(nonce) else { return false };
+        let mut given = self.given.lock().unwrap_or_else(|e| e.into_inner());
+        given.retain(|(_, at)| now.saturating_duration_since(*at) < NONCE_TTL);
+        if given.len() >= MAX_NONCES {
+            given.remove(0);
+        }
+        given.push((nonce, now));
+        true
+    }
+
+    /// Whether `nonce` is one this phone was given and hasn't used yet. A match is
+    /// used up.
+    pub(crate) fn take(&self, nonce: &str, now: Instant) -> bool {
+        let Some(nonce) = parse_nonce(nonce) else { return false };
+        let mut given = self.given.lock().unwrap_or_else(|e| e.into_inner());
+        given.retain(|(_, at)| now.saturating_duration_since(*at) < NONCE_TTL);
+        // Compared without stopping early, so timing says nothing about how much matched.
+        let mut found = None;
+        for (i, (kept, _)) in given.iter().enumerate() {
+            let diff = kept.iter().zip(&nonce).fold(0u8, |acc, (a, b)| acc | (a ^ b));
+            if diff == 0 {
+                found = Some(i);
+            }
+        }
+        found.map(|i| given.remove(i)).is_some()
+    }
+}
+
+/// Gives the phone `nonce` through adb. Returns whether `am` says it went through.
+async fn send_nonce(adb_addr: SocketAddr, serial: &str, nonce: &str) -> bool {
+    match nectarlink_adb::shell_output(adb_addr, serial, &nonce_command(nonce), 1024).await {
+        Ok(output) => {
+            let ok = wake_went_through(&output);
+            tracing::debug!(%serial, ok, "gave a USB phone a tunnel nonce");
+            ok
+        }
+        Err(e) => {
+            tracing::debug!(%serial, error = %e, "couldn't give a USB phone a tunnel nonce");
+            false
         }
     }
 }
@@ -160,6 +260,18 @@ struct UsbHello {
     /// while the cable is connected, and wakes it when it isn't running.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     usb_only: bool,
+    /// From a PC: the nonce it just gave the phone through adb (see [`UsbNonces`]).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    nonce: Option<String>,
+}
+
+/// What the other end's hello said.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct PeerHello {
+    pub id: DeviceId,
+    pub name: String,
+    pub usb_only: bool,
+    pub nonce: Option<String>,
 }
 
 pub(crate) async fn write_hello(
@@ -167,8 +279,15 @@ pub(crate) async fn write_hello(
     id: &DeviceId,
     name: &str,
     usb_only: bool,
+    nonce: Option<&str>,
 ) -> Result<()> {
-    let hello = UsbHello { v: 1, id: id.to_string(), name: name.to_owned(), usb_only };
+    let hello = UsbHello {
+        v: 1,
+        id: id.to_string(),
+        name: name.to_owned(),
+        usb_only,
+        nonce: nonce.map(str::to_owned),
+    };
     let payload = serde_json::to_vec(&hello).map_err(|e| Error::Internal(e.to_string()))?;
     if payload.is_empty() || payload.len() > MAX_HELLO_BYTES {
         return Err(Error::Protocol("invalid USB hello length".into()));
@@ -183,7 +302,7 @@ pub(crate) async fn write_hello(
     Ok(())
 }
 
-pub(crate) async fn read_hello(stream: &mut TcpStream) -> Result<(DeviceId, String, bool)> {
+pub(crate) async fn read_hello(stream: &mut TcpStream) -> Result<PeerHello> {
     let mut magic = [0u8; 4];
     stream.read_exact(&mut magic).await.map_err(|e| Error::Network(e.to_string()))?;
     if &magic != MAGIC {
@@ -197,21 +316,28 @@ pub(crate) async fn read_hello(stream: &mut TcpStream) -> Result<(DeviceId, Stri
     }
     let mut payload = vec![0u8; len];
     stream.read_exact(&mut payload).await.map_err(|e| Error::Network(e.to_string()))?;
-    let hello: UsbHello =
-        serde_json::from_slice(&payload).map_err(|e| Error::Protocol(format!("invalid USB hello: {e}")))?;
-    let peer_id: DeviceId =
-        hello.id.parse().map_err(|_| Error::Protocol("invalid DeviceId in USB hello".into()))?;
-    let name: String = hello.name.trim().chars().take(64).collect();
-    Ok((peer_id, name, hello.usb_only))
+    parse_hello(&payload)
 }
 
+fn parse_hello(payload: &[u8]) -> Result<PeerHello> {
+    let hello: UsbHello =
+        serde_json::from_slice(payload).map_err(|e| Error::Protocol(format!("invalid USB hello: {e}")))?;
+    let id: DeviceId =
+        hello.id.parse().map_err(|_| Error::Protocol("invalid DeviceId in USB hello".into()))?;
+    let name: String = hello.name.trim().chars().take(64).collect();
+    Ok(PeerHello { id, name, usb_only: hello.usb_only, nonce: hello.nonce })
+}
+
+/// PC: sends this end's hello (with `nonce`, if the phone was just given one) and
+/// reads the phone's.
 pub(crate) async fn exchange_hello(
     stream: &mut TcpStream,
     local_id: &DeviceId,
     local_name: &str,
-) -> Result<(DeviceId, String, bool)> {
+    nonce: Option<&str>,
+) -> Result<PeerHello> {
     tokio::time::timeout(HELLO_TIMEOUT, async {
-        write_hello(stream, local_id, local_name, false).await?;
+        write_hello(stream, local_id, local_name, false, nonce).await?;
         read_hello(stream).await
     })
     .await
@@ -268,14 +394,17 @@ pub(crate) fn start_phone_listener(shared: &Arc<Shared>, preferred_port: u16) ->
             let Some(node) = weak.upgrade() else { return };
             tokio::spawn(async move {
                 let local_name = node.local.read().unwrap_or_else(|e| e.into_inner()).device.name.clone();
-                let Ok(Ok((pc_id, pc_name, _))) =
-                    tokio::time::timeout(HELLO_TIMEOUT, read_hello(&mut stream)).await
-                else {
+                let Ok(Ok(hello)) = tokio::time::timeout(HELLO_TIMEOUT, read_hello(&mut stream)).await else {
                     return;
                 };
+                let (pc_id, pc_name) = (hello.id, hello.name);
                 if pc_id == node.id {
                     return;
                 }
+                // Opened by adb, which gave this phone the nonce first; anything else on the
+                // phone could have opened it otherwise.
+                let from_adb =
+                    hello.nonce.as_deref().is_some_and(|nonce| node.usb_nonces.take(nonce, Instant::now()));
                 let Some(iroh_port) = node.bound_v4_port() else { return };
                 let Ok(udp) = UdpSocket::bind((Ipv4Addr::LOCALHOST, 0)).await else { return };
                 let Ok(bridge_addr) = udp.local_addr() else { return };
@@ -283,12 +412,12 @@ pub(crate) fn start_phone_listener(shared: &Arc<Shared>, preferred_port: u16) ->
 
                 let tunnel_cancel = node.cancel.child_token();
                 node.register_usb_bridge_port(bridge_port, pc_id);
-                node.on_usb_tunnel_accepted(pc_id, pc_name, bridge_addr, tunnel_cancel.clone());
+                node.on_usb_tunnel_accepted(pc_id, pc_name, bridge_addr, tunnel_cancel.clone(), from_adb);
 
                 if !matches!(
                     tokio::time::timeout(
                         HELLO_TIMEOUT,
-                        write_hello(&mut stream, &node.id, &local_name, node.usb_only())
+                        write_hello(&mut stream, &node.id, &local_name, node.usb_only(), None)
                     )
                     .await,
                     Ok(Ok(()))
@@ -312,7 +441,13 @@ pub(crate) fn start_phone_listener(shared: &Arc<Shared>, preferred_port: u16) ->
 /// Connects to a forwarded phone USB tunnel TCP address (`127.0.0.1:<port>`),
 /// runs the `NLQU` handshake, spawns the UDP-over-TCP bridge, and triggers
 /// session connection (if paired) or USB auto-pairing (if unpaired).
-pub(crate) async fn connect_usb_tunnel(shared: &Arc<Shared>, forwarded_tcp: SocketAddr) -> Result<DeviceId> {
+///
+/// `nonce` is one the phone was just given through adb, so it may pair over this tunnel.
+pub(crate) async fn connect_usb_tunnel(
+    shared: &Arc<Shared>,
+    forwarded_tcp: SocketAddr,
+    nonce: Option<&str>,
+) -> Result<DeviceId> {
     let mut stream = tokio::time::timeout(HELLO_TIMEOUT, TcpStream::connect(forwarded_tcp))
         .await
         .map_err(|_| Error::Timeout)?
@@ -320,7 +455,8 @@ pub(crate) async fn connect_usb_tunnel(shared: &Arc<Shared>, forwarded_tcp: Sock
     let _ = stream.set_nodelay(true);
 
     let local_name = shared.local.read().unwrap_or_else(|e| e.into_inner()).device.name.clone();
-    let (phone_id, phone_name, _) = exchange_hello(&mut stream, &shared.id, &local_name).await?;
+    let PeerHello { id: phone_id, name: phone_name, .. } =
+        exchange_hello(&mut stream, &shared.id, &local_name, nonce).await?;
     if phone_id == shared.id {
         return Err(Error::Protocol("cannot connect USB tunnel to self".into()));
     }
@@ -497,6 +633,8 @@ async fn run_port_worker(
 ) {
     let mut delay = ADB_RETRY_DELAY;
     let mut wake_gate = WakeGate::default();
+    // The nonce the phone was just given, for the next tunnel's hello.
+    let mut nonce: Option<String> = None;
     while !cancel.is_cancelled() {
         if !nectarlink_adb::is_serial_allowed(&serial) {
             return;
@@ -516,11 +654,22 @@ async fn run_port_worker(
                 adb_addr,
             };
             let started = Instant::now();
-            answered = run_forwarded_session(&shared, forwarded, &cancel, target).await;
-            if answered {
+            let outcome = run_forwarded_session(&shared, forwarded, &cancel, target, nonce.take()).await;
+            if outcome == Tunnel::Ended {
                 tracing::info!(%serial, phone_port, secs = started.elapsed().as_secs(), "a USB tunnel ended");
             }
             let _ = nectarlink_adb::kill_forward_tcp(adb_addr, &serial, host_port).await;
+            answered = outcome != Tunnel::NoAnswer;
+            if outcome == Tunnel::NeedsNonce {
+                // A phone this PC isn't paired with: it takes pairing only on a tunnel adb
+                // opened. The next hello carries the nonce whether or not `am` took it, so
+                // a phone that didn't get it gets a tunnel all the same, without pairing.
+                let fresh = new_nonce();
+                send_nonce(adb_addr, &serial, &fresh).await;
+                nonce = Some(fresh);
+                wake_gate.answered();
+                continue;
+            }
         }
         // Nobody on the usual port: the app may not be running (a phone that only
         // connects through the cable stops while it's idle), or too frozen to answer.
@@ -568,39 +717,57 @@ fn auto_pairs(serial: &str) -> bool {
     !serial.trim().starts_with("emulator-")
 }
 
-/// Runs one tunnel until it ends. Returns whether a NectarLink profile answered.
+/// How a tunnel to a phone port went.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Tunnel {
+    /// No NectarLink profile answered.
+    NoAnswer,
+    /// A profile answered, and the tunnel ran until it ended.
+    Ended,
+    /// A profile this PC isn't paired with answered a hello without a nonce: open
+    /// the tunnel again with one, so the phone can tell adb opened it.
+    NeedsNonce,
+}
+
+/// Runs one tunnel until it ends. `nonce` is one the phone was just given through adb.
 async fn run_forwarded_session(
     shared: &Arc<Shared>,
     forwarded_tcp: SocketAddr,
     cancel: &CancellationToken,
     target: UsbTarget,
-) -> bool {
+    nonce: Option<String>,
+) -> Tunnel {
     let stream = tokio::time::timeout(HELLO_TIMEOUT, TcpStream::connect(forwarded_tcp)).await;
     let Ok(Ok(mut stream)) = stream else {
         tracing::debug!(port = target.phone_port, "nothing answered on the forwarded tunnel port");
-        return false;
+        return Tunnel::NoAnswer;
     };
     let _ = stream.set_nodelay(true);
     let local_name = shared.local.read().unwrap_or_else(|e| e.into_inner()).device.name.clone();
-    let hello = exchange_hello(&mut stream, &shared.id, &local_name).await;
-    let (phone_id, phone_name, phone_usb_only) = match hello {
+    let hello = exchange_hello(&mut stream, &shared.id, &local_name, nonce.as_deref()).await;
+    let PeerHello { id: phone_id, name: phone_name, usb_only: phone_usb_only, .. } = match hello {
         Ok(hello) => hello,
         Err(e) => {
             // The port is open (adb listens on it) but the app behind it didn't answer.
             tracing::debug!(port = target.phone_port, error = %e, "the phone didn't answer the tunnel's hello");
-            return false;
+            return Tunnel::NoAnswer;
         }
     };
     tracing::info!(peer = %phone_id.short(), port = target.phone_port, "a USB tunnel is up");
     if phone_id == shared.id {
-        return true;
+        return Tunnel::Ended;
     }
-    let Some(iroh_port) = shared.bound_v4_port() else { return true };
-    let Ok(udp) = UdpSocket::bind((Ipv4Addr::LOCALHOST, 0)).await else { return true };
-    let Ok(bridge_addr) = udp.local_addr() else { return true };
+    let paired = shared.store.is_paired(&phone_id).unwrap_or(false);
+    // A paired phone's sessions are checked by their keys, so its tunnel needs no nonce,
+    // and the phone isn't woken through adb each time the cable goes in.
+    if !paired && nonce.is_none() {
+        return Tunnel::NeedsNonce;
+    }
+    let Some(iroh_port) = shared.bound_v4_port() else { return Tunnel::Ended };
+    let Ok(udp) = UdpSocket::bind((Ipv4Addr::LOCALHOST, 0)).await else { return Tunnel::Ended };
+    let Ok(bridge_addr) = udp.local_addr() else { return Tunnel::Ended };
     let bridge_port = bridge_addr.port();
 
-    let paired = shared.store.is_paired(&phone_id).unwrap_or(false);
     let auto_pair = target.auto_pair
         && !target.profiles.lock().unwrap_or_else(|e| e.into_inner()).another_is_paired(target.phone_port);
     let profiles = target.profiles.clone();
@@ -637,7 +804,7 @@ async fn run_forwarded_session(
     target.profiles.lock().unwrap_or_else(|e| e.into_inner()).paired.remove(&target.phone_port);
     shared.unregister_usb_bridge_port(bridge_port);
     shared.on_usb_tunnel_disconnected(phone_id, bridge_addr).await;
-    true
+    Tunnel::Ended
 }
 
 /// Bridges UDP datagrams on `udp` to length-prefixed frames (`u16` big-endian)
@@ -662,7 +829,7 @@ async fn relay_until_silent(
     cancel: CancellationToken,
     silence_limit: Duration,
 ) {
-    let (mut tcp_read, mut tcp_write) = stream.into_split();
+    let (tcp_read, mut tcp_write) = stream.into_split();
     let udp_recv = Arc::new(udp);
     let udp_send = udp_recv.clone();
     let target = Arc::new(Mutex::new(default_target));
@@ -677,24 +844,52 @@ async fn relay_until_silent(
     let writing_on_recv = writing.clone();
 
     let udp_to_tcp = async move {
-        let mut buf = vec![0u8; 65535];
+        // Datagrams already waiting go out with the first, framed one after
+        // another in a single write: one write per batch, where a length and a
+        // datagram written apart made two (and two TCP segments, with Nagle off).
+        let mut batch = vec![0u8; RELAY_BATCH_BYTES];
         loop {
-            let (n, from) = udp_recv.recv_from(&mut buf).await?;
-            if n == 0 || n > u16::MAX as usize {
-                continue;
+            let (n, mut from) = udp_recv.recv_from(&mut batch[2..FRAME_ROOM]).await?;
+            let mut len = 0;
+            if n > 0 {
+                batch[..2].copy_from_slice(&(n as u16).to_be_bytes());
+                len = 2 + n;
             }
-            *target_for_recv.lock().unwrap_or_else(|e| e.into_inner()) = from;
-            writing.store(true, Ordering::Relaxed);
-            unanswered_on_send.lock().unwrap_or_else(|e| e.into_inner()).get_or_insert_with(Instant::now);
-            tcp_write.write_all(&(n as u16).to_be_bytes()).await?;
-            tcp_write.write_all(&buf[..n]).await?;
-            writing.store(false, Ordering::Relaxed);
+            let mut failed = None;
+            while batch.len() - len >= FRAME_ROOM {
+                match udp_recv.try_recv_from(&mut batch[len + 2..len + FRAME_ROOM]) {
+                    Ok((0, _)) => {}
+                    Ok((n, at)) => {
+                        batch[len..len + 2].copy_from_slice(&(n as u16).to_be_bytes());
+                        len += 2 + n;
+                        from = at;
+                    }
+                    Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => break,
+                    // Reported after what's gathered goes out, as it would have been.
+                    Err(e) => {
+                        failed = Some(e);
+                        break;
+                    }
+                }
+            }
+            if len > 0 {
+                *target_for_recv.lock().unwrap_or_else(|e| e.into_inner()) = from;
+                writing.store(true, Ordering::Relaxed);
+                unanswered_on_send.lock().unwrap_or_else(|e| e.into_inner()).get_or_insert_with(Instant::now);
+                tcp_write.write_all(&batch[..len]).await?;
+                writing.store(false, Ordering::Relaxed);
+            }
+            if let Some(e) = failed {
+                return Err(e);
+            }
         }
         #[allow(unreachable_code)]
         Ok::<(), std::io::Error>(())
     };
 
     let tcp_to_udp = async move {
+        // Frames come out of a buffer: two reads per frame were two system calls each.
+        let mut tcp_read = tokio::io::BufReader::with_capacity(RELAY_BATCH_BYTES, tcp_read);
         let mut buf = vec![0u8; 65535];
         loop {
             let mut len_buf = [0u8; 2];
@@ -785,17 +980,100 @@ mod tests {
         assert!(!wake_went_through("java.lang.SecurityException: Permission Denial"));
     }
 
+    fn hello(usb_only: bool, nonce: Option<&str>) -> UsbHello {
+        UsbHello { v: 1, id: "x".into(), name: "n".into(), usb_only, nonce: nonce.map(str::to_owned) }
+    }
+
     #[test]
     fn a_hello_without_the_usb_only_flag_reads_as_off() {
         let old: UsbHello = serde_json::from_str(r#"{"v":1,"id":"x","name":"Pixel"}"#).unwrap();
         assert!(!old.usb_only);
-        let off =
-            serde_json::to_string(&UsbHello { v: 1, id: "x".into(), name: "n".into(), usb_only: false })
-                .unwrap();
+        let off = serde_json::to_string(&hello(false, None)).unwrap();
         assert!(!off.contains("usb_only"), "older apps get what they always got: {off}");
-        let on = serde_json::to_string(&UsbHello { v: 1, id: "x".into(), name: "n".into(), usb_only: true })
-            .unwrap();
+        let on = serde_json::to_string(&hello(true, None)).unwrap();
         assert!(on.contains(r#""usb_only":true"#));
+    }
+
+    #[test]
+    fn a_hello_reads_with_and_without_a_nonce() {
+        let id = DeviceId([7; 32]).to_string();
+        let old = parse_hello(format!(r#"{{"v":1,"id":"{id}","name":" Desktop "}}"#).as_bytes()).unwrap();
+        assert_eq!(
+            old,
+            PeerHello { id: DeviceId([7; 32]), name: "Desktop".into(), usb_only: false, nonce: None }
+        );
+        let nonce = "00112233445566778899aabbccddeeff";
+        let new = parse_hello(
+            format!(r#"{{"v":1,"id":"{id}","name":"Desktop","nonce":"{nonce}","later":[1,2]}}"#).as_bytes(),
+        )
+        .unwrap();
+        assert_eq!(new.nonce.as_deref(), Some(nonce), "and a field from a later version is ignored");
+
+        let without = serde_json::to_string(&hello(false, None)).unwrap();
+        assert!(!without.contains("nonce"), "a hello without one is what it always was: {without}");
+        let with = serde_json::to_string(&hello(false, Some(nonce))).unwrap();
+        assert!(with.contains(&format!(r#""nonce":"{nonce}""#)), "{with}");
+    }
+
+    #[test]
+    fn a_nonce_is_good_once() {
+        let nonces = UsbNonces::default();
+        let t0 = Instant::now();
+        let nonce = new_nonce();
+        assert!(nonces.allow(&nonce, t0));
+        assert!(!nonces.take("ffeeddccbbaa99887766554433221100", t0), "one it wasn't given");
+        assert!(nonces.take(&nonce.to_uppercase(), t0 + Duration::from_secs(1)), "hex in either case");
+        assert!(!nonces.take(&nonce, t0 + Duration::from_secs(1)), "used up");
+    }
+
+    #[test]
+    fn a_nonce_expires() {
+        let nonces = UsbNonces::default();
+        let t0 = Instant::now();
+        let (early, late) = (new_nonce(), new_nonce());
+        assert!(nonces.allow(&early, t0));
+        assert!(nonces.allow(&late, t0 + Duration::from_secs(60)));
+        assert!(!nonces.take(&early, t0 + NONCE_TTL), "too old");
+        assert!(nonces.take(&late, t0 + NONCE_TTL), "still fresh");
+    }
+
+    #[test]
+    fn only_a_few_nonces_are_kept() {
+        let nonces = UsbNonces::default();
+        let t0 = Instant::now();
+        let given: Vec<String> = (0..=MAX_NONCES).map(|_| new_nonce()).collect();
+        for nonce in &given {
+            assert!(nonces.allow(nonce, t0));
+        }
+        assert!(!nonces.take(&given[0], t0), "the oldest made room");
+        for nonce in &given[1..] {
+            assert!(nonces.take(nonce, t0));
+        }
+    }
+
+    #[test]
+    fn only_a_nonce_shaped_string_is_one() {
+        let nonces = UsbNonces::default();
+        let t0 = Instant::now();
+        for bad in
+            ["", "0011", "+0112233445566778899aabbccddeeff", "00112233445566778899aabbccddeefg", "\u{e9}"]
+        {
+            assert!(!nonces.allow(bad, t0), "{bad:?}");
+            assert!(!nonces.take(bad, t0), "{bad:?}");
+        }
+        let nonce = new_nonce();
+        assert_eq!(nonce.len(), NONCE_BYTES * 2);
+        assert!(nonce.bytes().all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b)), "{nonce}");
+        assert_ne!(nonce, new_nonce());
+    }
+
+    #[test]
+    fn the_nonce_rides_on_the_apps_protected_wake_broadcast() {
+        let nonce = new_nonce();
+        let command = nonce_command(&nonce);
+        assert!(command.starts_with(&Wake::Process.command()), "{command}");
+        assert!(command.ends_with(&format!(" --es nonce {nonce}")), "{command}");
+        assert!(command.chars().all(|c| c.is_ascii_alphanumeric() || " ._/=-:".contains(c)), "{command}");
     }
 
     /// Tests that bind real ports run one at a time, or one's probing takes another's port.
@@ -870,6 +1148,106 @@ mod tests {
         let listener = tokio::net::TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).await.unwrap();
         let (near, far) = tokio::join!(TcpStream::connect(listener.local_addr().unwrap()), listener.accept());
         (near.unwrap(), far.unwrap().0)
+    }
+
+    /// How fast a tunnel carries datagrams each way, and in how many TCP reads
+    /// they reach the far end. Opt-in:
+    /// `cargo test --release -p nectarlink-core --lib usb::tests::relay_throughput -- --ignored --nocapture`.
+    #[ignore = "benchmark"]
+    #[tokio::test(flavor = "multi_thread")]
+    async fn relay_throughput() {
+        use std::sync::atomic::AtomicUsize;
+        const DATAGRAMS: usize = 200_000;
+        const SIZE: usize = 1400;
+        // In flight at most: under the 64 KiB a UDP socket buffers by default on
+        // Windows, so none is dropped (QUIC's congestion window does this for real).
+        const WINDOW: usize = 32;
+        let (near, mut far) = tcp_pair().await;
+        let udp = UdpSocket::bind((Ipv4Addr::LOCALHOST, 0)).await.unwrap();
+        let bridge = udp.local_addr().unwrap();
+        let relay = tokio::spawn(relay_until_silent(
+            near,
+            udp,
+            SocketAddr::from((Ipv4Addr::LOCALHOST, 9)),
+            CancellationToken::new(),
+            Duration::from_secs(3600),
+        ));
+
+        // UDP into the tunnel.
+        let peer = Arc::new(UdpSocket::bind((Ipv4Addr::LOCALHOST, 0)).await.unwrap());
+        let arrived = Arc::new(AtomicUsize::new(0));
+        let start = Instant::now();
+        let send = {
+            let (peer, arrived) = (peer.clone(), arrived.clone());
+            tokio::spawn(async move {
+                let datagram = vec![7u8; SIZE];
+                for sent in 0..DATAGRAMS {
+                    while sent - arrived.load(Ordering::Relaxed) >= WINDOW {
+                        tokio::task::yield_now().await;
+                    }
+                    peer.send_to(&datagram, bridge).await.unwrap();
+                }
+            })
+        };
+        let (mut reads, mut bytes) = (0usize, 0usize);
+        let mut buf = vec![0u8; 1 << 20];
+        while bytes < DATAGRAMS * (SIZE + 2) {
+            let n = far.read(&mut buf).await.unwrap();
+            assert!(n > 0);
+            reads += 1;
+            bytes += n;
+            arrived.store(bytes / (SIZE + 2), Ordering::Relaxed);
+        }
+        let up = start.elapsed();
+        send.await.unwrap();
+        println!(
+            "[BENCH] UDP to TCP: {DATAGRAMS} datagrams in {up:?} = {:.0} MiB/s, {:.1} datagrams per TCP read",
+            (DATAGRAMS * SIZE) as f64 / up.as_secs_f64() / (1 << 20) as f64,
+            DATAGRAMS as f64 / reads as f64,
+        );
+
+        // TCP into the tunnel, to the address the datagrams came from.
+        let got = Arc::new(AtomicUsize::new(0));
+        let start = Instant::now();
+        let write = {
+            let got = got.clone();
+            tokio::spawn(async move {
+                let mut frame = Vec::with_capacity(SIZE + 2);
+                frame.extend_from_slice(&(SIZE as u16).to_be_bytes());
+                frame.extend_from_slice(&[9u8; SIZE]);
+                let mut chunk = Vec::new();
+                let mut written = 0;
+                while written < DATAGRAMS {
+                    while written - got.load(Ordering::Relaxed) >= WINDOW / 2 {
+                        tokio::task::yield_now().await;
+                    }
+                    chunk.clear();
+                    let n = (WINDOW / 2).min(DATAGRAMS - written);
+                    for _ in 0..n {
+                        chunk.extend_from_slice(&frame);
+                    }
+                    far.write_all(&chunk).await.unwrap();
+                    written += n;
+                }
+                far
+            })
+        };
+        let mut buf = vec![0u8; 65536];
+        let _ = tokio::time::timeout(Duration::from_secs(30), async {
+            while got.load(Ordering::Relaxed) < DATAGRAMS {
+                peer.recv_from(&mut buf).await.unwrap();
+                got.fetch_add(1, Ordering::Relaxed);
+            }
+        })
+        .await;
+        let got = got.load(Ordering::Relaxed);
+        let down = start.elapsed();
+        println!(
+            "[BENCH] TCP to UDP: {got} of {DATAGRAMS} datagrams in {down:?} = {:.0} MiB/s",
+            (got * SIZE) as f64 / down.as_secs_f64() / (1 << 20) as f64
+        );
+        write.abort();
+        relay.abort();
     }
 
     #[tokio::test]

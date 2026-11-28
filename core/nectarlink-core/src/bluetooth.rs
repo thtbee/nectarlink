@@ -138,10 +138,10 @@ pub(crate) fn start_phone_listener(shared: &Arc<Shared>) -> Option<u16> {
 /// Phone: one link from a PC, until it ends.
 async fn serve_phone_link(node: Arc<Shared>, mut stream: TcpStream) {
     let _ = stream.set_nodelay(true);
-    let Ok(Ok((pc_id, pc_name, _))) = tokio::time::timeout(HELLO_TIMEOUT, read_hello(&mut stream)).await
-    else {
+    let Ok(Ok(hello)) = tokio::time::timeout(HELLO_TIMEOUT, read_hello(&mut stream)).await else {
         return;
     };
+    let (pc_id, pc_name) = (hello.id, hello.name);
     if !may_carry(&node, &pc_id) {
         tracing::debug!(peer = %pc_id.short(), "refusing a Bluetooth link");
         return;
@@ -155,11 +155,12 @@ async fn serve_phone_link(node: Arc<Shared>, mut stream: TcpStream) {
     let tunnel_cancel = node.cancel.child_token();
     node.bt_bridge_ports.lock().unwrap_or_else(|e| e.into_inner()).insert(bridge_port);
     node.register_usb_bridge_port(bridge_port, pc_id);
-    node.on_usb_tunnel_accepted(pc_id, pc_name, bridge_addr, tunnel_cancel.clone());
+    node.on_usb_tunnel_accepted(pc_id, pc_name, bridge_addr, tunnel_cancel.clone(), false);
     tracing::info!(peer = %pc_id.short(), "Bluetooth link up");
 
     if matches!(
-        tokio::time::timeout(HELLO_TIMEOUT, write_hello(&mut stream, &node.id, &local_name, false)).await,
+        tokio::time::timeout(HELLO_TIMEOUT, write_hello(&mut stream, &node.id, &local_name, false, None))
+            .await,
         Ok(Ok(()))
     ) {
         let default_target = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), iroh_port);
@@ -179,7 +180,8 @@ pub(crate) async fn connect(shared: &Arc<Shared>, forwarded_tcp: SocketAddr) -> 
         .map_err(|e| Error::Network(e.to_string()))?;
     let _ = stream.set_nodelay(true);
     let local_name = shared.local.read().unwrap_or_else(|e| e.into_inner()).device.name.clone();
-    let (phone_id, phone_name, _) = exchange_hello(&mut stream, &shared.id, &local_name).await?;
+    let hello = exchange_hello(&mut stream, &shared.id, &local_name, None).await?;
+    let (phone_id, phone_name) = (hello.id, hello.name);
     if !may_carry(shared, &phone_id) {
         return Err(Error::NotPaired);
     }

@@ -123,7 +123,9 @@ FocusScope {
         text: item.text
         role: "caption"
         weight: Theme.graphite || Theme.fluent ? 400 : (item.selected ? 600 : 500)
-        color: Theme.fluent ? Theme.surfaceContent
+        // Full strength on Glass too: over a see-through rail the softer colour
+        // turned faint, small CJK labels most of all (#733).
+        color: Theme.fluent || Theme.glass ? Theme.surfaceContent
             : (item.selected || item.activeHover ? Theme.surfaceContent : Theme.surfaceContentVariant)
         Behavior on color {
             enabled: !Theme.reduceMotion

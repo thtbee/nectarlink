@@ -28,9 +28,12 @@ Card {
 
     property bool embeddedInHero: false
     property bool hasMultipleSources: false
+    // This PC's players, `[{ id, app, playing }]`: two or more get a picker (#665).
+    property var pcPlayers: []
     property string activeSource: deviceId === "local" ? "local" : "phone"
     property int phoneVolume: 65
     signal sourceSelected(string source)
+    signal playerSelected(string playerId)
 
     // Compact by default; user can expand/collapse at any time.
     property bool expanded: false
@@ -415,6 +418,64 @@ Card {
                     iconColor: Theme.surfaceContentVariant
                     label: card.expanded ? qsTr("Compact player") : qsTr("More controls")
                     onClicked: card.expanded = !card.expanded
+                }
+            }
+        }
+
+        // ---- This PC's players, when it has several: pick the one to control (#665) ----
+        Flow {
+            width: parent.width
+            spacing: 6
+            visible: card.isLocalPc && card.pcPlayers.length > 1
+            Repeater {
+                model: card.isLocalPc && card.pcPlayers.length > 1 ? card.pcPlayers : []
+                delegate: Rectangle {
+                    id: playerChip
+                    required property var modelData
+                    readonly property bool current: modelData.id === card.playerId
+                    readonly property string name: modelData.app && modelData.app.length > 0 ? modelData.app : qsTr("Now playing")
+                    height: 24
+                    width: Math.min(card.width, chipRow.implicitWidth + 20)
+                    radius: 12
+                    color: current ? Theme.primary
+                        : Qt.rgba(Theme.surfaceContent.r, Theme.surfaceContent.g, Theme.surfaceContent.b, chipHover.hovered ? 0.14 : 0.08)
+                    border.width: Theme.focusVisible(playerChip) ? 2 : 0
+                    border.color: Theme.primary
+                    activeFocusOnTab: true
+                    Accessible.role: Accessible.Button
+                    Accessible.name: name
+                    Accessible.checkable: true
+                    Accessible.checked: current
+                    Accessible.onPressAction: card.playerSelected(modelData.id)
+                    Keys.onPressed: (event) => {
+                        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                            card.playerSelected(modelData.id)
+                            event.accepted = true
+                        }
+                    }
+                    Row {
+                        id: chipRow
+                        anchors.centerIn: parent
+                        spacing: 5
+                        Rectangle {
+                            visible: playerChip.modelData.playing
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 6; height: 6; radius: 3
+                            color: playerChip.current ? Theme.primaryContent : Theme.primary
+                        }
+                        Txt {
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: Math.min(implicitWidth, card.width - 40)
+                            role: "caption"
+                            size: 11
+                            weight: 600
+                            elide: Text.ElideRight
+                            color: playerChip.current ? Theme.primaryContent : Theme.surfaceContent
+                            text: playerChip.name
+                        }
+                    }
+                    HoverHandler { id: chipHover; cursorShape: Qt.PointingHandCursor }
+                    TapHandler { onTapped: card.playerSelected(playerChip.modelData.id) }
                 }
             }
         }

@@ -143,6 +143,9 @@ Item {
         editorSheet.modShift = false
         editorSheet.modWin = false
         editorSheet.macroSteps = []
+        editorSheet.tileImage = ""
+        editorSheet.tileImageUrl = ""
+        editorSheet.choosingImage = false
         editorSheet.errorText = ""
         editorSheet.open()
     }
@@ -164,8 +167,38 @@ Item {
             try { steps = JSON.parse(tile.param || "[]") } catch (e) { steps = [] }
         }
         editorSheet.macroSteps = steps
+        editorSheet.tileImage = tile.image || ""
+        editorSheet.tileImageUrl = tile.imageUrl || ""
+        editorSheet.choosingImage = false
         editorSheet.errorText = ""
         editorSheet.open()
+    }
+
+    // A picture for the tile instead of its icon (#490).
+    FileDialog {
+        id: imagePicker
+        title: qsTr("Choose a picture")
+        nameFilters: [qsTr("Pictures (*.png *.jpg *.jpeg *.bmp *.gif *.webp)")]
+        onAccepted: {
+            editorSheet.errorText = ""
+            editorSheet.choosingImage = true
+            DeckController.chooseImage(selectedFile.toString())
+        }
+    }
+
+    Connections {
+        target: DeckController
+        function onImageChosen(id, url, error) {
+            if (!editorSheet.choosingImage)
+                return
+            editorSheet.choosingImage = false
+            if (error.length > 0) {
+                editorSheet.errorText = error
+            } else {
+                editorSheet.tileImage = id
+                editorSheet.tileImageUrl = url
+            }
+        }
     }
 
     FileDialog {
@@ -427,21 +460,17 @@ Item {
                                 anchors.margins: 14
                                 height: 34
 
-                                Rectangle {
+                                DeckBadge {
                                     id: iconBadge
                                     width: 34; height: 34
-                                    radius: Theme.radiusSm
                                     color: tileSlot.highlighted
                                         ? Theme.primaryContainer
                                         : (Theme.graphite ? Theme.surfaceContainerHigh : Theme.secondaryContainer)
-                                    Icon {
-                                        anchors.centerIn: parent
-                                        width: 18; height: 18
-                                        path: page.iconPathFor(tileSlot.modelData.icon, tileSlot.modelData.kind, tileSlot.modelData.on)
-                                        color: tileSlot.highlighted
-                                            ? Theme.primaryContainerContent
-                                            : (Theme.graphite ? Theme.surfaceContent : Theme.secondaryContainerContent)
-                                    }
+                                    imageUrl: tileSlot.modelData.imageUrl || ""
+                                    iconPath: page.iconPathFor(tileSlot.modelData.icon, tileSlot.modelData.kind, tileSlot.modelData.on)
+                                    iconColor: tileSlot.highlighted
+                                        ? Theme.primaryContainerContent
+                                        : (Theme.graphite ? Theme.surfaceContent : Theme.secondaryContainerContent)
                                 }
 
                                 // Live status pill (e.g. "74%", "Muted", "Playing", "Live")
@@ -641,6 +670,11 @@ Item {
         property bool modShift: false
         property bool modWin: false
         property string errorText: ""
+        // The ID and file: URL of the tile's picture, shown instead of its
+        // icon, or "" (#490); choosingImage while a chosen file is prepared.
+        property string tileImage: ""
+        property string tileImageUrl: ""
+        property bool choosingImage: false
         // A macro's steps while it's edited; saved as JSON in paramValue (#490).
         // An on/off tile's two actions too (#640): always two places, on then
         // off, null until chosen.
@@ -738,7 +772,7 @@ Item {
                         wrapMode: Text.WordWrap
                         role: "bodySmall"
                         muted: true
-                        text: qsTr("Phones see only each tile's label and icon. Paths and commands stay on this PC.")
+                        text: qsTr("Phones see only each tile's label, icon and picture. Paths and commands stay on this PC.")
                     }
                 }
 
@@ -751,17 +785,14 @@ Item {
                     border.width: Theme.graphite ? 1 : 0
                     border.color: Theme.outlineVariant
 
-                    Rectangle {
+                    DeckBadge {
                         x: 10; y: 10
                         width: 24; height: 24
-                        radius: Theme.radiusSm
                         color: Theme.graphite ? Theme.surfaceContainerHigh : Theme.secondaryContainer
-                        Icon {
-                            anchors.centerIn: parent
-                            width: 14; height: 14
-                            path: page.iconPathFor(editorSheet.tileIcon, editorSheet.actionKind)
-                            color: Theme.graphite ? Theme.surfaceContent : Theme.secondaryContainerContent
-                        }
+                        imageUrl: editorSheet.tileImageUrl
+                        iconSize: 14
+                        iconPath: page.iconPathFor(editorSheet.tileIcon, editorSheet.actionKind)
+                        iconColor: Theme.graphite ? Theme.surfaceContent : Theme.secondaryContainerContent
                     }
                     Txt {
                         anchors.left: parent.left
@@ -1214,6 +1245,41 @@ Item {
                 }
             }
 
+            // Picture: shown instead of the icon, here and on phones (#490).
+            Column {
+                width: parent.width
+                spacing: 6
+                Txt { text: qsTr("Picture"); role: "label"; muted: true }
+                Row {
+                    spacing: 8
+                    Button {
+                        variant: "tonal"
+                        size: "sm"
+                        text: qsTr("Choose…")
+                        busy: editorSheet.choosingImage
+                        onClicked: imagePicker.open()
+                    }
+                    Button {
+                        visible: editorSheet.tileImage.length > 0 && !editorSheet.choosingImage
+                        variant: "text"
+                        size: "sm"
+                        text: qsTr("Remove")
+                        onClicked: {
+                            editorSheet.tileImage = ""
+                            editorSheet.tileImageUrl = ""
+                        }
+                    }
+                    Txt {
+                        anchors.verticalCenter: parent.verticalCenter
+                        role: "bodySmall"
+                        muted: true
+                        text: editorSheet.choosingImage ? qsTr("Getting the picture ready…")
+                            : editorSheet.tileImage.length > 0 ? qsTr("Shown instead of the icon, here and on phones.")
+                            : qsTr("Optional. Square pictures look best.")
+                    }
+                }
+            }
+
             Txt {
                 visible: editorSheet.errorText.length > 0
                 width: parent.width
@@ -1268,6 +1334,8 @@ Item {
                     Button {
                         variant: "fill"
                         text: qsTr("Save")
+                        // Not before a chosen picture is ready.
+                        enabled: !editorSheet.choosingImage
                         onClicked: {
                             const err = DeckController.saveTile(
                                 page.currentPage.id,
@@ -1280,7 +1348,8 @@ Item {
                                 editorSheet.modCtrl,
                                 editorSheet.modAlt,
                                 editorSheet.modShift,
-                                editorSheet.modWin
+                                editorSheet.modWin,
+                                editorSheet.tileImage
                             )
                             if (err.length > 0) {
                                 editorSheet.errorText = err

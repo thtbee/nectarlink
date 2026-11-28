@@ -706,6 +706,7 @@ fn show_menu(hwnd: HWND, x: i32, y: i32) {
     } else {
         &labels.pause_notifications
     });
+    menus_follow_dark_mode();
     // SAFETY: the menu and strings outlive TrackPopupMenuEx; the menu is
     // destroyed afterwards. SetForegroundWindow/WM_NULL are the documented
     // way to make the menu close when clicking elsewhere.
@@ -824,6 +825,49 @@ unsafe extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lpar
         // SAFETY: default handling for everything else.
         _ => unsafe { DefWindowProcW(hwnd, msg, wparam, lparam) },
     }
+}
+
+/// Lets this app's Win32 menus (the tray's) follow Windows' dark mode (#740).
+/// Windows only draws them dark for an app that asks, through uxtheme's
+/// unnamed `SetPreferredAppMode` (ordinal 135 since Windows 10 1903, which
+/// File Explorer and Notepad use too); `FlushMenuThemes` (136) applies it.
+fn menus_follow_dark_mode() {
+    static ONCE: std::sync::Once = std::sync::Once::new();
+    ONCE.call_once(|| {
+        // Ordinal 135 meant something else before build 18362.
+        let build = super::os_version().rsplit('.').next().and_then(|b| b.parse::<u32>().ok()).unwrap_or(0);
+        if build < 18362 {
+            return;
+        }
+        // SAFETY: uxtheme stays loaded for the process; the two entry points
+        // have these signatures on every build since 18362.
+        unsafe {
+            use windows::{
+                Win32::System::LibraryLoader::{
+                    GetProcAddress, LOAD_LIBRARY_SEARCH_SYSTEM32, LoadLibraryExW,
+                },
+                core::{PCSTR, w},
+            };
+            const ALLOW_DARK: i32 = 1;
+            let Ok(uxtheme) = LoadLibraryExW(w!("uxtheme.dll"), None, LOAD_LIBRARY_SEARCH_SYSTEM32) else {
+                return;
+            };
+            if let Some(set_mode) = GetProcAddress(uxtheme, PCSTR(std::ptr::without_provenance(135))) {
+                let set_mode = std::mem::transmute::<
+                    unsafe extern "system" fn() -> isize,
+                    unsafe extern "system" fn(i32) -> i32,
+                >(set_mode);
+                set_mode(ALLOW_DARK);
+            }
+            if let Some(flush) = GetProcAddress(uxtheme, PCSTR(std::ptr::without_provenance(136))) {
+                let flush = std::mem::transmute::<
+                    unsafe extern "system" fn() -> isize,
+                    unsafe extern "system" fn(),
+                >(flush);
+                flush();
+            }
+        }
+    });
 }
 
 #[cfg(test)]

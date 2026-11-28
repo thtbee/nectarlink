@@ -303,6 +303,13 @@ pub enum NodeEvent {
     },
     /// The local timeline of items shared with paired devices changed.
     TimelineChanged,
+    /// A paired device sent a note in the chat between them (#698), also on
+    /// the timeline; for a notification while the chat isn't open.
+    ChatReceived {
+        device: DeviceId,
+        id: String,
+        text: String,
+    },
     /// LocalSend interop state or discovered LocalSend peers changed.
     LocalSendChanged,
     /// A PCM audio frame arrived from a paired PC (`audio.pcm`).
