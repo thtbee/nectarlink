@@ -1541,6 +1541,34 @@
     </message>
 </context>
 <context>
+    <name>ChatAttachment</name>
+    <message>
+        <location filename="../qml/components/ChatAttachment.qml" line="34"/>
+        <source>%1 · Moved or deleted</source>
+        <translation>%1 · Taşındı veya silindi</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ChatAttachment.qml" line="34"/>
+        <source>Moved or deleted</source>
+        <translation>Taşındı veya silindi</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ChatAttachment.qml" line="203"/>
+        <source>Open</source>
+        <translation>Aç</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ChatAttachment.qml" line="212"/>
+        <source>Show in folder</source>
+        <translation>Klasörde göster</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/ChatAttachment.qml" line="220"/>
+        <source>Remove from chat</source>
+        <translation>Sohbetten kaldır</translation>
+    </message>
+</context>
+<context>
     <name>ChatNote</name>
     <message>
         <location filename="../qml/components/ChatNote.qml" line="121"/>
@@ -1641,6 +1669,21 @@
         <location filename="../qml/pages/ChatPage.qml" line="379"/>
         <source>Delete</source>
         <translation>Sil</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="343"/>
+        <source>Send files</source>
+        <translation>Dosya gönder</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="441"/>
+        <source>Send files to %1</source>
+        <translation>%1 cihazına dosya gönder</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/ChatPage.qml" line="482"/>
+        <source>Drop to send to %1</source>
+        <translation>%1 cihazına göndermek için bırakın</translation>
     </message>
 </context>
 <context>
