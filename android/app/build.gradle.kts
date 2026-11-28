@@ -97,6 +97,15 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    packaging {
+        resources {
+            // Data files of BouncyCastle (from libadb-android) for its post-quantum
+            // signatures and certificate path checks, about 1.3 MB. Neither is used,
+            // and R8 removes their classes, but not their files.
+            excludes += listOf("org/bouncycastle/pqc/**", "org/bouncycastle/x509/**")
+        }
+    }
+
     buildFeatures {
         compose = true
         buildConfig = true
