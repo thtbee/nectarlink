@@ -91,4 +91,4 @@ Both the Windows app and the Android app keep an optional encrypted local **Clip
 ## Limits
 
 - **Android Background Clipboard Restriction without `Elevated`**: On Android 10 and newer, only the foreground app or the active input method (keyboard) can read the system clipboard. Unless `Elevated` is active, phone-to-PC clipboard sharing requires tapping the Quick Settings tile, share sheet, widget, or in-app button.
-- **Clip Size Caps**: Individual text clips are capped at 256 KiB on the wire (`clip::MAX_TEXT_BYTES`) and clipboard images are capped at 32 MiB (`clip::MAX_IMAGE_BYTES`) during live sync (16 MiB per image in local history) so an accidental huge copy never stalls your connection. For larger images or files, use [Files and Transfers](files-and-transfers.md).
+- **Clip Size Caps**: Individual text clips are capped at 512 KiB on the wire and clipboard images are capped at 32 MiB (`clip::MAX_IMAGE_BYTES`) during live sync (16 MiB per image in local history) so an accidental huge copy never stalls your connection. For larger images or files, use [Files and Transfers](files-and-transfers.md).

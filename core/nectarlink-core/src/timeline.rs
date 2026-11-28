@@ -33,6 +33,9 @@ pub enum TimelineKind {
     /// A screen/app mirroring or webcam session (recorded on start, updated
     /// with `duration_secs` when the stream ends).
     Session,
+    /// A note typed in the chat between two devices (#698): its text in
+    /// `detail`, its ID in `ref_id`.
+    Message,
 }
 
 impl TimelineKind {
@@ -44,6 +47,7 @@ impl TimelineKind {
             TimelineKind::Photo => "photo",
             TimelineKind::Recording => "recording",
             TimelineKind::Session => "session",
+            TimelineKind::Message => "message",
         }
     }
 
@@ -55,6 +59,7 @@ impl TimelineKind {
             "photo" | "photos" => Some(TimelineKind::Photo),
             "recording" | "recordings" => Some(TimelineKind::Recording),
             "session" | "sessions" | "mirror" | "webcam" => Some(TimelineKind::Session),
+            "message" | "messages" | "chat" => Some(TimelineKind::Message),
             _ => None,
         }
     }

@@ -11,6 +11,7 @@ import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -50,6 +51,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -59,7 +61,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
@@ -67,6 +71,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -94,8 +99,10 @@ import app.nectarlink.core.DeckPage
 import app.nectarlink.core.DeckState
 import app.nectarlink.core.DeckTile
 import kotlin.math.roundToInt
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun DeckScreen(
@@ -384,6 +391,7 @@ fun DeckScreen(
                     items(page.tiles, key = { it.id }) { tile ->
                         DeckTileButton(
                             tile = tile,
+                            picture = rememberDeckPicture(core, device.id, tile.image, device.deckLayout),
                             liveState = liveState,
                             compact = isLandscape,
                             enabled = device.online,
@@ -407,6 +415,9 @@ fun DeckScreen(
 private const val KIND_RESTART = "restart_pc"
 private const val KIND_SHUT_DOWN = "shut_down_pc"
 private const val KIND_MACRO = "macro"
+
+/** The shade at the bottom of a tile's picture, under its label. */
+private val PICTURE_SHADE = Color.Black.copy(alpha = 0.7f)
 
 private object MaterialResource {
     @Composable
@@ -633,9 +644,30 @@ private fun effectiveIcon(tile: DeckTile, state: DeckState): String = when {
     else -> tile.icon
 }
 
+/**
+ * The picture `image` of a tile on PC `deviceId`'s Deck (#490), or null while
+ * the phone doesn't have it or it doesn't decode. Looked for again on each
+ * new `layout`, since the core sends the layout again once it has fetched one.
+ */
+@Composable
+private fun rememberDeckPicture(core: Core, deviceId: String, image: String?, layout: DeckLayout?): ImageBitmap? {
+    val picture by produceState(image?.let { deckPictures.cached(it) }, deviceId, image, layout) {
+        if (image == null) {
+            value = null
+            return@produceState
+        }
+        val cached = deckPictures.cached(image)
+        value = cached ?: withContext(Dispatchers.IO) {
+            deckPictures.load(image) { core.deckImage(deviceId, image) }
+        }
+    }
+    return picture
+}
+
 @Composable
 private fun DeckTileButton(
     tile: DeckTile,
+    picture: ImageBitmap?,
     liveState: DeckState,
     compact: Boolean,
     enabled: Boolean,
@@ -703,6 +735,22 @@ private fun DeckTileButton(
                 )
             },
     ) {
+        // The tile's picture fills it, under a shade that keeps the label
+        // readable; the Surface clips it to the tile's rounded shape.
+        if (picture != null) {
+            Image(
+                bitmap = picture,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                alpha = if (enabled) 1f else 0.55f,
+                modifier = Modifier.fillMaxSize(),
+            )
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(Brush.verticalGradient(0.4f to Color.Transparent, 1f to PICTURE_SHADE)),
+            )
+        }
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -711,20 +759,22 @@ private fun DeckTileButton(
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = if (picture != null) Arrangement.End else Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top,
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(if (compact) 34.dp else 36.dp)
-                        .background(palette.iconWell, MaterialTheme.shapes.medium),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    DeckIcon(
-                        name = iconName,
-                        tint = palette.fg,
-                        modifier = Modifier.size(if (compact) 18.dp else 20.dp),
-                    )
+                if (picture == null) {
+                    Box(
+                        modifier = Modifier
+                            .size(if (compact) 34.dp else 36.dp)
+                            .background(palette.iconWell, MaterialTheme.shapes.medium),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        DeckIcon(
+                            name = iconName,
+                            tint = palette.fg,
+                            modifier = Modifier.size(if (compact) 18.dp else 20.dp),
+                        )
+                    }
                 }
 
                 if (badge != null) {
@@ -751,7 +801,7 @@ private fun DeckTileButton(
                 text = tile.label,
                 style = if (compact) MaterialTheme.typography.labelLarge else MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
-                color = palette.fg,
+                color = if (picture != null) Color.White else palette.fg,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -1124,17 +1174,17 @@ private fun fallbackDefaultLayout(context: Context): DeckLayout = DeckLayout(
             id = "main",
             name = context.getString(R.string.deck_default_page_main),
             tiles = listOf(
-                DeckTile("play_pause", context.getString(R.string.deck_default_play_pause), "play", "amber", "media_play_pause"),
-                DeckTile("prev_track", context.getString(R.string.deck_default_previous), "skip_previous", "slate", "media_previous"),
-                DeckTile("next_track", context.getString(R.string.deck_default_next), "skip_next", "slate", "media_next"),
-                DeckTile("vol_down", context.getString(R.string.deck_default_volume_down), "volume_down", "teal", "volume_down"),
-                DeckTile("vol_up", context.getString(R.string.deck_default_volume_up), "volume_up", "teal", "volume_up"),
-                DeckTile("vol_mute", context.getString(R.string.deck_default_volume_mute), "volume_off", "teal", "volume_mute"),
-                DeckTile("mic_mute", context.getString(R.string.deck_default_mic_mute), "mic", "coral", "mic_mute"),
-                DeckTile("show_desktop", context.getString(R.string.deck_default_show_desktop), "desktop", "blue", "show_desktop"),
-                DeckTile("switch_window", context.getString(R.string.deck_default_switch_window), "switch_window", "blue", "switch_window"),
-                DeckTile("screenshot", context.getString(R.string.deck_default_screenshot), "screenshot", "violet", "screenshot"),
-                DeckTile("lock_pc", context.getString(R.string.deck_default_lock_pc), "lock", "red", "lock_pc"),
+                DeckTile("play_pause", context.getString(R.string.deck_default_play_pause), "play", "amber", "media_play_pause", image = null),
+                DeckTile("prev_track", context.getString(R.string.deck_default_previous), "skip_previous", "slate", "media_previous", image = null),
+                DeckTile("next_track", context.getString(R.string.deck_default_next), "skip_next", "slate", "media_next", image = null),
+                DeckTile("vol_down", context.getString(R.string.deck_default_volume_down), "volume_down", "teal", "volume_down", image = null),
+                DeckTile("vol_up", context.getString(R.string.deck_default_volume_up), "volume_up", "teal", "volume_up", image = null),
+                DeckTile("vol_mute", context.getString(R.string.deck_default_volume_mute), "volume_off", "teal", "volume_mute", image = null),
+                DeckTile("mic_mute", context.getString(R.string.deck_default_mic_mute), "mic", "coral", "mic_mute", image = null),
+                DeckTile("show_desktop", context.getString(R.string.deck_default_show_desktop), "desktop", "blue", "show_desktop", image = null),
+                DeckTile("switch_window", context.getString(R.string.deck_default_switch_window), "switch_window", "blue", "switch_window", image = null),
+                DeckTile("screenshot", context.getString(R.string.deck_default_screenshot), "screenshot", "violet", "screenshot", image = null),
+                DeckTile("lock_pc", context.getString(R.string.deck_default_lock_pc), "lock", "red", "lock_pc", image = null),
             ),
         ),
     ),

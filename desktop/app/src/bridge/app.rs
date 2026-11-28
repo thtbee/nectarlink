@@ -106,6 +106,10 @@ pub mod qobject {
         /// while `pc_mirror` is off ("" when none), plus active sharing indicator.
         #[qproperty(QString, pc_mirror_prompt_device_id)]
         #[qproperty(QString, pc_mirror_prompt_device_name)]
+        /// Device ID and name of a phone asking to play this PC's sound on
+        /// itself, not allowed here yet ("" when none).
+        #[qproperty(QString, pc_audio_prompt_device_id)]
+        #[qproperty(QString, pc_audio_prompt_device_name)]
         #[qproperty(bool, pc_mirror_active)]
         #[qproperty(QString, pc_mirror_device_name)]
         /// Whether the presentation laser pointer overlay is showing, and its
@@ -237,6 +241,15 @@ pub mod qobject {
         /// Dismisses the reverse-mirror consent prompt without allowing screen capture.
         #[qinvokable]
         fn dismiss_pc_mirror_prompt(self: Pin<&mut AppController>);
+        /// Plays this PC's sound on the phone that asked, this time.
+        #[qinvokable]
+        fn allow_pc_audio_once(self: Pin<&mut AppController>, device: &QString);
+        /// Plays this PC's sound on the phone that asked, and lets it start that itself from now on.
+        #[qinvokable]
+        fn allow_pc_audio_device(self: Pin<&mut AppController>, device: &QString);
+        /// Turns down a phone's ask to play this PC's sound.
+        #[qinvokable]
+        fn dismiss_pc_audio_prompt(self: Pin<&mut AppController>);
         /// Immediately stops sharing this PC's screen with any phone.
         #[qinvokable]
         fn stop_pc_mirror(self: Pin<&mut AppController>);
@@ -534,6 +547,8 @@ pub struct AppControllerRust {
     remote_prompt_device_name: QString,
     pc_mirror_prompt_device_id: QString,
     pc_mirror_prompt_device_name: QString,
+    pc_audio_prompt_device_id: QString,
+    pc_audio_prompt_device_name: QString,
     pc_mirror_active: bool,
     pc_mirror_device_name: QString,
     laser_active: bool,
@@ -740,6 +755,19 @@ pub(crate) fn show_messages(device: DeviceId) {
                 object.as_mut().set_current_device(idx as i32);
             }
             object.as_mut().set_current_page(QString::from("messages"));
+            object.activate_requested();
+        });
+    }
+}
+
+/// Brings up the chat with `device` (from any thread).
+pub(crate) fn show_chat(device: DeviceId) {
+    if let Some(qt) = controller() {
+        let _ = qt.queue(move |mut object| {
+            if let Some(idx) = core_host::host().hub.read(|s| s.devices.iter().position(|d| d.id == device)) {
+                object.as_mut().set_current_device(idx as i32);
+            }
+            object.as_mut().set_current_page(QString::from("chat"));
             object.activate_requested();
         });
     }
@@ -981,8 +1009,16 @@ impl cxx_qt::Initialize for qobject::AppController {
                 object.set_shelf_items(QString::from(&shelf));
             }
         });
-        super::subscribe(qt.clone(), Changes::TRANSFERS | Changes::PHOTOS, |object| {
+        super::subscribe(qt.clone(), Changes::PHOTOS, |object| {
             if object.shelf_open {
+                let shelf = compute_shelf_items_json(object.current_device);
+                object.set_shelf_items(QString::from(&shelf));
+            }
+        });
+        // Progress comes about five times a second per transfer, and each rebuild
+        // lists the Downloads folder, so only a change the Shelf shows rebuilds it.
+        super::subscribe(qt.clone(), Changes::TRANSFERS, |object| {
+            if object.shelf_open && shelf_transfers_changed() {
                 let shelf = compute_shelf_items_json(object.current_device);
                 object.set_shelf_items(QString::from(&shelf));
             }
@@ -1368,6 +1404,7 @@ impl qobject::AppController {
             battery,
             remote_prompt,
             pc_mirror_prompt,
+            pc_audio_prompt,
             pc_mirror_peer_name,
             laser,
             wake_adapter,
@@ -1384,6 +1421,10 @@ impl qobject::AppController {
             });
             let pc_mirror_prompt = s.pc_mirror_prompt.as_ref().map(|(id, _)| {
                 let name = s.name_of(id).unwrap_or_else(|| id.short());
+                (id.to_string(), name)
+            });
+            let pc_audio_prompt = s.pc_audio_prompt.map(|id| {
+                let name = s.name_of(&id).unwrap_or_else(|| id.short());
                 (id.to_string(), name)
             });
             let pc_mirror_peer_name =
@@ -1426,6 +1467,7 @@ impl qobject::AppController {
                 battery,
                 remote_prompt,
                 pc_mirror_prompt,
+                pc_audio_prompt,
                 pc_mirror_peer_name,
                 s.laser,
                 wake_adapter,
@@ -1475,6 +1517,9 @@ impl qobject::AppController {
         let (mirror_prompt_id, mirror_prompt_name) = pc_mirror_prompt.unwrap_or_default();
         self.as_mut().set_pc_mirror_prompt_device_id(QString::from(&mirror_prompt_id));
         self.as_mut().set_pc_mirror_prompt_device_name(QString::from(&mirror_prompt_name));
+        let (audio_prompt_id, audio_prompt_name) = pc_audio_prompt.unwrap_or_default();
+        self.as_mut().set_pc_audio_prompt_device_id(QString::from(&audio_prompt_id));
+        self.as_mut().set_pc_audio_prompt_device_name(QString::from(&audio_prompt_name));
         self.as_mut().set_pc_mirror_active(pc_mirror_peer_name.is_some());
         self.as_mut().set_pc_mirror_device_name(QString::from(&pc_mirror_peer_name.unwrap_or_default()));
         match laser {
@@ -1852,6 +1897,27 @@ impl qobject::AppController {
         core_host::host()
             .hub
             .update(|s| if s.pc_mirror_prompt.take().is_some() { Changes::REMOTE } else { Changes::NONE });
+    }
+
+    pub fn allow_pc_audio_once(self: Pin<&mut Self>, device: &QString) {
+        let Some(id) = super::parse_device(device) else { return };
+        if take_pc_audio_prompt(id) {
+            crate::deck::play_on_phone(Some(id));
+        }
+    }
+
+    pub fn allow_pc_audio_device(self: Pin<&mut Self>, device: &QString) {
+        let Some(id) = super::parse_device(device) else { return };
+        crate::deck::allow_pc_audio_phone(id);
+        if take_pc_audio_prompt(id) {
+            crate::deck::play_on_phone(Some(id));
+        }
+    }
+
+    pub fn dismiss_pc_audio_prompt(self: Pin<&mut Self>) {
+        core_host::host()
+            .hub
+            .update(|s| if s.pc_audio_prompt.take().is_some() { Changes::REMOTE } else { Changes::NONE });
     }
 
     pub fn stop_pc_mirror(self: Pin<&mut Self>) {
@@ -3142,6 +3208,27 @@ fn unix_ms(ts: i64) -> i64 {
     if ts < 10_000_000_000 { ts.saturating_mul(1000) } else { ts }
 }
 
+/// Whether the transfers the Shelf lists, the files incoming ones saved, are
+/// not the ones seen last time: progress and outgoing transfers don't change them.
+fn shelf_transfers_changed() -> bool {
+    use nectarlink_core::{Direction, TransferState};
+    use std::hash::{Hash, Hasher};
+    static SEEN: AtomicU64 = AtomicU64::new(0);
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    core_host::host().hub.read(|s| {
+        for tv in &s.transfers {
+            if tv.transfer.direction == Direction::Incoming
+                && let TransferState::Done { ref saved } = tv.transfer.state
+            {
+                tv.transfer.device.hash(&mut hasher);
+                saved.hash(&mut hasher);
+            }
+        }
+    });
+    let now = hasher.finish();
+    SEEN.swap(now, Ordering::Relaxed) != now
+}
+
 fn compute_shelf_items_json(current_device_idx: i32) -> String {
     use nectarlink_core::{ClipboardItemKind, Direction, TimelineKind, TimelineQuery, TransferState};
 
@@ -3285,36 +3372,36 @@ fn compute_shelf_items_json(current_device_idx: i32) -> String {
     }
 
     // 4. Current clip (from encrypted local clipboard history, or live Windows clipboard fallback).
-    let current_clip = if let Some(entry) =
-        node.as_ref().and_then(|n| n.clipboard_history(None).into_iter().next())
-    {
-        let (kind, image_data_url) = match entry.kind {
-            ClipboardItemKind::Text => ("text", String::new()),
-            ClipboardItemKind::Image => {
-                ("image", crate::clipboard::thumb_for_clip(&entry.id).unwrap_or_default())
+    let current_clip =
+        if let Some(entry) = node.as_ref().and_then(|n| n.clipboard_history(None).into_iter().next()) {
+            let (kind, image_data_url) = match entry.kind {
+                ClipboardItemKind::Text => ("text", String::new()),
+                ClipboardItemKind::Image => {
+                    ("image", crate::clipboard::thumb_for_clip(&entry.id).unwrap_or_default())
+                }
+            };
+            serde_json::json!({
+                "id": entry.id,
+                "kind": kind,
+                "text": entry.text,
+                "imageDataUrl": image_data_url,
+                "deviceName": entry.device_name,
+                "localPath": "",
+            })
+        } else {
+            // Text only, read again only once something new is copied (#688).
+            match crate::win::clipboard::peek_text() {
+                Some(t) => serde_json::json!({
+                    "id": "",
+                    "kind": "text",
+                    "text": t,
+                    "imageDataUrl": "",
+                    "deviceName": "This PC",
+                    "localPath": "",
+                }),
+                _ => serde_json::Value::Null,
             }
         };
-        serde_json::json!({
-            "id": entry.id,
-            "kind": kind,
-            "text": entry.text,
-            "imageDataUrl": image_data_url,
-            "deviceName": entry.device_name,
-            "localPath": "",
-        })
-    } else {
-        match crate::win::clipboard::read() {
-            crate::win::clipboard::Clip::Text { text: t, .. } if !t.trim().is_empty() => serde_json::json!({
-                "id": "",
-                "kind": "text",
-                "text": t,
-                "imageDataUrl": "",
-                "deviceName": "This PC",
-                "localPath": "",
-            }),
-            _ => serde_json::Value::Null,
-        }
-    };
 
     // 5. Recent received files (up to 5 existing files on disk).
     let mut recent_files: Vec<serde_json::Value> = Vec::new();
@@ -3815,6 +3902,21 @@ fn feature_state_map(state: Option<FeatureState>) -> QMap<QMapPair_QString_QVari
         }
     }
     map
+}
+
+/// Clears the ask to play this PC's sound on `device`; whether it was that phone's.
+fn take_pc_audio_prompt(device: DeviceId) -> bool {
+    let mut was = false;
+    core_host::host().hub.update(|s| {
+        if s.pc_audio_prompt == Some(device) {
+            s.pc_audio_prompt = None;
+            was = true;
+            Changes::REMOTE
+        } else {
+            Changes::NONE
+        }
+    });
+    was
 }
 
 #[cfg(test)]

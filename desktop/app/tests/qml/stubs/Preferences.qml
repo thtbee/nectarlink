@@ -20,6 +20,7 @@ QtObject {
     property string seed: ""
     property string commandPaletteHotkey: ""
     property bool streamPcAudioToPhone: false
+    property string mediaTime: "remaining"
     property bool nectarIsland: true
     property bool nectarIslandCalls: true
     property bool nectarIslandMedia: true

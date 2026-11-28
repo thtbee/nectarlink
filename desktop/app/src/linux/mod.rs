@@ -15,6 +15,8 @@ pub mod clipboard;
 pub mod data_control;
 pub mod doctor;
 pub mod elevated;
+#[cfg(linux_gst_nvenc)]
+pub(crate) mod gst_nvenc;
 pub mod h264;
 pub mod http;
 pub mod icon;

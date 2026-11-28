@@ -31,6 +31,7 @@ pub mod net;
 pub mod pointer_hooks;
 pub mod radios;
 pub mod screen_capture;
+pub mod send_menu;
 pub mod share;
 pub mod share_target;
 pub mod shell;

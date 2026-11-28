@@ -65,6 +65,10 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Calls", "This phone doesn't let NectarLink reach its calls' sound."), // desktop/app/src/call_audio.rs
     QT_TRANSLATE_NOOP("Calls", "Unknown caller"), // desktop/app/src/bridge/calls.rs
     QT_TRANSLATE_NOOP("Calls", "Windows keeps NectarLink off the microphone. Turn on Settings › Privacy & security › Microphone › Let desktop apps access your microphone, then try again."), // desktop/app/src/call_audio.rs
+    QT_TRANSLATE_NOOP("Chat", "A note can have up to 8192 characters."), // desktop/app/src/chat.rs
+    QT_TRANSLATE_NOOP("Chat", "New note"), // desktop/app/src/chat.rs
+    QT_TRANSLATE_NOOP("Chat", "That note was deleted."), // desktop/app/src/chat.rs
+    QT_TRANSLATE_NOOP("Chat", "Update NectarLink on the device to chat."), // desktop/app/src/chat.rs
     QT_TRANSLATE_NOOP("Clipboard", "Copied from %1"), // desktop/app/src/clipboard.rs
     QT_TRANSLATE_NOOP("Clipboard", "Copied from %1."), // desktop/app/src/clipboard.rs
     QT_TRANSLATE_NOOP("Clipboard", "Copied to clipboard"), // desktop/app/src/clipboard.rs
@@ -197,6 +201,9 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Deck", "Alt + Tab"), // desktop/app/src/bridge/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Application path must end with .exe or .lnk."), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Asks on the phone first"), // desktop/app/src/bridge/deck.rs
+    QT_TRANSLATE_NOOP("Deck", "Can't open that picture."), // desktop/app/src/deck_images.rs
+    QT_TRANSLATE_NOOP("Deck", "Can't read that picture. Try a PNG or JPEG."), // desktop/app/src/deck_images.rs
+    QT_TRANSLATE_NOOP("Deck", "Can't save the picture."), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Choose a key for the shortcut."), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Choose an application (.exe or .lnk) on this PC."), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Choose what turning it on does, and what turning it off does."), // desktop/app/src/deck.rs
@@ -214,6 +221,9 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Deck", "Step %1: %2"), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Step %1: restart, shut down and macros can't be steps."), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Step %1: wait at most 10 seconds."), // desktop/app/src/deck.rs
+    QT_TRANSLATE_NOOP("Deck", "That picture has too much detail to send to a phone. Try a simpler one."), // desktop/app/src/deck_images.rs
+    QT_TRANSLATE_NOOP("Deck", "That picture is over 20 MB. Choose a smaller one."), // desktop/app/src/deck_images.rs
+    QT_TRANSLATE_NOOP("Deck", "The picture is missing. Choose it again."), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "This page already has the maximum number of tiles (24)."), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Tile not found."), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Turning off"), // desktop/app/src/deck.rs
@@ -534,6 +544,7 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("SendTo", "Couldn't share with %1"), // desktop/app/src/send_to.rs
     QT_TRANSLATE_NOOP("SendTo", "File failed integrity check; partial file kept to resume."), // desktop/app/src/send_to.rs
     QT_TRANSLATE_NOOP("SendTo", "Send to %1 with NectarLink"), // desktop/app/src/send_to.rs
+    QT_TRANSLATE_NOOP("SendTo", "Send with NectarLink"), // desktop/app/src/win/send_menu.rs
     QT_TRANSLATE_NOOP("SendTo", "Sending to %1…"), // desktop/app/src/send_to.rs
     QT_TRANSLATE_NOOP("SendTo", "Sent to %1"), // desktop/app/src/send_to.rs
     QT_TRANSLATE_NOOP("SendTo", "The transfer didn't go through."), // desktop/app/src/send_to.rs
@@ -572,6 +583,7 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Timeline", "Screen mirroring"), // desktop/app/src/i18n.rs
     QT_TRANSLATE_NOOP("Timeline", "Sending to %1…"), // desktop/app/src/bridge/timeline.rs
     QT_TRANSLATE_NOOP("Timeline", "Sent clip to %1."), // desktop/app/src/bridge/timeline.rs
+    QT_TRANSLATE_NOOP("Timeline", "Sent note to %1."), // desktop/app/src/bridge/timeline.rs
     QT_TRANSLATE_NOOP("Timeline", "Sent to %1"), // desktop/app/src/bridge/timeline.rs
     QT_TRANSLATE_NOOP("Timeline", "Session"), // desktop/app/src/bridge/timeline.rs
     QT_TRANSLATE_NOOP("Timeline", "That clip is no longer in clipboard history."), // desktop/app/src/bridge/timeline.rs

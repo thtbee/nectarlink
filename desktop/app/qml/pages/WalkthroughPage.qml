@@ -105,7 +105,7 @@ FocusScope {
 
     readonly property var stepSubtitles: [
         qsTr("Your Android phone and your PC, working together on your local network."),
-        qsTr("No accounts, no cloud servers, and no telemetry."),
+        qsTr("No accounts and no cloud servers. Only an anonymous daily count, which you can turn off."),
         qsTr("Get the Android app from GitHub Releases or install the APK over USB."),
         qsTr("Scan the QR code from the NectarLink Android app, or pick your phone from nearby devices."),
         qsTr("Safe features are on by default. Higher-trust access stays off until you turn it on."),

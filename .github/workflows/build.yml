@@ -151,13 +151,16 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: Install system build dependencies
         run: |
-          sudo apt-get update
+          # The runner image's Microsoft repository sometimes answers 403; nothing here needs it.
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
+          sudo apt-get -o Acquire::Retries=3 update
           sudo apt-get install -y --no-install-recommends \
             build-essential pkg-config libgl1-mesa-dev libx11-dev libxcb1-dev \
             libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libfontconfig1-dev \
             libfreetype-dev libdbus-1-dev libxtst-dev libavcodec-dev libavutil-dev \
+            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
             qt6-l10n-tools file desktop-file-utils appstream rpm shellcheck
-          pkg-config --exists libavcodec libavutil
+          pkg-config --exists libavcodec libavutil gstreamer-app-1.0 gstreamer-video-1.0
       - name: Install Qt
         uses: jurplel/install-qt-action@b344308e4483fc892e0d27b3cd1b173ebdd95f06 # v4.5.0
         with:
@@ -309,7 +312,7 @@ jobs:
           shared-key: release-android
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: Install cargo-ndk
-        run: cargo install --locked cargo-ndk
+        run: cargo install --locked cargo-ndk --version 4.1.2
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
@@ -381,11 +384,13 @@ jobs:
           aqtsource: git+https://github.com/miurahr/aqtinstall.git@5a49f2b391ae8ee1d3c0dd87f8b33c1d49a4deb7
       - name: Build and package macOS DMG
         run: bash desktop/packaging/macos/build-dmg.sh
-      - name: Check the DMG launches cleanly
+      - name: Check the DMG launches cleanly and carries its translations
         run: |
           MNT=$(mktemp -d)
           hdiutil attach dist/*.dmg -mountpoint "$MNT" -nobrowse -quiet
           "$MNT/NectarLink.app/Contents/MacOS/nectarlink-desktop" --version
+          ls "$MNT/NectarLink.app/Contents/Resources/"nectarlink_*.qm
+          codesign --verify --deep --strict "$MNT/NectarLink.app"
           hdiutil detach "$MNT" -quiet
           rmdir "$MNT"
       - uses: actions/upload-artifact@v7
