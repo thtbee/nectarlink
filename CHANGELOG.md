@@ -646,6 +646,10 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **Typing in other languages and pasting work in phone app windows.** On Android 14 and newer an
+  app window runs on its own virtual device with a clipboard of its own, so text typed with an
+  input method, and anything pasted, went to the phone's clipboard where the app couldn't see it.
+  It now goes to the window's own. Thanks to [@lianyanjiajia](https://github.com/lianyanjiajia) ([#713](https://github.com/thtbee/nectarlink/issues/713)).
 - **The PC's notifications on the phone can be cleared.** One cleared on the phone came back, as
   the PC never heard of it, and an automation's notice said `call_ringing → pause_pc_media`. It
   now reads like Settings (Pause PC media, When phone rings) and goes away after a few seconds.
