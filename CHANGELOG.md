@@ -665,6 +665,10 @@ change things that need a step from you, and its notes say so.
   own installers, AI agents can't send login files or password vaults, crash records leave out text
   a panic quoted, a Deck command tile is checked against the phone's permission as it runs, and on
   Linux, sms: and mms: links are no longer sent to the phone as copied text.
+- **Faster sharing.** Big files move up to about 75% faster once going, a transfer starts two to
+  three times sooner (files are hashed on several threads, and phone files while they're copied),
+  the USB cable's tunnel carries about twice as much, and a copied text or link no longer waits
+  for a file transfer to the same device to finish.
 - **Typing in other languages and pasting work in phone app windows.** On Android 14 and newer an
   app window runs on its own virtual device with a clipboard of its own, so text typed with an
   input method, and anything pasted, went to the phone's clipboard where the app couldn't see it.
