@@ -10,7 +10,7 @@ This guide walks you through installing NectarLink on Windows, Linux, macOS and 
 | **Linux PC** | Ubuntu 24.04 or newer, Debian 13, Fedora 40 or newer, or another distribution from 2024 on (glibc 2.39 or newer), 64-bit Intel or AMD | X11 or Wayland. The phone as a webcam needs the `v4l2loopback` driver, which the install command sets up. |
 | **Mac (preview)** | macOS 14 or newer, Apple silicon | A preview: mirroring, recording, the phone's sound and microphone, the menu bar icon, the Mac's sound on the phone (macOS asks for Screen Recording permission the first time) the phone's storage in Finder and the rest of the shared features work; the phone as a webcam doesn't yet. |
 | **Android Phone or Tablet** | Android 8.0 (API 26) or newer | Android 10+ required for internal audio capture during mirroring; Android 11+ required for on-device Wireless Debugging (`Elevated`) and `app window` streaming; Android 12+ required for `Elevated` in-call mute/hold/speaker controls. |
-| **Network** | Shared Wi-Fi / LAN, USB cable, or **Connect over mobile data** | By default, all device-to-device traffic travels directly over your local network or a USB data cable without leaving your LAN (installed copies only contact GitHub Releases over HTTPS to check for app updates; see [Privacy and Security](privacy-and-security.md)). |
+| **Network** | Shared Wi-Fi / LAN, USB cable, or **Connect over mobile data** | By default, all device-to-device traffic travels directly over your local network or a USB data cable without leaving your LAN (installed copies also check GitHub Releases over HTTPS for app updates and send an anonymous daily count you can turn off; see [Privacy and Security](privacy-and-security.md)). |
 
 ## Installing NectarLink
 

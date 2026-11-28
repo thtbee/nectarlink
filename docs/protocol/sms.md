@@ -88,8 +88,8 @@ with `BUSY`.
 
 ### 2.2 Sending
 
-`sms.send` sends `body` (at most 8 KiB) and/or `attachments` (at most 4 media
-attachments, image or voice/audio, each at most 900 KiB) to `to` (1 to 20
+`sms.send` sends `body` (at most 8 KiB) and/or `attachments` (at most 1 media
+attachment, image or voice/audio, each at most 900 KiB) to `to` (1 to 20
 numbers). When `attachments` is empty, `body` must not be blank and is sent as
 SMS; when one or more attachments are included, the phone sends the message as
 MMS (`sendMultimediaMessage`).
