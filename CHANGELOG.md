@@ -661,6 +661,8 @@ change things that need a step from you, and its notes say so.
 - **A clipboard picture that couldn't be previewed no longer keeps a CPU core busy.** The PC
   tried to make its preview again and again, hundreds of times a second, for as long as it ran.
   Thanks to [@leeefun](https://github.com/leeefun) ([#730](https://github.com/thtbee/nectarlink/issues/730)).
+- **The tray icon's menu is dark when Windows is.** It stayed light in dark mode. Thanks to
+  [@BraveMomo](https://github.com/BraveMomo) ([#740](https://github.com/thtbee/nectarlink/issues/740)).
 - **The PC app opens faster, and both apps are smaller.** The window shows in about 0.3 s
   instead of 0.6 s (the icon, Jump List and What's new check no longer hold it up), the Windows
   installer is 2 MB smaller, and the phone app is about 9 MB smaller. On x86_64 Chromebooks that
