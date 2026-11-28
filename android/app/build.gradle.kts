@@ -140,6 +140,12 @@ abstract class CargoNdkBuild : DefaultTask() {
                 },
             )
         }
+        // Cargo also builds the dependencies that declare a cdylib (iroh, iroh-relay)
+        // as shared libraries, and cargo-ndk copies them here. The core links them
+        // statically and nothing loads them, so they stay out of the APK.
+        outputDir.get().asFile.walk()
+            .filter { it.isFile && it.extension == "so" && it.name != "libnectarlink_ffi.so" && it.name != "libc++_shared.so" }
+            .forEach { it.delete() }
     }
 }
 
