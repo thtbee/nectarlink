@@ -8520,6 +8520,11 @@ async fn queue_offline_no_busy_loop_timeline_only_on_delivery_and_clear_history_
         tokio::time::sleep(Duration::from_millis(25)).await;
     }
 
+    // Removed once delivered; on Windows that can take a moment after the send lets go of it.
+    let deadline = tokio::time::Instant::now() + WAIT;
+    while staging_dir.exists() && tokio::time::Instant::now() < deadline {
+        tokio::time::sleep(Duration::from_millis(25)).await;
+    }
     assert!(!staging_dir.exists(), "staged directory must be deleted once file delivery completes");
     let tl_after = pc
         .node
