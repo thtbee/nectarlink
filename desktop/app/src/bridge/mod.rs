@@ -8,6 +8,8 @@
 #[allow(unsafe_code)]
 pub mod agents;
 #[allow(unsafe_code)]
+pub mod anysend;
+#[allow(unsafe_code)]
 pub mod app;
 #[allow(unsafe_code)]
 pub mod calls;

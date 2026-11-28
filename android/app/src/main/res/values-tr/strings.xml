@@ -1735,6 +1735,13 @@
     <string name="chat_file_missing">Bu cihazda yok</string>
     <string name="chat_file_options">Dosya seçenekleri</string>
     <string name="timeline_filter_notes">Notlar</string>
+    <string name="anysend_site">Genel bağlantının web sitesi</string>
+    <string name="anysend_browsers">En fazla tarayıcı sayısı</string>
+    <string name="anysend_receive">Dosya al</string>
+    <string name="anysend_lan">Yerel ağ</string>
+    <string name="anysend_global">Genel bağlantı</string>
+    <string name="anysend_completed">%2$d aktarımın %1$d tanesi tamamlandı</string>
+    <string name="anysend_expired">Bu bağlantının süresi doldu.</string>
 </resources>
 
 

@@ -1,0 +1,59 @@
+:root {
+  color-scheme: light dark;
+  --background: #fffdf8;
+  --button: #312517;
+  --icon: #fff4e3;
+  --accent: #df9b49;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #17130f;
+    --button: #f7e5ce;
+    --icon: #302111;
+    --accent: #b87026;
+  }
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  background: var(--background);
+}
+
+main {
+  display: flex;
+  gap: 1rem;
+}
+
+.control {
+  box-sizing: border-box;
+  display: inline-grid;
+  place-items: center;
+  width: 4.5rem;
+  height: 4.5rem;
+  padding: 0;
+  color: var(--icon);
+  background: var(--button);
+  border: 0;
+  border-radius: 50%;
+  text-decoration: none;
+}
+
+.control:not(:disabled) { cursor: pointer; }
+.control:not(:disabled):hover { filter: brightness(1.15); }
+.control:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+.control svg { width: 1.8rem; height: 1.8rem; }
+
+.waiting svg { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .waiting svg { animation: none; } }
+
+.transfer {
+  background:
+    radial-gradient(circle, var(--button) 61%, transparent 63%),
+    conic-gradient(var(--accent) var(--progress, 0%), var(--button) 0);
+}

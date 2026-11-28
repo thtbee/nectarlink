@@ -1751,6 +1751,13 @@
     <string name="chat_file_missing">Немає на цьому пристрої</string>
     <string name="chat_file_options">Дії з файлом</string>
     <string name="timeline_filter_notes">Нотатки</string>
+    <string name="anysend_site">Сайт для глобального посилання</string>
+    <string name="anysend_browsers">Максимальна кількість браузерів</string>
+    <string name="anysend_receive">Отримати файл</string>
+    <string name="anysend_lan">Локальна мережа</string>
+    <string name="anysend_global">Глобальне посилання</string>
+    <string name="anysend_completed">Завершено %1$d із %2$d</string>
+    <string name="anysend_expired">Термін дії цього посилання минув.</string>
 </resources>
 
 

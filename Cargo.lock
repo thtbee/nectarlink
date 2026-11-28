@@ -2458,6 +2458,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "nectarlink-anysend"
+version = "0.1.5"
+dependencies = [
+ "anyhow",
+ "bytes",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
+ "iroh",
+ "iroh-relay",
+ "n0-future",
+ "nectarlink-core",
+ "rand",
+ "ring",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "tokio",
+ "tracing",
+ "url",
+]
+
+[[package]]
 name = "nectarlink-cli"
 version = "0.1.5"
 dependencies = [
@@ -2538,14 +2562,18 @@ dependencies = [
  "dirs",
  "embed-resource",
  "hostname",
+ "iroh",
  "libc",
  "material-colors",
  "miniz_oxide",
+ "n0-future",
  "nectarlink-actions",
  "nectarlink-adb",
+ "nectarlink-anysend",
  "nectarlink-core",
  "nectarlink-protocol",
  "nectarlink-vcam",
+ "netdev 0.46.3",
  "percent-encoding",
  "pkg-config",
  "qrcode",
@@ -2558,6 +2586,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "url",
  "vigem-client",
  "wayland-client",
  "wayland-protocols",
@@ -2572,6 +2601,7 @@ name = "nectarlink-ffi"
 version = "0.1.5"
 dependencies = [
  "jni-sys 0.4.1",
+ "nectarlink-anysend",
  "nectarlink-core",
  "paranoid-android",
  "thiserror 2.0.21",

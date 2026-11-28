@@ -22,6 +22,7 @@ required-features = ["bindgen"]
 bindgen = ["uniffi/cli"]
 
 [dependencies]
+nectarlink-anysend.workspace = true
 nectarlink-core.workspace = true
 thiserror.workspace = true
 tokio.workspace = true

@@ -1594,4 +1594,11 @@
     <string name="chat_file_missing">不在此设备上</string>
     <string name="chat_file_options">文件选项</string>
     <string name="timeline_filter_notes">笔记</string>
+    <string name="anysend_site">全局链接网站</string>
+    <string name="anysend_browsers">浏览器数量上限</string>
+    <string name="anysend_receive">接收文件</string>
+    <string name="anysend_lan">局域网</string>
+    <string name="anysend_global">全局链接</string>
+    <string name="anysend_completed">已完成 %1$d 项，共 %2$d 项</string>
+    <string name="anysend_expired">此链接已过期。</string>
 </resources>

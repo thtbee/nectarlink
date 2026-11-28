@@ -15,6 +15,7 @@ name = "nectarlink-desktop"
 path = "src/main.rs"
 
 [dependencies]
+anyhow.workspace = true
 blake3.workspace = true
 cxx.workspace = true
 cxx-qt.workspace = true
@@ -22,15 +23,19 @@ cxx-qt-lib.workspace = true
 data-encoding.workspace = true
 dirs.workspace = true
 hostname.workspace = true
+iroh.workspace = true
 material-colors.workspace = true
 # Inflates Google's platform-tools zip (Settings > Install on a phone).
 miniz_oxide = "0.9"
 nectarlink-adb.workspace = true
+nectarlink-anysend.workspace = true
 nectarlink-core.workspace = true
 nectarlink-actions.workspace = true
 # Protocol names the core doesn't re-export (the chat's capability, Linux messages).
 nectarlink-protocol.workspace = true
 nectarlink-vcam.workspace = true
+netdev = { version = "0.46", default-features = false }
+n0-future.workspace = true
 percent-encoding = "2.3"
 qrcode.workspace = true
 rand.workspace = true
@@ -38,9 +43,11 @@ serde.workspace = true
 serde_json.workspace = true
 sha1_smol = "1"
 sha2.workspace = true
-tokio.workspace = true
+tempfile.workspace = true
+tokio = { workspace = true, features = ["net"] }
 tracing.workspace = true
 tracing-subscriber.workspace = true
+url.workspace = true
 
 [target.'cfg(windows)'.dependencies]
 # A phone's Gamepad as an Xbox 360 controller, through the ViGEmBus driver.
@@ -137,9 +144,6 @@ windows = { workspace = true, features = [
 libc = "0.2"
 
 [target.'cfg(target_os = "linux")'.dependencies]
-tokio = { workspace = true, features = ["net"] }
-# The Wayland portal code's errors (linux/screen_portal.rs).
-anyhow.workspace = true
 zbus.workspace = true
 wayland-client = "0.31"
 wayland-protocols = { version = "0.32", features = ["client", "staging"] }
@@ -149,9 +153,6 @@ cc = "1"
 pkg-config = "0.3"
 cxx-qt-build = { workspace = true, features = ["link_qt_object_files"] }
 embed-resource.workspace = true
-
-[dev-dependencies]
-tempfile.workspace = true
 
 [lints]
 workspace = true

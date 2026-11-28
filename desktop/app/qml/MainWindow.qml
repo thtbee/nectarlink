@@ -1036,6 +1036,16 @@ NativeWindow {
                 spacing: 4
 
                 IconButton {
+                    id: anySendTopBtn
+                    anchors.verticalCenter: parent.verticalCenter
+                    iconPath: Icons.send
+                    iconSize: 16
+                    text: "AnySend"
+                    label: qsTr("Send or receive a file with a browser")
+                    onClicked: anySendSheet.open()
+                    Component.onCompleted: window.addCaptionHole(anySendTopBtn)
+                }
+                IconButton {
                     id: paletteTopBtn
                     anchors.verticalCenter: parent.verticalCenter
                     iconPath: Icons.search
@@ -1267,6 +1277,17 @@ NativeWindow {
     // is looking at its missed calls.
     onCurrentDeviceIdChanged: AppController.watchBadges(window.currentDeviceId)
     Component.onDestruction: AppController.setCallsOpen(false)
+
+    Button {
+        visible: window.welcome
+        x: 20
+        y: 14
+        text: "AnySend"
+        variant: "tonal"
+        iconPath: Icons.send
+        onClicked: anySendSheet.open()
+    }
+    AnySendSheet { id: anySendSheet }
     Connections {
         target: Pairing
         function onStateChanged() {

@@ -926,6 +926,8 @@ pub struct Settings {
     /// Interface selected for connections on Linux. Empty uses system routing.
     #[serde(default)]
     pub network_interface: String,
+    #[serde(default)]
+    pub anysend_site: String,
     /// Whether the first-run setup walkthrough has been completed or skipped.
     #[serde(default, alias = "walkthrough_completed")]
     pub walkthrough_completed: bool,
@@ -1114,6 +1116,7 @@ impl Default for Settings {
             forward_pc_notifications_to_phone: false,
             away_mode: false,
             network_interface: String::new(),
+            anysend_site: String::new(),
             walkthrough_completed: false,
             walkthrough_step: 0,
             whats_new_dismissed: false,
@@ -1503,6 +1506,7 @@ mod tests {
             forward_pc_notifications_to_phone: true,
             away_mode: true,
             network_interface: "wlan0".into(),
+            anysend_site: "https://anysend.example/".into(),
             walkthrough_completed: true,
             walkthrough_step: 4,
             whats_new_dismissed: true,

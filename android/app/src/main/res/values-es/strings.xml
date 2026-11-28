@@ -1746,4 +1746,11 @@
     <string name="chat_file_missing">No está en este dispositivo</string>
     <string name="chat_file_options">Opciones del archivo</string>
     <string name="timeline_filter_notes">Notas</string>
+    <string name="anysend_site">Sitio web del enlace global</string>
+    <string name="anysend_browsers">Máximo de navegadores</string>
+    <string name="anysend_receive">Recibir un archivo</string>
+    <string name="anysend_lan">Red local</string>
+    <string name="anysend_global">Enlace global</string>
+    <string name="anysend_completed">%1$d de %2$d completadas</string>
+    <string name="anysend_expired">Este enlace ha caducado.</string>
 </resources>

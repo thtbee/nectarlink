@@ -1726,6 +1726,13 @@
     <string name="chat_file_missing">このデバイスにはありません</string>
     <string name="chat_file_options">ファイルのオプション</string>
     <string name="timeline_filter_notes">メモ</string>
+    <string name="anysend_site">グローバルリンクのウェブサイト</string>
+    <string name="anysend_browsers">ブラウザーの上限</string>
+    <string name="anysend_receive">ファイルを受信</string>
+    <string name="anysend_lan">ローカルネットワーク</string>
+    <string name="anysend_global">グローバルリンク</string>
+    <string name="anysend_completed">%2$d 件中 %1$d 件が完了</string>
+    <string name="anysend_expired">このリンクの有効期限が切れました。</string>
 </resources>
 
 
