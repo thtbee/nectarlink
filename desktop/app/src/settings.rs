@@ -655,6 +655,9 @@ pub struct Settings {
     /// predates it, which holds `trayOneColour: false` only because every field is saved.
     #[serde(default)]
     pub tray_icon_default_applied: bool,
+    /// Log more: the USB cable, the connection and the call's sound, for chasing a problem.
+    #[serde(default, alias = "detailed_log")]
+    pub detailed_log: bool,
     /// Send what's copied on this PC to connected phones.
     #[serde(alias = "auto_clipboard", alias = "clipboard_sync")]
     pub auto_clipboard: bool,
@@ -1030,6 +1033,7 @@ impl Default for Settings {
             close_to_tray: default_close_to_tray(),
             tray_one_colour: default_tray_one_colour(),
             tray_icon_default_applied: true,
+            detailed_log: false,
             auto_clipboard: true,
             clipboard_history: true,
             suggest_clipboard_actions: true,
@@ -1416,6 +1420,7 @@ mod tests {
             close_to_tray: false,
             tray_one_colour: true,
             tray_icon_default_applied: true,
+            detailed_log: true,
             auto_clipboard: false,
             clipboard_history: false,
             suggest_clipboard_actions: false,

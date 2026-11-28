@@ -504,6 +504,7 @@ pub(crate) fn start_adb_watcher(shared: &Arc<Shared>, adb_addr: SocketAddr) {
                 std::thread::spawn(move || nectarlink_adb::start_server(adb_addr));
             }
             let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+            tracing::debug!("watching adb for USB phones");
             let track_cancel = cancel.child_token();
             let track_cancel_task = track_cancel.clone();
             tokio::spawn(async move {
@@ -530,6 +531,7 @@ pub(crate) fn start_adb_watcher(shared: &Arc<Shared>, adb_addr: SocketAddr) {
             }
             track_cancel.cancel();
             drop(node);
+            tracing::debug!("lost the adb watch; starting it again");
             tokio::select! {
                 _ = cancel.cancelled() => break,
                 _ = tokio::time::sleep(ADB_RETRY_DELAY) => {}
@@ -552,6 +554,7 @@ fn reconcile_adb_devices(
             .iter()
             .any(|d| d.serial == *serial && d.is_online() && nectarlink_adb::is_serial_allowed(&d.serial));
         if !still_online {
+            tracing::info!(%serial, "a USB phone is gone from adb");
             token.cancel();
         }
         still_online
@@ -559,6 +562,9 @@ fn reconcile_adb_devices(
 
     for dev in devices {
         if !dev.is_online() || !nectarlink_adb::is_serial_allowed(&dev.serial) {
+            if !active.contains_key(&dev.serial) {
+                tracing::debug!(serial = %dev.serial, online = dev.is_online(), "adb lists a device that isn't used");
+            }
             continue;
         }
         // Wireless adb isn't a cable: the connection would go through adb's TCP over
@@ -569,6 +575,7 @@ fn reconcile_adb_devices(
         if active.contains_key(&dev.serial) {
             continue;
         }
+        tracing::info!(serial = %dev.serial, "a USB phone showed up in adb");
         let token = shared.cancel.child_token();
         active.insert(dev.serial.clone(), token.clone());
         let node = shared.clone();
@@ -633,7 +640,11 @@ async fn run_port_worker(
             return;
         }
         let mut answered = false;
-        if let Ok(host_port) = nectarlink_adb::forward_tcp(adb_addr, &serial, 0, phone_port).await {
+        let forward = nectarlink_adb::forward_tcp(adb_addr, &serial, 0, phone_port).await;
+        if let Err(e) = &forward {
+            tracing::debug!(%serial, phone_port, error = %e, "adb wouldn't forward the tunnel port");
+        }
+        if let Ok(host_port) = forward {
             let forwarded = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), host_port);
             let target = UsbTarget {
                 phone_port,
@@ -642,7 +653,11 @@ async fn run_port_worker(
                 serial: serial.clone(),
                 adb_addr,
             };
+            let started = Instant::now();
             let outcome = run_forwarded_session(&shared, forwarded, &cancel, target, nonce.take()).await;
+            if outcome == Tunnel::Ended {
+                tracing::info!(%serial, phone_port, secs = started.elapsed().as_secs(), "a USB tunnel ended");
+            }
             let _ = nectarlink_adb::kill_forward_tcp(adb_addr, &serial, host_port).await;
             answered = outcome != Tunnel::NoAnswer;
             if outcome == Tunnel::NeedsNonce {
@@ -722,17 +737,23 @@ async fn run_forwarded_session(
     target: UsbTarget,
     nonce: Option<String>,
 ) -> Tunnel {
-    let Ok(Ok(mut stream)) = tokio::time::timeout(HELLO_TIMEOUT, TcpStream::connect(forwarded_tcp)).await
-    else {
+    let stream = tokio::time::timeout(HELLO_TIMEOUT, TcpStream::connect(forwarded_tcp)).await;
+    let Ok(Ok(mut stream)) = stream else {
+        tracing::debug!(port = target.phone_port, "nothing answered on the forwarded tunnel port");
         return Tunnel::NoAnswer;
     };
     let _ = stream.set_nodelay(true);
     let local_name = shared.local.read().unwrap_or_else(|e| e.into_inner()).device.name.clone();
-    let Ok(PeerHello { id: phone_id, name: phone_name, usb_only: phone_usb_only, .. }) =
-        exchange_hello(&mut stream, &shared.id, &local_name, nonce.as_deref()).await
-    else {
-        return Tunnel::NoAnswer;
+    let hello = exchange_hello(&mut stream, &shared.id, &local_name, nonce.as_deref()).await;
+    let PeerHello { id: phone_id, name: phone_name, usb_only: phone_usb_only, .. } = match hello {
+        Ok(hello) => hello,
+        Err(e) => {
+            // The port is open (adb listens on it) but the app behind it didn't answer.
+            tracing::debug!(port = target.phone_port, error = %e, "the phone didn't answer the tunnel's hello");
+            return Tunnel::NoAnswer;
+        }
     };
+    tracing::info!(peer = %phone_id.short(), port = target.phone_port, "a USB tunnel is up");
     if phone_id == shared.id {
         return Tunnel::Ended;
     }

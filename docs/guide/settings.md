@@ -194,6 +194,8 @@ Provides network diagnostics, **Connect over mobile data**, Wake-on-LAN readines
 | **Wake from your phone** | Read-only status indicator (`Ready`, `Off in Windows`, `Check settings`, `No adapter`) | Inspects your active Windows network adapter and tells you whether Wake on LAN is enabled in Device Manager so your phone can wake this PC from sleep. |
 | **Local automation API** | **Off** (default port `53320`) | Starts the loopback-only HTTP/JSON server (`127.0.0.1:<port>`) for PowerToys, AutoHotkey, and scripts, and writes the 256-bit Bearer token to `%LOCALAPPDATA%\Nectarlink\api-token.json`. |
 | **NectarLink `<version>`** | **Open logs** and **Report a problem** buttons | Shows the app version and this PC's device name, opens the local diagnostic logs folder, or starts a problem report. |
+| **Detailed log** | Toggle, **Off** by default | Also logs what the USB cable, the connection and a call's sound do, step by step, to find out why something doesn't connect. The log still holds no names, numbers, messages, files or addresses. Turn it off again when you're done: it fills the log's two files faster. |
+| **View the log** | **View** button | Shows the end of this app's log, updating as it goes, with a box to show only the lines with a word (`usb`, `heartbeat`, `call`…), **Copy** and **Open folder**. |
 | **Setup walkthrough & Features guide** | Action buttons / Command Palette entries | Reopens the first-run setup walkthrough or the interactive in-app Features Guide at any time. |
 
 ---
