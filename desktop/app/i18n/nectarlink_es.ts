@@ -5683,7 +5683,7 @@ Qué necesitas
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1905"/>
         <source>Mirror</source>
-        <translation>Duplicar</translation>
+        <translation>Imagen reflejada</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1974"/>
@@ -10905,7 +10905,7 @@ Qué necesitas
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3014"/>
         <source>Back up now</source>
-        <translation>Copiar ahora</translation>
+        <translation>Hacer copia ahora</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="3038"/>
@@ -13363,8 +13363,8 @@ Qué necesitas
     </message>
     <message>
         <location filename="../qml/pages/WalkthroughPage.qml" line="108"/>
-        <source>No accounts, no cloud servers, and no telemetry.</source>
-        <translation>Sin cuentas, servidores en la nube ni telemetría.</translation>
+        <source>No accounts and no cloud servers. Only an anonymous daily count, which you can turn off.</source>
+        <translation>Sin cuentas ni servidores en la nube. Solo un recuento diario anónimo, que puedes desactivar.</translation>
     </message>
     <message>
         <location filename="../qml/pages/WalkthroughPage.qml" line="109"/>

@@ -1168,7 +1168,7 @@
     <string name="guide_mirror_limits">Приложения с FLAG_SECURE в обычной трансляции MediaProjection показываются чёрными.</string>
     <string name="guide_apps_title">Окна приложений</string>
     <string name="guide_apps_summary">Открывайте отдельные приложения Android в собственных окнах на ПК, а экран телефона остаётся независимым.</string>
-    <string name="guide_apps_where">Настройки › Разрешения › Управление с ПК › Настоящие касания и клавиши (отладка по Wi-Fi)</string>
+    <string name="guide_apps_where">Настройки › Разрешения › Управление с ПК › Elevated</string>
     <string name="guide_apps_needs">Elevated (отладка по Wi-Fi)</string>
     <string name="guide_apps_need_1">Elevated, настроенный через отладку по Wi-Fi.</string>
     <string name="guide_apps_need_2">Связанный ПК в сети.</string>
@@ -1231,10 +1231,10 @@
     <string name="guide_assist_limits">Для APK, установленных из файла на Android 13+, сначала нужно разрешить доступ к ограниченным настройкам в «О приложении».</string>
     <string name="guide_elevated_title">Elevated</string>
     <string name="guide_elevated_summary">Настоящие касания и клавиши, окна приложений, фоновая синхронизация буфера обмена и управление вызовом через отладку по Wi-Fi.</string>
-    <string name="guide_elevated_where">Настройки › Разрешения › Управление с ПК › Настоящие касания и клавиши (отладка по Wi-Fi)</string>
+    <string name="guide_elevated_where">Настройки › Разрешения › Управление с ПК › Elevated</string>
     <string name="guide_elevated_needs">Отладка по Wi-Fi</string>
     <string name="guide_elevated_need_1">Включены параметры для разработчиков и отладка по Wi-Fi.</string>
-    <string name="guide_elevated_phone_1">Откройте Настройки › Разрешения › Управление с ПК и нажмите «Настроить» в пункте «Настоящие касания и клавиши».</string>
+    <string name="guide_elevated_phone_1">Откройте Настройки › Разрешения › Управление с ПК и нажмите «Настроить» в пункте «Elevated».</string>
     <string name="guide_elevated_phone_2">В разделе «Отладка по Wi-Fi» нажмите «Подключить устройство с помощью кода подключения» и введите 6-значный код в уведомление.</string>
     <string name="guide_elevated_pc_1">Пользуйтесь окнами приложений, фоновой синхронизацией буфера обмена и вводом с низкой задержкой с ПК.</string>
     <string name="guide_elevated_opt_1">Настроить / Выключить: связывает или останавливает локальный помощник отладки по Wi-Fi.</string>

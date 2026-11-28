@@ -13357,8 +13357,8 @@ Nó cần gì
     </message>
     <message>
         <location filename="../qml/pages/WalkthroughPage.qml" line="108"/>
-        <source>No accounts, no cloud servers, and no telemetry.</source>
-        <translation>Không tài khoản, không máy chủ đám mây và không đo lường từ xa.</translation>
+        <source>No accounts and no cloud servers. Only an anonymous daily count, which you can turn off.</source>
+        <translation>Không tài khoản, không máy chủ đám mây. Chỉ có một lượt đếm ẩn danh mỗi ngày mà bạn có thể tắt.</translation>
     </message>
     <message>
         <location filename="../qml/pages/WalkthroughPage.qml" line="109"/>

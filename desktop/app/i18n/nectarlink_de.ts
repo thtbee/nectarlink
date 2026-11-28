@@ -13426,8 +13426,8 @@ Voraussetzungen
     </message>
     <message>
         <location filename="../qml/pages/WalkthroughPage.qml" line="108"/>
-        <source>No accounts, no cloud servers, and no telemetry.</source>
-        <translation>Keine Konten, keine Cloud-Server, keine Telemetrie.</translation>
+        <source>No accounts and no cloud servers. Only an anonymous daily count, which you can turn off.</source>
+        <translation>Keine Konten, keine Cloud-Server. Nur eine anonyme tägliche Zählung, die du abschalten kannst.</translation>
     </message>
     <message>
         <location filename="../qml/pages/WalkthroughPage.qml" line="109"/>

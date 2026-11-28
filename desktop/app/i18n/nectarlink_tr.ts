@@ -5717,7 +5717,7 @@ Neler gerekir
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1905"/>
         <source>Mirror</source>
-        <translation>Yansıt</translation>
+        <translation>Ayna görüntüsü</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1974"/>
@@ -13412,8 +13412,8 @@ Neler gerekir
     </message>
     <message>
         <location filename="../qml/pages/WalkthroughPage.qml" line="108"/>
-        <source>No accounts, no cloud servers, and no telemetry.</source>
-        <translation>Hesap yok, bulut sunucusu yok, telemetri yok.</translation>
+        <source>No accounts and no cloud servers. Only an anonymous daily count, which you can turn off.</source>
+        <translation>Hesap yok, bulut sunucusu yok. Yalnızca kapatabileceğiniz anonim bir günlük sayım var.</translation>
     </message>
     <message>
         <location filename="../qml/pages/WalkthroughPage.qml" line="109"/>

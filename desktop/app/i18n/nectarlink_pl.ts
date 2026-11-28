@@ -6124,7 +6124,7 @@ Wymagania
     <message>
         <location filename="../qml/pages/HomePage.qml" line="3341"/>
         <source>Ring PC</source>
-        <translation>Włącz dźwięk na komputerze</translation>
+        <translation>Zadzwoń na komputer</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="3357"/>
@@ -10723,7 +10723,7 @@ Wymagania
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="2584"/>
         <source>Microphone for calls</source>
-        <translation>Mikrofon telefonu do rozmów</translation>
+        <translation>Mikrofon do rozmów</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="2588"/>
@@ -13432,8 +13432,8 @@ Wymagania
     </message>
     <message>
         <location filename="../qml/pages/WalkthroughPage.qml" line="108"/>
-        <source>No accounts, no cloud servers, and no telemetry.</source>
-        <translation>Bez kont, serwerów w chmurze i telemetrii.</translation>
+        <source>No accounts and no cloud servers. Only an anonymous daily count, which you can turn off.</source>
+        <translation>Bez kont i serwerów w chmurze. Tylko anonimowe codzienne zliczanie, które możesz wyłączyć.</translation>
     </message>
     <message>
         <location filename="../qml/pages/WalkthroughPage.qml" line="109"/>
