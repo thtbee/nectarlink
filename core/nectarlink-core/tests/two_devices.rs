@@ -1615,11 +1615,13 @@ async fn usb_only_closes_a_lan_session_refuses_new_ones_and_lets_the_pc_back_whe
     wait_online(&mut phone, pc_id).await;
     wait_online(&mut pc, phone_id).await;
     // Both sides dial once USB only is off, so the first session can be the
-    // duplicate that closes right after it comes up: ring over the one that stays.
+    // duplicate that closes right after it comes up. The one that stays takes
+    // over without the link going offline, so no new "online" comes: try the
+    // ring again for a moment instead of waiting for one.
     with_timeout("ring after USB only is off", async {
         loop {
             match pc.node.ring(phone_id, true).await {
-                Err(Error::Offline) => wait_online(&mut pc, phone_id).await,
+                Err(Error::Offline) => tokio::time::sleep(Duration::from_millis(200)).await,
                 result => break result,
             }
         }
@@ -9345,6 +9347,14 @@ async fn a_bluetooth_link_carries_light_messages_only() {
         (pc, phone);
     pc_node.shutdown().await;
     phone_node.shutdown().await;
+    // Each kept the other's addresses from the first session. The OS can give a
+    // restarted node the port it had (macOS often does), and then the PC dials
+    // it there over the LAN before Bluetooth comes up: forget them.
+    drop((pc_node, phone_node));
+    for dir in [&pc_dir, &phone_dir] {
+        let db = rusqlite::Connection::open(dir.path().join("nectarlink.db")).unwrap();
+        db.execute("UPDATE peers SET last_addrs = ''", []).unwrap();
+    }
     let mut pc = start_usb_device_in(pc_dir, "Desktop BT", DeviceKind::Desktop, None, &[]).await;
     let phone = start_usb_device_in(phone_dir, "Pixel BT", DeviceKind::Phone, None, &["storage.read"]).await;
     assert!(
