@@ -13559,8 +13559,8 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
     </message>
     <message>
         <location filename="../qml/pages/WalkthroughPage.qml" line="108"/>
-        <source>No accounts, no cloud servers, and no telemetry.</source>
-        <translation>アカウントなし、クラウドサーバーなし、テレメトリなし。</translation>
+        <source>No accounts and no cloud servers. Only an anonymous daily count, which you can turn off.</source>
+        <translation>アカウントもクラウドサーバーもありません。オフにできる匿名の1日1回のカウントだけです。</translation>
     </message>
     <message>
         <location filename="../qml/pages/WalkthroughPage.qml" line="109"/>

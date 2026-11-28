@@ -7938,7 +7938,7 @@ What it needs
     <message>
         <location filename="../qml/components/NowPlaying.qml" line="739"/>
         <source>Mute</source>
-        <translation>Выключить микрофон</translation>
+        <translation>Выключить звук</translation>
     </message>
     <message>
         <location filename="../qml/components/NowPlaying.qml" line="825"/>
@@ -13588,8 +13588,8 @@ What it needs
     </message>
     <message>
         <location filename="../qml/pages/WalkthroughPage.qml" line="108"/>
-        <source>No accounts, no cloud servers, and no telemetry.</source>
-        <translation>Без учётных записей, облачных серверов и телеметрии.</translation>
+        <source>No accounts and no cloud servers. Only an anonymous daily count, which you can turn off.</source>
+        <translation>Без учётных записей и облачных серверов. Только анонимный ежедневный подсчёт, который можно отключить.</translation>
     </message>
     <message>
         <location filename="../qml/pages/WalkthroughPage.qml" line="109"/>

@@ -70,7 +70,7 @@ Whenever you take a new photo or capture a screenshot on your phone while connec
 
 ## Data and Privacy
 
-- **On-demand reading**: NectarLink never bulk-uploads your photo library in the background. Your phone reads photo metadata and thumbnails directly from Android's `MediaStore` only when you open the **Photos** page (or for the single latest photo/screenshot on Home), and full-resolution originals are transferred only when you view, copy, drag, or save a specific photo.
+- **On-demand reading**: Unless you turn on **Photo backup** (**Settings › Files & Sync**), NectarLink never copies your photo library in the background. Your phone reads photo metadata and thumbnails directly from Android's `MediaStore` only when you open the **Photos** page (or for the single latest photo/screenshot on Home), and full-resolution originals are transferred only when you view, copy, drag, or save a specific photo.
 - **Local cache retention**: Thumbnail previews downloaded to your PC are stored in `%LOCALAPPDATA%\Nectarlink\cache\photos\` and automatically purged after **30 days**. Drag-and-drop staging files in `%LOCALAPPDATA%\Nectarlink\cache\photos\drag\` are cleaned up automatically. Clicking **Clear** next to **Photo thumbnails** in **Settings › Storage & Privacy** wipes all cached thumbnails on your PC without affecting any photos on your phone or any files you saved to `Downloads`.
 
 ## Limits

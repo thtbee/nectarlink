@@ -5893,7 +5893,7 @@ O que precisa
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1886"/>
         <source>Back</source>
-        <translation>Voltar</translation>
+        <translation>Traseira</translation>
     </message>
     <message>
         <location filename="../qml/pages/HomePage.qml" line="1887"/>
@@ -10851,7 +10851,7 @@ O que precisa
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="2444"/>
         <source>Back</source>
-        <translation>Voltar</translation>
+        <translation>Traseira</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="2445"/>
@@ -13598,8 +13598,8 @@ O que precisa
     </message>
     <message>
         <location filename="../qml/pages/WalkthroughPage.qml" line="108"/>
-        <source>No accounts, no cloud servers, and no telemetry.</source>
-        <translation>Sem contas, servidores na nuvem nem telemetria.</translation>
+        <source>No accounts and no cloud servers. Only an anonymous daily count, which you can turn off.</source>
+        <translation>Sem contas nem servidores na nuvem. Só uma contagem diária anônima, que você pode desligar.</translation>
     </message>
     <message>
         <location filename="../qml/pages/WalkthroughPage.qml" line="109"/>

@@ -1011,7 +1011,7 @@
     <message>
         <location filename="../qml/components/CallCard.qml" line="130"/>
         <source>Mute</source>
-        <translation>Вимкнути звук</translation>
+        <translation>Вимкнути мікрофон</translation>
     </message>
     <message>
         <location filename="../qml/components/CallCard.qml" line="136"/>
@@ -13524,8 +13524,8 @@ What it needs
     </message>
     <message>
         <location filename="../qml/pages/WalkthroughPage.qml" line="108"/>
-        <source>No accounts, no cloud servers, and no telemetry.</source>
-        <translation>Без облікових записів, хмарних серверів і телеметрії.</translation>
+        <source>No accounts and no cloud servers. Only an anonymous daily count, which you can turn off.</source>
+        <translation>Без облікових записів і хмарних серверів. Лише анонімний щоденний підрахунок, який можна вимкнути.</translation>
     </message>
     <message>
         <location filename="../qml/pages/WalkthroughPage.qml" line="109"/>

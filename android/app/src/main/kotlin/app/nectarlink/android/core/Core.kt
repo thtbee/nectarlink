@@ -1852,6 +1852,16 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         onDialing { applyDialing() }
     }
 
+    /**
+     * Hands the core a nonce a PC sent through adb ([app.nectarlink.android.usb.UsbNonce]),
+     * so the USB tunnel it opens next may pair. Nothing to do while the core isn't running:
+     * the PC sends one only to a phone that answered it.
+     */
+    fun allowUsbNonce(nonce: String) {
+        runCatching { node?.allowUsbNonce(nonce) }
+            .onFailure { Log.w(TAG, "couldn't hand the core a USB nonce", it) }
+    }
+
     /** Lets PCs reach this phone over Bluetooth when nothing else does, or stops it (#313). */
     fun setBluetoothLink(enabled: Boolean) {
         app.nectarlink.android.ui.Preferences.setBluetoothLinkEnabled(context, enabled)

@@ -1268,7 +1268,7 @@
     <!-- 16. App streams -->
     <string name="guide_apps_title">Janelas de apps</string>
     <string name="guide_apps_summary">Abra apps Android, cada um na sua própria janela no PC, enquanto a tela do celular continua independente.</string>
-    <string name="guide_apps_where">Configurações › Permissões › Controle pelo PC › Toque e teclas de verdade (depuração por Wi-Fi)</string>
+    <string name="guide_apps_where">Configurações › Permissões › Controle pelo PC › Elevated</string>
     <string name="guide_apps_needs">Elevated (depuração por Wi-Fi)</string>
     <string name="guide_apps_need_1">Elevated configurado pela depuração por Wi-Fi.</string>
     <string name="guide_apps_need_2">PC pareado e conectado.</string>
@@ -1343,10 +1343,10 @@
     <!-- 22. Elevated -->
     <string name="guide_elevated_title">Elevated</string>
     <string name="guide_elevated_summary">Toque e teclas de verdade, Janelas de apps, sincronização da área de transferência em segundo plano e controles durante chamadas, pela depuração por Wi-Fi.</string>
-    <string name="guide_elevated_where">Configurações › Permissões › Controle pelo PC › Toque e teclas de verdade (depuração por Wi-Fi)</string>
+    <string name="guide_elevated_where">Configurações › Permissões › Controle pelo PC › Elevated</string>
     <string name="guide_elevated_needs">Depuração por Wi-Fi</string>
     <string name="guide_elevated_need_1">Opções do desenvolvedor e Depuração por Wi-Fi ativadas.</string>
-    <string name="guide_elevated_phone_1">Abra Configurações › Permissões › Controle pelo PC e toque em Configurar em Toque e teclas de verdade.</string>
+    <string name="guide_elevated_phone_1">Abra Configurações › Permissões › Controle pelo PC e toque em Configurar em Elevated.</string>
     <string name="guide_elevated_phone_2">Em Depuração por Wi-Fi, toque em Parear o dispositivo com um código de pareamento e digite o código de 6 dígitos na notificação.</string>
     <string name="guide_elevated_pc_1">Use janelas de apps, sincronização da área de transferência em segundo plano e controle com baixa latência pelo PC.</string>
     <string name="guide_elevated_opt_1">Configurar / Desligar: pareia ou para o auxiliar local da Depuração por Wi-Fi.</string>

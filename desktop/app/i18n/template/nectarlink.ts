@@ -13213,7 +13213,7 @@ What it needs
     </message>
     <message>
         <location filename="../../qml/pages/WalkthroughPage.qml" line="108"/>
-        <source>No accounts, no cloud servers, and no telemetry.</source>
+        <source>No accounts and no cloud servers. Only an anonymous daily count, which you can turn off.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

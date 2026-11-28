@@ -4491,8 +4491,7 @@ async fn linux_unlock_over_a_usb_only_session() {
     let mut phone = start_usb_device("Pixel", DeviceKind::Phone, Some(0), &[CAP_KEY]).await;
     let mut pc = start_usb_device("Desktop", DeviceKind::Desktop, None, &[CAP_PC]).await;
     let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
-    let usb_port = phone.node.usb_port().unwrap();
-    pc.node.connect_usb_tunnel(([127, 0, 0, 1], usb_port).into()).await.unwrap();
+    usb_tunnel_from_adb(&pc, &phone).await;
 
     for dev in [&mut pc, &mut phone] {
         wait_for(dev, "USB pairing prompt", |e| match e {
@@ -7515,6 +7514,73 @@ async fn start_usb_device_in(
     TestDevice { node, events, platform, dir, name }
 }
 
+/// Opens `pc`'s USB tunnel into `phone` the way it goes through adb: the phone is given
+/// a fresh nonce first (adb's broadcast), and the PC's hello carries it.
+async fn usb_tunnel_from_adb(pc: &TestDevice, phone: &TestDevice) -> nectarlink_core::DeviceId {
+    static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+    let nonce = format!("{:032x}", NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed));
+    assert!(phone.node.allow_usb_nonce(&nonce));
+    let usb_port = phone.node.usb_port().expect("phone bound its USB listener");
+    let tunnel_addr: SocketAddr = ("127.0.0.1".parse::<std::net::IpAddr>().unwrap(), usb_port).into();
+    pc.node.connect_usb_tunnel(tunnel_addr, Some(&nonce)).await.expect("connect USB tunnel")
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_usb_tunnel_adb_did_not_open_pairs_only_in_pairing_mode() {
+    // Something on the phone reaches the tunnel's port while adb is on, with a hello that
+    // carries no nonce, or one the phone wasn't given: it may not pair without pairing mode.
+    for nonce in [None, Some("00112233445566778899aabbccddeeff")] {
+        let mut phone = start_usb_device("Pixel USB", DeviceKind::Phone, Some(0), &[]).await;
+        let mut pc = start_usb_device("Not adb", DeviceKind::Desktop, None, &[]).await;
+        let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+        let usb_port = phone.node.usb_port().expect("phone bound ephemeral USB TCP listener");
+        let tunnel_addr: SocketAddr = ("127.0.0.1".parse::<std::net::IpAddr>().unwrap(), usb_port).into();
+        pc.node.connect_usb_tunnel(tunnel_addr, nonce).await.expect("the tunnel itself still opens");
+
+        let refused = wait_for(&mut pc, "pairing refused", |e| match e {
+            NodeEvent::Pairing(PairingEvent::Failed(r)) => Some(r.clone()),
+            NodeEvent::Pairing(PairingEvent::SasCode { .. }) => {
+                panic!("a code without pairing mode ({nonce:?})")
+            }
+            _ => None,
+        })
+        .await;
+        assert_eq!(refused, PairingFailure::NotPairing, "{nonce:?}");
+        while let Ok(Ok(ev)) = tokio::time::timeout(Duration::from_millis(300), phone.events.recv()).await {
+            assert!(
+                !matches!(ev, NodeEvent::Pairing(PairingEvent::SasCode { .. })),
+                "the phone showed a code"
+            );
+        }
+
+        // In pairing mode the same tunnel pairs, with both users confirming the code.
+        phone.node.pairing_start_qr().await.expect("phone pairing mode");
+        pc.node.refresh().await;
+        for dev in [&mut pc, &mut phone] {
+            wait_for(dev, "a code in pairing mode", |e| match e {
+                NodeEvent::Pairing(PairingEvent::SasCode { .. }) => Some(()),
+                _ => None,
+            })
+            .await;
+        }
+        pc.node.pairing_confirm(true).unwrap();
+        phone.node.pairing_confirm(true).unwrap();
+        wait_for(&mut phone, "phone paired in pairing mode", |e| match e {
+            NodeEvent::Pairing(PairingEvent::Paired(d)) if d.id == pc_id => Some(()),
+            _ => None,
+        })
+        .await;
+        wait_for(&mut pc, "pc paired", |e| match e {
+            NodeEvent::Pairing(PairingEvent::Paired(d)) if d.id == phone_id => Some(()),
+            _ => None,
+        })
+        .await;
+
+        pc.node.shutdown().await;
+        phone.node.shutdown().await;
+    }
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn usb_tunnel_pairing_needs_adb_to_be_possible() {
     // Something on the phone that isn't adb (adb is off) reaches the tunnel's
@@ -7524,9 +7590,7 @@ async fn usb_tunnel_pairing_needs_adb_to_be_possible() {
     phone.platform.adb_off.store(true, std::sync::atomic::Ordering::SeqCst);
     let mut pc = start_usb_device("Desktop USB", DeviceKind::Desktop, None, &[]).await;
     let phone_id = phone.node.device_id();
-    let usb_port = phone.node.usb_port().expect("phone bound ephemeral USB TCP listener");
-    let tunnel_addr: SocketAddr = ("127.0.0.1".parse::<std::net::IpAddr>().unwrap(), usb_port).into();
-    pc.node.connect_usb_tunnel(tunnel_addr).await.expect("connect USB tunnel");
+    usb_tunnel_from_adb(&pc, &phone).await;
 
     wait_for(&mut pc, "pc pairing refused", |e| match e {
         NodeEvent::Pairing(PairingEvent::Failed(_)) => Some(()),
@@ -7578,9 +7642,9 @@ async fn two_profiles_on_one_phone_each_get_their_own_usb_port() {
 
     let at = |port: u16| -> SocketAddr { ("127.0.0.1".parse::<std::net::IpAddr>().unwrap(), port).into() };
     let reached =
-        pc.node.connect_usb_tunnel(at(personal_port)).await.expect("tunnel to the personal profile");
+        pc.node.connect_usb_tunnel(at(personal_port), None).await.expect("tunnel to the personal profile");
     assert_eq!(reached, personal.node.device_id());
-    let reached = pc.node.connect_usb_tunnel(at(work_port)).await.expect("tunnel to the work profile");
+    let reached = pc.node.connect_usb_tunnel(at(work_port), None).await.expect("tunnel to the work profile");
     assert_eq!(reached, work.node.device_id());
 
     pc.node.shutdown().await;
@@ -7596,10 +7660,7 @@ async fn usb_auto_pair_requires_consent_on_both_sides_and_connects_over_usb() {
     let mut pc = start_usb_device("Desktop USB", DeviceKind::Desktop, None, &[]).await;
     let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
 
-    let usb_port = phone.node.usb_port().expect("phone bound ephemeral USB TCP listener");
-    let tunnel_addr: SocketAddr = ("127.0.0.1".parse::<std::net::IpAddr>().unwrap(), usb_port).into();
-
-    pc.node.connect_usb_tunnel(tunnel_addr).await.expect("connect USB tunnel");
+    usb_tunnel_from_adb(&pc, &phone).await;
 
     // 1. Both PC and Phone emit NodeEvent::Discovered for each other.
     let mut pc_saw_discovered = false;
@@ -7655,8 +7716,20 @@ async fn usb_auto_pair_requires_consent_on_both_sides_and_connects_over_usb() {
     assert!(pc.node.paired_devices().unwrap().is_empty());
     assert!(phone.node.paired_devices().unwrap().is_empty());
 
-    // 5. Re-triggering over USB (via refresh) starts a fresh SAS prompt; confirming on both sides pairs
-    //    and connects with ConnectionPath::Usb.
+    // 5. Right after a decline, pairing over the cable needs the phone's pairing mode, so it
+    //    can't bring up prompt after prompt: re-triggering (via refresh) is refused.
+    pc.node.refresh().await;
+    let refused = wait_for(&mut pc, "pc pairing refused after the decline", |e| match e {
+        NodeEvent::Pairing(PairingEvent::Failed(r)) => Some(r.clone()),
+        NodeEvent::Pairing(PairingEvent::SasCode { .. }) => panic!("a second prompt right after a decline"),
+        _ => None,
+    })
+    .await;
+    assert_eq!(refused, PairingFailure::NotPairing);
+
+    // 6. In pairing mode, re-triggering over USB starts a fresh SAS prompt; confirming on both
+    //    sides pairs and connects with ConnectionPath::Usb.
+    phone.node.pairing_start_qr().await.expect("phone pairing mode");
     pc.node.refresh().await;
     let code_pc_2 = wait_for(&mut pc, "pc second sas code", |e| match e {
         NodeEvent::Pairing(PairingEvent::SasCode { peer, code }) if *peer == phone_id => Some(code.clone()),
@@ -7715,7 +7788,7 @@ async fn usb_auto_pair_requires_consent_on_both_sides_and_connects_over_usb() {
     })
     .await;
 
-    // 6. Plugged in, the link stays up: the phone lets the PC dial through the cable instead
+    // 7. Plugged in, the link stays up: the phone lets the PC dial through the cable instead
     //    of racing it, so neither side sees its connection replaced and dropped.
     let settle = tokio::time::Instant::now() + std::time::Duration::from_secs(8);
     let mut drops = 0;
@@ -7759,9 +7832,7 @@ async fn usb_transport_carries_features_when_wifi_unavailable() {
     .await;
     let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
 
-    let usb_port = phone.node.usb_port().expect("phone USB TCP listener");
-    let tunnel_addr: SocketAddr = ("127.0.0.1".parse::<std::net::IpAddr>().unwrap(), usb_port).into();
-    pc.node.connect_usb_tunnel(tunnel_addr).await.expect("connect USB tunnel");
+    usb_tunnel_from_adb(&pc, &phone).await;
 
     let code_pc = wait_for(&mut pc, "pc sas code", |e| match e {
         NodeEvent::Pairing(PairingEvent::SasCode { peer, code }) if *peer == phone_id => Some(code.clone()),
@@ -9038,7 +9109,8 @@ async fn usb_upgrade_reconnect_and_realtime_pcm_do_not_starve_control_rpcs() {
     // Attach USB tunnel while a LAN session is already live: both sides upgrade to ConnectionPath::Usb.
     let usb_port = phone.node.usb_port().expect("phone USB TCP listener");
     let tunnel_addr: SocketAddr = ("127.0.0.1".parse::<std::net::IpAddr>().unwrap(), usb_port).into();
-    pc.node.connect_usb_tunnel(tunnel_addr).await.expect("connect USB tunnel");
+    // Paired already: its keys are checked, so the tunnel needs no nonce.
+    pc.node.connect_usb_tunnel(tunnel_addr, None).await.expect("connect USB tunnel");
 
     wait_for(&mut pc, "pc upgrades to usb", |e| match e {
         NodeEvent::LinkChanged { device, link: LinkState::Online { path: ConnectionPath::Usb, .. } }
@@ -9344,7 +9416,7 @@ async fn spoofed_usb_hello_is_not_trusted_without_matching_quic_identity() {
         send_usb_hello(&mut s, &phone_id, "Spoofed Phone").await;
         tokio::time::sleep(Duration::from_secs(2)).await;
     });
-    let claimed = pc.node.connect_usb_tunnel(fake_addr).await.unwrap();
+    let claimed = pc.node.connect_usb_tunnel(fake_addr, None).await.unwrap();
     assert_eq!(claimed, phone_id);
 
     tokio::time::sleep(Duration::from_millis(400)).await;
@@ -9469,9 +9541,8 @@ async fn a_bluetooth_link_carries_light_messages_only() {
         (pc, phone);
     pc_node.shutdown().await;
     phone_node.shutdown().await;
-    // Each kept the other's addresses from the first session. The OS can give a
-    // restarted node the port it had (macOS often does), and then the PC dials
-    // it there over the LAN before Bluetooth comes up: forget them.
+    // Each kept the other's addresses from the first session: forget them, so the
+    // link is the only way the PC knows to reach the phone.
     drop((pc_node, phone_node));
     for dir in [&pc_dir, &phone_dir] {
         let db = rusqlite::Connection::open(dir.path().join("nectarlink.db")).unwrap();
@@ -9498,12 +9569,21 @@ async fn a_bluetooth_link_carries_light_messages_only() {
     // What the link did, to tell on a failure whether it went elsewhere
     // (another path between two nodes on one machine) or never came up.
     let mut seen = Vec::new();
+    let mut direct = false;
     let deadline = tokio::time::Instant::now() + WAIT;
     loop {
         let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
         match tokio::time::timeout(remaining, pc.events.recv()).await {
             Ok(Ok(NodeEvent::LinkChanged { device, link })) if device == phone_id => {
                 if matches!(link, LinkState::Online { path: ConnectionPath::Bluetooth, .. }) {
+                    break;
+                }
+                // Over the link the two learn each other's direct addresses, and two
+                // nodes on one machine always reach each other directly: QUIC moves
+                // to that path, as it should when there is one. Then this run has
+                // nothing on Bluetooth to check.
+                if matches!(link, LinkState::Online { path: ConnectionPath::Lan, .. }) {
+                    direct = true;
                     break;
                 }
                 seen.push(format!("{link:?}"));
@@ -9526,6 +9606,15 @@ async fn a_bluetooth_link_carries_light_messages_only() {
         matches!(pc.node.connect_bluetooth(link).await, Err(Error::Denied)),
         "a second link to a connected phone is refused"
     );
+    if direct {
+        eprintln!(
+            "the session moved to a direct path between the two test nodes; nothing on Bluetooth to check"
+        );
+        with_timeout("ring over the direct path", pc.node.ring(phone_id, true)).await.expect("connected");
+        pc.node.shutdown().await;
+        phone.node.shutdown().await;
+        return;
+    }
 
     with_timeout("ring over Bluetooth", pc.node.ring(phone_id, true)).await.expect("a ring is light");
     assert!(

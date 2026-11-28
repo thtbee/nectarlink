@@ -10074,7 +10074,7 @@ What it needs
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="802"/>
         <source>App size</source>
-        <translation>应用大小</translation>
+        <translation>界面大小</translation>
     </message>
     <message>
         <location filename="../qml/pages/SettingsPage.qml" line="803"/>
@@ -13639,8 +13639,8 @@ What it needs
     </message>
     <message>
         <location filename="../qml/pages/WalkthroughPage.qml" line="108"/>
-        <source>No accounts, no cloud servers, and no telemetry.</source>
-        <translation>没有账户、没有云服务器、没有遥测。</translation>
+        <source>No accounts and no cloud servers. Only an anonymous daily count, which you can turn off.</source>
+        <translation>没有账户，没有云服务器。只有一个可以关闭的匿名每日计数。</translation>
     </message>
     <message>
         <location filename="../qml/pages/WalkthroughPage.qml" line="109"/>
