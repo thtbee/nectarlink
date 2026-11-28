@@ -7716,8 +7716,20 @@ async fn usb_auto_pair_requires_consent_on_both_sides_and_connects_over_usb() {
     assert!(pc.node.paired_devices().unwrap().is_empty());
     assert!(phone.node.paired_devices().unwrap().is_empty());
 
-    // 5. Re-triggering over USB (via refresh) starts a fresh SAS prompt; confirming on both sides pairs
-    //    and connects with ConnectionPath::Usb.
+    // 5. Right after a decline, pairing over the cable needs the phone's pairing mode, so it
+    //    can't bring up prompt after prompt: re-triggering (via refresh) is refused.
+    pc.node.refresh().await;
+    let refused = wait_for(&mut pc, "pc pairing refused after the decline", |e| match e {
+        NodeEvent::Pairing(PairingEvent::Failed(r)) => Some(r.clone()),
+        NodeEvent::Pairing(PairingEvent::SasCode { .. }) => panic!("a second prompt right after a decline"),
+        _ => None,
+    })
+    .await;
+    assert_eq!(refused, PairingFailure::NotPairing);
+
+    // 6. In pairing mode, re-triggering over USB starts a fresh SAS prompt; confirming on both
+    //    sides pairs and connects with ConnectionPath::Usb.
+    phone.node.pairing_start_qr().await.expect("phone pairing mode");
     pc.node.refresh().await;
     let code_pc_2 = wait_for(&mut pc, "pc second sas code", |e| match e {
         NodeEvent::Pairing(PairingEvent::SasCode { peer, code }) if *peer == phone_id => Some(code.clone()),
@@ -7776,7 +7788,7 @@ async fn usb_auto_pair_requires_consent_on_both_sides_and_connects_over_usb() {
     })
     .await;
 
-    // 6. Plugged in, the link stays up: the phone lets the PC dial through the cable instead
+    // 7. Plugged in, the link stays up: the phone lets the PC dial through the cable instead
     //    of racing it, so neither side sees its connection replaced and dropped.
     let settle = tokio::time::Instant::now() + std::time::Duration::from_secs(8);
     let mut drops = 0;
