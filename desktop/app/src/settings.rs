@@ -155,6 +155,14 @@ fn default_island_look() -> String {
     "dark".into()
 }
 
+fn default_edge_drop_side() -> String {
+    "right".into()
+}
+
+fn normalize_edge_drop_side(side: &str) -> String {
+    if side.trim().eq_ignore_ascii_case("left") { "left".into() } else { "right".into() }
+}
+
 fn default_true() -> bool {
     true
 }
@@ -286,6 +294,14 @@ pub fn open_shared_files() -> bool {
 
 pub fn set_open_shared_files(on: bool) {
     OPEN_SHARED_FILES.store(on, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// Enables or disables the Windows screen-edge file drop trigger on `side` (`"left"` or `"right"`).
+pub fn set_screen_edge_drop(on: bool, side: &str) {
+    #[cfg(windows)]
+    crate::win::edge_drop::configure(on, side);
+    #[cfg(not(windows))]
+    let _ = (on, side);
 }
 
 #[allow(dead_code)]
@@ -836,6 +852,12 @@ pub struct Settings {
     /// arrives. Off by default: it's saved in Downloads\Nectarlink either way.
     #[serde(default, alias = "open_shared_files")]
     pub open_shared_files: bool,
+    /// Show a floating drop pill when dragging files to the screen edge (Windows, off by default).
+    #[serde(default, alias = "screen_edge_drop")]
+    pub screen_edge_drop: bool,
+    /// Which screen edge triggers the file drop pill (`"left"` or `"right"`).
+    #[serde(default = "default_edge_drop_side", alias = "screen_edge_drop_side")]
+    pub screen_edge_drop_side: String,
     /// Folder sync and photo backup wait while the phone is only reachable
     /// through the relay, which may be using its mobile data.
     #[serde(default, alias = "sync_wifi_only")]
@@ -1086,6 +1108,8 @@ impl Default for Settings {
             agent_read_only: false,
             clipboard_auto_copy_received_files: true,
             open_shared_files: false,
+            screen_edge_drop: false,
+            screen_edge_drop_side: default_edge_drop_side(),
             sync_wifi_only: false,
             sync_passwords: false,
             keep_popups_paused: false,
@@ -1148,6 +1172,7 @@ impl Settings {
             self.ui_scale = default_ui_scale();
         }
         self.webcam_camera = normalize_webcam_camera(&self.webcam_camera);
+        self.screen_edge_drop_side = normalize_edge_drop_side(&self.screen_edge_drop_side);
         self.walkthrough_step = self.walkthrough_step.min(6);
         self.window_screen = self.window_screen.map(|s| s.trim().to_owned()).filter(|s| !s.is_empty());
         self.window_width = self.window_width.clamp(MIN_WINDOW_WIDTH, MAX_WINDOW_WIDTH);
@@ -1176,6 +1201,7 @@ impl Settings {
         crate::win::tray::set_one_colour(self.tray_one_colour);
         set_clipboard_auto_copy_received_files(self.clipboard_auto_copy_received_files);
         set_open_shared_files(self.open_shared_files);
+        set_screen_edge_drop(self.screen_edge_drop, &self.screen_edge_drop_side);
         set_sync_wifi_only(self.sync_wifi_only);
         set_sync_passwords(self.sync_passwords);
         set_keep_popups_paused(self.keep_popups_paused);
@@ -1399,6 +1425,8 @@ mod tests {
         assert_eq!(def.command_palette_hotkey, "Ctrl+Alt+Space");
         assert_eq!(def.shelf_hotkey, "Ctrl+Alt+S");
         assert!(!def.local_api_enabled);
+        assert!(!def.screen_edge_drop);
+        assert_eq!(def.screen_edge_drop_side, "right");
         assert!(!def.local_api_private);
         assert_eq!(def.local_api_port, 53320);
         def.apply_runtime();
@@ -1475,6 +1503,8 @@ mod tests {
             agent_read_only: true,
             clipboard_auto_copy_received_files: false,
             open_shared_files: true,
+            screen_edge_drop: true,
+            screen_edge_drop_side: "left".into(),
             sync_wifi_only: true,
             sync_passwords: true,
             keep_popups_paused: true,

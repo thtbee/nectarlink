@@ -21,6 +21,7 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("App", "NectarLink · 1 device connected"), // desktop/app/src/bridge/app.rs
     QT_TRANSLATE_NOOP("App", "NectarLink · no devices paired"), // desktop/app/src/bridge/app.rs
     QT_TRANSLATE_NOOP("App", "NectarLink · not connected"), // desktop/app/src/bridge/app.rs
+    QT_TRANSLATE_NOOP("App", "No phone is connected."), // desktop/app/src/bridge/app.rs
     QT_TRANSLATE_NOOP("App", "No phone is paired yet."), // desktop/app/src/bridge/app.rs
     QT_TRANSLATE_NOOP("App", "Open NectarLink"), // desktop/app/src/bridge/app.rs
     QT_TRANSLATE_NOOP("App", "Open copied link on phone"), // desktop/app/src/bridge/app.rs
@@ -41,6 +42,7 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("App", "Toggle Shelf"), // desktop/app/src/bridge/app.rs
     QT_TRANSLATE_NOOP("App", "Wi-Fi %1/4"), // desktop/app/src/bridge/app.rs
     QT_TRANSLATE_NOOP("App", "Your phone"), // desktop/app/src/bridge/app.rs
+    QT_TRANSLATE_NOOP("App", "phone"), // desktop/app/src/bridge/app.rs
     QT_TRANSLATE_NOOP("Apps", "Added %1 to your app menu."), // desktop/app/src/bridge/mirror.rs
     QT_TRANSLATE_NOOP("Apps", "Added %1 to your desktop."), // desktop/app/src/bridge/mirror.rs
     QT_TRANSLATE_NOOP("Apps", "Couldn't add a shortcut for %1."), // desktop/app/src/bridge/mirror.rs

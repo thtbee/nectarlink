@@ -67,7 +67,33 @@ QtObject {
                 app.shelfWindow.destroy()
                 app.shelfWindow = null
             }
-            if (!app.mainWindow && Object.keys(app.openMirrors).length === 0)
+            if (!app.mainWindow && Object.keys(app.openMirrors).length === 0 && !AppController.edgeDropOpen)
+                trayTrimTimer.restart()
+        }
+    }
+
+    property var edgeDropWindow: null
+    readonly property Component edgeDropWindowComponent: Component {
+        EdgeDropWindow {}
+    }
+
+    function syncEdgeDropWindow() {
+        if (AppController.edgeDropOpen) {
+            trayTrimTimer.stop()
+            if (!app.edgeDropWindow) {
+                const w = edgeDropWindowComponent.createObject(app)
+                if (w) {
+                    app.edgeDropWindow = w
+                } else {
+                    console.warn("EdgeDropWindow createObject failed:", edgeDropWindowComponent.errorString())
+                }
+            }
+        } else {
+            if (app.edgeDropWindow) {
+                app.edgeDropWindow.destroy()
+                app.edgeDropWindow = null
+            }
+            if (!app.mainWindow && Object.keys(app.openMirrors).length === 0 && !AppController.shelfOpen)
                 trayTrimTimer.restart()
         }
     }
@@ -102,7 +128,7 @@ QtObject {
                 }
             }
         }
-        if (!app.mainWindow && Object.keys(current).length === 0 && !AppController.shelfOpen)
+        if (!app.mainWindow && Object.keys(current).length === 0 && !AppController.shelfOpen && !AppController.edgeDropOpen)
             trayTrimTimer.restart()
     }
     readonly property bool startMinimized: Qt.application.arguments.indexOf("--minimized") >= 0
@@ -111,7 +137,7 @@ QtObject {
     readonly property Timer trayTrimTimer: Timer {
         interval: 350
         onTriggered: {
-            if (!app.mainWindow && Object.keys(app.openMirrors).length === 0 && !AppController.shelfOpen) {
+            if (!app.mainWindow && Object.keys(app.openMirrors).length === 0 && !AppController.shelfOpen && !AppController.edgeDropOpen) {
                 gc()
                 AppController.trimWorkingSet()
             }
@@ -150,9 +176,11 @@ QtObject {
     Component.onCompleted: {
         Mirror.windowsChanged.connect(app.syncMirrorWindows)
         AppController.shelfOpenChanged.connect(app.syncShelfWindow)
+        AppController.edgeDropOpenChanged.connect(app.syncEdgeDropWindow)
         Preferences.nectarIslandChanged.connect(app.syncIslandWindow)
         app.syncMirrorWindows()
         app.syncShelfWindow()
+        app.syncEdgeDropWindow()
         app.syncIslandWindow()
         if (!startMinimized) {
             showMain()
@@ -194,6 +222,9 @@ QtObject {
         }
         function onShelfOpenChanged() {
             app.syncShelfWindow()
+        }
+        function onEdgeDropOpenChanged() {
+            app.syncEdgeDropWindow()
         }
     }
 }

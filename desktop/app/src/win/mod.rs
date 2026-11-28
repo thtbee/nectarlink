@@ -16,6 +16,7 @@ pub mod bt_hfp;
 pub mod clipboard;
 pub mod displays;
 pub mod doctor;
+pub mod edge_drop;
 pub mod elevated;
 pub mod gpu_video;
 pub mod h264;

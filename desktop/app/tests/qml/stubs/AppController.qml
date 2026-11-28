@@ -21,6 +21,15 @@ QtObject {
     function workArea() { return null }
     function triggerHighlight(target) { highlightTarget = target }
     function styleShelfWindow(window) {}
+    property bool edgeDropOpen: false
+    property bool edgeDropHovering: false
+    property bool edgeDropSent: false
+    property bool edgeDropOnline: true
+    property bool edgeDropOpenOnDevice: false
+    property int edgeDropFileCount: 0
+    property string edgeDropPhoneName: ""
+    function styleEdgeDropWindow() {}
+    function finishEdgeDropClose() { edgeDropOpen = false }
     function featureState(feature) { return "" }
     function closeCommandPalette() {}
     function noteCommandPaletteShown() {}
