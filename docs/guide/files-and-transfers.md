@@ -64,7 +64,7 @@ When you send files, folders, clipboard items, links, `Handoff` documents, or `n
    - Links, clipboard items, and task alerts: **24 hours**
    - Files and folders: **7 days**
 6. **Cancelling**: Click **Cancel** next to any single item or **Cancel all** in the `Waiting to send` panel. Cancelling a transfer that is already in progress stops it on both sides and deletes any `.part` staging file on the receiver.
-7. As soon as the target device reconnects, queued items drain automatically in first-in, first-out (FIFO) order, and the `Waiting to send` panel disappears once the queue is empty.
+7. As soon as the target device reconnects, queued items drain automatically in the order they were queued, and the `Waiting to send` panel disappears once the queue is empty. Files and folders go one after another, while clipboard items, links and alerts go alongside them in their own order, so a large file never holds up a copied text.
 
 ### Mounting Phone Storage in Windows File Explorer
 
