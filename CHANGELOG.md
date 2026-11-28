@@ -652,6 +652,13 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **A phone asks before it plays the PC's sound.** Use phone as speaker, turned on from a phone,
+  sent everything the PC played, calls included, to that phone without a word on the PC. The first
+  time a phone asks, the PC now asks you, and remembers a phone you allow.
+- **Security fixes from a review:** the shared Windows update folder is used only for NectarLink's
+  own installers, AI agents can't send login files or password vaults, crash records leave out text
+  a panic quoted, a Deck command tile is checked against the phone's permission as it runs, and on
+  Linux, sms: and mms: links are no longer sent to the phone as copied text.
 - **Typing in other languages and pasting work in phone app windows.** On Android 14 and newer an
   app window runs on its own virtual device with a clipboard of its own, so text typed with an
   input method, and anything pasted, went to the phone's clipboard where the app couldn't see it.
