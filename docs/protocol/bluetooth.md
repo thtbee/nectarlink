@@ -21,8 +21,8 @@ same QUIC session, with the same TLS identities, as the USB tunnel does.
 ## On the link
 
 The same framing as the USB tunnel ([elevated-usb.md](elevated-usb.md) for the
-USB side): an `NLQU` hello each way (magic, `u16` big-endian length, JSON with
-`v`, `id`, `name` and `usb_only`, always false here), then QUIC datagrams as `u16` big-endian length-prefixed
+USB side, and [v0.md §9.3](v0.md#93-usb-flow)): an `NLQU` hello each way (magic, `u16` big-endian length, JSON with
+`v`, `id`, `name` and `usb_only`, always false here, and no `nonce`), then QUIC datagrams as `u16` big-endian length-prefixed
 frames. Each side bridges the frames to a loopback UDP socket for its QUIC
 endpoint.
 

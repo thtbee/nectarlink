@@ -153,6 +153,8 @@ If you have USB debugging (`adb`) enabled on your phone, NectarLink detects the 
 3. Confirm that the 6-digit code matches on both screens and accept on both devices.
 4. Once paired, NectarLink uses the high-speed USB connection (`On USB`) whenever the cable is plugged in and switches to Wi-Fi automatically when you unplug it.
 
+The phone pairs this way, without its pairing screen open, only with a PC that reached it through `adb`: the PC first hands it a one-time key over `adb`, which other apps on the phone can't do. If you decline or the pairing fails, the phone pairs over USB only with its pairing screen open for the next few minutes: open **Pair with your PC** on the phone and plug the cable in again, or pair by QR code. A PC on NectarLink 0.1.5 or older sends no key, so the phone pairs with it over USB only with its pairing screen open; update the PC, or pair by QR code or the 6-digit code.
+
 ## Choosing an Android Power Level
 
 Android groups app capabilities into tiers of system access. NectarLink is designed so that everyday features work out of the box at the `Standard` level, while power users can opt into `Assist` or `Elevated` without rooting their phone.
