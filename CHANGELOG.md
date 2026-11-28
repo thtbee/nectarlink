@@ -711,6 +711,10 @@ change things that need a step from you, and its notes say so.
 - **Your voice from the PC stays clear on a phone call.** When the phone got the PC's microphone
   in pieces that split a sample, the rest of the call's sound from the PC turned to noise.
   Thanks to [@farfromrefug](https://github.com/farfromrefug) ([#693](https://github.com/thtbee/nectarlink/pull/693)).
+- **A phone on a cable comes back sooner after its connection stalls.** When the session over the
+  USB cable stopped answering, the cable's tunnel itself was left open, and the PC kept dialing
+  into it for a minute or more, or for good, while adb still showed the phone. The tunnel is now
+  closed with the dead session, and a new one opens within seconds.
 - **Pairing fits a phone held sideways.** In landscape or a short window, the QR scanner, the code
   and the list of nearby PCs ran off the screen; wide windows now show two panes and short ones
   scroll. Thanks to [@aihehye](https://github.com/aihehye) ([#529](https://github.com/thtbee/nectarlink/issues/529), [#690](https://github.com/thtbee/nectarlink/pull/690)).
