@@ -1580,6 +1580,7 @@ impl qobject::Preferences {
             nectar_island_pc_media: p.nectar_island_pc_media,
             automation_rules: crate::settings::automation_rules(),
             stream_pc_audio_to_phone: p.stream_pc_audio_to_phone,
+            pc_audio_phones: crate::settings::pc_audio_phones(),
             share_pc_storage: p.share_pc_storage,
             forward_pc_notifications_to_phone: p.forward_pc_notifications_to_phone,
             phone_beside: p.phone_beside.to_string(),

@@ -6733,6 +6733,16 @@ Nó cần gì
         <source>Device: %1. Switch device</source>
         <translation>Thiết bị: %1. Đổi thiết bị</translation>
     </message>
+    <message>
+        <location filename="../qml/MainWindow.qml" line="1"/>
+        <source>Play this PC&apos;s sound on %1?</source>
+        <translation>Phát âm thanh của PC này trên %1?</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow.qml" line="1"/>
+        <source>%1 asked to play everything this PC plays, calls included, on itself.</source>
+        <translation>%1 muốn phát mọi âm thanh của PC này, kể cả cuộc gọi, trên chính nó.</translation>
+    </message>
 </context>
 <context>
     <name>Media</name>

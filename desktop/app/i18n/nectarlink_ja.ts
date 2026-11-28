@@ -6728,6 +6728,16 @@ Windows のあらゆるアプリからスマートフォンのカメラを起動
         <source>Device: %1. Switch device</source>
         <translation>デバイス: %1。デバイスを切り替え</translation>
     </message>
+    <message>
+        <location filename="../qml/MainWindow.qml" line="1"/>
+        <source>Play this PC&apos;s sound on %1?</source>
+        <translation>このPCの音を%1で再生しますか？</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow.qml" line="1"/>
+        <source>%1 asked to play everything this PC plays, calls included, on itself.</source>
+        <translation>%1が、通話を含めこのPCで再生されるすべての音を自分で再生しようとしています。</translation>
+    </message>
 </context>
 <context>
     <name>Media</name>

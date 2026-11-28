@@ -6741,6 +6741,16 @@ What it needs
         <source>Device: %1. Switch device</source>
         <translation>Устройство: %1. Сменить устройство</translation>
     </message>
+    <message>
+        <location filename="../qml/MainWindow.qml" line="1"/>
+        <source>Play this PC&apos;s sound on %1?</source>
+        <translation>Воспроизводить звук этого ПК на %1?</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow.qml" line="1"/>
+        <source>%1 asked to play everything this PC plays, calls included, on itself.</source>
+        <translation>%1 просит воспроизводить у себя всё, что играет этот ПК, включая звонки.</translation>
+    </message>
 </context>
 <context>
     <name>Media</name>

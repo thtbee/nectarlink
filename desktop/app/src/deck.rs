@@ -312,9 +312,26 @@ fn commit_config(mutate: impl FnOnce(&mut DeckConfig)) {
 }
 
 /// Called when a paired phone presses a Deck tile (`Platform::deck_press`).
-/// The core has checked the device's toggles for the tile already.
-pub fn handle_press(_peer: &DeviceId, tile_id: &str) -> Result<(), String> {
+/// The core checked the device's toggles against the layout phones have,
+/// which can lag an edit of deck.json: a tile that runs a command now is
+/// checked again here, as it is about to run.
+pub fn handle_press(peer: &DeviceId, tile_id: &str) -> Result<(), String> {
+    reload_from_disk_if_modified();
+    let runs_command = lock(&DECK)
+        .as_ref()
+        .and_then(|rt| rt.config.tile(tile_id).map(|t| t.action.requires_commands_toggle()))
+        .unwrap_or(false);
+    if runs_command && !commands_allowed(peer) {
+        return Err("Deck commands are turned off for this device".to_owned());
+    }
     execute_tile(tile_id)
+}
+
+/// Whether `peer` may run Deck tiles with shell commands (its `commands` toggle).
+fn commands_allowed(peer: &DeviceId) -> bool {
+    core_host::node().and_then(|node| node.device_toggles(*peer).ok()).is_some_and(|toggles| {
+        toggles.iter().any(|(name, on)| *name == nectarlink_core::DECK_COMMANDS_TOGGLE && *on)
+    })
 }
 
 /// Called when a paired phone changes the PC's speaker volume and/or mute state
@@ -325,14 +342,20 @@ pub fn handle_set_audio(peer: &DeviceId, volume: Option<u8>, muted: Option<bool>
             || level == nectarlink_core::deck::PHONE_SPEAKER_ON
         {
             let on = level == nectarlink_core::deck::PHONE_SPEAKER_ON;
-            crate::pc_audio_stream::set_target(on.then_some(*peer));
-            crate::pc_audio_stream::set_enabled(on);
-            let dir = &core_host::host().data_dir;
-            let mut s = crate::settings::Settings::load(dir);
-            s.stream_pc_audio_to_phone = on;
-            let _ = s.save(dir);
-            crate::settings::set_stream_pc_audio_to_phone(on);
-            core_host::host().hub.changed(Changes::PREFS);
+            // Everything the PC plays, a call's other side too, would go to the
+            // phone: one this PC hasn't allowed asks here first. Stopping never asks.
+            if on && !crate::settings::pc_audio_phones().contains(&peer.to_string()) {
+                core_host::host().hub.update(|s| {
+                    if s.pc_audio_prompt == Some(*peer) {
+                        return Changes::NONE;
+                    }
+                    s.pc_audio_prompt = Some(*peer);
+                    Changes::REMOTE
+                });
+                crate::bridge::app::request_activation();
+                return Ok(());
+            }
+            play_on_phone(on.then_some(*peer));
             return Ok(());
         }
         win::audio::set_speaker_volume(level)?;
@@ -344,6 +367,34 @@ pub fn handle_set_audio(peer: &DeviceId, volume: Option<u8>, muted: Option<bool>
         refresh_live_state().await;
     });
     Ok(())
+}
+
+/// Plays this PC's sound on `phone`, or stops (`None`), and remembers it.
+pub fn play_on_phone(phone: Option<DeviceId>) {
+    let on = phone.is_some();
+    crate::pc_audio_stream::set_target(phone);
+    crate::pc_audio_stream::set_enabled(on);
+    let dir = &core_host::host().data_dir;
+    let mut s = crate::settings::Settings::load(dir);
+    s.stream_pc_audio_to_phone = on;
+    let _ = s.save(dir);
+    crate::settings::set_stream_pc_audio_to_phone(on);
+    core_host::host().hub.changed(Changes::PREFS);
+}
+
+/// Lets `phone` start playing this PC's sound on itself from now on, without asking.
+pub fn allow_pc_audio_phone(phone: DeviceId) {
+    let id = phone.to_string();
+    let mut phones = crate::settings::pc_audio_phones();
+    if phones.contains(&id) {
+        return;
+    }
+    phones.push(id);
+    crate::settings::set_pc_audio_phones(phones.clone());
+    let dir = &core_host::host().data_dir;
+    let mut s = crate::settings::Settings::load(dir);
+    s.pc_audio_phones = phones;
+    let _ = s.save(dir);
 }
 
 /// Turns this PC's Wi-Fi and/or Bluetooth on or off for a phone

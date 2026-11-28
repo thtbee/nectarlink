@@ -1420,6 +1420,59 @@ NativeWindow {
     }
 
     Sheet {
+        id: pcAudioPromptSheet
+        opened: AppController.pcAudioPromptDeviceId.length > 0
+        cardWidth: 460
+        onOpenedChanged: {
+            if (!opened && AppController.pcAudioPromptDeviceId.length > 0)
+                AppController.dismissPcAudioPrompt()
+        }
+        Column {
+            width: parent.width
+            spacing: 16
+            Avatar {
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: 56; height: 56
+                iconPath: Icons.speaker
+                emphasized: true
+            }
+            Txt {
+                width: parent.width
+                horizontalAlignment: Text.AlignHCenter
+                text: qsTr("Play this PC's sound on %1?").arg(AppController.pcAudioPromptDeviceName)
+                role: "headline"
+                wrapMode: Text.WordWrap
+            }
+            Txt {
+                width: parent.width
+                horizontalAlignment: Text.AlignHCenter
+                text: qsTr("%1 asked to play everything this PC plays, calls included, on itself.").arg(AppController.pcAudioPromptDeviceName)
+                role: "body"
+                muted: true
+                wrapMode: Text.WordWrap
+            }
+            Row {
+                anchors.right: parent.right
+                spacing: 10
+                Button {
+                    variant: "text"
+                    text: qsTr("Not now")
+                    onClicked: AppController.dismissPcAudioPrompt()
+                }
+                Button {
+                    variant: "tonal"
+                    text: qsTr("Allow")
+                    onClicked: AppController.allowPcAudioOnce(AppController.pcAudioPromptDeviceId)
+                }
+                Button {
+                    text: qsTr("Allow for this device")
+                    onClicked: AppController.allowPcAudioDevice(AppController.pcAudioPromptDeviceId)
+                }
+            }
+        }
+    }
+
+    Sheet {
         id: continuityPasteSheet
         opened: AppController.continuityPastePromptVisible
         cardWidth: 440

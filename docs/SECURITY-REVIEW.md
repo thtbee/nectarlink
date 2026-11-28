@@ -160,7 +160,7 @@ Anything running as your user can read `api-token.json`, so this API doesn't sep
 2. **Controlling the PC.** Input into a PC needs `remote_input`, off by default, on the PC itself: `pc_mirror.rs` and `mirror.rs` check it before injecting, and `remote.rs` asks the first time. The check sits on the PC because the PC is what's being controlled. A phone doesn't apply it to itself.
 3. **What the PC advertises.** `compute_capabilities` advertises `mirror.capture` only when `pc_mirror` is on for a device or sharing is active, and `mirror.input` and `input.inject` only when `remote_input` is on for a device.
 4. **No silent toggles.** Starting a session doesn't change a device's toggles.
-5. **Off by default and set only on the PC:** streaming PC audio (`stream_pc_audio_to_phone`), forwarding PC notifications (`forward_pc_notifications_to_phone`) and sharing PC folders (`share_pc_storage`).
+5. **Off by default and set only on the PC:** streaming PC audio (`stream_pc_audio_to_phone`), forwarding PC notifications (`forward_pc_notifications_to_phone`) and sharing PC folders (`share_pc_storage`). A phone may ask to start PC audio (`pc.audio.set` volume 201), but the PC asks its user first unless that phone was allowed there (`pc_audio_phones`).
 6. **Phone's camera and microphone.** Starting them from a PC needs a tap on the phone, except for a PC you chose under **Start the camera and microphone without asking** (Elevated, off by default).
 7. **Moving control between devices.** `input_share.rs` tracks which device the PC is controlling. Moving the cursor across a screen edge onto the phone is not built.
 

@@ -6737,6 +6737,16 @@ Qué necesitas
         <source>Device: %1. Switch device</source>
         <translation>Dispositivo: %1. Cambiar de dispositivo</translation>
     </message>
+    <message>
+        <location filename="../qml/MainWindow.qml" line="1"/>
+        <source>Play this PC&apos;s sound on %1?</source>
+        <translation>¿Reproducir el sonido de este PC en %1?</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow.qml" line="1"/>
+        <source>%1 asked to play everything this PC plays, calls included, on itself.</source>
+        <translation>%1 pidió reproducir en sí mismo todo lo que suena en este PC, también las llamadas.</translation>
+    </message>
 </context>
 <context>
     <name>Media</name>

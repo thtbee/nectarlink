@@ -327,6 +327,8 @@ pub struct AppState {
     pub remote_prompt: Option<DeviceId>,
     /// Phone asking to view this PC's screen while `pc_mirror` is off.
     pub pc_mirror_prompt: Option<(DeviceId, nectarlink_core::MirrorStart)>,
+    /// Phone asking to play this PC's sound on itself, not allowed here yet.
+    pub pc_audio_prompt: Option<DeviceId>,
     /// Active laser pointer overlay (`(device, x, y)` in `0.0..=1.0`).
     pub laser: Option<(DeviceId, f32, f32)>,
     /// This PC's physical adapters and Wake-on-LAN readiness.
@@ -442,6 +444,10 @@ impl AppState {
                 }
                 if self.pc_mirror_prompt.as_ref().is_some_and(|(d, _)| d == id) {
                     self.pc_mirror_prompt = None;
+                    changes |= Changes::REMOTE;
+                }
+                if self.pc_audio_prompt == Some(*id) {
+                    self.pc_audio_prompt = None;
                     changes |= Changes::REMOTE;
                 }
                 if self.laser.is_some_and(|(d, _, _)| d == *id) {

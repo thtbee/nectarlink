@@ -6760,6 +6760,16 @@ Neler gerekir
         <source>Device: %1. Switch device</source>
         <translation>Cihaz: %1. Cihaz değiştir</translation>
     </message>
+    <message>
+        <location filename="../qml/MainWindow.qml" line="1"/>
+        <source>Play this PC&apos;s sound on %1?</source>
+        <translation>Bu bilgisayarın sesi %1 üzerinde çalınsın mı?</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow.qml" line="1"/>
+        <source>%1 asked to play everything this PC plays, calls included, on itself.</source>
+        <translation>%1, bu bilgisayarın çaldığı her şeyi, aramalar dahil, kendisinde çalmak istiyor.</translation>
+    </message>
 </context>
 <context>
     <name>Media</name>

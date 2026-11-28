@@ -6696,6 +6696,16 @@ What it needs
         <source>Paste into active window</source>
         <translation>Вставити в активне вікно</translation>
     </message>
+    <message>
+        <location filename="../qml/MainWindow.qml" line="1"/>
+        <source>Play this PC&apos;s sound on %1?</source>
+        <translation>Відтворювати звук цього ПК на %1?</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow.qml" line="1"/>
+        <source>%1 asked to play everything this PC plays, calls included, on itself.</source>
+        <translation>%1 просить відтворювати в себе все, що грає цей ПК, разом із дзвінками.</translation>
+    </message>
 </context>
 <context>
     <name>Media</name>
