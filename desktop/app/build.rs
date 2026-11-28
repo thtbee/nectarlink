@@ -533,12 +533,3 @@ fn build_macos_audio_loopback() {
         .flag("-std=c++17")
         .compile("nectarlink_mac_audio_loopback");
 }
-
-fn build_macos_share() {
-    println!("cargo::rerun-if-changed=cpp/mac_share.mm");
-    cc::Build::new()
-        .file("cpp/mac_share.mm")
-        .flag("-fobjc-arc")
-        .flag("-std=c++17")
-        .compile("nectarlink_mac_share");
-}
