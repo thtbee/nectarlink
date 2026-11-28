@@ -1277,7 +1277,7 @@
     <!-- 16. App streams -->
     <string name="guide_apps_title">Transmisiones de aplicaciones</string>
     <string name="guide_apps_summary">Abre aplicaciones de Android individuales en ventanas propias en tu PC mientras la pantalla de tu teléfono sigue siendo independiente.</string>
-    <string name="guide_apps_where">Ajustes › Permisos › Control desde tu PC › Pulsaciones y teclas reales (depuración inalámbrica)</string>
+    <string name="guide_apps_where">Ajustes › Permisos › Control desde tu PC › Elevated</string>
     <string name="guide_apps_needs">Elevated (depuración inalámbrica)</string>
     <string name="guide_apps_need_1">Elevated, configurado mediante depuración inalámbrica.</string>
     <string name="guide_apps_need_2">PC emparejado y conectado.</string>
@@ -1352,10 +1352,10 @@
     <!-- 22. Elevated -->
     <string name="guide_elevated_title">Elevated</string>
     <string name="guide_elevated_summary">Pulsaciones y teclas reales, transmisiones de aplicaciones, sincronización del portapapeles en segundo plano y controles de llamadas mediante depuración inalámbrica.</string>
-    <string name="guide_elevated_where">Ajustes › Permisos › Control desde tu PC › Pulsaciones y teclas reales (depuración inalámbrica)</string>
+    <string name="guide_elevated_where">Ajustes › Permisos › Control desde tu PC › Elevated</string>
     <string name="guide_elevated_needs">Depuración inalámbrica</string>
     <string name="guide_elevated_need_1">Opciones de desarrollador y depuración inalámbrica activadas.</string>
-    <string name="guide_elevated_phone_1">Abre Ajustes › Permisos › Control desde tu PC y toca Configurar en Pulsaciones y teclas reales.</string>
+    <string name="guide_elevated_phone_1">Abre Ajustes › Permisos › Control desde tu PC y toca Configurar en Elevated.</string>
     <string name="guide_elevated_phone_2">En Depuración inalámbrica, toca Emparejar dispositivo con código de emparejamiento e introduce el código de 6 dígitos en la notificación.</string>
     <string name="guide_elevated_pc_1">Usa transmisiones de aplicaciones, sincronización del portapapeles en segundo plano y entrada de baja latencia desde tu PC.</string>
     <string name="guide_elevated_opt_1">Configurar / Desactivar: empareja o detiene el componente local de depuración inalámbrica.</string>

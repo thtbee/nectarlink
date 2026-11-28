@@ -828,7 +828,7 @@
     <string name="widget_pc_offline">Offline</string>
     <string name="widget_pc_waking">Wybudzanie…</string>
     <string name="widget_pc_wake">Wybudź</string>
-    <string name="widget_pc_ring">Włącz dźwięk na komputerze</string>
+    <string name="widget_pc_ring">Zadzwoń na komputer</string>
     <string name="widget_pc_ringing_toast">Włączanie dźwięku na %1$s…</string>
     <string name="widget_pc_waking_toast">Wybudzanie %1$s…</string>
 
