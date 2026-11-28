@@ -706,6 +706,10 @@ fn run_setup_window(mode: setup::Mode) -> ExitCode {
 }
 
 fn main() -> ExitCode {
+    #[cfg(linux_gst_nvenc)]
+    if let Some(code) = win::gst_nvenc::worker_main() {
+        return code;
+    }
     let options = parse_options();
     if matches!(options.tel, Some(Err(()))) {
         return ExitCode::FAILURE;

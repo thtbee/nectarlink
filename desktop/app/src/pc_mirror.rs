@@ -1618,6 +1618,8 @@ mod imp {
         OpenH264(OpenH264Encoder),
         #[cfg(linux_ffmpeg_video)]
         Hardware(crate::win::video_encoder::Encoder),
+        #[cfg(linux_gst_nvenc)]
+        Nvenc(win::gst_nvenc::Capture),
     }
 
     #[cfg(target_os = "linux")]
@@ -1659,19 +1661,23 @@ mod imp {
             false
         }
 
-        pub(crate) fn request_keyframe(&self) -> bool {
+        pub(crate) fn request_keyframe(&mut self) -> bool {
             match self {
                 Self::OpenH264(encoder) => encoder.request_keyframe(),
                 #[cfg(linux_ffmpeg_video)]
                 Self::Hardware(encoder) => encoder.request_keyframe(),
+                #[cfg(linux_gst_nvenc)]
+                Self::Nvenc(capture) => capture.command(0),
             }
         }
 
-        pub(crate) fn set_bitrate(&self, bitrate: u32) -> bool {
+        pub(crate) fn set_bitrate(&mut self, bitrate: u32) -> bool {
             match self {
                 Self::OpenH264(encoder) => encoder.set_bitrate(bitrate),
                 #[cfg(linux_ffmpeg_video)]
                 Self::Hardware(encoder) => encoder.set_bitrate(bitrate),
+                #[cfg(linux_gst_nvenc)]
+                Self::Nvenc(capture) => capture.command(bitrate),
             }
         }
 
@@ -1686,6 +1692,8 @@ mod imp {
                 Self::OpenH264(encoder) => encoder.encode(nv12, hns, dur_hns, stop),
                 #[cfg(linux_ffmpeg_video)]
                 Self::Hardware(encoder) => encoder.encode(nv12, hns, stop),
+                #[cfg(linux_gst_nvenc)]
+                Self::Nvenc(_) => Err("NVENC worker does not accept CPU frames".into()),
             }
         }
     }
@@ -2304,7 +2312,7 @@ mod imp {
             let raw = remote.as_raw_fd();
             let node_id = portal.node_id;
             let mut cmd = Command::new("gst-launch-1.0");
-            cmd.args(pipeline_args(node_id, dst_w, dst_h, mode.uses_gl()))
+            cmd.args(pipeline_args(node_id, dst_w, dst_h, mode))
                 .stdin(Stdio::null())
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped());
@@ -2459,10 +2467,9 @@ mod imp {
     }
 
     /// gst-launch arguments: read stream `node_id` through the portal's
-    /// PipeWire connection (fd 3) and write raw BGRx frames to stdout. With
-    /// `gl`, frames go through OpenGL first, for GPU (DMABuf) buffers.
+    /// PipeWire connection (fd 3) and write raw BGRx frames to stdout.
     #[cfg(target_os = "linux")]
-    pub(crate) fn pipeline_args(node_id: u32, dst_w: u32, dst_h: u32, gl: bool) -> Vec<String> {
+    fn pipeline_args(node_id: u32, dst_w: u32, dst_h: u32, mode: WaylandCaptureMode) -> Vec<String> {
         static HAS_ON_DISCONNECT: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
         let mut args = vec![
             "-q".to_owned(),
@@ -2480,11 +2487,18 @@ mod imp {
         }) {
             args.push("on-disconnect=error".to_owned());
         }
-        if gl {
-            args.extend(
-                ["!", "glupload", "!", "glcolorconvert", "!", "gldownload", "!", "video/x-raw,format=RGBA"]
-                    .map(str::to_owned),
-            );
+        if mode.uses_gl() {
+            args.extend(["!", "glupload", "!", "glcolorconvert"].map(str::to_owned));
+            if mode == WaylandCaptureMode::OpenGl {
+                // Shrink the texture before reading it back to system memory.
+                // LastOpenGl keeps the original path if this fails.
+                args.extend(
+                    ["!", "video/x-raw(memory:GLMemory),format=RGBA", "!", "glcolorscale"].map(str::to_owned),
+                );
+                args.push("!".to_owned());
+                args.push(format!("video/x-raw(memory:GLMemory),format=RGBA,width={dst_w},height={dst_h}"));
+            }
+            args.extend(["!", "gldownload", "!", "video/x-raw,format=RGBA"].map(str::to_owned));
         } else {
             // Request system memory from PipeWire. videoconvert also accepts
             // DMA-BUF caps, which would let the two paths select the same buffers.
@@ -2627,6 +2641,15 @@ mod imp {
             return;
         };
         let runtime = &core_host::host().runtime;
+        let fps = options.fps.clamp(10, 60);
+        let max_bitrate = options.bitrate.clamp(500_000, 20_000_000);
+        let mut codec = if node.mirror_codecs(peer).is_ok_and(|codecs| codecs.iter().any(|c| c == "h265")) {
+            "h265".to_owned()
+        } else {
+            "h264".to_owned()
+        };
+        #[cfg(linux_gst_nvenc)]
+        let (mut nvenc_portal, mut nvenc) = (None, None);
         // Dropping the Wayland portal's zbus signal stream schedules a Tokio task.
         // Keep the runtime entered through capture and teardown on this thread.
         #[cfg(target_os = "linux")]
@@ -2640,17 +2663,31 @@ mod imp {
             ));
             match portal.and_then(|portal| {
                 let dims = target_dimensions(portal.size.0, portal.size.1, options.max_size);
-                WaylandScreenCaster::start(runtime, portal, dims).map(|caster| (caster, dims))
-            }) {
-                Ok((caster, dims)) => {
-                    if caster.portal.input {
-                        let mut active = ACTIVE.lock().unwrap_or_else(|e| e.into_inner());
-                        if let Some(active) = active.as_mut().filter(|s| Arc::ptr_eq(&s.stop, &stop)) {
-                            active.input_portal = Some(Arc::new(caster.portal.input_portal()));
+                if portal.input {
+                    let mut active = ACTIVE.lock().unwrap_or_else(|e| e.into_inner());
+                    if let Some(active) = active.as_mut().filter(|s| Arc::ptr_eq(&s.stop, &stop)) {
+                        active.input_portal = Some(Arc::new(portal.input_portal()));
+                    }
+                }
+                #[cfg(linux_gst_nvenc)]
+                if codec == "h265" && win::gst_nvenc::enabled() {
+                    let worker = runtime.block_on(portal.open_remote()).and_then(|remote| {
+                        Ok(win::gst_nvenc::Capture::start(remote, portal.node_id, dims, fps, max_bitrate)?)
+                    });
+                    match worker {
+                        Ok(worker) => {
+                            nvenc = Some(ScreenEncoder::Nvenc(worker));
+                            nvenc_portal = Some(portal);
+                            return Ok((None, Some(dims)));
+                        }
+                        Err(error) => {
+                            tracing::info!(%error, "NVENC worker unavailable; using raw Wayland capture")
                         }
                     }
-                    (Some(caster), Some(dims))
                 }
+                WaylandScreenCaster::start(runtime, portal, dims).map(|caster| (Some(caster), Some(dims)))
+            }) {
+                Ok(result) => result,
                 Err(error) => {
                     finish_failed_capture(peer, &stop, &error);
                     return;
@@ -2677,7 +2714,7 @@ mod imp {
             Err(error) => {
                 tracing::warn!(peer = %peer.short(), %error, "couldn't open PC mirror stream to phone");
                 #[cfg(target_os = "linux")]
-                if wayland.is_some() {
+                if wayland_dims.is_some() {
                     drop(wayland);
                     finish_failed_capture(peer, &stop, &error.into());
                     return;
@@ -2719,19 +2756,11 @@ mod imp {
         // mount before sending the initial MirrorConfig and IDR keyframe.
         std::thread::sleep(Duration::from_millis(120));
 
-        let fps = options.fps.clamp(10, 60);
-        let max_bitrate = options.bitrate.clamp(500_000, 20_000_000);
         // Lowered when the link can't keep up (frames dropped to hold the delay down),
         // raised back once it has been clean for a while.
         let mut bitrate = max_bitrate;
         let frame_interval = Duration::from_micros(1_000_000 / u64::from(fps));
         let dur_hns = (10_000_000 / u64::from(fps)) as i64;
-
-        let mut codec = if node.mirror_codecs(peer).is_ok_and(|codecs| codecs.iter().any(|c| c == "h265")) {
-            "h265".to_owned()
-        } else {
-            "h264".to_owned()
-        };
 
         let mut bgra = Vec::new();
         let mut nv12 = Vec::new();
@@ -2921,7 +2950,15 @@ mod imp {
             // stream config plus a full keyframe) is the fallback for encoders that can't.
             let requested_kf = force_keyframe.swap(false, Ordering::SeqCst);
             let keyframe_in_place =
-                requested_kf && encoder.as_ref().is_some_and(ScreenEncoder::request_keyframe);
+                requested_kf && encoder.as_mut().is_some_and(|enc| enc.request_keyframe());
+            #[cfg(linux_gst_nvenc)]
+            let keyframe_in_place = keyframe_in_place
+                || if requested_kf && nvenc_portal.is_some() {
+                    force_keyframe.store(true, Ordering::Relaxed);
+                    true
+                } else {
+                    false
+                };
             let need_reinit = encoder.is_none()
                 || (requested_kf
                     && !keyframe_in_place
@@ -2943,8 +2980,13 @@ mod imp {
                 } else {
                     new_pc_encoder_with_fallback(&mut codec, dst_w, dst_h, fps, bitrate)
                 };
-                #[cfg(target_os = "linux")]
+                #[cfg(all(target_os = "linux", not(linux_gst_nvenc)))]
                 let init_result = new_pc_encoder_with_fallback(&mut codec, dst_w, dst_h, fps, bitrate);
+                #[cfg(linux_gst_nvenc)]
+                let init_result = match nvenc.take() {
+                    Some(worker) => Ok(worker),
+                    None => new_pc_encoder_with_fallback(&mut codec, dst_w, dst_h, fps, bitrate),
+                };
 
                 match init_result {
                     Ok(enc) => {
@@ -3096,7 +3138,11 @@ mod imp {
             };
 
             #[cfg(target_os = "linux")]
-            let encode_attempt = {
+            let encode_attempt = (|| {
+                #[cfg(linux_gst_nvenc)]
+                if nvenc_portal.is_some() {
+                    return None;
+                }
                 let wayland_captured = wayland.is_some();
                 let captured = wayland_captured
                     || match (place, window_capture.as_mut()) {
@@ -3116,9 +3162,19 @@ mod imp {
                 } else {
                     None
                 }
-            };
+            })();
 
-            if let Some((time_us, result)) = encode_attempt
+            let result = encode_attempt.map(|(time_us, result)| {
+                result.map(|packets| {
+                    packets.into_iter().map(|(key, bytes)| (time_us, key, bytes)).collect::<Vec<_>>()
+                })
+            });
+            #[cfg(linux_gst_nvenc)]
+            let result = match encoder.as_mut() {
+                Some(ScreenEncoder::Nvenc(worker)) => Some(worker.read(started.elapsed().as_micros() as u64)),
+                _ => result,
+            };
+            if let Some(result) = result
                 && let Some(enc) = encoder.as_mut()
             {
                 match result {
@@ -3128,7 +3184,7 @@ mod imp {
                             last_video = Some(Instant::now());
                         }
                         let mut send_failed = false;
-                        for (is_keyframe, bytes) in packets {
+                        for (time_us, is_keyframe, bytes) in packets {
                             let kind = if is_keyframe { PacketKind::Keyframe } else { PacketKind::Frame };
                             let len = bytes.len();
                             match sender.send(kind, time_us, bytes) {
@@ -3196,6 +3252,21 @@ mod imp {
                         if stop.load(Ordering::Relaxed) {
                             break;
                         }
+                        #[cfg(linux_gst_nvenc)]
+                        if let Some(portal) = nvenc_portal.take() {
+                            tracing::warn!(error = %e, "NVENC worker failed; using raw Wayland capture");
+                            encoder = None;
+                            match WaylandScreenCaster::start(runtime, portal, (dst_w, dst_h)) {
+                                Ok(caster) => {
+                                    wayland = Some(caster);
+                                    continue;
+                                }
+                                Err(error) => {
+                                    capture_failed = Some(error);
+                                    break;
+                                }
+                            }
+                        }
                         #[cfg(any(windows, linux_ffmpeg_video))]
                         if enc.next_encoder(&codec, dst_w, dst_h, fps, bitrate) {
                             tracing::warn!(error = %e, codec, "Video encoding failed; trying another encoder");
@@ -3245,7 +3316,7 @@ mod imp {
 
         #[cfg(target_os = "linux")]
         {
-            if wayland.is_some() && sender.is_closed() && !stop.load(Ordering::Acquire) {
+            if wayland_dims.is_some() && sender.is_closed() && !stop.load(Ordering::Acquire) {
                 capture_failed.get_or_insert_with(|| anyhow::anyhow!("the video stream disconnected"));
             }
             drop(wayland);
@@ -3405,7 +3476,7 @@ mod imp {
         #[cfg(target_os = "linux")]
         #[test]
         fn wayland_capture_reads_the_stream_through_the_portal_connection() {
-            let args = pipeline_args(57, 1280, 720, false);
+            let args = pipeline_args(57, 1280, 720, WaylandCaptureMode::PipeWire);
             assert_eq!(args[1], "pipewiresrc");
             assert!(args.contains(&"fd=3".to_owned()), "the portal's PipeWire connection, as fd 3");
             assert!(args.contains(&"path=57".to_owned()));
@@ -3415,12 +3486,25 @@ mod imp {
             assert!(args.windows(3).any(|args| args == ["video/x-raw", "!", "videoconvert"]));
 
             // Through OpenGL: GPU buffers downloaded as RGBA, then the same tail.
-            let gl = pipeline_args(57, 1280, 720, true);
+            let gl = pipeline_args(57, 1280, 720, WaylandCaptureMode::OpenGl);
             let at = |name: &str| gl.iter().position(|a| a == name).unwrap_or(usize::MAX);
+            assert!(gl.windows(5).any(|args| {
+                args == [
+                    "glcolorscale",
+                    "!",
+                    "video/x-raw(memory:GLMemory),format=RGBA,width=1280,height=720",
+                    "!",
+                    "gldownload",
+                ]
+            }));
             assert!(at("glupload") < at("glcolorconvert") && at("glcolorconvert") < at("gldownload"));
             assert!(at("gldownload") < at("videoconvert"));
             assert!(!gl.iter().any(|arg| arg == "video/x-raw"));
             assert!(gl.contains(&"video/x-raw,format=BGRx,width=1280,height=720".to_owned()));
+
+            let retry_gl = pipeline_args(57, 1280, 720, WaylandCaptureMode::LastOpenGl);
+            assert!(retry_gl.iter().any(|arg| arg == "glupload"));
+            assert!(!retry_gl.iter().any(|arg| arg == "glcolorscale"));
         }
 
         #[cfg(target_os = "linux")]

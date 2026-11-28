@@ -90,6 +90,8 @@ You can also view (and optionally control) your PC's desktop from your phone:
 5. **Primary display**: The phone sees the PC's primary display. On a PC with several monitors, the others are not shared. To share a different monitor, make it the primary display in Windows **Settings › System › Display**.
 6. **Slow connections**: On a slow link (mobile data through the relay), the PC lowers the video bitrate until the picture flows smoothly, and raises it again once the link recovers.
 
+On Linux Wayland, NectarLink automatically tries the CUDA/NVENC capture path for HEVC when all active displays are on NVIDIA and GStreamer provides the required plugins (including `cudaupload` and `nvh265enc`). If the path cannot start or stops producing frames, NectarLink falls back to regular capture. No setting is required. For troubleshooting, restart NectarLink with `NECTARLINK_DISABLE_WAYLAND_NVENC=1` to skip this path.
+
 ## What the Options Do
 
 - **Mirror quality**: On a direct connection, **Smoother** lowers both screen mirroring and app windows to at most 1280 pixels and 4 Mbps. Reopen an app window after changing it. This reduces encoding, network and decoding work; it can help responsiveness when several apps are open.

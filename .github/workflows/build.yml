@@ -158,8 +158,9 @@ jobs:
             build-essential pkg-config libgl1-mesa-dev libx11-dev libxcb1-dev \
             libxkbcommon-dev libxkbcommon-x11-dev libwayland-dev libfontconfig1-dev \
             libfreetype-dev libdbus-1-dev libxtst-dev libavcodec-dev libavutil-dev \
+            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
             qt6-l10n-tools file desktop-file-utils appstream rpm shellcheck
-          pkg-config --exists libavcodec libavutil
+          pkg-config --exists libavcodec libavutil gstreamer-app-1.0 gstreamer-video-1.0
       - name: Install Qt
         uses: jurplel/install-qt-action@b344308e4483fc892e0d27b3cd1b173ebdd95f06 # v4.5.0
         with:

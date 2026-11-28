@@ -666,6 +666,10 @@ change things that need a step from you, and its notes say so.
   confirm. Thanks to [@SGSTAR01](https://github.com/SGSTAR01) ([#629](https://github.com/thtbee/nectarlink/issues/629)).
 - **The tray icon's menu is dark when Windows is.** It stayed light in dark mode. Thanks to
   [@BraveMomo](https://github.com/BraveMomo) ([#740](https://github.com/thtbee/nectarlink/issues/740)).
+- **Sharing a Linux PC's screen with the phone takes much less CPU on Wayland.** The picture is
+  scaled down on the graphics card before it's read back, and on a PC whose displays are all on
+  NVIDIA, it's encoded there too, without coming through the CPU at all. If that can't start, the
+  usual capture takes over. Thanks to [@vladikchi](https://github.com/vladikchi) ([#742](https://github.com/thtbee/nectarlink/pull/742)).
 - **The PC app opens faster, and both apps are smaller.** The window shows in about 0.3 s
   instead of 0.6 s (the icon, Jump List and What's new check no longer hold it up), the Windows
   installer is 2 MB smaller, and the phone app is about 9 MB smaller. On x86_64 Chromebooks that

@@ -321,8 +321,10 @@ jobs:
           sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
           sudo apt-get -o Acquire::Retries=3 update
           sudo apt-get install -y --no-install-recommends -o Dir::Cache::Archives="$HOME/apt-archives" \
-            libgl1-mesa-dev libxkbcommon-dev libvulkan-dev libx11-dev \
-            ffmpeg libavcodec-dev libavutil-dev libopenh264-dev qt6-l10n-tools libpam0g-dev
+            pkg-config libgl1-mesa-dev libxkbcommon-dev libvulkan-dev libx11-dev \
+            ffmpeg libavcodec-dev libavutil-dev libopenh264-dev qt6-l10n-tools libpam0g-dev \
+            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+          pkg-config --exists gstreamer-app-1.0 gstreamer-video-1.0
           # Drop what the mirror no longer has, so the cache doesn't grow.
           sudo apt-get autoclean -o Dir::Cache::Archives="$HOME/apt-archives"
           sudo chown -R "$USER" ~/apt-archives
@@ -349,10 +351,10 @@ jobs:
           sudo python3 "$smoke_dir/pam_session.py" "$smoke_dir/libpam_nectarlink_phone_unlock.so"
       - name: Video adapter fallback
         run: bash desktop/app/tests/linux_video_dispatch_test.sh
-      - name: Check without the optional FFmpeg backend
+      - name: Check without the optional Linux video backends
         env:
           LIBAVCODEC_NO_PKG_CONFIG: "1"
-        run: cargo check --locked -p nectarlink-desktop --tests
+        run: env 'GSTREAMER_APP_1.0_NO_PKG_CONFIG=1' cargo check --locked -p nectarlink-desktop --tests
 
   desktop-linux-release:
     name: Linux app (x64, release build)
@@ -386,8 +388,10 @@ jobs:
           sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
           sudo apt-get -o Acquire::Retries=3 update
           sudo apt-get install -y --no-install-recommends -o Dir::Cache::Archives="$HOME/apt-archives" \
-            libgl1-mesa-dev libxkbcommon-dev libvulkan-dev libx11-dev \
-            ffmpeg libavcodec-dev libavutil-dev libopenh264-dev qt6-l10n-tools
+            pkg-config libgl1-mesa-dev libxkbcommon-dev libvulkan-dev libx11-dev \
+            ffmpeg libavcodec-dev libavutil-dev libopenh264-dev qt6-l10n-tools \
+            libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+          pkg-config --exists gstreamer-app-1.0 gstreamer-video-1.0
           # Drop what the mirror no longer has, so the cache doesn't grow.
           sudo apt-get autoclean -o Dir::Cache::Archives="$HOME/apt-archives"
           sudo chown -R "$USER" ~/apt-archives
