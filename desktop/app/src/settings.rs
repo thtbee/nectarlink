@@ -655,6 +655,10 @@ pub struct Settings {
     /// predates it, which holds `trayOneColour: false` only because every field is saved.
     #[serde(default)]
     pub tray_icon_default_applied: bool,
+    /// Also use this computer's own address book (the Mac's Contacts) for names,
+    /// pictures and new-message suggestions, next to the phone's contacts.
+    #[serde(default, alias = "local_contacts_system")]
+    pub local_contacts_system: bool,
     /// Send what's copied on this PC to connected phones.
     #[serde(alias = "auto_clipboard", alias = "clipboard_sync")]
     pub auto_clipboard: bool,
@@ -1030,6 +1034,7 @@ impl Default for Settings {
             close_to_tray: default_close_to_tray(),
             tray_one_colour: default_tray_one_colour(),
             tray_icon_default_applied: true,
+            local_contacts_system: false,
             auto_clipboard: true,
             clipboard_history: true,
             suggest_clipboard_actions: true,
@@ -1172,6 +1177,7 @@ impl Settings {
     }
 
     pub fn apply_runtime(&self) {
+        crate::local_contacts::configure(self.local_contacts_system);
         #[cfg(any(windows, target_os = "linux", target_os = "macos"))]
         crate::win::tray::set_one_colour(self.tray_one_colour);
         set_clipboard_auto_copy_received_files(self.clipboard_auto_copy_received_files);
@@ -1416,6 +1422,7 @@ mod tests {
             close_to_tray: false,
             tray_one_colour: true,
             tray_icon_default_applied: true,
+            local_contacts_system: true,
             auto_clipboard: false,
             clipboard_history: false,
             suggest_clipboard_actions: false,

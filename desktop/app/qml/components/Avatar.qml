@@ -7,6 +7,8 @@ Rectangle {
     id: avatar
     property string name
     property string iconPath
+    // A picture (a file URL) over the initial, when it loads.
+    property string photo
     property bool emphasized: false
     // A color of its own (a contact's), in Bloom; Graphite stays ink on paper.
     property real hue: -1
@@ -38,5 +40,12 @@ Rectangle {
         role: "label"
         weight: 700
         color: avatar.ink
+    }
+    RoundedImage {
+        anchors.fill: parent
+        radius: avatar.radius
+        visible: avatar.photo.length > 0 && status === Image.Ready
+        source: avatar.photo
+        sourceSize: Qt.size(Math.max(avatar.width, 1) * 2, Math.max(avatar.height, 1) * 2)
     }
 }

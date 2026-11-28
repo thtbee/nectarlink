@@ -48,7 +48,7 @@ You can attach images to any SMS/MMS conversation in three ways:
 ### Starting a New Conversation
 
 1. Click the **New message** button at the top of the conversation list.
-2. Type a contact's name or phone number in the **To:** field. NectarLink searches your phone's synced contacts as you type, showing matching names, phone numbers, and contact avatars.
+2. Type a contact's name or phone number in the **To:** field. NectarLink searches your phone's synced contacts as you type, showing matching names, phone numbers, and contact avatars. A number matches however it's written: `06 12`, `0612` and `+33 6 12` all find `+33 6 12 34 56 78`. The Mac's Contacts (see **Also use the Mac's Contacts** below) are in the same list.
 3. Click a contact (or finish typing a phone number), write your message in the composer, and press **Enter**.
 
 ### One-Time Codes
@@ -59,6 +59,7 @@ When an SMS or chat message contains a verification code, NectarLink displays a 
 
 - **Messages toggle** (`Settings › Devices` on PC, **On** by default): Allows this phone and PC to sync SMS/MMS conversations, Unified Conversations, and outgoing replies.
 - **Contacts toggle** (`Settings › Devices` on PC, **On** by default): Syncs contact names, phone numbers, and avatars so threads display people's names instead of raw numbers.
+- **Also use the Mac's Contacts** (`Settings › Calls` on a Mac, see [Calls](calls.md#what-the-options-do)): Adds the Mac's Contacts to the people a new message suggests, and names conversations the phone has no name for.
 - **Mark texts read on the phone** (`Settings › General` on PC, **Off** by default): Marks an SMS conversation read on the phone as well when you read it on the PC, through its messaging app's own **Mark as read** notification button (and, with `Elevated`, in the phone's messages).
 - **Copy one-time codes** (`Settings › General` on PC, **Off** by default): Copies verification codes from incoming SMS messages to the PC clipboard automatically.
 - **Cached messages** (`Settings › Storage & Privacy` on PC and `Settings › Features & Data › Data & storage` on Android): Shows how many chat threads, messages, and MMS attachment bytes are cached locally, with a **Clear** button to wipe the local cache at any time.

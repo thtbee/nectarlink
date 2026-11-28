@@ -45,6 +45,14 @@ change things that need a step from you, and its notes say so.
   **Tray icon** in Settings › General turns the color tile back on (a Mac that already ran
   NectarLink moves to the one-color icon once). Thanks to
   [@farfromrefug](https://github.com/farfromrefug) ([#685](https://github.com/thtbee/nectarlink/pull/685)).
+- **The Mac's Contacts, next to the phone's.** A new **Also use the Mac's Contacts** setting
+  (macOS asks once) adds the people only the Mac knows. A caller, a text or a call-log entry the
+  phone has no name for shows the name and picture of the matching Mac contact, in the call
+  notification, on Home and in Nectar Island, which now shows the caller's picture; the dialer and
+  the new-message box list both together, one person once. The phone's own contacts stay asked of
+  the phone, and conversations and the call log now pick up a contact added on the phone as soon
+  as the phone says so. A new message's **To** field also finds a contact by digits however
+  they're typed (`06 12`, `+33 6 12`).
 - **Unlock KDE Plasma with the phone.** On Linux, NectarLink's PAM module can now run in the
   lock screen's `kde-fingerprint` service, so the phone asks for your fingerprint each time the
   PC locks and unlocks it when you approve. It's one line in `/etc/pam.d/kde-fingerprint`; see

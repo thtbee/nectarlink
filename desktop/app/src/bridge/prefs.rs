@@ -51,6 +51,8 @@ pub mod qobject {
         #[qproperty(bool, close_to_tray)]
         /// The tray icon in one colour, matching the taskbar.
         #[qproperty(bool, tray_one_colour, cxx_name = "trayOneColour")]
+        /// Use this computer's own contacts (the Mac's Contacts) as well as the phone's.
+        #[qproperty(bool, local_contacts_system, cxx_name = "localContactsSystem")]
         /// Send what's copied on this PC to connected phones.
         #[qproperty(bool, auto_clipboard)]
         /// Keep the last 50 synced clips in encrypted local history.
@@ -434,6 +436,7 @@ pub struct PreferencesRust {
     comb_motion: bool,
     close_to_tray: bool,
     tray_one_colour: bool,
+    local_contacts_system: bool,
     auto_clipboard: bool,
     clipboard_history: bool,
     suggest_clipboard_actions: bool,
@@ -551,6 +554,7 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_comb_motion(settings.comb_motion);
         self.as_mut().set_close_to_tray(settings.close_to_tray);
         self.as_mut().set_tray_one_colour(settings.tray_one_colour);
+        self.as_mut().set_local_contacts_system(settings.local_contacts_system);
         self.as_mut().set_auto_clipboard(settings.auto_clipboard);
         crate::clipboard::set_auto_send(settings.auto_clipboard);
         self.as_mut().set_clipboard_history(settings.clipboard_history);
@@ -691,6 +695,12 @@ impl cxx_qt::Initialize for qobject::Preferences {
             .on_tray_one_colour_changed(|p| {
                 #[cfg(any(windows, target_os = "linux", target_os = "macos"))]
                 crate::win::tray::set_one_colour(p.tray_one_colour);
+                p.save();
+            })
+            .release();
+        self.as_mut()
+            .on_local_contacts_system_changed(|p| {
+                crate::local_contacts::configure(p.local_contacts_system);
                 p.save();
             })
             .release();
@@ -1496,6 +1506,7 @@ impl qobject::Preferences {
             tray_one_colour: p.tray_one_colour,
             // Whatever is saved now is the choice, not the old default.
             tray_icon_default_applied: true,
+            local_contacts_system: p.local_contacts_system,
             auto_clipboard: p.auto_clipboard,
             clipboard_history: p.clipboard_history,
             suggest_clipboard_actions: p.suggest_clipboard_actions,

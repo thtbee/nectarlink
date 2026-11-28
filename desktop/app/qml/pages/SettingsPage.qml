@@ -2754,6 +2754,27 @@ Item {
                         }
                     }
                 }
+                // The Mac's own contacts, next to the phone's (which are asked of the phone as needed).
+                Card {
+                    visible: Qt.platform.os === "osx"
+                    width: parent.width
+                    Column {
+                        width: parent.width
+                        spacing: 6
+                        Txt { text: qsTr("Contacts"); role: "label"; muted: true }
+                        ListRow {
+                            width: parent.width
+                            iconPath: Icons.person
+                            title: qsTr("Also use the Mac's Contacts")
+                            description: qsTr("The phone's contacts are always used, as they are on the phone. This adds the people only this Mac knows, for names and pictures on calls and messages and for new-message suggestions. macOS asks once.")
+                            Toggle {
+                                label: qsTr("Also use the Mac's Contacts")
+                                checked: Preferences.localContactsSystem
+                                onToggled: (on) => Preferences.localContactsSystem = on
+                            }
+                        }
+                    }
+                }
             }
 
             // ================================================================

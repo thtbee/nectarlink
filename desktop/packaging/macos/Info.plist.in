@@ -30,5 +30,7 @@
     <string>NectarLink discovers and connects to your paired phone over the local network.</string>
     <key>NSBluetoothAlwaysUsageDescription</key>
     <string>NectarLink uses Bluetooth to discover nearby paired devices.</string>
+    <key>NSContactsUsageDescription</key>
+    <string>NectarLink shows your Mac's contacts, next to your phone's, when you write a message or a call comes in.</string>
 </dict>
 </plist>

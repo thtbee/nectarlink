@@ -32,6 +32,7 @@ Item {
     readonly property var recipientMatches: {
         if (!composing || recipientQuery.length === 0) return []
         const out = []
+        const queryDigits = recipientQuery.replace(/\D/g, "")
         for (let i = 0; i < contacts.length && out.length < 6; i++) {
             const c = contacts[i]
             const nums = c.numbers || []
@@ -40,7 +41,12 @@ Item {
                 const label = nums[j].label || ""
                 // Don't show a suggestion if its number is already selected verbatim.
                 if (num === toField.text.trim()) continue
-                if ((c.name + " " + num + " " + label).toLocaleLowerCase().indexOf(recipientQuery) >= 0) {
+                // Digits typed as "06 12" or "+33 6 12" find "+33 6 12 34 56 78".
+                const numDigits = num.replace(/\D/g, "")
+                const digitsMatch = queryDigits.length >= 3
+                    && (numDigits.indexOf(queryDigits) >= 0
+                        || (queryDigits.charAt(0) === "0" && numDigits.indexOf(queryDigits.slice(1)) >= 0))
+                if (digitsMatch || (c.name + " " + num + " " + label).toLocaleLowerCase().indexOf(recipientQuery) >= 0) {
                     out.push({
                         name: c.name,
                         number: num,

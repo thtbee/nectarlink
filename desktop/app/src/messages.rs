@@ -589,18 +589,35 @@ pub fn choose_sim(sim: String) {
     changed();
 }
 
-/// Who a conversation is with: contact names, or numbers.
+/// Who a conversation is with: contact names (the phone's, else this computer's), or numbers.
 pub fn title_of(thread: &SmsThread) -> String {
     thread
         .addresses
         .iter()
         .enumerate()
-        .map(|(i, address)| thread.names.get(i).filter(|n| !n.trim().is_empty()).unwrap_or(address).clone())
+        .map(|(i, address)| {
+            thread
+                .names
+                .get(i)
+                .filter(|n| !n.trim().is_empty())
+                .cloned()
+                .or_else(|| crate::local_contacts::find(address).map(|f| f.name))
+                .unwrap_or_else(|| address.clone())
+        })
         .collect::<Vec<_>>()
         .join(", ")
 }
 
 fn thread_json(t: &SmsThread, photo: Option<&PathBuf>) -> Value {
+    // The phone's picture of a person, else this computer's contact's.
+    let local;
+    let photo = match (photo, t.addresses.as_slice()) {
+        (None, [address]) => {
+            local = crate::local_contacts::find(address).and_then(|f| f.photo);
+            local.as_ref()
+        }
+        _ => photo,
+    };
     json!({
         "id": t.id,
         "title": title_of(t),
@@ -654,6 +671,7 @@ fn sender_of(thread: &SmsThread, address: &str) -> String {
         .and_then(|i| thread.names.get(i))
         .filter(|n| !n.trim().is_empty())
         .cloned()
+        .or_else(|| crate::local_contacts::find(address).map(|f| f.name))
         .unwrap_or_else(|| address.to_owned())
 }
 
@@ -1831,6 +1849,10 @@ pub fn on_event(event: &NodeEvent) {
                     }
                 });
             }
+        }
+        // A contact added or renamed on the phone: its conversations get the name now.
+        NodeEvent::ContactsChanged { device: d } if Some(*d) == device => {
+            reload();
         }
         NodeEvent::NotificationPosted { device: d, .. }
         | NodeEvent::NotificationRemoved { device: d, .. }
