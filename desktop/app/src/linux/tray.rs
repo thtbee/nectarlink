@@ -23,6 +23,8 @@ pub enum TrayEvent {
     Open,
     CommandPalette,
     Shelf,
+    HandoffPull,
+    HandoffPush,
     TakePhoto,
     ScanDocument,
     FindPhone,
@@ -60,8 +62,8 @@ pub const MOD_NOREPEAT: u32 = 0x4000;
 
 static LAST_EXTERNAL_WINDOW: Mutex<Option<(isize, String)>> = Mutex::new(None);
 static WINDOW_ID_MAP: OnceLock<Mutex<HashMap<isize, String>>> = OnceLock::new();
-static HOTKEY_SPECS: Mutex<(String, String, String, String)> =
-    Mutex::new((String::new(), String::new(), String::new(), String::new()));
+static HOTKEY_SPECS: Mutex<[String; 6]> =
+    Mutex::new([String::new(), String::new(), String::new(), String::new(), String::new(), String::new()]);
 static HOTKEY_GENERATION: AtomicU64 = AtomicU64::new(1);
 
 fn window_id_map() -> &'static Mutex<HashMap<isize, String>> {
@@ -750,16 +752,25 @@ pub fn parse_hotkey(spec: &str) -> Option<(u32, u32)> {
     Some((mods | MOD_NOREPEAT, vk))
 }
 
-/// Updates the Continuity Camera, Command Palette, and Shelf global hotkeys
-/// (`photo_spec`, `scan_spec`, `palette_spec`, and `shelf_spec`).
-pub fn update_hotkeys(photo_spec: &str, scan_spec: &str, palette_spec: &str, shelf_spec: &str) {
+/// Updates the global hotkeys (`photo_spec`, `scan_spec`, `palette_spec`, `shelf_spec`,
+/// `handoff_pull_spec`, and `handoff_push_spec`).
+pub fn update_hotkeys(
+    photo_spec: &str,
+    scan_spec: &str,
+    palette_spec: &str,
+    shelf_spec: &str,
+    handoff_pull_spec: &str,
+    handoff_push_spec: &str,
+) {
     let mut specs = HOTKEY_SPECS.lock().unwrap_or_else(|e| e.into_inner());
-    *specs = (
+    *specs = [
         photo_spec.trim().to_owned(),
         scan_spec.trim().to_owned(),
         palette_spec.trim().to_owned(),
         shelf_spec.trim().to_owned(),
-    );
+        handoff_pull_spec.trim().to_owned(),
+        handoff_push_spec.trim().to_owned(),
+    ];
     drop(specs);
     HOTKEY_GENERATION.fetch_add(1, Ordering::Release);
 }
@@ -922,13 +933,14 @@ fn run_x11_hotkey_loop(stop: &AtomicBool, handler: &SharedHandler) {
         while !stop.load(Ordering::Acquire) {
             let current_gen = HOTKEY_GENERATION.load(Ordering::Acquire);
             if current_gen != applied_gen {
-                let (photo, scan, palette, shelf) =
-                    HOTKEY_SPECS.lock().unwrap_or_else(|e| e.into_inner()).clone();
+                let specs = HOTKEY_SPECS.lock().unwrap_or_else(|e| e.into_inner()).clone();
                 let targets = [
-                    (photo.as_str(), TrayEvent::TakePhoto),
-                    (scan.as_str(), TrayEvent::ScanDocument),
-                    (palette.as_str(), TrayEvent::CommandPalette),
-                    (shelf.as_str(), TrayEvent::Shelf),
+                    (specs[0].as_str(), TrayEvent::TakePhoto),
+                    (specs[1].as_str(), TrayEvent::ScanDocument),
+                    (specs[2].as_str(), TrayEvent::CommandPalette),
+                    (specs[3].as_str(), TrayEvent::Shelf),
+                    (specs[4].as_str(), TrayEvent::HandoffPull),
+                    (specs[5].as_str(), TrayEvent::HandoffPush),
                 ];
 
                 let _ = with_x11_error_guard(x_set_error_handler, x_sync, dpy, || {
@@ -1022,6 +1034,8 @@ pub(crate) fn parse_portal_shortcut_id(id: &str) -> Option<TrayEvent> {
         "scan-document" => Some(TrayEvent::ScanDocument),
         "command-palette" => Some(TrayEvent::CommandPalette),
         "shelf" => Some(TrayEvent::Shelf),
+        "handoff-pull" => Some(TrayEvent::HandoffPull),
+        "handoff-push" => Some(TrayEvent::HandoffPush),
         _ => None,
     }
 }
@@ -1072,18 +1086,24 @@ pub(crate) fn hotkey_to_portal_trigger(spec: &str) -> Option<String> {
 }
 
 /// The hotkeys as [`update_hotkeys`] last set them.
-fn hotkey_specs() -> (String, String, String, String) {
+fn hotkey_specs() -> [String; 6] {
     HOTKEY_SPECS.lock().unwrap_or_else(|e| e.into_inner()).clone()
 }
 
 /// The portal shortcut IDs NectarLink binds for `specs` (those with a key).
-fn portal_shortcut_ids(specs: &(String, String, String, String)) -> Vec<&'static str> {
-    let (photo, scan, palette, shelf) = specs;
-    [("take-photo", photo), ("scan-document", scan), ("command-palette", palette), ("shelf", shelf)]
-        .into_iter()
-        .filter(|(_, spec)| hotkey_to_portal_trigger(spec).is_some_and(|t| !t.is_empty()))
-        .map(|(id, _)| id)
-        .collect()
+fn portal_shortcut_ids(specs: &[String; 6]) -> Vec<&'static str> {
+    [
+        ("take-photo", &specs[0]),
+        ("scan-document", &specs[1]),
+        ("command-palette", &specs[2]),
+        ("shelf", &specs[3]),
+        ("handoff-pull", &specs[4]),
+        ("handoff-push", &specs[5]),
+    ]
+    .into_iter()
+    .filter(|(_, spec)| hotkey_to_portal_trigger(spec).is_some_and(|t| !t.is_empty()))
+    .map(|(id, _)| id)
+    .collect()
 }
 
 /// Whether the portal already holds every shortcut in `wanted`, from a
@@ -1119,16 +1139,17 @@ fn bind_portal_global_shortcuts(
     conn: &zbus::blocking::Connection,
     session_path: zbus::zvariant::ObjectPath<'_>,
     bind_seq: &mut u64,
-    specs: &(String, String, String, String),
+    specs: &[String; 6],
 ) -> bool {
     use zbus::zvariant::Value;
 
-    let (photo, scan, palette, shelf) = specs;
     let specs = [
-        ("take-photo", "Take photo with phone", photo.as_str()),
-        ("scan-document", "Scan document with phone", scan.as_str()),
-        ("command-palette", "Open Command Palette", palette.as_str()),
-        ("shelf", "Open File Shelf", shelf.as_str()),
+        ("take-photo", "Take photo with phone", specs[0].as_str()),
+        ("scan-document", "Scan document with phone", specs[1].as_str()),
+        ("command-palette", "Open Command Palette", specs[2].as_str()),
+        ("shelf", "Open File Shelf", specs[3].as_str()),
+        ("handoff-pull", "Pull link from phone", specs[4].as_str()),
+        ("handoff-push", "Push browser link to phone", specs[5].as_str()),
     ];
 
     let mut shortcuts: Vec<(&str, HashMap<&str, Value<'_>>)> = Vec::new();
@@ -1230,7 +1251,7 @@ fn try_run_wayland_portal_shortcuts(stop: &AtomicBool, handler: &SharedHandler) 
 
     let mut bind_seq: u64 = 0;
     // The hotkeys the portal holds for this session; None until its list is in.
-    let mut applied: Option<(String, String, String, String)> = None;
+    let mut applied: Option<[String; 6]> = None;
     let list_token = format!("nectarlink_gs_list_{pid}");
     let mut listed = false;
     // Asks what the portal already has (KDE keeps an app's shortcuts between
@@ -1238,7 +1259,7 @@ fn try_run_wayland_portal_shortcuts(stop: &AtomicBool, handler: &SharedHandler) 
     let list = |conn: &zbus::blocking::Connection,
                 sp: &OwnedObjectPath,
                 bind_seq: &mut u64,
-                applied: &mut Option<(String, String, String, String)>| {
+                applied: &mut Option<[String; 6]>| {
         let mut opts: HashMap<&str, Value<'_>> = HashMap::new();
         opts.insert("handle_token", Value::from(list_token.as_str()));
         let asked = conn
@@ -1836,10 +1857,14 @@ mod tests {
         assert_eq!(parse_portal_shortcut_id("scan-document"), Some(TrayEvent::ScanDocument));
         assert_eq!(parse_portal_shortcut_id("command-palette"), Some(TrayEvent::CommandPalette));
         assert_eq!(parse_portal_shortcut_id("shelf"), Some(TrayEvent::Shelf));
+        assert_eq!(parse_portal_shortcut_id("handoff-pull"), Some(TrayEvent::HandoffPull));
+        assert_eq!(parse_portal_shortcut_id("handoff-push"), Some(TrayEvent::HandoffPush));
         assert_eq!(parse_portal_shortcut_id("unknown"), None);
 
         assert_eq!(hotkey_to_portal_trigger("Ctrl+Alt+C").as_deref(), Some("CTRL+ALT+c"));
         assert_eq!(hotkey_to_portal_trigger("Ctrl+Alt+Space").as_deref(), Some("CTRL+ALT+space"));
+        assert_eq!(hotkey_to_portal_trigger("Ctrl+Shift+3").as_deref(), Some("CTRL+SHIFT+3"));
+        assert_eq!(hotkey_to_portal_trigger("Ctrl+Shift+4").as_deref(), Some("CTRL+SHIFT+4"));
         assert_eq!(hotkey_to_portal_trigger("Super+Shift+F9").as_deref(), Some("SHIFT+LOGO+F9"));
         assert!(hotkey_to_portal_trigger("none").is_none());
     }
@@ -1847,14 +1872,26 @@ mod tests {
     #[test]
     fn shortcuts_the_portal_already_has_are_not_bound_again() {
         use zbus::zvariant::Value;
-        let specs =
-            ("Ctrl+Alt+C".to_owned(), String::new(), "Ctrl+Alt+Space".to_owned(), "Ctrl+Alt+S".to_owned());
+        let specs = [
+            "Ctrl+Alt+C".to_owned(),
+            String::new(),
+            "Ctrl+Alt+Space".to_owned(),
+            "Ctrl+Alt+S".to_owned(),
+            "Ctrl+Shift+3".to_owned(),
+            "Ctrl+Shift+4".to_owned(),
+        ];
         let wanted = portal_shortcut_ids(&specs);
-        assert_eq!(wanted, ["take-photo", "command-palette", "shelf"]);
+        assert_eq!(wanted, ["take-photo", "command-palette", "shelf", "handoff-pull", "handoff-push"]);
 
         // As the portal sends it: a(sa{sv}).
         let entry = |id: &str| (id.to_owned(), std::collections::HashMap::<String, Value<'_>>::new());
-        let listed = Value::from(vec![entry("take-photo"), entry("command-palette"), entry("shelf")]);
+        let listed = Value::from(vec![
+            entry("take-photo"),
+            entry("command-palette"),
+            entry("shelf"),
+            entry("handoff-pull"),
+            entry("handoff-push"),
+        ]);
         assert_eq!(listed.value_signature().to_string(), "a(sa{sv})");
         let ids = listed_shortcut_ids(&listed);
         assert!(portal_has_shortcuts(&ids, &wanted));
@@ -1881,7 +1918,14 @@ mod tests {
         assert_eq!(vk_to_x11_keysym(0xFFFF), None);
 
         let before = HOTKEY_GENERATION.load(Ordering::Acquire);
-        update_hotkeys("Ctrl+Alt+C", "Ctrl+Alt+D", "Ctrl+Alt+Space", "Ctrl+Alt+S");
+        update_hotkeys(
+            "Ctrl+Alt+C",
+            "Ctrl+Alt+D",
+            "Ctrl+Alt+Space",
+            "Ctrl+Alt+S",
+            "Ctrl+Shift+3",
+            "Ctrl+Shift+4",
+        );
         assert!(HOTKEY_GENERATION.load(Ordering::Acquire) > before);
     }
 }

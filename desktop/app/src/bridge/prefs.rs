@@ -129,6 +129,10 @@ pub mod qobject {
         #[qproperty(QString, command_palette_hotkey)]
         /// Global hotkey for the Shelf panel (e.g. `"Ctrl+Alt+S"`).
         #[qproperty(QString, shelf_hotkey)]
+        /// Global hotkey to pull the active Handoff link from the connected phone (e.g. `"Ctrl+Shift+3"`).
+        #[qproperty(QString, handoff_pull_hotkey)]
+        /// Global hotkey to push the active browser tab URL to the connected phone (e.g. `"Ctrl+Shift+4"`).
+        #[qproperty(QString, handoff_push_hotkey)]
         /// AI agents may use NectarLink (MCP, the CLI, the v2 API). Off by default.
         #[qproperty(bool, agent_access_enabled)]
         /// Every agent is read-only.
@@ -474,6 +478,8 @@ pub struct PreferencesRust {
     continuity_scan_hotkey: QString,
     command_palette_hotkey: QString,
     shelf_hotkey: QString,
+    handoff_pull_hotkey: QString,
+    handoff_push_hotkey: QString,
     agent_access_enabled: bool,
     agent_read_only: bool,
     local_api_enabled: bool,
@@ -608,6 +614,8 @@ impl cxx_qt::Initialize for qobject::Preferences {
         self.as_mut().set_continuity_scan_hotkey(QString::from(&settings.continuity_scan_hotkey));
         self.as_mut().set_command_palette_hotkey(QString::from(&settings.command_palette_hotkey));
         self.as_mut().set_shelf_hotkey(QString::from(&settings.shelf_hotkey));
+        self.as_mut().set_handoff_pull_hotkey(QString::from(&settings.handoff_pull_hotkey));
+        self.as_mut().set_handoff_push_hotkey(QString::from(&settings.handoff_push_hotkey));
         self.as_mut().set_agent_access_enabled(settings.agent_access_enabled);
         self.as_mut().set_agent_read_only(settings.agent_read_only);
         self.as_mut().set_local_api_enabled(settings.local_api_enabled);
@@ -674,6 +682,8 @@ impl cxx_qt::Initialize for qobject::Preferences {
             &settings.continuity_scan_hotkey,
             &settings.command_palette_hotkey,
             &settings.shelf_hotkey,
+            &settings.handoff_pull_hotkey,
+            &settings.handoff_push_hotkey,
         );
         crate::recordings::init(&settings);
 
@@ -869,50 +879,23 @@ impl cxx_qt::Initialize for qobject::Preferences {
                 p.save();
             })
             .release();
-        self.as_mut()
-            .on_continuity_photo_hotkey_changed(|p| {
-                crate::win::tray::update_hotkeys(
-                    &String::from(&p.continuity_photo_hotkey),
-                    &String::from(&p.continuity_scan_hotkey),
-                    &String::from(&p.command_palette_hotkey),
-                    &String::from(&p.shelf_hotkey),
-                );
-                p.save();
-            })
-            .release();
-        self.as_mut()
-            .on_continuity_scan_hotkey_changed(|p| {
-                crate::win::tray::update_hotkeys(
-                    &String::from(&p.continuity_photo_hotkey),
-                    &String::from(&p.continuity_scan_hotkey),
-                    &String::from(&p.command_palette_hotkey),
-                    &String::from(&p.shelf_hotkey),
-                );
-                p.save();
-            })
-            .release();
-        self.as_mut()
-            .on_command_palette_hotkey_changed(|p| {
-                crate::win::tray::update_hotkeys(
-                    &String::from(&p.continuity_photo_hotkey),
-                    &String::from(&p.continuity_scan_hotkey),
-                    &String::from(&p.command_palette_hotkey),
-                    &String::from(&p.shelf_hotkey),
-                );
-                p.save();
-            })
-            .release();
-        self.as_mut()
-            .on_shelf_hotkey_changed(|p| {
-                crate::win::tray::update_hotkeys(
-                    &String::from(&p.continuity_photo_hotkey),
-                    &String::from(&p.continuity_scan_hotkey),
-                    &String::from(&p.command_palette_hotkey),
-                    &String::from(&p.shelf_hotkey),
-                );
-                p.save();
-            })
-            .release();
+        fn sync_hotkeys_and_save(p: Pin<&mut qobject::Preferences>) {
+            crate::win::tray::update_hotkeys(
+                &String::from(&p.continuity_photo_hotkey),
+                &String::from(&p.continuity_scan_hotkey),
+                &String::from(&p.command_palette_hotkey),
+                &String::from(&p.shelf_hotkey),
+                &String::from(&p.handoff_pull_hotkey),
+                &String::from(&p.handoff_push_hotkey),
+            );
+            p.save();
+        }
+        self.as_mut().on_continuity_photo_hotkey_changed(sync_hotkeys_and_save).release();
+        self.as_mut().on_continuity_scan_hotkey_changed(sync_hotkeys_and_save).release();
+        self.as_mut().on_command_palette_hotkey_changed(sync_hotkeys_and_save).release();
+        self.as_mut().on_shelf_hotkey_changed(sync_hotkeys_and_save).release();
+        self.as_mut().on_handoff_pull_hotkey_changed(sync_hotkeys_and_save).release();
+        self.as_mut().on_handoff_push_hotkey_changed(sync_hotkeys_and_save).release();
         self.as_mut()
             .on_agent_access_enabled_changed(|p| {
                 let settings = p.current_settings();
@@ -1545,6 +1528,8 @@ impl qobject::Preferences {
             continuity_scan_hotkey: String::from(&p.continuity_scan_hotkey),
             command_palette_hotkey: String::from(&p.command_palette_hotkey),
             shelf_hotkey: String::from(&p.shelf_hotkey),
+            handoff_pull_hotkey: String::from(&p.handoff_pull_hotkey),
+            handoff_push_hotkey: String::from(&p.handoff_push_hotkey),
             agent_access_enabled: p.agent_access_enabled,
             agent_read_only: p.agent_read_only,
             local_api_enabled: p.local_api_enabled,

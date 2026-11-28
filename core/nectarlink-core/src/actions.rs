@@ -11,11 +11,12 @@ use std::{
 use nectarlink_protocol::{
     DeviceId, Envelope, ErrorCode,
     messages::{
-        LinkOpen, PcPower, PcWakeInfo, TaskNotify, magic_packet, parse_mac, task_notify, types, wake,
+        LinkOpen, LinkPull, PcPower, PcWakeInfo, TaskNotify, link, magic_packet, parse_mac, task_notify,
+        types, wake,
     },
 };
 
-use crate::{Error, NodeEvent, Result, node::Shared, session::Session};
+use crate::{Error, NodeEvent, PulledLink, Result, node::Shared, session::Session};
 
 /// The device toggle that lets a phone lock, sleep or wake this PC.
 pub(crate) const POWER_TOGGLE: &str = "pc_actions";
@@ -25,6 +26,8 @@ pub(crate) const POWER: &str = "pc.power";
 pub const PC_WAKE: &str = wake::CAP;
 /// Offered by devices that open links sent to them.
 pub(crate) const LINKS: &str = "link.open";
+/// Offered by devices that share their active handoff link on `link.pull`.
+pub const LINK_PULL: &str = link::PULL;
 /// Offered by devices that show live and completed task notifications from a peer.
 pub(crate) const TASK_NOTIFY: &str = types::TASK_NOTIFY;
 
@@ -314,6 +317,43 @@ pub(crate) async fn open_link(shared: &Arc<Shared>, peer: DeviceId, url: String)
     Ok(())
 }
 
+/// Asks a connected peer for its currently active shareable Handoff link (`link.pull`).
+pub(crate) async fn pull_link(shared: &Arc<Shared>, peer: DeviceId) -> Result<Option<PulledLink>> {
+    if !shared.store.is_paired(&peer)? {
+        return Err(Error::NotPaired);
+    }
+    if !shared.offers(&peer, LINK_PULL)? {
+        return Err(Error::Unsupported);
+    }
+    let session = shared.session(&peer).ok_or(Error::Offline)?;
+    let env = Envelope::empty(types::LINK_PULL);
+    let answer: LinkPull =
+        session.request(env, crate::session::REQUEST_TIMEOUT).await?.expect_body(types::LINK_PULL)?;
+    let Some(raw_url) = answer.url else {
+        return Ok(None);
+    };
+    let clean_url = raw_url.trim().to_owned();
+    if !crate::handoff::is_valid_web_url(&clean_url) {
+        return Err(Error::Protocol("invalid pulled link".into()));
+    }
+    let clean_title = answer.title.map(|t| t.trim().to_owned()).filter(|t| !t.is_empty());
+    let (title, detail) = crate::handoff::timeline_link_title_and_detail(&clean_url, clean_title.as_deref());
+    let _ = shared.record_timeline(crate::timeline::NewTimelineEntry {
+        kind: crate::TimelineKind::Link,
+        device_id: peer,
+        device_name: shared.peer_name(&peer),
+        incoming: true,
+        timestamp: crate::now_unix(),
+        title,
+        detail,
+        target: clean_url.clone(),
+        size_bytes: 0,
+        duration_secs: 0,
+        ref_id: None,
+    });
+    Ok(Some(PulledLink { url: clean_url, title: clean_title }))
+}
+
 pub(crate) async fn task_notify_on_session(
     shared: &Arc<Shared>,
     session: &Session,
@@ -511,6 +551,22 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
                         Envelope::error(ErrorCode::Internal, "can't open it")
                     }
                 }
+            }
+        }
+        types::LINK_PULL => {
+            if !shared.we_offer(LINK_PULL) {
+                Envelope::error(ErrorCode::Unsupported, "this device doesn't share active links")
+            } else {
+                let platform = shared.platform.clone();
+                let pulled = tokio::task::spawn_blocking(move || platform.pull_link()).await.ok().flatten();
+                let body = match pulled {
+                    Some(p) if crate::handoff::is_valid_web_url(p.url.trim()) => LinkPull {
+                        url: Some(p.url.trim().to_owned()),
+                        title: p.title.map(|t| t.trim().to_owned()).filter(|t| !t.is_empty()),
+                    },
+                    _ => LinkPull::default(),
+                };
+                Envelope::new(types::LINK_PULL, &body)?
             }
         }
         types::TASK_NOTIFY => {

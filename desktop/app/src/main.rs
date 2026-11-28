@@ -947,6 +947,8 @@ fn main() -> ExitCode {
         &settings.continuity_scan_hotkey,
         &settings.command_palette_hotkey,
         &settings.shelf_hotkey,
+        &settings.handoff_pull_hotkey,
+        &settings.handoff_push_hotkey,
     );
     let updated_from = updater::note_running_version(&data_dir);
     nectarlink_core::whats_new::note_start(&data_dir, updated_from.is_some());

@@ -56,7 +56,7 @@ pub mod usb;
 pub mod webcam;
 pub mod whats_new;
 
-pub use actions::{PC_WAKE, PowerAction};
+pub use actions::{LINK_PULL, PC_WAKE, PowerAction};
 /// Offered by PCs that can hibernate right now.
 pub const PC_HIBERNATE: &str = nectarlink_protocol::messages::pc_power::HIBERNATE;
 /// Offered by PCs a phone may shut down.
@@ -70,7 +70,7 @@ pub use clip_kind::{
 pub use clipboard_history::{
     ClipboardHistoryEntry, ClipboardItemKind, MAX_CLIPBOARD_AGE_SECS, MAX_CLIPBOARD_HISTORY,
 };
-pub use config::{Congestion, NodeConfig, NoopPlatform, Platform, TransportTuning};
+pub use config::{Congestion, NodeConfig, NoopPlatform, Platform, PulledLink, TransportTuning};
 pub use deck::{
     COMMANDS_TOGGLE as DECK_COMMANDS_TOGGLE, DECK_ACTIONS, DeckAction, DeckConfig, DeckLayout, DeckPage,
     DeckPageConfig, DeckPress, DeckState, DeckTile, DeckTileConfig, INPUT_TOGGLE as DECK_INPUT_TOGGLE,
@@ -87,8 +87,8 @@ pub use events::{
 pub use features::{CapabilityMatrix, FeatureState};
 pub use handoff::{
     HandoffKind, HandoffLink, address_to_geo_uri, extract_handoff_link, format_video_timestamp,
-    geo_to_maps_https, is_safe_handoff_document, parse_video_timestamp, timeline_link_title_and_detail,
-    with_video_timestamp,
+    geo_to_maps_https, is_safe_handoff_document, is_valid_web_url, parse_video_timestamp,
+    timeline_link_title_and_detail, with_video_timestamp,
 };
 pub use identity::{KeyProtector, PlainKeyProtector, default_protector, install_id_from};
 pub use localsend::{

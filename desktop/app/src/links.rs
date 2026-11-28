@@ -23,6 +23,16 @@ use crate::{
     },
 };
 
+/// Outcome of inspecting the active desktop browser tab for push Handoff.
+#[cfg_attr(not(windows), allow(dead_code))]
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ActiveBrowserUrl {
+    Url { url: String, program: String },
+    PrivateWindow,
+    NoBrowser,
+    NoUrl,
+}
+
 /// The toast "device" for link notices.
 pub const TOAST_GROUP: &str = "links";
 
@@ -121,6 +131,36 @@ fn notice(title: &str, body: &str) {
     });
 }
 
+fn pick_phone_for_push() -> Option<(DeviceId, String)> {
+    let node = core_host::node();
+    core_host::host().hub.read(|s| {
+        s.devices
+            .iter()
+            .filter(|d| matches!(d.link, LinkState::Online { .. }))
+            .find(|d| {
+                s.matrices.get(&d.id).and_then(|m| m.state("device.links_to_phone"))
+                    == Some(FeatureState::Available)
+            })
+            .or_else(|| {
+                s.devices.iter().find(|d| {
+                    node.as_ref().and_then(|n| n.device_toggles(d.id).ok()).is_none_or(|toggles| {
+                        toggles.into_iter().find(|(k, _)| *k == "links_to_phone").is_none_or(|(_, on)| on)
+                    })
+                })
+            })
+            .map(|d| (d.id, d.info.name.clone()))
+    })
+}
+
+fn pick_online_phone() -> Option<(DeviceId, String)> {
+    core_host::host().hub.read(|s| {
+        s.devices
+            .iter()
+            .find(|d| matches!(d.link, LinkState::Online { .. }))
+            .map(|d| (d.id, d.info.name.clone()))
+    })
+}
+
 /// "Open copied link on phone" (tray / Command Palette): opens the link, video
 /// with timestamp, or map location on the clipboard on a connected phone.
 pub fn open_copied_link_on_phone() {
@@ -142,31 +182,110 @@ pub fn open_copied_link_on_phone() {
             ),
         );
     };
-    let node = core_host::node();
-    let phone = core_host::host().hub.read(|s| {
-        s.devices
-            .iter()
-            .filter(|d| matches!(d.link, LinkState::Online { .. }))
-            .find(|d| {
-                s.matrices.get(&d.id).and_then(|m| m.state("device.links_to_phone"))
-                    == Some(FeatureState::Available)
-            })
-            .or_else(|| {
-                s.devices.iter().find(|d| {
-                    node.as_ref().and_then(|n| n.device_toggles(d.id).ok()).is_none_or(|toggles| {
-                        toggles.into_iter().find(|(k, _)| *k == "links_to_phone").is_none_or(|(_, on)| on)
-                    })
-                })
-            })
-            .map(|d| (d.id, d.info.name.clone()))
-    });
-    let Some((phone, name)) = phone else {
+    let Some((phone, name)) = pick_phone_for_push() else {
         return notice(
             &tr!("Links", "No phone to open it on"),
             &tr!("Links", "Pair a phone first, or enable opening links on your phone."),
         );
     };
     send(phone, name, handoff);
+}
+
+/// Pulls the connected phone's currently active Handoff link (`Ctrl+Shift+3` default)
+/// and opens it in the PC's default browser after strict `http://`/`https://` validation.
+pub fn pull_from_phone() {
+    let Some((phone, name)) = pick_online_phone() else {
+        return notice(
+            &tr!("Links", "No phone connected"),
+            &tr!("Links", "Connect your phone first to pull its active link."),
+        );
+    };
+    let Some(node) = core_host::node() else { return };
+    core_host::spawn(async move {
+        match node.pull_link(phone).await {
+            Ok(Some(pulled)) => {
+                if !nectarlink_core::is_valid_web_url(&pulled.url) {
+                    return notice(
+                        &tr!("Links", "Couldn't open link"),
+                        &tr!("Links", "Only http and https links can be opened."),
+                    );
+                }
+                let url = pulled.url.clone();
+                let opened = tokio::task::spawn_blocking(move || shell::open_url(&url))
+                    .await
+                    .unwrap_or_else(|e| Err(e.to_string()));
+                match opened {
+                    Ok(()) => {
+                        let label = pulled
+                            .title
+                            .filter(|t| !t.is_empty())
+                            .or_else(|| extract_handoff_link(&pulled.url).map(|h| h.label))
+                            .unwrap_or_else(|| pulled.url.clone());
+                        notice(&tr!("Links", "Opened from %1", name), &label);
+                    }
+                    Err(e) => {
+                        tracing::warn!(error = %e, "failed to open pulled handoff link");
+                        notice(&tr!("Links", "Couldn't open link"), &e);
+                    }
+                }
+            }
+            Ok(None) => notice(
+                &tr!("Links", "Nothing to hand off from %1", name),
+                &tr!("Links", "Open a webpage or video on %1, then try again.", name),
+            ),
+            Err(Error::Unsupported) => {
+                notice(&tr!("Links", "Couldn't pull link"), &tr!("Links", "Update NectarLink on %1.", name))
+            }
+            Err(e) => notice(&tr!("Links", "Couldn't pull link"), &describe(&e)),
+        }
+    });
+}
+
+/// Reads the foreground browser tab URL on the PC (`Ctrl+Shift+4` default), skipping
+/// private/Incognito windows, and opens it on the connected phone via Handoff.
+pub fn push_browser_tab_to_phone() {
+    let Some((phone, name)) = pick_phone_for_push() else {
+        return notice(
+            &tr!("Links", "No phone to open it on"),
+            &tr!("Links", "Pair a phone first, or enable opening links on your phone."),
+        );
+    };
+    let target_hwnd = crate::win::tray::snapshot_target_window().map_or(0, |(hwnd, _)| hwnd);
+    let spawned = std::thread::Builder::new().name("handoff-push".into()).spawn(move || {
+        match crate::win::browser::active_browser_url_for_hwnd(target_hwnd) {
+            ActiveBrowserUrl::Url { url, .. } => {
+                if let Some(handoff) = handoff_from_text(&url) {
+                    send(phone, name, handoff);
+                } else {
+                    notice(
+                        &tr!("Links", "No webpage open"),
+                        &tr!(
+                            "Links",
+                            "Open an http or https webpage in the active browser tab, then try again."
+                        ),
+                    );
+                }
+            }
+            ActiveBrowserUrl::PrivateWindow => notice(
+                &tr!("Links", "Private window skipped"),
+                &tr!("Links", "Handoff doesn't read or send links from private or Incognito windows."),
+            ),
+            ActiveBrowserUrl::NoBrowser => notice(
+                &tr!("Links", "Focus a browser window first"),
+                &tr!(
+                    "Links",
+                    "Switch to Chrome, Edge, Brave, Firefox, Arc, or Opera, then press the hotkey again."
+                ),
+            ),
+            ActiveBrowserUrl::NoUrl => notice(
+                &tr!("Links", "No webpage open"),
+                &tr!("Links", "Open an http or https webpage in the active browser tab, then try again."),
+            ),
+        }
+    });
+    if let Err(e) = spawned {
+        tracing::warn!(error = %e, "couldn't start browser handoff worker");
+    }
 }
 
 /// Opens `url` (or a street address / link snippet) on `phone`, showing a Windows toast notification with the outcome.

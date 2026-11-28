@@ -175,6 +175,23 @@ impl fmt::Debug for NodeConfig {
     }
 }
 
+/// Active shareable web link returned by [`Platform::pull_link`] for instant Handoff.
+#[derive(Clone, PartialEq, Eq)]
+pub struct PulledLink {
+    pub url: String,
+    pub title: Option<String>,
+}
+
+/// Never prints the link or title in logs (protocol v0 §11).
+impl fmt::Debug for PulledLink {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PulledLink")
+            .field("bytes", &self.url.len())
+            .field("has_title", &self.title.is_some())
+            .finish()
+    }
+}
+
 /// Platform services the app provides to the core.
 ///
 /// Implemented by each app (Windows, Android). Calls may come from any
@@ -259,6 +276,12 @@ pub trait Platform: Send + Sync + 'static {
     /// Open a web link a paired device sent (http or https; checked).
     fn open_link(&self, _from: &nectarlink_protocol::DeviceId, _url: &str) -> Result<(), String> {
         Err("this device doesn't open links".into())
+    }
+
+    /// The active shareable web link on this device for instant Handoff (`link.pull`),
+    /// or `None` when nothing shareable is open.
+    fn pull_link(&self) -> Option<crate::PulledLink> {
+        None
     }
 
     /// Show or update an ongoing or completed task notification sent by a paired

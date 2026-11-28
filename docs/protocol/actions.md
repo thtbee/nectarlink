@@ -17,6 +17,7 @@ either device opens a web link on the other.
 | `pc.power.restart` | PC | Can be restarted (`pc.power` with `restart`) |
 | `pc.wake` | PC | Shares its network adapter MAC and subnet broadcast addresses (`pc.wake_info`) so a paired phone can wake it |
 | `link.open` | both | Opens web links a paired device sends |
+| `link.pull` | phone | Shares the device's active shareable Handoff link on request |
 | `task.notify` | both | Sends or shows watched PC task notifications (`task.notify`) |
 
 Senders check the other device's capabilities first and don't send a
@@ -31,6 +32,7 @@ requests answered with `ok` or `error`; `pc.wake_info` is a one-way event (no
 ```
 t = "pc.power"           id = n   b = { action: "lock" | "sleep" | "hibernate" | "shutdown" | "restart" }
 t = "link.open"          id = n   b = { url: text, title?: text }
+t = "link.pull"          id = n   (empty)  →  t = "link.pull"  re = n  b = { url?: text, title?: text }
 t = "task.notify"        id = n   b = { id: text, title: text, active: bool, elapsed_ms: uint, exit_code?: int }
 t = "wake.relay"         id = n   b = { mac: bytes(6), broadcast?: text }
 t = "elevated.usb"       id = n   b = { apk: text, token: text, grants?: [text] }

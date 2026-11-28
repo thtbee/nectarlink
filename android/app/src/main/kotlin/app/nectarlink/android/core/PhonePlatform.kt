@@ -75,6 +75,8 @@ internal class PhonePlatform(
     private val media: PhoneMedia,
     /** Shows a link a PC sent: (PC's ID, link) → shown. */
     private val onLink: (String, String) -> Boolean,
+    /** Resolves this phone's active shareable Handoff link when a PC asks (`link.pull`). */
+    private val onPullLink: () -> app.nectarlink.core.PulledLink? = { null },
     /** Shows a PC's Play on phone offer: (PC's ID, player, title) → shown. */
     private val onWatch: (String, String, String?, app.nectarlink.core.WatchFileOffer?) -> Boolean,
     /** Asks the user to start the microphone for a PC: PC's ID → asked. */
@@ -131,6 +133,8 @@ internal class PhonePlatform(
     override fun adbMayBeConnected(): Boolean = app.nectarlink.android.usb.AdbState.mayBeConnected(context)
 
     override fun openLink(fromId: String, url: String): Boolean = onLink(fromId, url)
+
+    override fun pullLink(): app.nectarlink.core.PulledLink? = onPullLink()
 
     override fun watchOffered(
         fromId: String,

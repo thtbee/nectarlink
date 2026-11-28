@@ -1845,6 +1845,13 @@ impl From<core::TimelineRetention> for TimelineRetention {
     }
 }
 
+/// Active shareable web link returned by `Platform::pull_link` for instant Handoff.
+#[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
+pub struct PulledLink {
+    pub url: String,
+    pub title: Option<String>,
+}
+
 /// Summary of locally stored history and cache counts for Privacy & Data settings.
 #[derive(Debug, Clone, PartialEq, Eq, uniffi::Record)]
 pub struct DataRetentionCounts {
@@ -2904,6 +2911,9 @@ pub trait Platform: Send + Sync {
     /// A paired PC sent a web link (http or https, checked) to open.
     /// False if it couldn't be shown.
     fn open_link(&self, from_id: String, url: String) -> bool;
+    /// A paired PC asked for this phone's currently active shareable web link
+    /// (`link.pull`). Return `null` when nothing shareable is open.
+    fn pull_link(&self) -> Option<PulledLink>;
     /// Play on phone: a paired PC offers to stream what its `player` plays
     /// (`title`). Show the offer; taking it starts PC mirroring with
     /// `watch` set to `player`, or with `file`, plays that video file read
@@ -3237,6 +3247,9 @@ impl core::Platform for PlatformAdapter {
     }
     fn open_link(&self, from: &DeviceId, url: &str) -> Result<(), String> {
         if self.0.open_link(from.to_string(), url.to_owned()) { Ok(()) } else { Err("not shown".into()) }
+    }
+    fn pull_link(&self) -> Option<core::PulledLink> {
+        self.0.pull_link().map(|p| core::PulledLink { url: p.url, title: p.title })
     }
     fn watch_offered(
         &self,

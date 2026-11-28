@@ -122,11 +122,14 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("CommandPalette", "Open newest photo or screenshot"), // desktop/app/src/command_palette.rs
     QT_TRANSLATE_NOOP("CommandPalette", "Open the newest photo or screenshot from %1"), // desktop/app/src/command_palette.rs
     QT_TRANSLATE_NOOP("CommandPalette", "Open voice recordings folder for %1"), // desktop/app/src/command_palette.rs
+    QT_TRANSLATE_NOOP("CommandPalette", "Open your phone's current webpage or video on this PC"), // desktop/app/src/command_palette.rs
     QT_TRANSLATE_NOOP("CommandPalette", "Opened Recordings folder. Start a voice note in NectarLink on %1 to send it here."), // desktop/app/src/command_palette.rs
     QT_TRANSLATE_NOOP("CommandPalette", "Pair a new phone"), // desktop/app/src/command_palette.rs
     QT_TRANSLATE_NOOP("CommandPalette", "Pause phone notifications"), // desktop/app/src/command_palette.rs
     QT_TRANSLATE_NOOP("CommandPalette", "Place a phone call or open in dialer"), // desktop/app/src/command_palette.rs
     QT_TRANSLATE_NOOP("CommandPalette", "Place call on %1"), // desktop/app/src/command_palette.rs
+    QT_TRANSLATE_NOOP("CommandPalette", "Pull active link from phone"), // desktop/app/src/command_palette.rs
+    QT_TRANSLATE_NOOP("CommandPalette", "Push active browser tab to phone"), // desktop/app/src/command_palette.rs
     QT_TRANSLATE_NOOP("CommandPalette", "Quick Toggles"), // desktop/app/src/command_palette.rs
     QT_TRANSLATE_NOOP("CommandPalette", "Re-open the step-by-step setup walkthrough"), // desktop/app/src/command_palette.rs
     QT_TRANSLATE_NOOP("CommandPalette", "Ready on %1"), // desktop/app/src/command_palette.rs
@@ -146,6 +149,7 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("CommandPalette", "Send copied text or image"), // desktop/app/src/command_palette.rs
     QT_TRANSLATE_NOOP("CommandPalette", "Send copied text or image to %1"), // desktop/app/src/command_palette.rs
     QT_TRANSLATE_NOOP("CommandPalette", "Send live keystrokes and text to %1 without screen mirroring"), // desktop/app/src/command_palette.rs
+    QT_TRANSLATE_NOOP("CommandPalette", "Send the foreground browser tab URL to your phone"), // desktop/app/src/command_palette.rs
     QT_TRANSLATE_NOOP("CommandPalette", "Set %1's ringer mode to normal sound"), // desktop/app/src/command_palette.rs
     QT_TRANSLATE_NOOP("CommandPalette", "Set %1's ringer mode to vibrate"), // desktop/app/src/command_palette.rs
     QT_TRANSLATE_NOOP("CommandPalette", "Setup walkthrough"), // desktop/app/src/command_palette.rs
@@ -392,13 +396,27 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Hotspot", "Couldn't join %1's hotspot. Pick %2 in Windows' Wi-Fi list."), // desktop/app/src/hotspot.rs
     QT_TRANSLATE_NOOP("Links", "%1: tap the notification on your phone to continue watching."), // desktop/app/src/links.rs
     QT_TRANSLATE_NOOP("Links", "%1: tap the notification on your phone to open in Maps."), // desktop/app/src/links.rs
+    QT_TRANSLATE_NOOP("Links", "Connect your phone first to pull its active link."), // desktop/app/src/links.rs
     QT_TRANSLATE_NOOP("Links", "Copy a link or address first"), // desktop/app/src/links.rs
     QT_TRANSLATE_NOOP("Links", "Copy a web link (https://…), geo: URI, or street address, then choose this again."), // desktop/app/src/links.rs
     QT_TRANSLATE_NOOP("Links", "Copy a web link, video URL, or street address, then choose this again to open it on your phone."), // desktop/app/src/links.rs
+    QT_TRANSLATE_NOOP("Links", "Couldn't open link"), // desktop/app/src/links.rs
+    QT_TRANSLATE_NOOP("Links", "Couldn't pull link"), // desktop/app/src/links.rs
     QT_TRANSLATE_NOOP("Links", "Couldn't send it"), // desktop/app/src/links.rs
+    QT_TRANSLATE_NOOP("Links", "Focus a browser window first"), // desktop/app/src/links.rs
+    QT_TRANSLATE_NOOP("Links", "Handoff doesn't read or send links from private or Incognito windows."), // desktop/app/src/links.rs
+    QT_TRANSLATE_NOOP("Links", "No phone connected"), // desktop/app/src/links.rs
     QT_TRANSLATE_NOOP("Links", "No phone to open it on"), // desktop/app/src/links.rs
+    QT_TRANSLATE_NOOP("Links", "No webpage open"), // desktop/app/src/links.rs
+    QT_TRANSLATE_NOOP("Links", "Nothing to hand off from %1"), // desktop/app/src/links.rs
+    QT_TRANSLATE_NOOP("Links", "Only http and https links can be opened."), // desktop/app/src/links.rs
+    QT_TRANSLATE_NOOP("Links", "Open a webpage or video on %1, then try again."), // desktop/app/src/links.rs
+    QT_TRANSLATE_NOOP("Links", "Open an http or https webpage in the active browser tab, then try again."), // desktop/app/src/links.rs
+    QT_TRANSLATE_NOOP("Links", "Opened from %1"), // desktop/app/src/links.rs
     QT_TRANSLATE_NOOP("Links", "Pair a phone first, or enable opening links on your phone."), // desktop/app/src/links.rs
+    QT_TRANSLATE_NOOP("Links", "Private window skipped"), // desktop/app/src/links.rs
     QT_TRANSLATE_NOOP("Links", "Sent to %1"), // desktop/app/src/links.rs
+    QT_TRANSLATE_NOOP("Links", "Switch to Chrome, Edge, Brave, Firefox, Arc, or Opera, then press the hotkey again."), // desktop/app/src/links.rs
     QT_TRANSLATE_NOOP("Links", "Tap the notification on your phone to open it."), // desktop/app/src/links.rs
     QT_TRANSLATE_NOOP("Links", "That's not a link or address"), // desktop/app/src/links.rs
     QT_TRANSLATE_NOOP("Links", "Update NectarLink on %1."), // desktop/app/src/links.rs

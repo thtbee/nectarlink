@@ -85,6 +85,7 @@ capability is missing.
 | `mic.stream` | Streams its microphone when its user agrees ([mic](mic.md)) | app update (asks for the microphone permission when first used) |
 | `media.watch` | Shows a PC's playback streamed to it (Play on phone, [media](media.md) §4) | app update |
 | `camera.capture` | Captures a photo or document scan on request ([Continuity Camera](v0.md#12-continuity-camera-cameracapture)) | camera permission |
+| `link.pull` | Shares the phone's currently active shareable Handoff link on `link.pull` ([actions](actions.md)) | app update |
 
 ## Desktop
 

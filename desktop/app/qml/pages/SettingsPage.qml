@@ -3568,6 +3568,152 @@ Item {
                                 }
                             }
                         }
+
+                        Divider { width: parent.width }
+
+                        // Row 3: Pull from phone | Push to phone (Handoff)
+                        Item {
+                            id: shortcutsPairRow3
+                            width: parent.width
+                            readonly property bool splitCols: width >= 540
+                            readonly property real colWidth: splitCols ? Math.floor((width - 37) / 2) : width
+                            implicitHeight: splitCols
+                                ? Math.max(handoffPullShortcutRow.implicitHeight, handoffPushShortcutRow.implicitHeight)
+                                : (handoffPullShortcutRow.implicitHeight + 1 + handoffPushShortcutRow.implicitHeight)
+
+                            ListRow {
+                                id: handoffPullShortcutRow
+                                x: 0
+                                y: shortcutsPairRow3.splitCols ? Math.round((parent.height - height) / 2) : 0
+                                width: shortcutsPairRow3.colWidth
+                                iconPath: Icons.download
+                                title: qsTr("Pull from phone")
+                                description: qsTr("Open phone's active link on PC.")
+                                Row {
+                                    spacing: 6
+                                    Button {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        visible: Preferences.handoffPullHotkey !== "Ctrl+Shift+3"
+                                        variant: "text"
+                                        size: "sm"
+                                        text: qsTr("Reset")
+                                        onClicked: {
+                                            handoffPullHotkeyInput.text = "Ctrl+Shift+3"
+                                            Preferences.handoffPullHotkey = "Ctrl+Shift+3"
+                                        }
+                                    }
+                                    Rectangle {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: 124
+                                        height: 32
+                                        radius: Theme.radiusSm
+                                        color: Theme.surfaceContainerHighest
+                                        border.width: handoffPullHotkeyInput.activeFocus ? 2 : 1
+                                        border.color: handoffPullHotkeyInput.activeFocus ? Theme.primary : Theme.outlineVariant
+                                        TextInput {
+                                            id: handoffPullHotkeyInput
+                                            anchors.fill: parent
+                                            anchors.leftMargin: 8
+                                            anchors.rightMargin: 8
+                                            verticalAlignment: TextInput.AlignVCenter
+                                            horizontalAlignment: TextInput.AlignHCenter
+                                            font.family: Theme.fontUi
+                                            font.pixelSize: 12
+                                            color: Theme.surfaceContent
+                                            selectionColor: Theme.primaryContainer
+                                            selectedTextColor: Theme.primaryContainerContent
+                                            clip: true
+                                            text: Preferences.handoffPullHotkey
+                                            Keys.onPressed: (event) => {
+                                                const combo = page.formatKeyCombo(event)
+                                                if (combo.length > 0) {
+                                                    text = combo
+                                                    Preferences.handoffPullHotkey = combo
+                                                    event.accepted = true
+                                                }
+                                            }
+                                            onEditingFinished: Preferences.handoffPullHotkey = text.trim()
+                                            Accessible.name: qsTr("Pull from phone shortcut")
+                                        }
+                                    }
+                                }
+                            }
+
+                            Rectangle {
+                                visible: shortcutsPairRow3.splitCols
+                                x: Math.floor(parent.width / 2)
+                                y: 8
+                                width: 1
+                                height: Math.max(24, parent.height - 16)
+                                color: Theme.outlineVariant
+                            }
+
+                            Divider {
+                                visible: !shortcutsPairRow3.splitCols
+                                y: handoffPullShortcutRow.implicitHeight
+                                width: parent.width
+                            }
+
+                            ListRow {
+                                id: handoffPushShortcutRow
+                                x: shortcutsPairRow3.splitCols ? (parent.width - width) : 0
+                                y: shortcutsPairRow3.splitCols
+                                    ? Math.round((parent.height - height) / 2)
+                                    : (handoffPullShortcutRow.implicitHeight + 1)
+                                width: shortcutsPairRow3.colWidth
+                                iconPath: Icons.send
+                                title: qsTr("Push to phone")
+                                description: qsTr("Send active browser tab to phone.")
+                                Row {
+                                    spacing: 6
+                                    Button {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        visible: Preferences.handoffPushHotkey !== "Ctrl+Shift+4"
+                                        variant: "text"
+                                        size: "sm"
+                                        text: qsTr("Reset")
+                                        onClicked: {
+                                            handoffPushHotkeyInput.text = "Ctrl+Shift+4"
+                                            Preferences.handoffPushHotkey = "Ctrl+Shift+4"
+                                        }
+                                    }
+                                    Rectangle {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: 124
+                                        height: 32
+                                        radius: Theme.radiusSm
+                                        color: Theme.surfaceContainerHighest
+                                        border.width: handoffPushShortcutInput.activeFocus ? 2 : 1
+                                        border.color: handoffPushShortcutInput.activeFocus ? Theme.primary : Theme.outlineVariant
+                                        TextInput {
+                                            id: handoffPushShortcutInput
+                                            anchors.fill: parent
+                                            anchors.leftMargin: 8
+                                            anchors.rightMargin: 8
+                                            verticalAlignment: TextInput.AlignVCenter
+                                            horizontalAlignment: TextInput.AlignHCenter
+                                            font.family: Theme.fontUi
+                                            font.pixelSize: 12
+                                            color: Theme.surfaceContent
+                                            selectionColor: Theme.primaryContainer
+                                            selectedTextColor: Theme.primaryContainerContent
+                                            clip: true
+                                            text: Preferences.handoffPushHotkey
+                                            Keys.onPressed: (event) => {
+                                                const combo = page.formatKeyCombo(event)
+                                                if (combo.length > 0) {
+                                                    text = combo
+                                                    Preferences.handoffPushHotkey = combo
+                                                    event.accepted = true
+                                                }
+                                            }
+                                            onEditingFinished: Preferences.handoffPushHotkey = text.trim()
+                                            Accessible.name: qsTr("Push to phone shortcut")
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 
