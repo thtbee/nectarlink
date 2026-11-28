@@ -660,7 +660,7 @@ Item {
 
                 Button {
                     anchors.verticalCenter: parent.verticalCenter
-                    visible: page.selectedCount > 0 && Qt.platform.os === "windows"
+                    visible: page.selectedCount > 0 && (Qt.platform.os === "windows" || Qt.platform.os === "osx")
                     variant: "tonal"
                     size: "sm"
                     iconPath: Icons.share
@@ -1074,7 +1074,7 @@ Item {
 
                 Button {
                     anchors.verticalCenter: parent.verticalCenter
-                    visible: page.viewedItem !== null && Qt.platform.os === "windows"
+                    visible: page.viewedItem !== null && (Qt.platform.os === "windows" || Qt.platform.os === "osx")
                     variant: "tonal"
                     size: "sm"
                     iconPath: Icons.share

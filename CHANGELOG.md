@@ -8,6 +8,9 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Share photos from the Mac too.** The Photos page's **Share** button, for a selection and in
+  the viewer, now opens the macOS share menu as it opens the share sheet on Windows
+  ([#174](https://github.com/thtbee/nectarlink/issues/174)).
 - **Send with NectarLink in the first level of File Explorer's menu.** Right-click files or
   folders and choose **Send to *your phone* with NectarLink**, or **Send with NectarLink** and
   then a phone when you have more than one: on Windows 11 that's without **Show more options**.
