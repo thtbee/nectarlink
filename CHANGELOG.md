@@ -16,8 +16,9 @@ change things that need a step from you, and its notes say so.
   [@FlootingDream](https://github.com/FlootingDream) ([#451](https://github.com/thtbee/nectarlink/issues/451)).
 - **Chat between your devices.** Type a note on the PC and it shows on the phone, and the other
   way round: a Chat card on the PC's Home and a Chat button on each device's card on the phone open
-  it. Notes stay on the two devices with the rest of the timeline; your own can be changed, and
-  either side can delete one. Both devices need this version. Thanks to
+  it. The files, photos and recordings the two send each other show in it too, and its attach
+  button sends more. Notes stay on the two devices with the rest of the timeline; your own can be
+  changed, and either side can delete one. Both devices need this version. Thanks to
   [@amir1376](https://github.com/amir1376) ([#698](https://github.com/thtbee/nectarlink/issues/698)).
 - **Pick which of the PC's players Now playing controls.** With several players running on the PC,
   their names sit in a row on the PC's Now playing card: click one to control it. Thanks to
