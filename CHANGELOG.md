@@ -8,6 +8,11 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Talk on a phone call through the Mac.** The **On PC** button on a call now works on macOS as
+  on Windows: the other party plays on the Mac's sound output, headphones included, and the Mac's
+  microphone goes into the call. macOS asks once to let NectarLink use the microphone. Pick the
+  microphone in Settings › Camera & Audio. Needs Elevated on an Android 13 or newer phone, as
+  on Windows.
 - **Share photos from the Mac too.** The Photos page's **Share** button, for a selection and in
   the viewer, now opens the macOS share menu as it opens the share sheet on Windows
   ([#174](https://github.com/thtbee/nectarlink/issues/174)).

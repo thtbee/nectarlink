@@ -3,6 +3,7 @@
 //! notifications, volume, and shell operations.
 
 pub mod audio;
+pub mod audio_in;
 pub mod audio_out;
 pub mod autostart;
 pub mod ble_beacon;

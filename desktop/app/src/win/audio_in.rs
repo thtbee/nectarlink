@@ -70,6 +70,11 @@ fn mic_error(code: windows::core::HRESULT) -> MicError {
     }
 }
 
+/// Windows has no prompt to wait for: a refusal shows when recording starts.
+pub fn request_access() -> Result<(), MicError> {
+    Ok(())
+}
+
 /// Records until dropped.
 pub struct Recorder {
     running: Arc<AtomicBool>,

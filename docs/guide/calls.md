@@ -75,6 +75,6 @@ On Linux, call audio goes to the PC over Bluetooth instead, as for a headset.
 
 ## Limits
 
-- **Talking through your PC**: Needs `Elevated` on Android 13 or newer, and a phone whose audio system lets apps reach the call (Pixel phones do; others may not). On Windows only, for now. There's no echo cancelling yet, so headphones work best.
+- **Talking through your PC**: Needs `Elevated` on Android 13 or newer, and a phone whose audio system lets apps reach the call (Pixel phones do; others may not). On Windows and macOS, for now. On a Mac, the first time macOS asks to let NectarLink use the microphone; if you said no, turn it on in **System Settings › Privacy & Security › Microphone**. The other party plays on the Mac's current sound output, so AirPods or wired headphones work as they do for any app. There's no echo cancelling yet, so headphones work best.
 - **In-Call Mute, Hold, Speaker, and DTMF Keypad**: Standard Android permissions allow third-party apps to answer and end calls (`TelecomManager`), but muting the microphone, toggling speakerphone, holding a call, and sending DTMF tones during a cellular call require `Elevated` on Android 12 or newer unless the app replaces your default phone dialer.
 - **Dual-SIM Selection**: When you place a call from the PC on a dual-SIM phone, Android uses the default calling SIM configured in your phone's SIM settings (or prompts on the phone if your SIM preference is set to "Ask every time").

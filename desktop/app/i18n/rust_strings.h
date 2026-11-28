@@ -65,6 +65,7 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Calls", "This phone doesn't let NectarLink reach its calls' sound."), // desktop/app/src/call_audio.rs
     QT_TRANSLATE_NOOP("Calls", "Unknown caller"), // desktop/app/src/bridge/calls.rs
     QT_TRANSLATE_NOOP("Calls", "Windows keeps NectarLink off the microphone. Turn on Settings › Privacy & security › Microphone › Let desktop apps access your microphone, then try again."), // desktop/app/src/call_audio.rs
+    QT_TRANSLATE_NOOP("Calls", "macOS keeps NectarLink off the microphone. Turn on System Settings › Privacy & Security › Microphone › NectarLink, then try again."), // desktop/app/src/call_audio.rs
     QT_TRANSLATE_NOOP("Chat", "A note can have up to 8192 characters."), // desktop/app/src/chat.rs
     QT_TRANSLATE_NOOP("Chat", "New note"), // desktop/app/src/chat.rs
     QT_TRANSLATE_NOOP("Chat", "That note was deleted."), // desktop/app/src/chat.rs
