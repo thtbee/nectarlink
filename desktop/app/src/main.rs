@@ -24,6 +24,7 @@ mod continuity_camera;
 mod core_host;
 mod crash_events;
 mod deck;
+mod deck_images;
 mod doctor;
 mod feed;
 mod folder_sync;

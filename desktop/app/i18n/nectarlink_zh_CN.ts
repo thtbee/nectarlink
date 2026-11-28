@@ -2404,6 +2404,36 @@
         <source>Off</source>
         <translation>关</translation>
     </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Can&apos;t open that picture.</source>
+        <translation>无法打开该图片。</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>That picture is over 20 MB. Choose a smaller one.</source>
+        <translation>该图片超过 20 MB。请选择更小的图片。</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Can&apos;t read that picture. Try a PNG or JPEG.</source>
+        <translation>无法读取该图片。请试试 PNG 或 JPEG。</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>That picture has too much detail to send to a phone. Try a simpler one.</source>
+        <translation>该图片细节太多，无法发送到手机。请试试更简单的图片。</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Can&apos;t save the picture.</source>
+        <translation>无法保存图片。</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>The picture is missing. Choose it again.</source>
+        <translation>图片不见了。请重新选择。</translation>
+    </message>
 </context>
 <context>
     <name>DeckPage</name>
@@ -2742,8 +2772,8 @@
     </message>
     <message>
         <location filename="../qml/pages/DeckPage.qml" line="667"/>
-        <source>Phones see only each tile&apos;s label and icon. Paths and commands stay on this PC.</source>
-        <translation>手机只能看到每个磁贴的标签和图标。路径和命令保留在本机。</translation>
+        <source>Phones see only each tile&apos;s label, icon and picture. Paths and commands stay on this PC.</source>
+        <translation>手机只能看到每个磁贴的标签、图标和图片。路径和命令保留在本机。</translation>
     </message>
     <message>
         <location filename="../qml/pages/DeckPage.qml" line="712"/>
@@ -2917,6 +2947,46 @@
         <location filename="../qml/pages/DeckPage.qml" line="1"/>
         <source>Choose what turning it off does:</source>
         <translation>选择关闭时要做的事：</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Choose a picture</source>
+        <translation>选择图片</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Pictures (*.png *.jpg *.jpeg *.bmp *.gif *.webp)</source>
+        <translation>图片 (*.png *.jpg *.jpeg *.bmp *.gif *.webp)</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Picture</source>
+        <translation>图片</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Choose…</source>
+        <translation>选择…</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Remove</source>
+        <translation>移除</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Getting the picture ready…</source>
+        <translation>正在准备图片…</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Shown instead of the icon, here and on phones.</source>
+        <translation>在这里和手机上代替图标显示。</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Optional. Square pictures look best.</source>
+        <translation>可选。方形图片效果最好。</translation>
     </message>
 </context>
 <context>

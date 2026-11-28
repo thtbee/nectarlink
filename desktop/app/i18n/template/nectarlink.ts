@@ -2321,6 +2321,36 @@
         <source>Off</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <location filename="../rust_strings.h" line="1"/>
+        <source>Can&apos;t open that picture.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rust_strings.h" line="1"/>
+        <source>That picture is over 20 MB. Choose a smaller one.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rust_strings.h" line="1"/>
+        <source>Can&apos;t read that picture. Try a PNG or JPEG.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rust_strings.h" line="1"/>
+        <source>That picture has too much detail to send to a phone. Try a simpler one.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rust_strings.h" line="1"/>
+        <source>Can&apos;t save the picture.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../rust_strings.h" line="1"/>
+        <source>The picture is missing. Choose it again.</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>DeckPage</name>
@@ -2659,7 +2689,7 @@
     </message>
     <message>
         <location filename="../../qml/pages/DeckPage.qml" line="667"/>
-        <source>Phones see only each tile&apos;s label and icon. Paths and commands stay on this PC.</source>
+        <source>Phones see only each tile&apos;s label, icon and picture. Paths and commands stay on this PC.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -2833,6 +2863,46 @@
     <message>
         <location filename="../../qml/pages/DeckPage.qml" line="1"/>
         <source>Choose what turning it off does:</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/DeckPage.qml" line="1"/>
+        <source>Choose a picture</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/DeckPage.qml" line="1"/>
+        <source>Pictures (*.png *.jpg *.jpeg *.bmp *.gif *.webp)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/DeckPage.qml" line="1"/>
+        <source>Picture</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/DeckPage.qml" line="1"/>
+        <source>Choose…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/DeckPage.qml" line="1"/>
+        <source>Remove</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/DeckPage.qml" line="1"/>
+        <source>Getting the picture ready…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/DeckPage.qml" line="1"/>
+        <source>Shown instead of the icon, here and on phones.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/DeckPage.qml" line="1"/>
+        <source>Optional. Square pictures look best.</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

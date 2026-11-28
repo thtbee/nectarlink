@@ -2389,6 +2389,36 @@
         <source>Off</source>
         <translation>Desactivado</translation>
     </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Can&apos;t open that picture.</source>
+        <translation>No se puede abrir esa imagen.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>That picture is over 20 MB. Choose a smaller one.</source>
+        <translation>Esa imagen ocupa más de 20 MB. Elige una más pequeña.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Can&apos;t read that picture. Try a PNG or JPEG.</source>
+        <translation>No se puede leer esa imagen. Prueba con PNG o JPEG.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>That picture has too much detail to send to a phone. Try a simpler one.</source>
+        <translation>Esa imagen tiene demasiado detalle para enviarla a un teléfono. Prueba con una más sencilla.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Can&apos;t save the picture.</source>
+        <translation>No se puede guardar la imagen.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>The picture is missing. Choose it again.</source>
+        <translation>Falta la imagen. Vuelve a elegirla.</translation>
+    </message>
 </context>
 <context>
     <name>DeckPage</name>
@@ -2727,8 +2757,8 @@
     </message>
     <message>
         <location filename="../qml/pages/DeckPage.qml" line="667"/>
-        <source>Phones see only each tile&apos;s label and icon. Paths and commands stay on this PC.</source>
-        <translation>Los teléfonos solo ven la etiqueta y el icono de cada mosaico. Las rutas y los comandos permanecen en este PC.</translation>
+        <source>Phones see only each tile&apos;s label, icon and picture. Paths and commands stay on this PC.</source>
+        <translation>Los teléfonos solo ven la etiqueta, el icono y la imagen de cada mosaico. Las rutas y los comandos permanecen en este PC.</translation>
     </message>
     <message>
         <location filename="../qml/pages/DeckPage.qml" line="712"/>
@@ -2902,6 +2932,46 @@
         <location filename="../qml/pages/DeckPage.qml" line="1"/>
         <source>Choose what turning it off does:</source>
         <translation>Elige qué hace al desactivarlo:</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Choose a picture</source>
+        <translation>Elegir una imagen</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Pictures (*.png *.jpg *.jpeg *.bmp *.gif *.webp)</source>
+        <translation>Imágenes (*.png *.jpg *.jpeg *.bmp *.gif *.webp)</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Picture</source>
+        <translation>Imagen</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Choose…</source>
+        <translation>Elegir…</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Remove</source>
+        <translation>Quitar</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Getting the picture ready…</source>
+        <translation>Preparando la imagen…</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Shown instead of the icon, here and on phones.</source>
+        <translation>Se muestra en lugar del icono, aquí y en los teléfonos.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Optional. Square pictures look best.</source>
+        <translation>Opcional. Las imágenes cuadradas se ven mejor.</translation>
     </message>
 </context>
 <context>

@@ -399,6 +399,7 @@ pub mod qobject {
             alt: bool,
             shift: bool,
             win_mod: bool,
+            image: &QString,
         ) -> QString;
         #[qinvokable]
         fn test_tile(self: Pin<&mut DeckController>, tile_id: &QString);
@@ -406,6 +407,15 @@ pub mod qobject {
         fn url_to_local_path(self: &DeckController, url: &QString) -> QString;
         #[qinvokable]
         fn set_page_active(self: &DeckController, active: bool);
+        /// Makes the picture file at `url` a tile picture, off the UI thread
+        /// (#490); `image_chosen` follows.
+        #[qinvokable]
+        fn choose_image(self: Pin<&mut DeckController>, url: &QString);
+        #[qinvokable]
+        fn image_url(self: &DeckController, id: &QString) -> QString;
+        /// A chosen picture is ready: its ID and `file:` URL, or `error`.
+        #[qsignal]
+        fn image_chosen(self: Pin<&mut DeckController>, id: QString, url: QString, error: QString);
     }
 
     impl cxx_qt::Threading for Preferences {}

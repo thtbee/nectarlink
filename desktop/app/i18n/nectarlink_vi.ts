@@ -2389,6 +2389,36 @@
         <source>Off</source>
         <translation>Tắt</translation>
     </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Can&apos;t open that picture.</source>
+        <translation>Không mở được hình ảnh này.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>That picture is over 20 MB. Choose a smaller one.</source>
+        <translation>Hình ảnh này lớn hơn 20 MB. Hãy chọn hình nhỏ hơn.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Can&apos;t read that picture. Try a PNG or JPEG.</source>
+        <translation>Không đọc được hình ảnh này. Hãy thử PNG hoặc JPEG.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>That picture has too much detail to send to a phone. Try a simpler one.</source>
+        <translation>Hình ảnh này quá nhiều chi tiết để gửi đến điện thoại. Hãy thử hình đơn giản hơn.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Can&apos;t save the picture.</source>
+        <translation>Không lưu được hình ảnh.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>The picture is missing. Choose it again.</source>
+        <translation>Không tìm thấy hình ảnh. Hãy chọn lại.</translation>
+    </message>
 </context>
 <context>
     <name>DeckPage</name>
@@ -2727,8 +2757,8 @@
     </message>
     <message>
         <location filename="../qml/pages/DeckPage.qml" line="667"/>
-        <source>Phones see only each tile&apos;s label and icon. Paths and commands stay on this PC.</source>
-        <translation>Điện thoại chỉ thấy nhãn và biểu tượng của từng ô. Đường dẫn và lệnh vẫn ở lại trên PC này.</translation>
+        <source>Phones see only each tile&apos;s label, icon and picture. Paths and commands stay on this PC.</source>
+        <translation>Điện thoại chỉ thấy nhãn, biểu tượng và hình ảnh của từng ô. Đường dẫn và lệnh vẫn ở lại trên PC này.</translation>
     </message>
     <message>
         <location filename="../qml/pages/DeckPage.qml" line="712"/>
@@ -2902,6 +2932,46 @@
         <location filename="../qml/pages/DeckPage.qml" line="1"/>
         <source>Choose what turning it off does:</source>
         <translation>Chọn việc khi tắt:</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Choose a picture</source>
+        <translation>Chọn hình ảnh</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Pictures (*.png *.jpg *.jpeg *.bmp *.gif *.webp)</source>
+        <translation>Hình ảnh (*.png *.jpg *.jpeg *.bmp *.gif *.webp)</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Picture</source>
+        <translation>Hình ảnh</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Choose…</source>
+        <translation>Chọn…</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Remove</source>
+        <translation>Xóa</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Getting the picture ready…</source>
+        <translation>Đang chuẩn bị hình ảnh…</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Shown instead of the icon, here and on phones.</source>
+        <translation>Hiện thay cho biểu tượng, ở đây và trên điện thoại.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Optional. Square pictures look best.</source>
+        <translation>Không bắt buộc. Hình vuông trông đẹp nhất.</translation>
     </message>
 </context>
 <context>

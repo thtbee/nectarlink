@@ -2404,6 +2404,36 @@
         <source>Off</source>
         <translation>Kapalı</translation>
     </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Can&apos;t open that picture.</source>
+        <translation>Bu görüntü açılamıyor.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>That picture is over 20 MB. Choose a smaller one.</source>
+        <translation>Bu görüntü 20 MB&apos;tan büyük. Daha küçük bir görüntü seçin.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Can&apos;t read that picture. Try a PNG or JPEG.</source>
+        <translation>Bu görüntü okunamıyor. PNG veya JPEG deneyin.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>That picture has too much detail to send to a phone. Try a simpler one.</source>
+        <translation>Bu görüntüde telefona göndermek için fazla ayrıntı var. Daha sade bir görüntü deneyin.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>Can&apos;t save the picture.</source>
+        <translation>Görüntü kaydedilemiyor.</translation>
+    </message>
+    <message>
+        <location filename="rust_strings.h" line="1"/>
+        <source>The picture is missing. Choose it again.</source>
+        <translation>Görüntü bulunamadı. Yeniden seçin.</translation>
+    </message>
 </context>
 <context>
     <name>DeckPage</name>
@@ -2742,8 +2772,8 @@
     </message>
     <message>
         <location filename="../qml/pages/DeckPage.qml" line="667"/>
-        <source>Phones see only each tile&apos;s label and icon. Paths and commands stay on this PC.</source>
-        <translation>Telefonlar her kutucuğun yalnızca etiketini ve simgesini görür. Yollar ve komutlar bu bilgisayarda kalır.</translation>
+        <source>Phones see only each tile&apos;s label, icon and picture. Paths and commands stay on this PC.</source>
+        <translation>Telefonlar her kutucuğun yalnızca etiketini, simgesini ve resmini görür. Yollar ve komutlar bu bilgisayarda kalır.</translation>
     </message>
     <message>
         <location filename="../qml/pages/DeckPage.qml" line="712"/>
@@ -2917,6 +2947,46 @@
         <location filename="../qml/pages/DeckPage.qml" line="1"/>
         <source>Choose what turning it off does:</source>
         <translation>Kapatınca ne yapacağını seçin:</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Choose a picture</source>
+        <translation>Bir görüntü seçin</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Pictures (*.png *.jpg *.jpeg *.bmp *.gif *.webp)</source>
+        <translation>Görüntüler (*.png *.jpg *.jpeg *.bmp *.gif *.webp)</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Picture</source>
+        <translation>Görüntü</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Choose…</source>
+        <translation>Seç…</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Remove</source>
+        <translation>Kaldır</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Getting the picture ready…</source>
+        <translation>Görüntü hazırlanıyor…</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Shown instead of the icon, here and on phones.</source>
+        <translation>Burada ve telefonlarda simgenin yerine gösterilir.</translation>
+    </message>
+    <message>
+        <location filename="../qml/pages/DeckPage.qml" line="1"/>
+        <source>Optional. Square pictures look best.</source>
+        <translation>İsteğe bağlı. Kare görüntüler en iyi görünür.</translation>
     </message>
 </context>
 <context>

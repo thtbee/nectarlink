@@ -197,6 +197,9 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Deck", "Alt + Tab"), // desktop/app/src/bridge/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Application path must end with .exe or .lnk."), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Asks on the phone first"), // desktop/app/src/bridge/deck.rs
+    QT_TRANSLATE_NOOP("Deck", "Can't open that picture."), // desktop/app/src/deck_images.rs
+    QT_TRANSLATE_NOOP("Deck", "Can't read that picture. Try a PNG or JPEG."), // desktop/app/src/deck_images.rs
+    QT_TRANSLATE_NOOP("Deck", "Can't save the picture."), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Choose a key for the shortcut."), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Choose an application (.exe or .lnk) on this PC."), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Choose what turning it on does, and what turning it off does."), // desktop/app/src/deck.rs
@@ -214,6 +217,9 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("Deck", "Step %1: %2"), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Step %1: restart, shut down and macros can't be steps."), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Step %1: wait at most 10 seconds."), // desktop/app/src/deck.rs
+    QT_TRANSLATE_NOOP("Deck", "That picture has too much detail to send to a phone. Try a simpler one."), // desktop/app/src/deck_images.rs
+    QT_TRANSLATE_NOOP("Deck", "That picture is over 20 MB. Choose a smaller one."), // desktop/app/src/deck_images.rs
+    QT_TRANSLATE_NOOP("Deck", "The picture is missing. Choose it again."), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "This page already has the maximum number of tiles (24)."), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Tile not found."), // desktop/app/src/deck.rs
     QT_TRANSLATE_NOOP("Deck", "Turning off"), // desktop/app/src/deck.rs

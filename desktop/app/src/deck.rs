@@ -4,6 +4,7 @@
 
 use crate::i18n::tr;
 use std::{
+    collections::HashSet,
     path::{Path, PathBuf},
     sync::{
         Mutex, MutexGuard,
@@ -13,11 +14,11 @@ use std::{
 };
 
 use nectarlink_core::{
-    DeckAction, DeckConfig, DeckPageConfig, DeckState, DeckTileConfig, DeviceId, KeyMod, deck_colors,
-    deck_icons, deck_kinds,
+    DeckAction, DeckConfig, DeckLayout, DeckPageConfig, DeckState, DeckTileConfig, DeviceId, KeyMod,
+    deck_colors, deck_icons, deck_kinds,
 };
 
-use crate::{core_host, links, state::Changes, win};
+use crate::{core_host, deck_images, links, state::Changes, win};
 
 const FILE_NAME: &str = "deck.json";
 /// How often Wi-Fi and Bluetooth are looked at for a change made on the PC.
@@ -128,6 +129,7 @@ pub fn init(data_dir: &Path) {
         }
         core_host::host().hub.update(|_| Changes::DECK);
         if let Some(node) = core_host::wait_for_node().await {
+            node.set_deck_images(images_for(&wire_layout).await);
             let _ = node.set_deck_layout(wire_layout).await;
             let _ = node.set_deck_state(sampled).await;
         }
@@ -177,12 +179,59 @@ fn reload_from_disk_if_modified() {
     };
     if let Some(wire) = updated_wire {
         core_host::host().hub.update(|_| Changes::DECK);
-        core_host::spawn(async move {
-            if let Some(node) = core_host::node() {
-                let _ = node.set_deck_layout(wire).await;
-            }
-        });
+        publish(wire);
     }
+}
+
+/// The folder deck.json and the tile pictures are in.
+fn data_dir() -> PathBuf {
+    lock(&DECK)
+        .as_ref()
+        .and_then(|rt| rt.path.as_deref()?.parent().map(Path::to_path_buf))
+        .unwrap_or_else(|| core_host::host().data_dir.clone())
+}
+
+/// The picture IDs the layout's tiles name.
+fn named_images(layout: &DeckLayout) -> HashSet<String> {
+    layout.pages.iter().flat_map(|p| &p.tiles).filter_map(|t| t.image.clone()).collect()
+}
+
+/// The PNGs of the pictures the layout names, read from disk.
+async fn images_for(layout: &DeckLayout) -> Vec<Vec<u8>> {
+    let ids = named_images(layout);
+    let dir = data_dir();
+    tokio::task::spawn_blocking(move || deck_images::load(&dir, ids.iter().map(String::as_str)))
+        .await
+        .unwrap_or_default()
+}
+
+/// Gives phones the layout, and first the pictures it names so a phone that
+/// asks for one right away gets it.
+fn publish(wire: DeckLayout) {
+    core_host::spawn(async move {
+        if let Some(node) = core_host::node() {
+            node.set_deck_images(images_for(&wire).await);
+            let _ = node.set_deck_layout(wire).await;
+        }
+    });
+}
+
+/// A `file:` URL for the tile picture `id` when it's on disk, else "".
+pub fn image_url(id: &str) -> String {
+    deck_images::path(&data_dir(), id)
+        .filter(|p| p.is_file())
+        .map(|p| crate::icons::file_url(&p))
+        .unwrap_or_default()
+}
+
+/// Turns a picture file the user chose into a tile picture and keeps it;
+/// returns its ID. Slow for big files: call it off the UI thread.
+pub fn add_image(file: &Path) -> Result<String, String> {
+    let png = deck_images::prepare_file(file)?;
+    deck_images::store(&data_dir(), &png).map_err(|e| {
+        tracing::warn!(error = %e, "failed to save a deck picture");
+        tr!("Deck", "Can't save the picture.")
+    })
 }
 
 /// Re-reads the PC's speaker and mic states and broadcasts `deck.state` if changed.
@@ -234,7 +283,7 @@ pub fn state() -> DeckState {
 }
 
 fn commit_config(mutate: impl FnOnce(&mut DeckConfig)) {
-    let wire = {
+    let (wire, dir) = {
         let mut guard = lock(&DECK);
         let rt = guard.get_or_insert_with(|| RuntimeState {
             config: DeckConfig::default_deck(),
@@ -252,14 +301,14 @@ fn commit_config(mutate: impl FnOnce(&mut DeckConfig)) {
             }
             rt.last_mtime = file_mtime(path);
         }
-        rt.config.to_wire_layout()
+        (rt.config.to_wire_layout(), rt.path.as_deref().and_then(Path::parent).map(Path::to_path_buf))
     };
+    // Pictures no tile names any more go.
+    if let Some(dir) = dir {
+        deck_images::prune(&dir, &named_images(&wire));
+    }
     core_host::host().hub.update(|_| Changes::DECK);
-    core_host::spawn(async move {
-        if let Some(node) = core_host::node() {
-            let _ = node.set_deck_layout(wire).await;
-        }
-    });
+    publish(wire);
 }
 
 /// Called when a paired phone presses a Deck tile (`Platform::deck_press`).
@@ -711,6 +760,8 @@ pub fn build_toggle(json: &str) -> Result<DeckAction, String> {
 }
 
 /// Adds or updates a tile on `page_id`. If `tile_id` is empty, creates a new tile.
+/// `image` is the ID of the tile's picture, from [`add_image`] or the tile
+/// as it was, or `None` for its icon.
 pub fn save_tile(
     page_id: &str,
     tile_id: &str,
@@ -718,7 +769,17 @@ pub fn save_tile(
     icon: &str,
     color: &str,
     action: DeckAction,
+    image: Option<&str>,
 ) -> Result<String, String> {
+    let image = image.map(str::trim).filter(|id| !id.is_empty());
+    if let Some(id) = image
+        && !deck_images::exists(&data_dir(), id)
+    {
+        return Err(tr!("Deck", "The picture is missing. Choose it again."));
+    }
+    let image = image.map(str::to_owned);
+    // Pictures chosen in the editor and not kept go with this save.
+    deck_images::clear_pending();
     let kind = action.kind();
     let final_label = if label.trim().is_empty() {
         deck_kinds::default_label(kind).to_owned()
@@ -757,6 +818,7 @@ pub fn save_tile(
                 icon: final_icon.clone(),
                 color: final_color.clone(),
                 action: action.clone(),
+                image: image.clone(),
             };
             if let Some(clean) = tile.sanitized() {
                 saved_id = clean.id.clone();
@@ -771,6 +833,7 @@ pub fn save_tile(
                 icon: final_icon.clone(),
                 color: final_color.clone(),
                 action: action.clone(),
+                image: image.clone(),
             };
             if let Some(clean) = updated.sanitized() {
                 saved_id = clean.id.clone();
