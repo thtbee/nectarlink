@@ -71,6 +71,11 @@ const SPARE_PORT_MAX_DELAY: Duration = Duration::from_secs(30);
 /// a wedged adb) never closes by itself, so without this the worker would sit
 /// in it and never open a new one until the cable is replugged.
 const TUNNEL_SILENCE_LIMIT: Duration = Duration::from_secs(60);
+/// How much a tunnel gathers per write, and reads ahead, between UDP and TCP.
+const RELAY_BATCH_BYTES: usize = 256 * 1024;
+/// Room for one framed datagram: its 2-byte length and up to 65,535 bytes.
+const FRAME_ROOM: usize = 2 + u16::MAX as usize;
+const _: () = assert!(RELAY_BATCH_BYTES >= FRAME_ROOM);
 
 /// The phone app's id, and the pieces of it the PC starts through adb. Both
 /// are protected by `android.permission.DUMP`, which only the shell holds.
@@ -803,7 +808,7 @@ async fn relay_until_silent(
     cancel: CancellationToken,
     silence_limit: Duration,
 ) {
-    let (mut tcp_read, mut tcp_write) = stream.into_split();
+    let (tcp_read, mut tcp_write) = stream.into_split();
     let udp_recv = Arc::new(udp);
     let udp_send = udp_recv.clone();
     let target = Arc::new(Mutex::new(default_target));
@@ -818,24 +823,52 @@ async fn relay_until_silent(
     let writing_on_recv = writing.clone();
 
     let udp_to_tcp = async move {
-        let mut buf = vec![0u8; 65535];
+        // Datagrams already waiting go out with the first, framed one after
+        // another in a single write: one write per batch, where a length and a
+        // datagram written apart made two (and two TCP segments, with Nagle off).
+        let mut batch = vec![0u8; RELAY_BATCH_BYTES];
         loop {
-            let (n, from) = udp_recv.recv_from(&mut buf).await?;
-            if n == 0 || n > u16::MAX as usize {
-                continue;
+            let (n, mut from) = udp_recv.recv_from(&mut batch[2..FRAME_ROOM]).await?;
+            let mut len = 0;
+            if n > 0 {
+                batch[..2].copy_from_slice(&(n as u16).to_be_bytes());
+                len = 2 + n;
             }
-            *target_for_recv.lock().unwrap_or_else(|e| e.into_inner()) = from;
-            writing.store(true, Ordering::Relaxed);
-            unanswered_on_send.lock().unwrap_or_else(|e| e.into_inner()).get_or_insert_with(Instant::now);
-            tcp_write.write_all(&(n as u16).to_be_bytes()).await?;
-            tcp_write.write_all(&buf[..n]).await?;
-            writing.store(false, Ordering::Relaxed);
+            let mut failed = None;
+            while batch.len() - len >= FRAME_ROOM {
+                match udp_recv.try_recv_from(&mut batch[len + 2..len + FRAME_ROOM]) {
+                    Ok((0, _)) => {}
+                    Ok((n, at)) => {
+                        batch[len..len + 2].copy_from_slice(&(n as u16).to_be_bytes());
+                        len += 2 + n;
+                        from = at;
+                    }
+                    Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => break,
+                    // Reported after what's gathered goes out, as it would have been.
+                    Err(e) => {
+                        failed = Some(e);
+                        break;
+                    }
+                }
+            }
+            if len > 0 {
+                *target_for_recv.lock().unwrap_or_else(|e| e.into_inner()) = from;
+                writing.store(true, Ordering::Relaxed);
+                unanswered_on_send.lock().unwrap_or_else(|e| e.into_inner()).get_or_insert_with(Instant::now);
+                tcp_write.write_all(&batch[..len]).await?;
+                writing.store(false, Ordering::Relaxed);
+            }
+            if let Some(e) = failed {
+                return Err(e);
+            }
         }
         #[allow(unreachable_code)]
         Ok::<(), std::io::Error>(())
     };
 
     let tcp_to_udp = async move {
+        // Frames come out of a buffer: two reads per frame were two system calls each.
+        let mut tcp_read = tokio::io::BufReader::with_capacity(RELAY_BATCH_BYTES, tcp_read);
         let mut buf = vec![0u8; 65535];
         loop {
             let mut len_buf = [0u8; 2];
@@ -1094,6 +1127,106 @@ mod tests {
         let listener = tokio::net::TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).await.unwrap();
         let (near, far) = tokio::join!(TcpStream::connect(listener.local_addr().unwrap()), listener.accept());
         (near.unwrap(), far.unwrap().0)
+    }
+
+    /// How fast a tunnel carries datagrams each way, and in how many TCP reads
+    /// they reach the far end. Opt-in:
+    /// `cargo test --release -p nectarlink-core --lib usb::tests::relay_throughput -- --ignored --nocapture`.
+    #[ignore = "benchmark"]
+    #[tokio::test(flavor = "multi_thread")]
+    async fn relay_throughput() {
+        use std::sync::atomic::AtomicUsize;
+        const DATAGRAMS: usize = 200_000;
+        const SIZE: usize = 1400;
+        // In flight at most: under the 64 KiB a UDP socket buffers by default on
+        // Windows, so none is dropped (QUIC's congestion window does this for real).
+        const WINDOW: usize = 32;
+        let (near, mut far) = tcp_pair().await;
+        let udp = UdpSocket::bind((Ipv4Addr::LOCALHOST, 0)).await.unwrap();
+        let bridge = udp.local_addr().unwrap();
+        let relay = tokio::spawn(relay_until_silent(
+            near,
+            udp,
+            SocketAddr::from((Ipv4Addr::LOCALHOST, 9)),
+            CancellationToken::new(),
+            Duration::from_secs(3600),
+        ));
+
+        // UDP into the tunnel.
+        let peer = Arc::new(UdpSocket::bind((Ipv4Addr::LOCALHOST, 0)).await.unwrap());
+        let arrived = Arc::new(AtomicUsize::new(0));
+        let start = Instant::now();
+        let send = {
+            let (peer, arrived) = (peer.clone(), arrived.clone());
+            tokio::spawn(async move {
+                let datagram = vec![7u8; SIZE];
+                for sent in 0..DATAGRAMS {
+                    while sent - arrived.load(Ordering::Relaxed) >= WINDOW {
+                        tokio::task::yield_now().await;
+                    }
+                    peer.send_to(&datagram, bridge).await.unwrap();
+                }
+            })
+        };
+        let (mut reads, mut bytes) = (0usize, 0usize);
+        let mut buf = vec![0u8; 1 << 20];
+        while bytes < DATAGRAMS * (SIZE + 2) {
+            let n = far.read(&mut buf).await.unwrap();
+            assert!(n > 0);
+            reads += 1;
+            bytes += n;
+            arrived.store(bytes / (SIZE + 2), Ordering::Relaxed);
+        }
+        let up = start.elapsed();
+        send.await.unwrap();
+        println!(
+            "[BENCH] UDP to TCP: {DATAGRAMS} datagrams in {up:?} = {:.0} MiB/s, {:.1} datagrams per TCP read",
+            (DATAGRAMS * SIZE) as f64 / up.as_secs_f64() / (1 << 20) as f64,
+            DATAGRAMS as f64 / reads as f64,
+        );
+
+        // TCP into the tunnel, to the address the datagrams came from.
+        let got = Arc::new(AtomicUsize::new(0));
+        let start = Instant::now();
+        let write = {
+            let got = got.clone();
+            tokio::spawn(async move {
+                let mut frame = Vec::with_capacity(SIZE + 2);
+                frame.extend_from_slice(&(SIZE as u16).to_be_bytes());
+                frame.extend_from_slice(&[9u8; SIZE]);
+                let mut chunk = Vec::new();
+                let mut written = 0;
+                while written < DATAGRAMS {
+                    while written - got.load(Ordering::Relaxed) >= WINDOW / 2 {
+                        tokio::task::yield_now().await;
+                    }
+                    chunk.clear();
+                    let n = (WINDOW / 2).min(DATAGRAMS - written);
+                    for _ in 0..n {
+                        chunk.extend_from_slice(&frame);
+                    }
+                    far.write_all(&chunk).await.unwrap();
+                    written += n;
+                }
+                far
+            })
+        };
+        let mut buf = vec![0u8; 65536];
+        let _ = tokio::time::timeout(Duration::from_secs(30), async {
+            while got.load(Ordering::Relaxed) < DATAGRAMS {
+                peer.recv_from(&mut buf).await.unwrap();
+                got.fetch_add(1, Ordering::Relaxed);
+            }
+        })
+        .await;
+        let got = got.load(Ordering::Relaxed);
+        let down = start.elapsed();
+        println!(
+            "[BENCH] TCP to UDP: {got} of {DATAGRAMS} datagrams in {down:?} = {:.0} MiB/s",
+            (got * SIZE) as f64 / down.as_secs_f64() / (1 << 20) as f64
+        );
+        write.abort();
+        relay.abort();
     }
 
     #[tokio::test]
