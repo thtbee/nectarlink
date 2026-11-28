@@ -670,6 +670,9 @@ change things that need a step from you, and its notes say so.
   scaled down on the graphics card before it's read back, and on a PC whose displays are all on
   NVIDIA, it's encoded there too, without coming through the CPU at all. If that can't start, the
   usual capture takes over. Thanks to [@vladikchi](https://github.com/vladikchi) ([#742](https://github.com/thtbee/nectarlink/pull/742)).
+- **A Linux PC that starts before its desktop portal can still share its screen.** On a session
+  where NectarLink started first (seen on COSMIC), phones were told sharing wasn't supported until
+  NectarLink restarted. Thanks to [@krakotay](https://github.com/krakotay) ([#743](https://github.com/thtbee/nectarlink/pull/743)).
 - **The PC app opens faster, and both apps are smaller.** The window shows in about 0.3 s
   instead of 0.6 s (the icon, Jump List and What's new check no longer hold it up), the Windows
   installer is 2 MB smaller, and the phone app is about 9 MB smaller. On x86_64 Chromebooks that

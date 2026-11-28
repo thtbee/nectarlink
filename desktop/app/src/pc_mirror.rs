@@ -121,7 +121,7 @@ mod imp {
 
     /// Whether this PC's display session supports screen capture for `mirror.capture`.
     ///
-    /// Linux needs an H.264 encoder and either X11 or the ScreenCast portal with PipeWire.
+    /// Linux needs an H.264 encoder and either X11 or Wayland capture tools.
     pub fn is_capture_available() -> bool {
         #[cfg(windows)]
         {
@@ -142,8 +142,13 @@ mod imp {
             }
             // XWayland's root window isn't the desktop: a Wayland session
             // shares the screen through the portal only (#548).
-            let has_x11 = !wayland_session() && std::env::var_os("DISPLAY").is_some() && x11_api().is_some();
-            has_x11 || is_wayland_screencast_available()
+            if wayland_session() {
+                // The session bus can start the portal on demand. Its current
+                // ownership must not decide whether phones can request capture.
+                pipewire_capture_found()
+            } else {
+                std::env::var_os("DISPLAY").is_some() && x11_api().is_some()
+            }
         }
     }
 
@@ -2198,29 +2203,18 @@ mod imp {
                 .is_some_and(|out| out.status.success())
     }
 
+    /// [`pipewire_capture_installed`], checked once: the capabilities are worked
+    /// out on a Tokio worker each time a toggle or session changes, and the
+    /// check runs gst-inspect. A mirror request checks again.
     #[cfg(target_os = "linux")]
-    fn wayland_session() -> bool {
-        std::env::var_os("WAYLAND_DISPLAY").is_some_and(|v| !v.is_empty())
+    fn pipewire_capture_found() -> bool {
+        static FOUND: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+        *FOUND.get_or_init(pipewire_capture_installed)
     }
 
     #[cfg(target_os = "linux")]
-    fn is_wayland_screencast_available() -> bool {
-        if !wayland_session() {
-            return false;
-        }
-        static AVAILABLE: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
-        *AVAILABLE.get_or_init(|| {
-            if !pipewire_capture_installed() {
-                return false;
-            }
-            // The core probes capture capabilities from a Tokio worker.
-            win::non_tokio(|| {
-                let Ok(conn) = zbus::blocking::Connection::session() else {
-                    return false;
-                };
-                win::dbus_name_has_owner(&conn, "org.freedesktop.portal.Desktop")
-            })
-        })
+    fn wayland_session() -> bool {
+        std::env::var_os("WAYLAND_DISPLAY").is_some_and(|v| !v.is_empty())
     }
 
     #[cfg(target_os = "linux")]
@@ -2655,7 +2649,14 @@ mod imp {
         #[cfg(target_os = "linux")]
         let _runtime_guard = runtime.enter();
         #[cfg(target_os = "linux")]
-        let (mut wayland, wayland_dims) = if options.watch.is_none() && is_wayland_screencast_available() {
+        let (mut wayland, wayland_dims) = if options.watch.is_none() && wayland_session() {
+            if !pipewire_capture_installed() {
+                let error = anyhow::anyhow!(
+                    "sharing the screen on Wayland needs GStreamer's PipeWire plugin (gst-launch-1.0 and pipewiresrc)"
+                );
+                finish_failed_capture(peer, &stop, &error);
+                return;
+            }
             let portal = runtime.block_on(win::screen_portal::ScreenPortal::open(
                 remote_input_allowed(peer),
                 &core_host::host().data_dir,
@@ -2693,14 +2694,6 @@ mod imp {
                     return;
                 }
             }
-        } else if options.watch.is_none() && wayland_session() {
-            // X11 capture of XWayland fails on Wayland, and some compositors
-            // answer it with an error that used to end the app (#548).
-            let error = anyhow::anyhow!(
-                "sharing the screen on Wayland needs xdg-desktop-portal and GStreamer's PipeWire plugin (gst-launch-1.0 and pipewiresrc)"
-            );
-            finish_failed_capture(peer, &stop, &error);
-            return;
         } else {
             (None, None)
         };
