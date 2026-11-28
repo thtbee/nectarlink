@@ -1961,21 +1961,23 @@ private fun PcCard(
                                 }
                             }
                         }
-                    }
-                    // Notes between the two (#698); the history reads while it's away too.
-                    FilledTonalButton(
-                        contentPadding = CardButtonPadding,
-                        colors = tonal,
-                        onClick = { onChat(device.id) },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_chat),
-                            contentDescription = null,
-                            modifier = Modifier.size(15.dp),
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        ButtonLabel(stringResource(R.string.action_chat))
+                        // Notes between the two (#698); the history reads while it's away too.
+                        // In this column: AnimatedVisibility stacks its children on top of
+                        // each other, which drew it over the buttons above (#752).
+                        FilledTonalButton(
+                            contentPadding = CardButtonPadding,
+                            colors = tonal,
+                            onClick = { onChat(device.id) },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_chat),
+                                contentDescription = null,
+                                modifier = Modifier.size(15.dp),
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            ButtonLabel(stringResource(R.string.action_chat))
+                        }
                     }
                 }
 
