@@ -381,8 +381,22 @@ fn compile_translations() {
 
 fn main() {
     println!("cargo::rustc-check-cfg=cfg(linux_ffmpeg_video)");
+    println!("cargo::rustc-check-cfg=cfg(linux_gst_nvenc)");
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("linux") {
         build_linux_video_codec();
+        println!("cargo:rerun-if-changed=cpp/linux_gst_nvenc.cpp");
+        if let Ok(gst) = pkg_config::Config::new().cargo_metadata(false).probe("gstreamer-app-1.0")
+            && let Ok(video) = pkg_config::Config::new().cargo_metadata(false).probe("gstreamer-video-1.0")
+        {
+            cc::Build::new()
+                .cpp(true)
+                .std("c++17")
+                .includes(gst.include_paths.into_iter().chain(video.include_paths))
+                .file("cpp/linux_gst_nvenc.cpp")
+                .compile("nectarlink_gst_nvenc");
+            println!("cargo::rustc-link-lib=dl");
+            println!("cargo::rustc-cfg=linux_gst_nvenc");
+        }
     }
     println!("cargo:rerun-if-changed=src/mark.rs");
     for qml in QML.iter().chain(QML_SINGLETONS.iter()) {
