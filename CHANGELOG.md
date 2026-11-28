@@ -661,6 +661,9 @@ change things that need a step from you, and its notes say so.
 - **A clipboard picture that couldn't be previewed no longer keeps a CPU core busy.** The PC
   tried to make its preview again and again, hundreds of times a second, for as long as it ran.
   Thanks to [@leeefun](https://github.com/leeefun) ([#730](https://github.com/thtbee/nectarlink/issues/730)).
+- **Setting up phone unlock on Linux no longer closes the phone app.** Running
+  `nectarlink-desktop --linux-unlock-enroll` made the phone app close when it was asked to
+  confirm. Thanks to [@SGSTAR01](https://github.com/SGSTAR01) ([#629](https://github.com/thtbee/nectarlink/issues/629)).
 - **The tray icon's menu is dark when Windows is.** It stayed light in dark mode. Thanks to
   [@BraveMomo](https://github.com/BraveMomo) ([#740](https://github.com/thtbee/nectarlink/issues/740)).
 - **The PC app opens faster, and both apps are smaller.** The window shows in about 0.3 s
