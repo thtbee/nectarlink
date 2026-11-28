@@ -39,15 +39,18 @@ Card {
     property bool expanded: false
     padding: expanded ? 14 : 12
     radius: embeddedInHero ? 22 : Theme.radiusLg
+    shadowElevation: embeddedInHero ? 0.65 : 0.95
 
     readonly property bool activelyRendered: card.visible
         && Qt.application.state === Qt.ApplicationActive
     readonly property bool windowResizing: Window.window && Window.window.resizing ? true : false
 
     color: embeddedInHero
-        ? Qt.rgba(Theme.surfaceContainerHigh.r, Theme.surfaceContainerHigh.g, Theme.surfaceContainerHigh.b, Theme.glass ? (Theme.dark ? 0.46 : 0.56) : (Theme.dark ? 0.52 : 0.68))
+        ? (Theme.glass
+            ? Theme.tileColor
+            : Qt.rgba(Theme.surfaceContainerHigh.r, Theme.surfaceContainerHigh.g, Theme.surfaceContainerHigh.b, Theme.dark ? 0.52 : 0.68))
         : Theme.cardColor
-    border.width: embeddedInHero ? (Theme.glass ? 1 : 0) : (Theme.graphite || Theme.ambientBlurActive ? 1 : 0)
+    border.width: embeddedInHero || Theme.glass ? 0 : (Theme.graphite || Theme.ambientBlurActive ? 1 : 0)
     border.color: embeddedInHero
         ? Qt.rgba(1, 1, 1, Theme.dark ? 0.10 : 0.34)
         : Theme.cardBorder

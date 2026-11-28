@@ -80,6 +80,13 @@ Item {
         onWheel: (wheel) => wheel.accepted = true
     }
 
+    GlassShadow {
+        anchors.fill: card
+        radius: card.radius
+        elevation: 1.35
+        opacity: card.opacity
+    }
+
     Rectangle {
         id: card
         readonly property point anchorPos: panel.anchorItem
@@ -90,13 +97,17 @@ Item {
         x: Math.max(8, Math.min(anchorPos.x - width, panel.width - width - 8))
         y: Math.max(anchorPos.y + 6, Theme.topBarHeight) + (panel.opened || Theme.reduceMotion ? 0 : -4)
         radius: Theme.radiusLg
-        color: Theme.surfaceContainerHigh
-        border.width: 1
+        color: Theme.glass
+            ? Qt.rgba(Theme.surfaceContainerHigh.r, Theme.surfaceContainerHigh.g, Theme.surfaceContainerHigh.b, Theme.dark ? 0.86 : 0.92)
+            : Theme.surfaceContainerHigh
+        border.width: Theme.glass ? 0 : 1
         border.color: Theme.outlineVariant
         opacity: panel.opened ? 1 : 0
         activeFocusOnTab: true
         Behavior on opacity { NumberAnimation { id: fade; duration: Theme.fadeFast; easing.type: Easing.OutCubic } }
         Behavior on y { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.fadeFast; easing.type: Easing.OutCubic } }
+
+        GlassRim { radius: card.radius; z: 10 }
 
         Accessible.role: Accessible.Dialog
         Accessible.name: qsTr("What's new")

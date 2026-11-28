@@ -62,34 +62,56 @@ FocusScope {
         width: 52; height: Theme.fluent ? 24 : 30
         radius: Theme.pill(height)
         color: "transparent"
-        scale: mouse.pressed ? Theme.pressScale : 1.0
-        Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
+        scale: mouse.pressed && !Theme.reduceMotion ? Theme.pressScale : 1.0
+        Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.glass ? 140 : 120; easing.type: Easing.OutCubic } }
 
         Rectangle {
+            id: pillBg
             anchors.centerIn: parent
             height: parent.height
-            width: item.selected ? parent.width : (item.activeHover ? 42 : 24)
+            width: item.selected ? parent.width : (item.activeHover ? (Theme.glass ? 46 : 42) : 24)
             radius: parent.radius
             visible: !Theme.fluent
             color: item.selected
                 ? (Theme.glass
-                    ? Qt.tint(Qt.rgba(1, 1, 1, Theme.dark ? 0.14 : 0.62), Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, Theme.dark ? 0.28 : 0.22))
+                    ? Qt.tint(
+                        Qt.rgba(1, 1, 1, item.activeHover ? (Theme.dark ? 0.20 : 0.74) : (Theme.dark ? 0.15 : 0.64)),
+                        Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, Theme.dark ? 0.28 : 0.22)
+                    )
                     : Theme.indicator)
-                : Theme.surfaceContent
-            opacity: item.selected ? 1.0 : (item.activeHover ? 0.08 : 0.0)
-            border.width: Theme.glass && item.selected ? 1 : 0
-            border.color: Qt.rgba(1, 1, 1, Theme.dark ? 0.28 : 0.78)
+                : (Theme.glass
+                    ? Qt.rgba(1, 1, 1, item.activeHover ? (Theme.dark ? 0.11 : 0.50) : 0.0)
+                    : Theme.surfaceContent)
+            opacity: Theme.glass
+                ? (item.selected || item.activeHover ? 1.0 : 0.0)
+                : (item.selected ? 1.0 : (item.activeHover ? 0.08 : 0.0))
+            border.width: Theme.glass && (item.selected || item.activeHover) ? 1 : 0
+            border.color: Qt.rgba(1, 1, 1, item.selected ? (Theme.dark ? 0.30 : 0.84) : (Theme.dark ? 0.18 : 0.60))
+            Behavior on border.color { enabled: !Theme.reduceMotion; ColorAnimation { duration: 190; easing.type: Easing.OutCubic } }
+
+            GlassShadow {
+                visible: Theme.glass && !Theme.amoled && (item.selected || item.activeHover)
+                radius: pillBg.radius
+                elevation: item.selected ? 0.45 : 0.30
+            }
+
+            GlassSheen {
+                visible: Theme.glass && (item.selected || item.activeHover)
+                radius: pillBg.radius
+                strength: item.activeHover ? 1.28 : 1.0
+            }
+
             Behavior on width {
                 enabled: !Theme.reduceMotion
-                NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
+                NumberAnimation { duration: 185; easing.type: Easing.OutCubic }
             }
             Behavior on opacity {
                 enabled: !Theme.reduceMotion
-                NumberAnimation { duration: Theme.fadeFast; easing.type: Easing.OutCubic }
+                NumberAnimation { duration: Theme.glass ? 185 : Theme.fadeFast; easing.type: Easing.OutCubic }
             }
             Behavior on color {
                 enabled: !Theme.reduceMotion
-                ColorAnimation { duration: Theme.fadeFast }
+                ColorAnimation { duration: Theme.glass ? 185 : Theme.fadeFast; easing.type: Easing.OutCubic }
             }
         }
 

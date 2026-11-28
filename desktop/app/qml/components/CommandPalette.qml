@@ -83,6 +83,14 @@ Item {
         }
     }
 
+    GlassShadow {
+        anchors.fill: card
+        radius: card.radius
+        elevation: 1.50
+        opacity: card.opacity
+        scale: card.scale
+    }
+
     Rectangle {
         id: card
         anchors.horizontalCenter: parent.horizontalCenter
@@ -90,10 +98,14 @@ Item {
         width: Math.min(580, parent.width - 48)
         height: cardColumn.height
         radius: Theme.radiusLg
-        color: Theme.surfaceContainerHigh
-        border.width: 1
+        color: Theme.glass
+            ? Qt.rgba(Theme.surfaceContainerHigh.r, Theme.surfaceContainerHigh.g, Theme.surfaceContainerHigh.b, Theme.dark ? 0.86 : 0.92)
+            : Theme.surfaceContainerHigh
+        border.width: Theme.glass ? 0 : 1
         border.color: Theme.outlineVariant
         clip: true
+
+        GlassRim { radius: card.radius; z: 10 }
 
         Column {
             id: cardColumn
@@ -262,6 +274,7 @@ Item {
                             : rowHover.hovered
                               ? Theme.surfaceContainerHighest
                               : "transparent"
+                        Behavior on color { enabled: !Theme.reduceMotion; ColorAnimation { duration: 160; easing.type: Easing.OutCubic } }
 
                         Accessible.role: Accessible.ListItem
                         Accessible.name: (modelData.title || "") + (modelData.subtitle ? ", " + modelData.subtitle : "")

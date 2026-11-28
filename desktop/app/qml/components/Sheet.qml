@@ -57,20 +57,32 @@ Item {
         }
     }
 
+    GlassShadow {
+        anchors.fill: card
+        radius: card.radius
+        elevation: 1.50
+        opacity: card.opacity
+        scale: card.scale
+    }
+
     Rectangle {
         id: card
         anchors.centerIn: parent
         width: Math.min(sheet.cardWidth, parent.width - 48)
         height: Math.min(body.childrenRect.height + 48, parent.height - 48)
         radius: Theme.radiusXl
-        color: Theme.surface
-        border.width: 1
+        color: Theme.glass
+            ? Qt.rgba(Theme.surface.r, Theme.surface.g, Theme.surface.b, Theme.dark ? 0.88 : 0.92)
+            : Theme.surface
+        border.width: Theme.glass ? 0 : 1
         border.color: Theme.outlineVariant
         opacity: sheet.opened ? 1 : 0
         scale: sheet.opened || Theme.reduceMotion ? 1 : 0.95
         Behavior on opacity { NumberAnimation { duration: Theme.fadeNormal; easing.type: Easing.OutCubic } }
         Behavior on scale { enabled: !Theme.reduceMotion; SpringAnimation { spring: Theme.springStandard; damping: Theme.dampingStandard } }
         clip: true
+
+        GlassRim { radius: card.radius; z: 10 }
 
         ScrollRail { flick: sheetFlick }
         Flickable {

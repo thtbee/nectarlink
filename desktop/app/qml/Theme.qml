@@ -172,10 +172,9 @@ QtObject {
         })()
         : graphite ? "transparent"
         : (glass
-            ? Qt.tint(
-                Qt.rgba(surfaceContainer.r, surfaceContainer.g, surfaceContainer.b, amoled ? 0.56 : (dark ? 0.36 : 0.52)),
-                Qt.rgba(primary.r, primary.g, primary.b, dark ? 0.08 : 0.06)
-            )
+            ? (amoled
+                ? Qt.rgba(surfaceContainer.r, surfaceContainer.g, surfaceContainer.b, 0.56)
+                : Qt.rgba(1, 1, 1, dark ? 0.08 : 0.44))
             : (artworkAmbientActive
                 ? Qt.rgba(surfaceContainer.r, surfaceContainer.g, surfaceContainer.b, dark ? 0.74 : 0.80)
                 : (amoled
@@ -191,7 +190,7 @@ QtObject {
         ? Qt.rgba(primary.r, primary.g, primary.b, dark ? 0.14 : 0.16)
         : graphite ? outlineVariant
         : (glass
-            ? (dark ? Qt.rgba(1, 1, 1, 0.08) : Qt.rgba(1, 1, 1, 0.28))
+            ? (dark ? Qt.rgba(1, 1, 1, 0.12) : Qt.rgba(1, 1, 1, 0.52))
             : (artworkAmbientActive
                 ? Qt.rgba(outlineVariant.r, outlineVariant.g, outlineVariant.b, dark ? 0.36 : 0.45)
                 : (amoled ? "#1D1F27" : "transparent")))
@@ -201,10 +200,7 @@ QtObject {
         ? Qt.tint(surfaceContainerHigh, Qt.rgba(primaryContainer.r, primaryContainer.g, primaryContainer.b, dark ? 0.14 : 0.20))
         : graphite ? "transparent"
         : (glass
-            ? Qt.tint(
-                Qt.rgba(1, 1, 1, dark ? 0.08 : 0.48),
-                Qt.rgba(primary.r, primary.g, primary.b, dark ? 0.08 : 0.06)
-            )
+            ? Qt.rgba(1, 1, 1, dark ? 0.12 : 0.58)
             : (artworkAmbientActive
                 ? Qt.rgba(surfaceContainerHigh.r, surfaceContainerHigh.g, surfaceContainerHigh.b, dark ? 0.76 : 0.82)
                 : (amoled
@@ -217,13 +213,20 @@ QtObject {
         : hive
         ? Qt.tint(surface, Qt.rgba(primaryContainer.r, primaryContainer.g, primaryContainer.b, dark ? 0.55 : 0.62))
         : graphite ? "transparent"
+        : glass
+        ? (amoled
+            ? Qt.rgba(surfaceContainer.r, surfaceContainer.g, surfaceContainer.b, 0.58)
+            : Qt.tint(
+                Qt.rgba(1, 1, 1, dark ? 0.10 : 0.50),
+                Qt.rgba(primary.r, primary.g, primary.b, dark ? 0.07 : 0.05)
+            ))
         : Qt.tint(
             ambientBlurActive
-                ? Qt.rgba(surface.r, surface.g, surface.b, glass ? (amoled ? 0.54 : (dark ? 0.34 : 0.48)) : (dark ? 0.65 : 0.72))
+                ? Qt.rgba(surface.r, surface.g, surface.b, dark ? 0.65 : 0.72)
                 : (amoled ? "#090A0E" : surface),
-            Qt.rgba(primaryContainer.r, primaryContainer.g, primaryContainer.b, glass ? (dark ? 0.30 : 0.38) : (artworkAmbientActive ? 0.52 : (amoled ? 0.32 : 0.68)))
+            Qt.rgba(primaryContainer.r, primaryContainer.g, primaryContainer.b, artworkAmbientActive ? 0.52 : (amoled ? 0.32 : 0.68))
         )
-    readonly property color heroContent: graphite || fluent ? surfaceContent : primaryContainerContent
+    readonly property color heroContent: graphite || fluent || glass ? surfaceContent : primaryContainerContent
     // Hive's rail is the comb itself; Fluent's sits straight on Mica.
     readonly property color railColor: graphite || hive || fluent ? "transparent"
         : (glass

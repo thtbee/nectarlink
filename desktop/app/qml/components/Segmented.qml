@@ -33,6 +33,18 @@ Rectangle {
         ? Qt.rgba(1, 1, 1, Theme.dark ? 0.18 : 0.65)
         : Theme.outlineVariant
 
+    // Glass: delicate outer contrast hairline around the segmented track.
+    Rectangle {
+        visible: Theme.glass
+        z: -1
+        anchors.fill: parent
+        anchors.margins: -1
+        radius: segmented.radius + 1
+        color: "transparent"
+        border.width: 1
+        border.color: Theme.dark ? Qt.rgba(0, 0, 0, 0.28) : Qt.rgba(0, 0, 0, 0.07)
+    }
+
     Accessible.role: Accessible.PageTabList
 
     // Sliding selection pill behind the segments.
@@ -48,10 +60,22 @@ Rectangle {
             ? Theme.surfaceContent
             : Theme.fluent ? (Theme.dark ? Qt.rgba(1, 1, 1, 0.084) : "#FFFFFF")
             : (Theme.glass
-                ? Qt.tint(Qt.rgba(1, 1, 1, Theme.dark ? 0.16 : 0.78), Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, Theme.dark ? 0.24 : 0.14))
+                ? Qt.tint(Qt.rgba(1, 1, 1, Theme.dark ? 0.18 : 0.80), Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, Theme.dark ? 0.24 : 0.14))
                 : (Theme.hive ? Theme.primaryContainer : Theme.surface))
         border.width: Theme.glass || Theme.fluent ? 1 : 0
-        border.color: Theme.fluent ? Theme.controlStroke : Qt.rgba(1, 1, 1, Theme.dark ? 0.28 : 0.85)
+        border.color: Theme.fluent ? Theme.controlStroke : Qt.rgba(1, 1, 1, Theme.dark ? 0.30 : 0.88)
+
+        GlassShadow {
+            visible: Theme.glass && !Theme.amoled && slideIndicator.visible
+            radius: slideIndicator.radius
+            elevation: 0.45
+        }
+
+        // Glass: curved overhead specular sheen + luminous 1 px meniscus on the active pill.
+        GlassSheen {
+            radius: slideIndicator.radius
+            strength: 1.05
+        }
         // Fluent: an accent pill under the selected label.
         Rectangle {
             visible: Theme.fluent
@@ -91,7 +115,7 @@ Rectangle {
                 scale: segMouse.pressed && !Theme.reduceMotion ? Theme.pressScale : 1.0
                 Behavior on scale {
                     enabled: !Theme.reduceMotion
-                    NumberAnimation { duration: 120; easing.type: Easing.OutCubic }
+                    NumberAnimation { duration: Theme.glass ? 140 : 120; easing.type: Easing.OutCubic }
                 }
                 Accessible.role: Accessible.PageTab
                 Accessible.name: modelData.label
@@ -106,7 +130,10 @@ Rectangle {
                 Rectangle {
                     anchors.fill: parent
                     radius: Theme.graphite ? Math.max(2, Theme.radiusSm - 2) : Theme.pill(height)
-                    color: "transparent"
+                    color: Theme.glass
+                        ? Qt.rgba(1, 1, 1, !option.selected && segMouse.containsMouse ? (Theme.dark ? 0.10 : 0.42) : 0.0)
+                        : "transparent"
+                    Behavior on color { enabled: !Theme.reduceMotion; ColorAnimation { duration: 180; easing.type: Easing.OutCubic } }
                     Rectangle {
                         anchors.fill: parent
                         anchors.margins: -3
