@@ -16,7 +16,10 @@ use std::{
     time::{Duration, Instant},
 };
 
-use nectarlink_core::{Contact, ContactNumber};
+use nectarlink_core::Contact;
+// Only the Mac reader and the tests build one.
+#[cfg(any(test, target_os = "macos"))]
+use nectarlink_core::ContactNumber;
 
 use crate::{messages::digits, state::Changes};
 
