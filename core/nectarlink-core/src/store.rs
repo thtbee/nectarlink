@@ -1410,6 +1410,7 @@ impl Store {
         self.with(|c| c.execute("DELETE FROM timeline", []))
     }
 
+    #[cfg(test)]
     pub fn get_timeline(&self, id: i64) -> Result<Option<TimelineEntry>> {
         self.with(|c| {
             c.query_row(&format!("{SELECT_TIMELINE} WHERE id = ?1"), [id], row_to_timeline).optional()
