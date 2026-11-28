@@ -851,6 +851,9 @@ pub struct DeckTile {
     pub icon: String,
     pub color: String,
     pub kind: String,
+    /// The picture shown instead of the icon (#490), by ID: read it with
+    /// `deck_image` once the phone has it.
+    pub image: Option<String>,
 }
 
 impl std::fmt::Debug for DeckTile {
@@ -866,7 +869,7 @@ impl std::fmt::Debug for DeckTile {
 
 impl From<core::DeckTile> for DeckTile {
     fn from(t: core::DeckTile) -> Self {
-        DeckTile { id: t.id, label: t.label, icon: t.icon, color: t.color, kind: t.kind }
+        DeckTile { id: t.id, label: t.label, icon: t.icon, color: t.color, kind: t.kind, image: t.image }
     }
 }
 
@@ -4875,6 +4878,12 @@ impl NectarlinkNode {
     pub fn deck_state(&self, id: String) -> Result<Option<DeckState>> {
         let id = parse_id(&id)?;
         Ok(self.node.deck_state(id).map(Into::into))
+    }
+
+    /// The picture `image` on a tile of paired PC `id`'s Deck, a PNG, once
+    /// this phone has fetched it (a `DeckLayout` event follows when it has).
+    pub fn deck_image(&self, id: String, image: String) -> Result<Option<Vec<u8>>> {
+        Ok(self.node.deck_image(parse_id(&id)?, &image))
     }
 
     /// Asks a paired PC to run the action bound to `tile` (`deck.press`).

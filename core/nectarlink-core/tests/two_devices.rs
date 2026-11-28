@@ -5012,6 +5012,61 @@ async fn wake_info_syncs_persists_respects_toggle_and_sends_magic_packet() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn a_deck_tiles_picture_reaches_the_phone_checked_against_its_id() {
+    use nectarlink_core::{DECK_ACTIONS, DeckConfig, deck::image_id};
+
+    // Only the header is read by the core: enough for a 64 x 64 PNG.
+    let png = |seed: u8| {
+        let mut bytes = b"\x89PNG\r\n\x1a\n\0\0\0\rIHDR".to_vec();
+        bytes.extend_from_slice(&64u32.to_be_bytes());
+        bytes.extend_from_slice(&64u32.to_be_bytes());
+        bytes.extend_from_slice(&[seed; 200]);
+        bytes
+    };
+    let (picture, too_big) = (png(1), vec![0x89; 100_000]);
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[DECK_ACTIONS]).await;
+    let mut phone = device("Pixel", DeviceKind::Phone).await;
+
+    let mut cfg = DeckConfig::default_deck();
+    cfg.pages[0].tiles[0].image = Some(image_id(&picture));
+    // A picture the PC doesn't have: that tile keeps its icon.
+    cfg.pages[0].tiles[1].image = Some(image_id(&png(2)));
+    pc.node.set_deck_images(vec![picture.clone(), too_big]);
+    pc.node.set_deck_layout(cfg.to_wire_layout()).await.unwrap();
+
+    pair_qr(&mut pc, &mut phone).await;
+    let pc_id = pc.node.device_id();
+    let id = image_id(&picture);
+    // The layout arrives, then again once its picture is here.
+    for _ in 0..3 {
+        if phone.node.deck_image(pc_id, &id).is_some() {
+            break;
+        }
+        wait_for(&mut phone, "a deck layout", |e| match e {
+            NodeEvent::DeckLayout { device, .. } if *device == pc_id => Some(()),
+            _ => None,
+        })
+        .await;
+    }
+    assert_eq!(phone.node.deck_image(pc_id, &id), Some(picture));
+    assert_eq!(phone.node.deck_image(pc_id, &image_id(&png(2))), None);
+
+    // Taken off the tile: the phone lets it go with the next layout.
+    cfg.pages[0].tiles[0].image = None;
+    pc.node.set_deck_layout(cfg.to_wire_layout()).await.unwrap();
+    wait_for(&mut phone, "the layout without it", |e| match e {
+        NodeEvent::DeckLayout { device, layout }
+            if *device == pc_id && layout.pages[0].tiles[0].image.is_none() =>
+        {
+            Some(())
+        }
+        _ => None,
+    })
+    .await;
+    assert_eq!(phone.node.deck_image(pc_id, &id), None);
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn deck_layout_and_state_arrive_press_runs_action_and_respects_toggles_and_unknown_tile() {
     use nectarlink_core::{
         DECK_ACTIONS, DeckAction, DeckConfig, DeckLayout, DeckState, DeckTileConfig, deck_colors, deck_icons,
@@ -5022,6 +5077,7 @@ async fn deck_layout_and_state_arrive_press_runs_action_and_respects_toggles_and
 
     let mut cfg = DeckConfig::default_deck();
     cfg.pages[0].tiles.push(DeckTileConfig {
+        image: None,
         id: "run_build".into(),
         label: "Build".into(),
         icon: deck_icons::TERMINAL.into(),
