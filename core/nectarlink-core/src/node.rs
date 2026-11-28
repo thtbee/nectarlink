@@ -2953,12 +2953,6 @@ impl Node {
     }
 
     /// Cancels all active (`Waiting` or `Sending`) items in the outgoing send queue
-    /// for `peer` and returns the number of items cancelled.
-    pub fn cancel_queue_for_peer(&self, peer: DeviceId) -> Result<u32> {
-        self.cancel_all_queue_items(Some(peer))
-    }
-
-    /// Cancels all active (`Waiting` or `Sending`) items in the outgoing send queue
     /// (optionally filtered to `peer`) and returns the number of items cancelled.
     pub fn cancel_all_queue_items(&self, peer: Option<DeviceId>) -> Result<u32> {
         let items = self.shared.store.list_send_queue(peer.as_ref())?;
@@ -3874,17 +3868,6 @@ impl Node {
         crate::sms::send(&self.shared, &session, to, body, attachments, None).await
     }
 
-    /// Alias for [`Node::send_sms_with_attachments`].
-    pub async fn sms_send_with_attachments(
-        &self,
-        peer: impl std::borrow::Borrow<DeviceId>,
-        to: Vec<String>,
-        body: String,
-        attachments: Vec<crate::SmsAttachment>,
-    ) -> Result<()> {
-        self.send_sms_with_attachments(peer, to, body, attachments).await
-    }
-
     /// A picture in a message: its type and bytes.
     pub async fn sms_part(&self, peer: DeviceId, id: String) -> Result<(String, Vec<u8>)> {
         let session = self.connected(&peer)?;
@@ -4546,19 +4529,6 @@ impl Node {
         Ok((meta, buf))
     }
 
-    /// Convenience alias for [`Node::storage_read`] taking `&DeviceId`, `&str`,
-    /// `offset`, and `length`.
-    pub async fn read_storage(
-        &self,
-        peer: &DeviceId,
-        path: &str,
-        offset: u64,
-        length: u64,
-    ) -> Result<Vec<u8>> {
-        let (_meta, bytes) = self.storage_read(*peer, path, offset, Some(length)).await?;
-        Ok(bytes)
-    }
-
     /// Opens a ranged read stream from `path` on a connected phone
     /// (`storage.read`), returning the metadata and raw QUIC receive stream.
     pub async fn storage_read_stream(
@@ -4817,16 +4787,6 @@ impl Node {
             Self::resolve_timeline_link(entry);
         }
         Ok(page)
-    }
-
-    /// Returns one timeline entry by ID, resolving its linked clip if any.
-    pub fn timeline_entry(&self, id: i64) -> Result<Option<crate::TimelineEntry>> {
-        let mut entry = self.shared.store.get_timeline(id)?;
-        if let Some(ref mut e) = entry {
-            self.resolve_timeline_clip(e);
-            Self::resolve_timeline_link(e);
-        }
-        Ok(entry)
     }
 
     /// Records a custom local timeline entry (e.g. a saved mirror screenshot or
