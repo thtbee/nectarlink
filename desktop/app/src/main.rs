@@ -545,6 +545,19 @@ fn parse_options_from<I: IntoIterator<Item = std::ffi::OsString>>(iter: I) -> Op
         let tel = launch::telephone_number(uri).ok_or(());
         return Options { tel: Some(tel), data_dir: options.data_dir, ..Options::default() };
     }
+    // Text links (sms:, mms:) from an older registration: never sent on to a
+    // phone as what's copied, which a web page could pick.
+    #[cfg(target_os = "linux")]
+    if options.send_to.is_none()
+        && share_targets.is_empty()
+        && let [uri] = paths.as_slice()
+        && let Some(uri) = uri.to_str()
+        && ["sms:", "smsto:", "mms:", "mmsto:"]
+            .iter()
+            .any(|scheme| uri.get(..scheme.len()).is_some_and(|start| start.eq_ignore_ascii_case(scheme)))
+    {
+        paths.clear();
+    }
     if let Some((_, files)) = &mut options.send_to {
         *files = paths;
         // Sending doesn't need the window.
