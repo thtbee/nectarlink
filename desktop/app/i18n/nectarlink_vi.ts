@@ -601,6 +601,107 @@
     </message>
 </context>
 <context>
+    <name>AnySendSheet</name>
+    <message>
+        <location filename="../qml/components/AnySendSheet.qml" line="28"/>
+        <source>Send a file with AnySend</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/AnySendSheet.qml" line="35"/>
+        <source>Choose where to save the received file</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/AnySendSheet.qml" line="49"/>
+        <source>Exchange one file with a browser. The relay limit is 128 MiB.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/AnySendSheet.qml" line="56"/>
+        <source>Send</source>
+        <translation type="unfinished">Gửi</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/AnySendSheet.qml" line="61"/>
+        <source>Receive</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/AnySendSheet.qml" line="72"/>
+        <location filename="../qml/components/AnySendSheet.qml" line="81"/>
+        <source>Maximum browsers</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/AnySendSheet.qml" line="86"/>
+        <location filename="../qml/components/AnySendSheet.qml" line="104"/>
+        <source>Website for the global QR</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/AnySendSheet.qml" line="121"/>
+        <location filename="../qml/components/AnySendSheet.qml" line="175"/>
+        <source>Local network</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/AnySendSheet.qml" line="122"/>
+        <source>Global link</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/AnySendSheet.qml" line="147"/>
+        <source>Preparing…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/AnySendSheet.qml" line="157"/>
+        <source>Scan either QR within 10 minutes. Use the local QR on a trusted network.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/AnySendSheet.qml" line="165"/>
+        <source>Connected %1/%2 · Completed %3 · Failed %4</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/AnySendSheet.qml" line="174"/>
+        <source>%1% · %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/AnySendSheet.qml" line="175"/>
+        <source>Iroh relay</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/AnySendSheet.qml" line="177"/>
+        <source>Saved to %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/AnySendSheet.qml" line="177"/>
+        <source>Transfer complete</source>
+        <translation type="unfinished">Chuyển xong</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/AnySendSheet.qml" line="178"/>
+        <source>These QR codes have expired.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../qml/components/AnySendSheet.qml" line="186"/>
+        <source>Cancel</source>
+        <translation type="unfinished">Hủy</translation>
+    </message>
+    <message>
+        <location filename="../qml/components/AnySendSheet.qml" line="186"/>
+        <source>Close</source>
+        <translation type="unfinished">Đóng</translation>
+    </message>
+</context>
+<context>
     <name>App</name>
     <message>
         <location filename="rust_strings.h" line="9"/>
@@ -6946,6 +7047,11 @@ Nó cần gì
         <location filename="../qml/MainWindow.qml" line="1"/>
         <source>%1 asked to play everything this PC plays, calls included, on itself.</source>
         <translation>%1 muốn phát mọi âm thanh của PC này, kể cả cuộc gọi, trên chính nó.</translation>
+    </message>
+    <message>
+        <location filename="../qml/MainWindow.qml" line="1044"/>
+        <source>Send or receive a file with a browser</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
