@@ -127,6 +127,15 @@ impl std::fmt::Display for MicError {
     }
 }
 
+/// Whether NectarLink may record the microphone, asking the person the first time and
+/// waiting for the answer (up to two minutes). Call it before a call's sound moves here
+/// or when a microphone is chosen, off the UI and runtime threads, so the other party
+/// isn't left in silence while macOS asks.
+pub fn request_access() -> Result<(), MicError> {
+    // SAFETY: takes no arguments.
+    if matches!(unsafe { mac_microphone_access() }, 0..=2) { Err(MicError::Denied) } else { Ok(()) }
+}
+
 /// What the audio queue's thread hands over: each piece of sound goes down
 /// `pcm` to the recorder's own thread, so a slow `on_pcm` never holds the
 /// audio queue up.
@@ -188,10 +197,7 @@ impl Recorder {
         if rate == 0 {
             return Err(MicError::Other("the sample rate must be positive".into()));
         }
-        // SAFETY: takes no arguments.
-        if matches!(unsafe { mac_microphone_access() }, 0..=2) {
-            return Err(MicError::Denied);
-        }
+        request_access()?;
         if default_input_device().is_none() {
             return Err(MicError::Missing);
         }

@@ -73,6 +73,14 @@ pub fn start(device: DeviceId) {
     }
     set_phase(Phase::Starting(device));
     core_host::spawn(async move {
+        // Ask for the microphone before the call's sound moves here: macOS asks the first time
+        // and waits, and the other party would hear nothing meanwhile.
+        if let Some(e) = microphone_refused().await {
+            tracing::info!(error = %e, "the PC's microphone isn't allowed");
+            end(device);
+            show_message(mic_message(&e));
+            return;
+        }
         if let Err(e) = node.call_audio_start(device, call.id).await {
             tracing::info!(error = %e, "the phone didn't move the call's sound");
             end(device);
@@ -121,6 +129,19 @@ pub fn start(device: DeviceId) {
 
 #[cfg(any(windows, target_os = "macos"))]
 use crate::win::audio_in::MicError;
+
+/// Why the PC's microphone can't be used, asking for access first (macOS asks the first
+/// time); None when it can, and off Windows and macOS, where the sound never moves here.
+async fn microphone_refused() -> Option<MicError> {
+    #[cfg(any(windows, target_os = "macos"))]
+    {
+        tokio::task::spawn_blocking(crate::win::audio_in::request_access).await.ok()?.err()
+    }
+    #[cfg(not(any(windows, target_os = "macos")))]
+    {
+        None
+    }
+}
 
 /// Why the microphone can't be recorded, off Windows and macOS.
 #[cfg(not(any(windows, target_os = "macos")))]
@@ -218,6 +239,12 @@ pub fn set_mic(id: String) {
         }
         *current = Some(id.clone());
     }
+    // Picking a microphone is when macOS may ask for it, not in the middle of a call.
+    core_host::spawn(async {
+        if let Some(e) = microphone_refused().await {
+            show_message(mic_message(&e));
+        }
+    });
     let dir = &core_host::host().data_dir;
     let mut settings = crate::settings::Settings::load(dir);
     settings.call_mic = Some(id);
