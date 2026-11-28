@@ -39,6 +39,7 @@ import javax.crypto.Cipher
 import kotlin.random.Random
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.future.asDeferred
@@ -129,7 +130,12 @@ object UnlockPrompts {
         try {
             show(context, id, request)
             if (attempt == null) return runCatching { request.result.get(timeoutMs, TimeUnit.MILLISECONDS) }.getOrNull()
-            return runBlocking {
+            // This runs on the core's thread, inside its call into the app. Waiting for
+            // cancellation is a call back into the core: made from this thread, the
+            // bridge finished it by detaching the thread from Java while the outer
+            // call was still running here, and Android aborted the app (#629). So
+            // the wait happens on a thread of the app's own.
+            return runBlocking(Dispatchers.IO) {
                 withTimeoutOrNull(timeoutMs) { awaitUnlockResult(request.result, attempt::waitCancelled) }
             }
         } finally {

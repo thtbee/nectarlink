@@ -148,6 +148,19 @@ object BackgroundAccess {
             ),
         )
         OemBrand.HUAWEI -> listOf(
+            // HONOR's MagicOS: the same screens under its own package.
+            Intent().setComponent(
+                ComponentName(
+                    "com.hihonor.systemmanager",
+                    "com.hihonor.systemmanager.startupmgr.ui.StartupNormalAppListActivity",
+                ),
+            ),
+            Intent().setComponent(
+                ComponentName(
+                    "com.hihonor.systemmanager",
+                    "com.hihonor.systemmanager.optimize.process.ProtectActivity",
+                ),
+            ),
             Intent().setComponent(
                 ComponentName(
                     "com.huawei.systemmanager",

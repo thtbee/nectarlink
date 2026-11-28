@@ -45,6 +45,10 @@ pub const MAX_LISTED: usize = 100_000;
 pub const REMOTE_FILES_TOGGLE: &str = "remote_files";
 
 const STREAM_TIMEOUT: Duration = Duration::from_secs(30);
+/// How long a write the phone answers BUSY (still finishing the same file) is
+/// offered again, and how often.
+const BUSY_RETRY_FOR: Duration = Duration::from_secs(5);
+const BUSY_RETRY_EVERY: Duration = Duration::from_millis(200);
 const CHUNK_SIZE: usize = 64 * 1024;
 const MAX_OPEN_FOLDERS_PER_PEER: usize = 256;
 const CHANGED_DEBOUNCE: Duration = Duration::from_millis(250);
@@ -935,22 +939,37 @@ pub(crate) async fn write_with_id(
         return Err(Error::Protocol("invalid storage write offer".into()));
     }
 
-    let (mut send, mut recv) = session.open_bi().await?;
     let header =
         StreamHeader { svc: storage::SERVICE.into(), op: storage::OP_WRITE.into(), v: storage::VERSION };
     let header_env = Envelope::new(types::STREAM, &header)?;
     let offer_env = Envelope::new(types::STORAGE_WRITE, &offer)?.with_id(1);
-    write_frame(&mut send, &header_env.to_cbor()).await?;
-    write_frame(&mut send, &offer_env.to_cbor()).await?;
+    // A write resumed right after one was cut off can find the phone still
+    // finishing the first with the file: it answers BUSY, and that clears in a
+    // moment, so the offer is made again for a few seconds before giving up.
+    let busy_until = tokio::time::Instant::now() + BUSY_RETRY_FOR;
+    let (mut send, mut recv, accept) = loop {
+        let (mut send, mut recv) = session.open_bi().await?;
+        write_frame(&mut send, &header_env.to_cbor()).await?;
+        write_frame(&mut send, &offer_env.to_cbor()).await?;
 
-    let accept_bytes = match tokio::time::timeout(STREAM_TIMEOUT, read_frame(&mut recv)).await {
-        Ok(Ok(Some(b))) => b,
-        Ok(Ok(None)) => return Err(Error::Offline),
-        Ok(Err(e)) => return Err(e.into()),
-        Err(_) => return Err(Error::Timeout),
+        let accept_bytes = match tokio::time::timeout(STREAM_TIMEOUT, read_frame(&mut recv)).await {
+            Ok(Ok(Some(b))) => b,
+            Ok(Ok(None)) => return Err(Error::Offline),
+            Ok(Err(e)) => return Err(e.into()),
+            Err(_) => return Err(Error::Timeout),
+        };
+        let accept_env = Envelope::from_cbor(&accept_bytes)?;
+        match accept_env.expect_body::<StorageWriteAccept>(types::STORAGE_WRITE_ACCEPT) {
+            Ok(accept) => break (send, recv, accept),
+            Err(nectarlink_protocol::ProtocolError::Remote { code: ErrorCode::Busy, .. })
+                if tokio::time::Instant::now() < busy_until =>
+            {
+                let _ = send.finish();
+                tokio::time::sleep(BUSY_RETRY_EVERY).await;
+            }
+            Err(e) => return Err(e.into()),
+        }
     };
-    let accept_env = Envelope::from_cbor(&accept_bytes)?;
-    let accept: StorageWriteAccept = accept_env.expect_body(types::STORAGE_WRITE_ACCEPT)?;
     let start = accept.have.min(size);
     let target_end = stop_after.map_or(size, |limit| limit.min(size));
 

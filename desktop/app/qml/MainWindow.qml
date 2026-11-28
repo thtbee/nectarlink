@@ -707,7 +707,7 @@ NativeWindow {
             NavItem {
                 iconPath: Icons.home
                 text: qsTr("Home")
-                selected: window.page === "home" || window.page === "timeline"
+                selected: window.page === "home" || window.page === "timeline" || window.page === "chat"
                 activeHover: rail.hoveredNav === "home"
                 onHoveredChanged: {
                     if (hovered) rail.hoveredNav = "home"
@@ -921,7 +921,7 @@ NativeWindow {
                 anchors.left: parent.left
                 anchors.leftMargin: Theme.contentPadding - 6
                 anchors.verticalCenter: parent.verticalCenter
-                visible: window.page === "timeline"
+                visible: window.page === "timeline" || window.page === "chat"
                 iconPath: Icons.back
                 label: qsTr("Back to Home")
                 onClicked: window.page = "home"
@@ -934,6 +934,7 @@ NativeWindow {
                 anchors.verticalCenter: parent.verticalCenter
                 text: window.page === "home" ? qsTr("Home")
                     : window.page === "timeline" ? qsTr("Timeline")
+                    : window.page === "chat" ? qsTr("Chat with %1").arg(window.currentDeviceName)
                     : window.page === "messages" ? qsTr("Messages")
                     : window.page === "calls" ? qsTr("Calls")
                     : window.page === "photos" ? qsTr("Photos")
@@ -1162,6 +1163,7 @@ NativeWindow {
                     if (!active) return ""
                     switch (window.page) {
                     case "timeline": return "qrc:/qt/qml/app/nectarlink/qml/pages/TimelinePage.qml"
+                    case "chat": return "qrc:/qt/qml/app/nectarlink/qml/pages/ChatPage.qml"
                     case "messages": return "qrc:/qt/qml/app/nectarlink/qml/pages/MessagesPage.qml"
                     case "calls": return "qrc:/qt/qml/app/nectarlink/qml/pages/CallsPage.qml"
                     case "photos": return "qrc:/qt/qml/app/nectarlink/qml/pages/PhotosPage.qml"
@@ -1414,6 +1416,59 @@ NativeWindow {
                 Button {
                     text: qsTr("Allow for this device")
                     onClicked: AppController.allowPcMirrorDevice(AppController.pcMirrorPromptDeviceId)
+                }
+            }
+        }
+    }
+
+    Sheet {
+        id: pcAudioPromptSheet
+        opened: AppController.pcAudioPromptDeviceId.length > 0
+        cardWidth: 460
+        onOpenedChanged: {
+            if (!opened && AppController.pcAudioPromptDeviceId.length > 0)
+                AppController.dismissPcAudioPrompt()
+        }
+        Column {
+            width: parent.width
+            spacing: 16
+            Avatar {
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: 56; height: 56
+                iconPath: Icons.speaker
+                emphasized: true
+            }
+            Txt {
+                width: parent.width
+                horizontalAlignment: Text.AlignHCenter
+                text: qsTr("Play this PC's sound on %1?").arg(AppController.pcAudioPromptDeviceName)
+                role: "headline"
+                wrapMode: Text.WordWrap
+            }
+            Txt {
+                width: parent.width
+                horizontalAlignment: Text.AlignHCenter
+                text: qsTr("%1 asked to play everything this PC plays, calls included, on itself.").arg(AppController.pcAudioPromptDeviceName)
+                role: "body"
+                muted: true
+                wrapMode: Text.WordWrap
+            }
+            Row {
+                anchors.right: parent.right
+                spacing: 10
+                Button {
+                    variant: "text"
+                    text: qsTr("Not now")
+                    onClicked: AppController.dismissPcAudioPrompt()
+                }
+                Button {
+                    variant: "tonal"
+                    text: qsTr("Allow")
+                    onClicked: AppController.allowPcAudioOnce(AppController.pcAudioPromptDeviceId)
+                }
+                Button {
+                    text: qsTr("Allow for this device")
+                    onClicked: AppController.allowPcAudioDevice(AppController.pcAudioPromptDeviceId)
                 }
             }
         }

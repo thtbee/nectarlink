@@ -8,6 +8,30 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Share photos from the Mac too.** The Photos page's **Share** button, for a selection and in
+  the viewer, now opens the macOS share menu as it opens the share sheet on Windows
+  ([#174](https://github.com/thtbee/nectarlink/issues/174)).
+- **Send with NectarLink in the first level of File Explorer's menu.** Right-click files or
+  folders and choose **Send to *your phone* with NectarLink**, or **Send with NectarLink** and
+  then a phone when you have more than one: on Windows 11 that's without **Show more options**.
+  Like the Share sheet, it needs NectarLink's package registered, which Windows allows with
+  Developer Mode on; **Send to** stays where it was. Thanks to
+  [@FlootingDream](https://github.com/FlootingDream) ([#451](https://github.com/thtbee/nectarlink/issues/451)).
+- **Your own pictures on Deck tiles.** In a tile's editor on the PC, **Choose…** next to **Picture**
+  takes any image and shows it instead of the icon, on the PC's Deck page and on the phone.
+  Thanks to [@hichamb1](https://github.com/hichamb1) and [@riyaddl](https://github.com/riyaddl) ([#490](https://github.com/thtbee/nectarlink/issues/490)).
+- **Chat between your devices.** Type a note on the PC and it shows on the phone, and the other
+  way round: a Chat card on the PC's Home and a Chat button on each device's card on the phone open
+  it. The files, photos and recordings the two send each other show in it too, and its attach
+  button sends more. Notes stay on the two devices with the rest of the timeline; your own can be
+  changed, and either side can delete one. Both devices need this version. Thanks to
+  [@amir1376](https://github.com/amir1376) ([#698](https://github.com/thtbee/nectarlink/issues/698)).
+- **Pick which of the PC's players Now playing controls.** With several players running on the PC,
+  their names sit in a row on the PC's Now playing card: click one to control it. Thanks to
+  [@jed84](https://github.com/jed84) ([#665](https://github.com/thtbee/nectarlink/issues/665)).
+- **Fold the sections of a PC's card on the phone.** Tap a section's title on Home (Screen, Camera
+  & Input, Quick Transfer & Clipboard, System & Power) to fold it away; the phone remembers, on
+  every PC's card. Thanks to [@yiriyangguang](https://github.com/yiriyangguang) ([#659](https://github.com/thtbee/nectarlink/issues/659)).
 - **An app you hide on the PC stays on the phone.** Its notifications and chats aren't sent to
   that PC at all any more, not only hidden there, and showing the app again brings them back.
   Thanks to [@jed84](https://github.com/jed84) and [@aihehye](https://github.com/aihehye)
@@ -641,6 +665,45 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **A clipboard picture that couldn't be previewed no longer keeps a CPU core busy.** The PC
+  tried to make its preview again and again, hundreds of times a second, for as long as it ran.
+  Thanks to [@leeefun](https://github.com/leeefun) ([#730](https://github.com/thtbee/nectarlink/issues/730)).
+- **Setting up phone unlock on Linux no longer closes the phone app.** Running
+  `nectarlink-desktop --linux-unlock-enroll` made the phone app close when it was asked to
+  confirm. Thanks to [@SGSTAR01](https://github.com/SGSTAR01) ([#629](https://github.com/thtbee/nectarlink/issues/629)).
+- **The tray icon's menu is dark when Windows is.** It stayed light in dark mode. Thanks to
+  [@BraveMomo](https://github.com/BraveMomo) ([#740](https://github.com/thtbee/nectarlink/issues/740)).
+- **Sharing a Linux PC's screen with the phone takes much less CPU on Wayland.** The picture is
+  scaled down on the graphics card before it's read back, and on a PC whose displays are all on
+  NVIDIA, it's encoded there too, without coming through the CPU at all. If that can't start, the
+  usual capture takes over. Thanks to [@vladikchi](https://github.com/vladikchi) ([#742](https://github.com/thtbee/nectarlink/pull/742)).
+- **A Linux PC that starts before its desktop portal can still share its screen.** On a session
+  where NectarLink started first (seen on COSMIC), phones were told sharing wasn't supported until
+  NectarLink restarted. Thanks to [@krakotay](https://github.com/krakotay) ([#743](https://github.com/thtbee/nectarlink/pull/743)).
+- **The PC app opens faster, and both apps are smaller.** The window shows in about 0.3 s
+  instead of 0.6 s (the icon, Jump List and What's new check no longer hold it up), the Windows
+  installer is 2 MB smaller, and the phone app is about 9 MB smaller. On x86_64 Chromebooks that
+  also run Android ARM apps, the phone app starts again: it carried no core for that kind of chip.
+- **A phone asks before it plays the PC's sound.** Use phone as speaker, turned on from a phone,
+  sent everything the PC played, calls included, to that phone without a word on the PC. The first
+  time a phone asks, the PC now asks you, and remembers a phone you allow.
+- **Security fixes from a review:** the shared Windows update folder is used only for NectarLink's
+  own installers, AI agents can't send login files or password vaults, crash records leave out text
+  a panic quoted, a Deck command tile is checked against the phone's permission as it runs, and on
+  Linux, sms: and mms: links are no longer sent to the phone as copied text.
+- **Pairing over a USB cable needs a computer on adb.** The phone now pairs over its USB
+  connection without pairing mode only when the computer reached it through adb, and after a
+  pairing over USB is declined or fails, it needs pairing mode for a few minutes. With a PC still
+  on 0.1.5 or older, plugging in no longer pairs by itself: pair by QR code or the 6-digit code
+  instead, or update the PC.
+- **Faster sharing.** Big files move up to about 75% faster once going, a transfer starts two to
+  three times sooner (files are hashed on several threads, and phone files while they're copied),
+  the USB cable's tunnel carries about twice as much, and a copied text or link no longer waits
+  for a file transfer to the same device to finish.
+- **Typing in other languages and pasting work in phone app windows.** On Android 14 and newer an
+  app window runs on its own virtual device with a clipboard of its own, so text typed with an
+  input method, and anything pasted, went to the phone's clipboard where the app couldn't see it.
+  It now goes to the window's own. Thanks to [@lianyanjiajia](https://github.com/lianyanjiajia) ([#713](https://github.com/thtbee/nectarlink/issues/713)).
 - **The PC's notifications on the phone can be cleared.** One cleared on the phone came back, as
   the PC never heard of it, and an automation's notice said `call_ringing → pause_pc_media`. It
   now reads like Settings (Pause PC media, When phone rings) and goes away after a few seconds.
@@ -660,7 +723,9 @@ change things that need a step from you, and its notes say so.
   scroll. Thanks to [@aihehye](https://github.com/aihehye) ([#529](https://github.com/thtbee/nectarlink/issues/529), [#690](https://github.com/thtbee/nectarlink/pull/690)).
 - **NectarLink leaves the Windows clipboard alone when it isn't sending it.** It read every copy,
   whole screenshots included, even with clipboard sharing off, and could keep Snipping Tool from
-  saving a screenshot. Thanks to [@Snoopiam](https://github.com/Snoopiam) ([#688](https://github.com/thtbee/nectarlink/issues/688)).
+  saving a screenshot. With sharing on, it now waits for an app that writes in steps to finish,
+  waits longer each time the clipboard is busy, never copies an image too big for the phone, and
+  the Shelf reads only the copied text, once per copy. Thanks to [@Snoopiam](https://github.com/Snoopiam) ([#688](https://github.com/thtbee/nectarlink/issues/688)).
 - **A text sent from the PC stays in the conversation** until the phone lists it. Some phones
   store a sent text late or not at all, and it vanished from the PC though it had gone out.
 - **The PC's device menu and a few settings are translated again.** The device switcher on the left

@@ -11,7 +11,7 @@ Categories=Network;FileTransfer;Telephony;
 Keywords=android;phone;sync;clipboard;notifications;files;mirror;sms;calls;
 StartupNotify=true
 StartupWMClass=nectarlink
-MimeType=x-scheme-handler/nectarlink;x-scheme-handler/tel;x-scheme-handler/sms;x-scheme-handler/smsto;x-scheme-handler/mms;x-scheme-handler/mmsto;x-scheme-handler/geo;
+MimeType=x-scheme-handler/nectarlink;x-scheme-handler/tel;x-scheme-handler/geo;
 Actions=send-files;send-clipboard;find-phone;take-photo;open-timeline;
 
 [Desktop Action send-files]

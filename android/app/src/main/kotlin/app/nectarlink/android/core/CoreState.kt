@@ -444,6 +444,8 @@ data class CoreState(
         is Event.ClipboardReceived,
         is Event.ClipboardHistoryChanged,
         is Event.TimelineChanged,
+        // A notification while its chat isn't open (Core); the note itself is on the timeline.
+        is Event.ChatReceived,
         is Event.LocalSendChanged,
         is Event.QueueChanged,
         is Event.QueueDroppedOnUnpair,
@@ -547,6 +549,7 @@ internal fun Event.affectsCoreState(): Boolean = when (this) {
     is Event.ClipboardReceived,
     is Event.ClipboardHistoryChanged,
     is Event.TimelineChanged,
+    is Event.ChatReceived,
     is Event.LocalSendChanged,
     is Event.QueueChanged,
     is Event.QueueDroppedOnUnpair,

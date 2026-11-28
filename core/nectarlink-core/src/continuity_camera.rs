@@ -95,7 +95,7 @@ pub(crate) async fn request(
     if !shared.toggle_on(&peer, TOGGLE) {
         return Err(Error::Denied);
     }
-    if !shared.store.has_active_queue_for_peer(&peer).unwrap_or(false)
+    if !shared.store.has_active_messages_for_peer(&peer).unwrap_or(false)
         && let Some(session) = shared.session(&peer)
     {
         match request_on_session(shared, &session, request_id.clone(), mode).await {

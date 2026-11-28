@@ -22,7 +22,7 @@ By default, yes: NectarLink connects directly over your local network (Wi-Fi or 
 
 ### Does my data pass through a server when I use **Connect over mobile data**?
 
-When **Connect over mobile data** is turned on and a direct peer-to-peer UDP path cannot be established between your networks, encrypted QUIC packets are forwarded through an `iroh` relay. Because the TLS 1.3 session is encrypted end to end between your phone's key and your PC's key, the relay only forwards opaque encrypted packets and can never read your notifications, messages, clipboard, or files. When your devices are on the same local network or connected by USB, all device-to-device traffic goes straight between them without leaving your local network (the only internet request NectarLink makes by default on installed copies is a periodic HTTPS check to GitHub Releases for app updates, which can be turned off on the PC in **Settings › Connection & About › Automatic updates**).
+When **Connect over mobile data** is turned on and a direct peer-to-peer UDP path cannot be established between your networks, encrypted QUIC packets are forwarded through an `iroh` relay. Because the TLS 1.3 session is encrypted end to end between your phone's key and your PC's key, the relay only forwards opaque encrypted packets and can never read your notifications, messages, clipboard, or files. When your devices are on the same local network or connected by USB, all device-to-device traffic goes straight between them without leaving your local network (by default, installed copies also check GitHub Releases over HTTPS for app updates, which you can turn off on the PC in **Settings › Updates**, and send an anonymous daily count, which you can turn off too; see [Privacy and Security](privacy-and-security.md)).
 
 ### Can I use NectarLink without Wi-Fi at all, using only a USB cable?
 
@@ -76,7 +76,7 @@ When started minimized in the Windows system tray, NectarLink uses approximately
 
 ### Does NectarLink send my clipboard when I copy a password from my password manager?
 
-No. Password managers on both Windows (such as 1Password, Bitwarden, and KeePassXC) and Android 13+ mark copied passwords with system privacy flags (`ExcludeClipboardContentFromMonitorProcessing` on Windows and `ClipDescription.EXTRA_IS_SENSITIVE` on Android). NectarLink checks those flags before reading or sending the clipboard and skips any sensitive item. One-time verification codes (OTPs) are also excluded from clipboard history and `Timeline`.
+No. Password managers on both Windows (such as 1Password, Bitwarden, and KeePassXC) and Android 13+ mark copied passwords with system privacy flags (`ExcludeClipboardContentFromMonitorProcessing` on Windows and `ClipDescription.EXTRA_IS_SENSITIVE` on Android). NectarLink checks those flags before reading or sending the clipboard and skips any sensitive item, unless you turn on **Sync copied passwords** in **Settings › Storage & Privacy**. One-time verification codes (OTPs) are also excluded from clipboard history and `Timeline`.
 
 ### How do I delete my local history or unpair a device?
 

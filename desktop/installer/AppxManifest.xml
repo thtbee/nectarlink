@@ -4,8 +4,11 @@
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
   xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
   xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+  xmlns:desktop4="http://schemas.microsoft.com/appx/manifest/desktop/windows10/4"
+  xmlns:desktop5="http://schemas.microsoft.com/appx/manifest/desktop/windows10/5"
+  xmlns:com="http://schemas.microsoft.com/appx/manifest/com/windows10"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
-  IgnorableNamespaces="uap uap10 desktop rescap">
+  IgnorableNamespaces="uap uap10 desktop desktop4 desktop5 com rescap">
 
   <Identity
     Name="Nectarlink.Desktop"
@@ -36,7 +39,7 @@
       uap10:RuntimeBehavior="win32App">
       <!-- The installer's own shortcut is the app in Start; listing the
            package too gave two entries (#544). It only exists for the Share
-           sheet. -->
+           sheet and File Explorer's menu. -->
       <uap:VisualElements
         AppListEntry="none"
         DisplayName="Nectarlink"
@@ -60,6 +63,25 @@
         <desktop:Extension Category="windows.toastNotificationActivation">
           <desktop:ToastNotificationActivation ToastActivatorCLSID="7B9E0E64-5C5A-4E8B-9D31-5A4C2B10F6E1" />
         </desktop:Extension>
+        <!-- "Send with NectarLink" in the first level of File Explorer's
+             right-click menu (#451): desktop/shellmenu. -->
+        <desktop4:Extension Category="windows.fileExplorerContextMenus">
+          <desktop4:FileExplorerContextMenus>
+            <desktop5:ItemType Type="*">
+              <desktop5:Verb Id="NectarlinkSend" Clsid="728FB82F-EBAF-4A6F-B8E2-64008ED454BF" />
+            </desktop5:ItemType>
+            <desktop5:ItemType Type="Directory">
+              <desktop5:Verb Id="NectarlinkSend" Clsid="728FB82F-EBAF-4A6F-B8E2-64008ED454BF" />
+            </desktop5:ItemType>
+          </desktop4:FileExplorerContextMenus>
+        </desktop4:Extension>
+        <com:Extension Category="windows.comServer">
+          <com:ComServer>
+            <com:SurrogateServer DisplayName="Nectarlink">
+              <com:Class Id="728FB82F-EBAF-4A6F-B8E2-64008ED454BF" Path="nectarlink_shellmenu.dll" ThreadingModel="STA" />
+            </com:SurrogateServer>
+          </com:ComServer>
+        </com:Extension>
       </Extensions>
     </Application>
   </Applications>
