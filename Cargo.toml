@@ -54,7 +54,9 @@ data-encoding = "2.11"
 dirs = "7"
 hostname = "0.4"
 hmac = "0.13"
-iroh = "1.3"
+# Without its "metrics" feature: nothing reads iroh's counters (only
+# Endpoint::metrics() needs it), and they cost an atomic update per packet.
+iroh = { version = "1.3", default-features = false, features = ["fast-apple-datapath", "portmapper", "tls-ring"] }
 # 1.4.0 closes a connection when a stream buffers more than 1024 chunks, and
 # its compaction never merges chunks it has already compacted, so a receiver
 # that stops reading for a moment (a paused transfer, slow storage) loses the
