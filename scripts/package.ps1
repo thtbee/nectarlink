@@ -150,6 +150,16 @@ Copy-Item $vcamDll $stage
 Copy-Item $credprovDll $stage
 Copy-Item $shellMenuDll $stage
 
+# Only the languages Settings offers (i18n::LANGUAGES) ship: a catalogue still being
+# translated stays out, so "System" never switches to a half-translated language.
+$i18nSource = Get-Content (Join-Path $root 'desktop\app\src\i18n.rs') -Raw
+$offeredLanguages = @([regex]::Matches(($i18nSource -split 'pub const LANGUAGES')[1].Split(';')[0], '\("([A-Za-z_]+)"') |
+    ForEach-Object { $_.Groups[1].Value })
+# Qt's own catalogues too: the app only ever loads Qt's strings for the
+# language it shows (i18n::install falls back to English), so the others
+# (about 20 more, 5 MB) were never used.
+$qtLanguages = (@('en') + $offeredLanguages | Select-Object -Unique) -join ','
+
 Invoke-Native "windeployqt" {
     $deployArgs = @(
         '--verbose', '0',
@@ -158,6 +168,10 @@ Invoke-Native "windeployqt" {
         '--no-system-d3d-compiler',
         '--no-opengl-sw',
         '--no-compiler-runtime',
+        # QML debugging and TUIO touch plugins: loaded only on request
+        # (-qmljsdebugger, -plugin), which a release never makes.
+        '--skip-plugin-types', 'qmltooling,generic',
+        '--translations', $qtLanguages,
         '--dir', $stage
     )
     if ($isArm64) {
@@ -170,14 +184,9 @@ Invoke-Native "windeployqt" {
 }
 
 # Translations. windeployqt stages Qt's own .qm files (in translations/, so its
-# file dialogs and standard buttons follow the system language). NectarLink's
+# file dialogs and standard buttons follow the app's language). NectarLink's
 # are compiled from the .ts files the repository keeps; they land beside the
 # executable, which is where the app looks for them.
-# Only the languages Settings offers (i18n::LANGUAGES) ship: a catalogue still being
-# translated stays out, so "System" never switches to a half-translated language.
-$i18nSource = Get-Content (Join-Path $root 'desktop\app\src\i18n.rs') -Raw
-$offeredLanguages = @([regex]::Matches(($i18nSource -split 'pub const LANGUAGES')[1].Split(';')[0], '\("([A-Za-z_]+)"') |
-    ForEach-Object { $_.Groups[1].Value })
 $translationSources = @()
 if (Test-Path (Join-Path $root 'desktop\app\i18n')) {
     $translationSources = @(Get-ChildItem (Join-Path $root 'desktop\app\i18n') -Filter '*.ts' |
