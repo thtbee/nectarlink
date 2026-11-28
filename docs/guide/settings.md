@@ -34,7 +34,8 @@ Controls startup behavior, the system tray, `Nectar Island`, battery notificatio
 | Setting | Default | What It Does |
 | :--- | :--- | :--- |
 | **Start with Windows** | **On** for installed copies | Launches NectarLink quietly in the Windows system tray when you sign in to your PC. |
-| **Stay in system tray** | **On** | Keeps NectarLink running in the system tray (unloading the UI window to ~5 to 10 MB working set) when you close the main window, so your phone stays connected. When turned off, closing the window quits the app completely. |
+| **Stay in system tray** | **On** | Keeps NectarLink running in the system tray (unloading the UI window to ~5 to 10 MB working set) when you close the main window, so your phone stays connected. When turned off, closing the window quits the app completely. On macOS the Dock icon goes too, and the menu bar icon stays. |
+| **Tray icon** | **Color**, and **One color** on macOS | The tray icon as the colored tile, or in one color: white or black to match the taskbar on Windows or the menu bar on macOS, or the panel's colors where the desktop recolors tray icons, as KDE Plasma does. |
 | **Nectar Island** | **Off** | Shows a compact pill at the top center of your primary monitor during active phone events. Automatically hides during full-screen games/videos or Windows Do Not Disturb. |
 | **Island triggers** *(shown when Nectar Island is On)* | **Calls**: On, **Transfers**: On, **Media**: On, **Alerts**: Off | Toggles which phone events expand `Nectar Island`: incoming/active **Calls**, active file **Transfers**, now-playing **Media**, and phone notification **Alerts** (including OTPs, timers, and recordings). |
 | **Battery alerts** | **On** | Shows a desktop notification when a connected phone's battery drops low or reaches a full charge. |

@@ -73,9 +73,41 @@ pub fn forward_pc_toast(app_name: &str, title: &str, text: &str) -> bool {
 /// Forwards a PC notification (`app_name`, `title`, `text`) to connected
 /// phones when `forward_pc_notifications_to_phone` is enabled. Returns `true`
 /// if the notification was queued for delivery.
+#[cfg(any(target_os = "linux", test))]
 pub fn forward_to_phones(app_name: &str, title: &str, text: &str) -> bool {
-    if !settings::forward_pc_notifications_to_phone() {
+    post(app_name, title, text).is_some()
+}
+
+/// Like [`forward_to_phones`], for a notice that only confirms something
+/// happened: it goes away again after `shown_for` (#705).
+pub fn forward_briefly(app_name: &str, title: &str, text: &str, shown_for: std::time::Duration) {
+    let Some(key) = post(app_name, title, text) else { return };
+    if let Some(node) = core_host::node() {
+        core_host::spawn(async move {
+            tokio::time::sleep(shown_for).await;
+            node.notification_removed(key).await;
+        });
+    }
+}
+
+/// A phone cleared one of this PC's forwarded notifications: it leaves the
+/// PC's list too, so it doesn't come back when the phone reconnects (#705).
+/// False for a key that isn't one of them.
+pub fn dismiss(key: &str) -> bool {
+    if !key.starts_with("pc:") {
         return false;
+    }
+    if let Some(node) = core_host::node() {
+        let key = key.to_owned();
+        core_host::spawn(async move { node.notification_removed(key).await });
+    }
+    true
+}
+
+/// Sends a PC notification to the phones; its key, or `None` when it isn't sent.
+fn post(app_name: &str, title: &str, text: &str) -> Option<String> {
+    if !settings::forward_pc_notifications_to_phone() {
+        return None;
     }
     let seq = NEXT_ID.fetch_add(1, Ordering::Relaxed);
     let when_ms = SystemTime::now()
@@ -84,15 +116,13 @@ pub fn forward_to_phones(app_name: &str, title: &str, text: &str) -> bool {
         .and_then(|d| i64::try_from(d.as_millis()).ok())
         .unwrap_or(0);
     let key = format!("pc:win:{when_ms}:{seq}");
-    let Some(notification) = build_pc_notification(&key, app_name, title, text, when_ms) else {
-        return false;
-    };
+    let notification = build_pc_notification(&key, app_name, title, text, when_ms)?;
     if let Some(node) = core_host::node() {
         core_host::spawn(async move {
             node.notification_posted(notification).await;
         });
     }
-    true
+    Some(key)
 }
 
 /// Deserializes a Freedesktop `org.freedesktop.Notifications.Notify` D-Bus method call

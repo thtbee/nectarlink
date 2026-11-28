@@ -10,7 +10,7 @@ This guide walks you through installing NectarLink on Windows, Linux, macOS and 
 | **Linux PC** | Ubuntu 24.04 or newer, Debian 13, Fedora 40 or newer, or another distribution from 2024 on (glibc 2.39 or newer), 64-bit Intel or AMD | X11 or Wayland. The phone as a webcam needs the `v4l2loopback` driver, which the install command sets up. |
 | **Mac (preview)** | macOS 14 or newer, Apple silicon | A preview: mirroring, recording, the phone's sound and microphone, the menu bar icon, the Mac's sound on the phone (macOS asks for Screen Recording permission the first time) the phone's storage in Finder and the rest of the shared features work; the phone as a webcam doesn't yet. |
 | **Android Phone or Tablet** | Android 8.0 (API 26) or newer | Android 10+ required for internal audio capture during mirroring; Android 11+ required for on-device Wireless Debugging (`Elevated`) and `app window` streaming; Android 12+ required for `Elevated` in-call mute/hold/speaker controls. |
-| **Network** | Shared Wi-Fi / LAN, USB cable, or **Connect over mobile data** | By default, all device-to-device traffic travels directly over your local network or a USB data cable without leaving your LAN (installed copies only contact GitHub Releases over HTTPS to check for app updates; see [Privacy and Security](privacy-and-security.md)). |
+| **Network** | Shared Wi-Fi / LAN, USB cable, or **Connect over mobile data** | By default, all device-to-device traffic travels directly over your local network or a USB data cable without leaving your LAN (installed copies also check GitHub Releases over HTTPS for app updates and send an anonymous daily count you can turn off; see [Privacy and Security](privacy-and-security.md)). |
 
 ## Installing NectarLink
 
@@ -152,6 +152,8 @@ If you have USB debugging (`adb`) enabled on your phone, NectarLink detects the 
 2. NectarLink sets up a local loopback tunnel over USB and automatically opens the 6-digit confirmation prompt on both the PC and the phone.
 3. Confirm that the 6-digit code matches on both screens and accept on both devices.
 4. Once paired, NectarLink uses the high-speed USB connection (`On USB`) whenever the cable is plugged in and switches to Wi-Fi automatically when you unplug it.
+
+The phone pairs this way, without its pairing screen open, only with a PC that reached it through `adb`: the PC first hands it a one-time key over `adb`, which other apps on the phone can't do. If you decline or the pairing fails, the phone pairs over USB only with its pairing screen open for the next few minutes: open **Pair with your PC** on the phone and plug the cable in again, or pair by QR code. A PC on NectarLink 0.1.5 or older sends no key, so the phone pairs with it over USB only with its pairing screen open; update the PC, or pair by QR code or the 6-digit code.
 
 ## Choosing an Android Power Level
 

@@ -78,7 +78,7 @@ All notification settings live in **Settings › Notifications** (and **Settings
 - **Per-app notification rules** (`Settings › Notifications`): Every phone app that has sent at least one notification appears in an alphabetical list with its icon and a three-way selector:
   - **Show** (default): Shows a Windows popup toast and lists the alert in the NectarLink feed.
   - **No pop-ups**: Suppresses Windows popup toasts for that app while keeping its notifications visible inside the NectarLink feed.
-  - **Hide**: Completely blocks notifications from that app on your PC.
+  - **Hide**: Completely blocks notifications from that app on your PC. The phone keeps them to itself: they aren't sent to this PC at all, nor are that app's chats.
 - **Copy one-time codes** (`Settings › General`, default: **Off**): Automatically copies detected verification codes from incoming notifications and SMS messages to the PC clipboard.
 - **Notification history** (`Settings › Storage & Privacy`, default: **On**): Keeps dismissed phone notifications on the PC. Includes a one-click **Clear** button.
 - **Keep notification history for** (`Settings › Storage & Privacy`, default: **1 day**): 1 day, 3 days, 1 week or 30 days. Up to 300 alerts a day are kept, at most 3,000.

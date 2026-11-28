@@ -55,6 +55,12 @@ class NotificationListener : NotificationListenerService() {
             sent.clear()
             core.notificationAccessChanged(false, emptyList())
         }
+        // Still allowed: the system let go of it (a vendor killed the app, say).
+        // Without asking to be bound again, PCs get no notifications until the
+        // app is opened.
+        if (androidx.core.app.NotificationManagerCompat.getEnabledListenerPackages(this).contains(packageName)) {
+            requestRebind(component(this))
+        }
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification, rankingMap: RankingMap?) {

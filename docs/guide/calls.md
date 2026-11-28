@@ -1,6 +1,6 @@
 # Calls
 
-The **Calls** page on your PC lets you see incoming phone calls with caller ID, answer or decline them from your desk, reject a call with a quick SMS reply, dial numbers from a keypad, browse your recent call history and contacts, and control active calls.
+The **Calls** page on your PC lets you see incoming phone calls with caller ID, answer or decline them from your desk, dial numbers from a keypad, browse your recent call history and contacts, and control active calls.
 
 <p align="center">
   <img src="images/calls-page.png" alt="Calls page on Windows showing recent call history, contacts, and dialer keypad" width="760">
@@ -25,7 +25,6 @@ The **Calls** page on your PC lets you see incoming phone calls with caller ID, 
    - Click **Answer** to pick up the call on your phone.
    - Click **Decline** to send the caller to voicemail.
    - Click **Silence** to mute the ringer without declining the call.
-   - Click **Reply with text** (when SMS access is enabled) to decline the call and immediately send a preset or custom SMS reply to the caller.
 
 ### Controlling an Active Call
 

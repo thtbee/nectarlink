@@ -141,7 +141,15 @@ object Crashes {
         var killed = prefs.getInt(BACKGROUND_KILLS, 0)
         for (exit in exits) {
             when (val outcome = outcome(exit.reason, exit.importance, exit.status)) {
-                is Outcome.Crash -> recordCrash(outcome.kind, outcome.location, outcome.message, null, (exit.timestamp / 1000).toULong())
+                is Outcome.Crash -> {
+                    // A native crash says where from its tombstone, when Android kept one.
+                    val location = if (exit.reason == ApplicationExitInfo.REASON_CRASH_NATIVE) {
+                        nativeLocation(exit) ?: outcome.location
+                    } else {
+                        outcome.location
+                    }
+                    recordCrash(outcome.kind, location, outcome.message, null, (exit.timestamp / 1000).toULong())
+                }
                 Outcome.Counted -> countHealth("crash", "ok")
                 Outcome.BackgroundKill -> {
                     killed++
@@ -155,6 +163,31 @@ object Crashes {
             .putInt(BACKGROUND_KILLS, killed)
             .apply()
     }
+
+    /**
+     * The crashing thread's top frames from a native crash's tombstone
+     * (Android 12+), as `library!function < ...`; null when there's none.
+     */
+    @RequiresApi(Build.VERSION_CODES.R)
+    private fun nativeLocation(exit: ApplicationExitInfo): String? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return null
+        val bytes = runCatching {
+            exit.traceInputStream?.use { input ->
+                val out = java.io.ByteArrayOutputStream()
+                val buffer = ByteArray(64 * 1024)
+                while (out.size() < MAX_TOMBSTONE) {
+                    val n = input.read(buffer)
+                    if (n < 0) break
+                    out.write(buffer, 0, n)
+                }
+                out.toByteArray()
+            }
+        }.getOrNull() ?: return null
+        return NativeTombstone.frames(bytes).takeIf { it.isNotEmpty() }?.let { cut(it.joinToString(" < ")) }
+    }
+
+    /** Enough for the threads' frames; memory dumps make some tombstones larger, and a cut-off field is skipped. */
+    private const val MAX_TOMBSTONE = 4 * 1024 * 1024
 
     /** How many times Android has ended the app in the background to save memory or battery. */
     fun backgroundKills(context: Context): Int =

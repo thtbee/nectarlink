@@ -92,6 +92,8 @@ const BASE_CAPABILITIES: &[&str] = &[
     nectarlink_protocol::messages::UPDATE_HINT,
     nectarlink_protocol::messages::mirror::PACE,
     nectarlink_protocol::messages::diag::REPORT,
+    crate::notifications::HIDE,
+    nectarlink_protocol::messages::chat::CAP,
 ];
 
 /// This device's mutable description, sent to peers.
@@ -270,12 +272,19 @@ pub(crate) struct Shared {
     pub(crate) usb_inbound: Mutex<std::collections::HashSet<DeviceId>>,
     /// USB peers that are only paired by hand (Android emulators).
     pub(crate) usb_manual_pair: Mutex<std::collections::HashSet<DeviceId>>,
+    /// Phone: the nonces PCs gave it through adb, each good for one tunnel.
+    pub(crate) usb_nonces: crate::usb::UsbNonces,
+    /// Bridge ports of the USB tunnels adb opened: the ones this PC opened, and the ones
+    /// a PC opened into this phone with a nonce it gave first. Pairing over one needs no
+    /// pairing mode ([`Shared::may_pair_over_usb`]).
+    pub(crate) usb_adb_ports: Mutex<std::collections::HashSet<u16>>,
     /// Wakes the PC-side ADB watcher immediately on `refresh()`.
     pub(crate) usb_poke: Notify,
     /// Wakes the persistent send-queue coordinator when items are enqueued, retried, or sessions change.
     pub(crate) queue_notify: Arc<Notify>,
     /// Peers currently being drained by a per-peer queue runner task.
-    pub(crate) queue_active_peers: Mutex<std::collections::HashSet<DeviceId>>,
+    /// Each device and lane whose queue is being worked through now.
+    pub(crate) queue_active_peers: Mutex<std::collections::HashSet<(DeviceId, crate::store::QueueLane)>>,
     /// Number of wake-up ticks executed by `run_queue_coordinator`.
     pub(crate) queue_coordinator_ticks: std::sync::atomic::AtomicUsize,
     pub data_dir: std::path::PathBuf,
@@ -879,6 +888,7 @@ impl Shared {
     pub(crate) fn unregister_usb_bridge_port(&self, port: u16) {
         lock(&self.usb_bridge_ports).remove(&port);
         lock(&self.usb_pending).remove(&port);
+        lock(&self.usb_adb_ports).remove(&port);
     }
 
     pub(crate) fn cancel_pending_usb_port(&self, port: u16) {
@@ -933,6 +943,31 @@ impl Shared {
             }
             _ => false,
         })
+    }
+
+    /// Whether pairing over `conn` may go without pairing mode: it comes through a USB
+    /// cable's tunnel that adb opened ([`Shared::usb_adb_ports`]), and adb is on. Any app
+    /// on a phone can reach the tunnel's port: a tunnel adb didn't open still carries
+    /// sessions of PCs already paired (their keys are checked), but pairs only in pairing
+    /// mode.
+    pub(crate) fn may_pair_over_usb(&self, conn: &Connection) -> bool {
+        if !self.is_usb_connection(conn) || !self.platform.adb_may_be_connected() {
+            return false;
+        }
+        let peer = crate::device_id(&conn.remote_id());
+        // The ports this connection came in on, and the tunnel this peer proved it is on.
+        let mut ports: Vec<u16> = conn
+            .paths()
+            .iter()
+            .filter_map(|p| match p.remote_addr() {
+                iroh::TransportAddr::Ip(addr) if self.is_usb_addr_for(&peer, addr) => Some(addr.port()),
+                _ => None,
+            })
+            .collect();
+        ports.extend(self.usb_peer_addr(&peer).map(|addr| addr.port()));
+        ports.retain(|port| !self.is_bt_port(*port));
+        let adb_ports = lock(&self.usb_adb_ports);
+        ports.iter().any(|port| adb_ports.contains(port))
     }
 
     /// Verifies that if `conn` uses a local USB bridge port, its QUIC TLS `DeviceId`
@@ -1037,14 +1072,20 @@ impl Shared {
         }
     }
 
+    /// Phone: a PC opened a tunnel into this phone; `from_adb` when its hello carried a
+    /// nonce this phone was given through adb.
     pub(crate) fn on_usb_tunnel_accepted(
         self: &Arc<Self>,
         peer: DeviceId,
         name: String,
         bridge_addr: SocketAddr,
         cancel: CancellationToken,
+        from_adb: bool,
     ) {
         let port = bridge_addr.port();
+        if from_adb {
+            lock(&self.usb_adb_ports).insert(port);
+        }
         if let Some(old) = lock(&self.usb_pending).insert(
             port,
             PendingUsbTunnel {
@@ -1083,6 +1124,14 @@ impl Shared {
         on_verified: Option<Box<dyn FnOnce() + Send>>,
     ) {
         let port = bridge_addr.port();
+        // This PC opened it, through adb (or through a Bluetooth link, which never
+        // counts as a cable). Unless it already ended: the port may come back for another.
+        // Under the bridge ports' lock, so it can't end in between.
+        let bridges = lock(&self.usb_bridge_ports);
+        if bridges.contains_key(&port) {
+            lock(&self.usb_adb_ports).insert(port);
+        }
+        drop(bridges);
         if let Some(old) = lock(&self.usb_pending).insert(
             port,
             PendingUsbTunnel {
@@ -1546,6 +1595,7 @@ impl Shared {
             }
             shared.send_media_state(&s).await;
             shared.send_held_notifications(&s).await;
+            shared.send_hidden_apps(&s).await;
             shared.send_notification_snapshot(&s).await;
             shared.send_call_state(&s).await;
             shared.send_toggles_state(&s).await;
@@ -2107,6 +2157,8 @@ impl Node {
             usb_helpers: Mutex::new(HashMap::new()),
             usb_inbound: Mutex::new(std::collections::HashSet::new()),
             usb_manual_pair: Mutex::new(std::collections::HashSet::new()),
+            usb_nonces: crate::usb::UsbNonces::default(),
+            usb_adb_ports: Mutex::new(std::collections::HashSet::new()),
             usb_poke: Notify::new(),
             queue_notify: Arc::new(Notify::new()),
             queue_active_peers: Mutex::new(std::collections::HashSet::new()),
@@ -2377,9 +2429,23 @@ impl Node {
     }
 
     /// Connects a PC-side USB tunnel to a forwarded phone loopback TCP address
-    /// (`127.0.0.1:<port>`) and returns the phone's [`DeviceId`].
-    pub async fn connect_usb_tunnel(&self, forwarded_tcp: SocketAddr) -> Result<DeviceId> {
-        crate::usb::connect_usb_tunnel(&self.shared, forwarded_tcp).await
+    /// (`127.0.0.1:<port>`) and returns the phone's [`DeviceId`]. `nonce` is one
+    /// the phone was just given through adb ([`Node::allow_usb_nonce`]): without it,
+    /// the phone pairs over this tunnel only in pairing mode.
+    pub async fn connect_usb_tunnel(
+        &self,
+        forwarded_tcp: SocketAddr,
+        nonce: Option<&str>,
+    ) -> Result<DeviceId> {
+        crate::usb::connect_usb_tunnel(&self.shared, forwarded_tcp, nonce).await
+    }
+
+    /// Phone: keeps a nonce a PC sent through adb (the app's wake broadcast, which only
+    /// the shell may send), for the hello of the tunnel the PC opens next. Pairing over
+    /// a tunnel needs no pairing mode only when its hello carries such a nonce. Each one
+    /// is good once, for two minutes. Returns whether `nonce` was one (32 hex digits).
+    pub fn allow_usb_nonce(&self, nonce: &str) -> bool {
+        self.shared.usb_nonces.allow(nonce, std::time::Instant::now())
     }
 
     /// Phone: starts (once) the loopback listener the platform pipes each
@@ -2954,12 +3020,6 @@ impl Node {
     }
 
     /// Cancels all active (`Waiting` or `Sending`) items in the outgoing send queue
-    /// for `peer` and returns the number of items cancelled.
-    pub fn cancel_queue_for_peer(&self, peer: DeviceId) -> Result<u32> {
-        self.cancel_all_queue_items(Some(peer))
-    }
-
-    /// Cancels all active (`Waiting` or `Sending`) items in the outgoing send queue
     /// (optionally filtered to `peer`) and returns the number of items cancelled.
     pub fn cancel_all_queue_items(&self, peer: Option<DeviceId>) -> Result<u32> {
         let items = self.shared.store.list_send_queue(peer.as_ref())?;
@@ -3130,7 +3190,7 @@ impl Node {
             }
         });
         let rtf = rtf.filter(|s| !s.trim().is_empty()).filter(|s| used.saturating_add(s.len()) <= max);
-        let has_queue = self.shared.store.has_active_queue_for_peer(&peer).unwrap_or(false);
+        let has_queue = self.shared.store.has_active_messages_for_peer(&peer).unwrap_or(false);
         if !has_queue && self.shared.session(&peer).is_some() {
             let env = Envelope::new(
                 types::CLIP_SET,
@@ -3227,7 +3287,7 @@ impl Node {
             let session = self.connected(&peer)?;
             return crate::clipboard::send_image(&self.shared, &session, mime, bytes).await;
         }
-        let has_queue = self.shared.store.has_active_queue_for_peer(&peer).unwrap_or(false);
+        let has_queue = self.shared.store.has_active_messages_for_peer(&peer).unwrap_or(false);
         if !has_queue && let Some(session) = self.shared.session(&peer) {
             match crate::clipboard::send_image(&self.shared, &session, mime.clone(), bytes.clone()).await {
                 Ok(()) => return Ok(()),
@@ -3898,17 +3958,6 @@ impl Node {
         crate::sms::send(&self.shared, &session, to, body, attachments, None).await
     }
 
-    /// Alias for [`Node::send_sms_with_attachments`].
-    pub async fn sms_send_with_attachments(
-        &self,
-        peer: impl std::borrow::Borrow<DeviceId>,
-        to: Vec<String>,
-        body: String,
-        attachments: Vec<crate::SmsAttachment>,
-    ) -> Result<()> {
-        self.send_sms_with_attachments(peer, to, body, attachments).await
-    }
-
     /// A picture in a message: its type and bytes.
     pub async fn sms_part(&self, peer: DeviceId, id: String) -> Result<(String, Vec<u8>)> {
         let session = self.connected(&peer)?;
@@ -4340,6 +4389,14 @@ impl Node {
         self.shared.hold_notifications(held).await;
     }
 
+    /// On a PC: the apps (package names) hidden here (#701). Phones that offer
+    /// `notify.hide` keep those apps' notifications to themselves; the list
+    /// goes to each phone now and whenever one connects.
+    pub async fn set_hidden_notification_apps(&self, apps: Vec<String>) {
+        let apps = nectarlink_protocol::messages::NotifyHide { apps }.sanitized();
+        self.shared.set_hidden_apps(apps).await;
+    }
+
     pub async fn notification_posted(&self, notification: Notification) {
         if let Some(clean) = notification.clone().sanitized() {
             let mut hist = lock(&self.shared.notification_history);
@@ -4472,6 +4529,18 @@ impl Node {
         self.shared.set_deck_layout(layout).await
     }
 
+    /// Gives phones this PC's Deck tile pictures (#490): PNGs of at most
+    /// [`crate::deck_image::MAX_BYTES`] and [`crate::deck_image::MAX_SIDE`]
+    /// pixels a side, named in the layout by [`crate::deck::image_id`].
+    pub fn set_deck_images(&self, images: Vec<Vec<u8>>) {
+        self.shared.deck.set_local_images(images);
+    }
+
+    /// The picture `id` on a connected PC's Deck tile, once this phone has it.
+    pub fn deck_image(&self, peer: DeviceId, id: &str) -> Option<Vec<u8>> {
+        self.shared.deck.peer_image(&peer, id).map(|png| png.to_vec())
+    }
+
     /// Updates this PC's live Deck state and sends it to every connected phone
     /// when it changed and this device offers `deck.actions`.
     pub async fn set_deck_state(&self, state: crate::DeckState) -> Result<()> {
@@ -4548,19 +4617,6 @@ impl Node {
             return Err(crate::Error::Offline);
         }
         Ok((meta, buf))
-    }
-
-    /// Convenience alias for [`Node::storage_read`] taking `&DeviceId`, `&str`,
-    /// `offset`, and `length`.
-    pub async fn read_storage(
-        &self,
-        peer: &DeviceId,
-        path: &str,
-        offset: u64,
-        length: u64,
-    ) -> Result<Vec<u8>> {
-        let (_meta, bytes) = self.storage_read(*peer, path, offset, Some(length)).await?;
-        Ok(bytes)
     }
 
     /// Opens a ranged read stream from `path` on a connected phone
@@ -4736,6 +4792,62 @@ impl Node {
         }
     }
 
+    // ---- Chat (docs/protocol/chat.md) ----
+
+    /// Sends a note to `peer` in the chat between them (#698) and puts it on
+    /// this device's timeline; returns its ID. `peer` has to be connected and
+    /// offer `chat.messages`.
+    pub async fn send_chat(&self, peer: DeviceId, text: String) -> Result<String> {
+        use nectarlink_protocol::messages::{ChatMessage, chat};
+        let note = ChatMessage { id: crate::chat::new_id(), text };
+        if !note.is_valid() {
+            return Err(Error::Protocol("a chat note needs text, at most 8,192 characters".into()));
+        }
+        if !self.shared.offers(&peer, chat::CAP)? {
+            return Err(Error::Unsupported);
+        }
+        self.request(peer, Envelope::new(types::CHAT_MESSAGE, &note)?).await?.expect(types::OK)?;
+        crate::chat::record(&self.shared, peer, false, &note.id, &note.text);
+        Ok(note.id)
+    }
+
+    /// Changes the text of a note this device sent `peer`. Here at once; on
+    /// `peer` if it's connected.
+    pub async fn edit_chat(&self, peer: DeviceId, id: String, text: String) -> Result<()> {
+        let edit = nectarlink_protocol::messages::ChatEdit { id, text };
+        if !edit.is_valid() {
+            return Err(Error::Protocol("a chat note needs text, at most 8,192 characters".into()));
+        }
+        if !self.shared.store.edit_chat_note(&peer, &crate::chat::ref_id(&edit.id), false, &edit.text)? {
+            return Err(Error::NotFound);
+        }
+        self.shared.emit(NodeEvent::TimelineChanged);
+        if let Some(session) = self.shared.session(&peer)
+            && let Ok(env) = Envelope::new(types::CHAT_EDIT, &edit)
+        {
+            let _ = session.send(env).await;
+        }
+        Ok(())
+    }
+
+    /// Deletes a note in the chat with `peer`, either one's. Here at once; on
+    /// `peer` if it's connected.
+    pub async fn delete_chat(&self, peer: DeviceId, id: String) -> Result<()> {
+        let delete = nectarlink_protocol::messages::ChatDelete { id };
+        if !delete.is_valid()
+            || !self.shared.store.delete_chat_note(&peer, &crate::chat::ref_id(&delete.id))?
+        {
+            return Err(Error::NotFound);
+        }
+        self.shared.emit(NodeEvent::TimelineChanged);
+        if let Some(session) = self.shared.session(&peer)
+            && let Ok(env) = Envelope::new(types::CHAT_DELETE, &delete)
+        {
+            let _ = session.send(env).await;
+        }
+        Ok(())
+    }
+
     // ---- Timeline ----
 
     /// Returns the current retention policy for the local timeline.
@@ -4765,16 +4877,6 @@ impl Node {
             Self::resolve_timeline_link(entry);
         }
         Ok(page)
-    }
-
-    /// Returns one timeline entry by ID, resolving its linked clip if any.
-    pub fn timeline_entry(&self, id: i64) -> Result<Option<crate::TimelineEntry>> {
-        let mut entry = self.shared.store.get_timeline(id)?;
-        if let Some(ref mut e) = entry {
-            self.resolve_timeline_clip(e);
-            Self::resolve_timeline_link(e);
-        }
-        Ok(entry)
     }
 
     /// Records a custom local timeline entry (e.g. a saved mirror screenshot or
@@ -5493,12 +5595,13 @@ fn add_internet_lookups(endpoint: &Endpoint) -> Result<()> {
 struct ActivePeerQueueGuard {
     weak: Weak<Shared>,
     peer: DeviceId,
+    lane: crate::store::QueueLane,
 }
 
 impl Drop for ActivePeerQueueGuard {
     fn drop(&mut self) {
         if let Some(shared) = self.weak.upgrade() {
-            lock(&shared.queue_active_peers).remove(&self.peer);
+            lock(&shared.queue_active_peers).remove(&(self.peer, self.lane));
             if shared.session(&self.peer).is_some()
                 && shared.store.has_active_queue_for_peer(&self.peer).unwrap_or(false)
             {
@@ -5525,15 +5628,15 @@ fn run_queue_coordinator(weak: Weak<Shared>, cancel: CancellationToken) {
             if shared.store.expire_stale_queue_items(now_ms).unwrap_or(0) > 0 {
                 shared.emit(NodeEvent::QueueChanged);
             }
-            if let Ok(peers) = shared.store.peers_with_waiting_queue() {
-                for peer in peers {
+            if let Ok(lanes) = shared.store.lanes_with_waiting_items() {
+                for (peer, lane) in lanes {
                     if shared.session(&peer).is_some() {
-                        let should_spawn = lock(&shared.queue_active_peers).insert(peer);
+                        let should_spawn = lock(&shared.queue_active_peers).insert((peer, lane));
                         if should_spawn {
                             let peer_weak = weak.clone();
                             let peer_cancel = cancel.child_token();
                             tokio::spawn(async move {
-                                run_peer_queue(peer_weak, peer, peer_cancel).await;
+                                run_peer_queue(peer_weak, peer, lane, peer_cancel).await;
                             });
                         }
                     }
@@ -5561,8 +5664,14 @@ fn run_queue_coordinator(weak: Weak<Shared>, cancel: CancellationToken) {
     });
 }
 
-async fn run_peer_queue(weak: Weak<Shared>, peer: DeviceId, cancel: CancellationToken) {
-    let _guard = ActivePeerQueueGuard { weak: weak.clone(), peer };
+/// Works through one lane of `peer`'s queue, oldest first, while it's online.
+async fn run_peer_queue(
+    weak: Weak<Shared>,
+    peer: DeviceId,
+    lane: crate::store::QueueLane,
+    cancel: CancellationToken,
+) {
+    let _guard = ActivePeerQueueGuard { weak: weak.clone(), peer, lane };
     loop {
         if cancel.is_cancelled() {
             return;
@@ -5583,7 +5692,7 @@ async fn run_peer_queue(weak: Weak<Shared>, peer: DeviceId, cancel: Cancellation
             return;
         };
 
-        let head = match shared.store.head_waiting_item_for_peer(&peer) {
+        let head = match shared.store.head_waiting_item_for_peer(&peer, lane) {
             Ok(Some(h)) => h,
             Ok(None) => return,
             Err(e) => {

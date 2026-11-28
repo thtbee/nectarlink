@@ -30,11 +30,14 @@ const QML: &[&str] = &[
     "qml/components/Button.qml",
     "qml/components/CallAudioTestCard.qml",
     "qml/components/CallCard.qml",
+    "qml/components/ChatAttachment.qml",
+    "qml/components/ChatNote.qml",
     "qml/components/CaptionButtons.qml",
     "qml/components/Card.qml",
     "qml/components/Chip.qml",
     "qml/components/CodeDigits.qml",
     "qml/components/CommandPalette.qml",
+    "qml/components/DeckBadge.qml",
     "qml/components/Divider.qml",
     "qml/components/GlassRim.qml",
     "qml/components/DoctorSheet.qml",
@@ -73,6 +76,7 @@ const QML: &[&str] = &[
     "qml/components/Txt.qml",
     "qml/pages/AppsPage.qml",
     "qml/pages/CallsPage.qml",
+    "qml/pages/ChatPage.qml",
     "qml/pages/DeckPage.qml",
     "qml/pages/FeaturesGuidePage.qml",
     "qml/pages/HomePage.qml",
@@ -378,8 +382,22 @@ fn compile_translations() {
 
 fn main() {
     println!("cargo::rustc-check-cfg=cfg(linux_ffmpeg_video)");
+    println!("cargo::rustc-check-cfg=cfg(linux_gst_nvenc)");
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("linux") {
         build_linux_video_codec();
+        println!("cargo:rerun-if-changed=cpp/linux_gst_nvenc.cpp");
+        if let Ok(gst) = pkg_config::Config::new().cargo_metadata(false).probe("gstreamer-app-1.0")
+            && let Ok(video) = pkg_config::Config::new().cargo_metadata(false).probe("gstreamer-video-1.0")
+        {
+            cc::Build::new()
+                .cpp(true)
+                .std("c++17")
+                .includes(gst.include_paths.into_iter().chain(video.include_paths))
+                .file("cpp/linux_gst_nvenc.cpp")
+                .compile("nectarlink_gst_nvenc");
+            println!("cargo::rustc-link-lib=dl");
+            println!("cargo::rustc-cfg=linux_gst_nvenc");
+        }
     }
     println!("cargo:rerun-if-changed=src/mark.rs");
     for qml in QML.iter().chain(QML_SINGLETONS.iter()) {
@@ -414,6 +432,7 @@ fn main() {
             "src/bridge/app.rs",
             "src/bridge/agents.rs",
             "src/bridge/calls.rs",
+            "src/bridge/chat.rs",
             "src/bridge/devices.rs",
             "src/bridge/history.rs",
             "src/bridge/media.rs",
@@ -454,6 +473,7 @@ fn main() {
         );
     } else if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("macos") {
         build_macos_audio_loopback();
+        build_macos_share();
         println!("cargo:rustc-link-lib=framework=AppKit");
         println!("cargo:rustc-link-lib=framework=CoreGraphics");
         println!("cargo:rustc-link-lib=framework=CoreAudio");
@@ -493,6 +513,15 @@ fn build_linux_video_codec() {
     build.compile("nectarlink_linux_video_codec");
     println!("cargo::rustc-link-lib=dl");
     println!("cargo::rustc-cfg=linux_ffmpeg_video");
+}
+
+fn build_macos_share() {
+    println!("cargo::rerun-if-changed=cpp/mac_share.mm");
+    cc::Build::new()
+        .file("cpp/mac_share.mm")
+        .flag("-fobjc-arc")
+        .flag("-std=c++17")
+        .compile("nectarlink_mac_share");
 }
 
 fn build_macos_audio_loopback() {

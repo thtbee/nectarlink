@@ -4,7 +4,7 @@
 use std::{
     path::PathBuf,
     sync::{
-        Arc,
+        Arc, Mutex,
         atomic::{AtomicBool, Ordering},
     },
     thread::{self, JoinHandle},
@@ -68,6 +68,57 @@ fn write_tray_icon_png() -> Option<PathBuf> {
     Some(path)
 }
 
+/// Whether the menu bar icon is the one-color glyph, which macOS draws white
+/// or black to match the menu bar, rather than the coloured tile.
+static ONE_COLOUR: AtomicBool = AtomicBool::new(false);
+
+/// The icon files in the temporary folder: the coloured tile, and the glyph.
+static COLOUR_FILE: Mutex<Option<PathBuf>> = Mutex::new(None);
+static GLYPH_FILE: Mutex<Option<PathBuf>> = Mutex::new(None);
+
+/// The glyph's size in pixels: 18 points at 2x, the height of a menu bar icon.
+const GLYPH_PIXELS: usize = 36;
+
+fn lock(file: &Mutex<Option<PathBuf>>) -> std::sync::MutexGuard<'_, Option<PathBuf>> {
+    file.lock().unwrap_or_else(|e| e.into_inner())
+}
+
+/// The glyph as a black PNG: the system turns it white on a dark menu bar.
+fn write_glyph_png() -> Option<PathBuf> {
+    let mut bgra = crate::mark::render_glyph(GLYPH_PIXELS, [0, 0, 0]);
+    for px in bgra.as_chunks_mut::<4>().0 {
+        px.swap(0, 2);
+    }
+    let bitmap = crate::win::image::Bitmap { width: GLYPH_PIXELS as u32, height: GLYPH_PIXELS as u32, bgra };
+    let png = crate::win::image::encode_png(&bitmap).ok()?;
+    let path = std::env::temp_dir().join(format!("nectarlink-tray-glyph-{}.png", std::process::id()));
+    std::fs::write(&path, png).ok()?;
+    Some(path)
+}
+
+/// Puts the icon the setting asks for in the menu bar. Nothing happens until
+/// the tray exists; [`Tray::create`] applies it again.
+fn apply_icon() {
+    let one_colour = ONE_COLOUR.load(Ordering::Acquire);
+    let glyph = if one_colour {
+        lock(&GLYPH_FILE).get_or_insert_with(|| write_glyph_png().unwrap_or_default()).clone()
+    } else {
+        PathBuf::new()
+    };
+    let (one_colour, path) = if glyph.as_os_str().is_empty() {
+        (false, lock(&COLOUR_FILE).clone().unwrap_or_default())
+    } else {
+        (true, glyph)
+    };
+    ffi::linux_tray_set_one_colour(one_colour, "", &path.to_string_lossy());
+}
+
+/// Switches the menu bar icon between the one-color glyph and the colour one.
+pub fn set_one_colour(on: bool) {
+    ONE_COLOUR.store(on, Ordering::Release);
+    apply_icon();
+}
+
 fn parse_tray_action(action: &str) -> Option<TrayEvent> {
     match action {
         "OPEN" => Some(TrayEvent::Open),
@@ -90,6 +141,7 @@ impl Tray {
         handler: impl Fn(TrayEvent) + Send + 'static,
     ) -> Result<Tray, String> {
         let icon_file = write_tray_icon_png();
+        *lock(&COLOUR_FILE) = icon_file.clone();
         let icon_path = icon_file.as_ref().map(|p| p.to_string_lossy().into_owned()).unwrap_or_default();
         ffi::linux_tray_setup(
             &icon_path,
@@ -104,6 +156,7 @@ impl Tray {
             &labels.pause_notifications,
             &labels.quit,
         );
+        apply_icon();
         let stop = Arc::new(AtomicBool::new(false));
         let worker_stop = Arc::clone(&stop);
         let worker = thread::Builder::new()
@@ -142,6 +195,10 @@ impl Drop for Tray {
             let _ = worker.join();
         }
         if let Some(path) = self.icon_file.take() {
+            let _ = std::fs::remove_file(path);
+        }
+        *lock(&COLOUR_FILE) = None;
+        if let Some(path) = lock(&GLYPH_FILE).take() {
             let _ = std::fs::remove_file(path);
         }
     }

@@ -1,0 +1,28 @@
+[package]
+name = "nectarlink-shellmenu"
+description = "Send files to a phone from the first level of File Explorer's right-click menu"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+repository.workspace = true
+license = "GPL-3.0-or-later"
+publish = false
+
+[lib]
+name = "nectarlink_shellmenu"
+crate-type = ["cdylib", "rlib"]
+
+[target.'cfg(windows)'.dependencies]
+windows = { workspace = true, features = [
+    "Win32_Foundation",
+    "Win32_System_Com",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Registry",
+    "Win32_UI_Shell",
+    "Win32_UI_Shell_Common",
+] }
+windows-core.workspace = true
+
+[lints]
+workspace = true

@@ -319,6 +319,10 @@ fn counts(device: DeviceId, watched: bool) -> (u32, u32) {
         return (0, 0);
     };
     let open = crate::messages::open_thread_of(device);
+    // Chats of apps hidden on the PC aren't in Messages, so they don't count (#700).
+    let hidden = core_host::try_host()
+        .map(|host| host.hub.read(crate::state::AppState::hidden_apps))
+        .unwrap_or_default();
     let chats: u32 = match (&r.chats, core_host::node()) {
         (Some(base), Some(node)) => node
             .chat_threads(device)
@@ -326,6 +330,7 @@ fn counts(device: DeviceId, watched: bool) -> (u32, u32) {
             .filter(|t| {
                 t.updated_ms > base.get(&t.thread_id).copied().unwrap_or(0)
                     && open.as_deref() != Some(t.thread_id.as_str())
+                    && !hidden.contains(&t.app)
             })
             .map(|t| t.unread)
             .sum(),

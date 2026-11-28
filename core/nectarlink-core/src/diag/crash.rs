@@ -156,7 +156,7 @@ fn install_panic_hook_now() {
 /// The record of a panic at `location` whose message was `fixed` text or
 /// `formatted` from values. Formatted text keeps only what comes before its
 /// first `: `, the fixed part of messages like "called `Result::unwrap()`
-/// on an `Err` value: …", since the rest may be anything.
+/// on an `Err` value: …", since the rest may be anything; see [`fixed_head`].
 fn panic_record(
     location: Option<&str>,
     fixed: Option<&str>,
@@ -168,7 +168,7 @@ fn panic_record(
     let message = match (fixed, formatted) {
         (Some(text), _) => text.to_owned(),
         (None, Some(text)) => match text.split_once(": ") {
-            Some((head, _)) => format!("{head}: <details hidden>"),
+            Some((head, _)) => format!("{}: <details hidden>", fixed_head(head)),
             None => "<details hidden>".to_owned(),
         },
         (None, None) => "<no message>".to_owned(),
@@ -186,6 +186,42 @@ fn panic_record(
         version: version.to_owned(),
         at,
     }
+}
+
+/// The fixed part of a formatted panic message before its first `: `. Some
+/// messages quote a value before any `: `, such as a string slicing panic
+/// ("byte index 5 is not a char boundary; it is inside 'é' (bytes 4..6) of
+/// `Code: 1234`"), so a quote left open is cut off there, and what's between
+/// quotes is hidden.
+fn fixed_head(head: &str) -> String {
+    let head = match head.matches('`').count() % 2 {
+        1 => &head[..head.rfind('`').unwrap_or(head.len())],
+        _ => head,
+    };
+    let mut out = String::with_capacity(head.len());
+    let mut quote = None;
+    for c in head.chars() {
+        match quote {
+            Some(q) if c == q => {
+                out.push('…');
+                out.push(c);
+                quote = None;
+            }
+            Some(_) => {}
+            None if c == '\'' || c == '"' => {
+                out.push(c);
+                quote = Some(c);
+            }
+            None => out.push(c),
+        }
+    }
+    // A quote left open: cut it off with what followed.
+    if let Some(q) = quote
+        && let Some(at) = out.rfind(q)
+    {
+        out.truncate(at);
+    }
+    out.trim_end().to_owned()
 }
 
 /// A source location as `crate/src/file.rs:line:col`: a library's from its
@@ -390,6 +426,26 @@ mod tests {
         assert!(!r.message.contains("0712"));
         let bare = panic_record(None, None, Some("Mum said hi"), None, "0.1.6", 1);
         assert_eq!(bare.message, "<details hidden>");
+    }
+
+    #[test]
+    fn a_value_quoted_before_the_first_colon_stays_out() {
+        // A string slicing panic quotes the text before any ": ".
+        let r = panic_record(
+            None,
+            None,
+            Some(
+                "byte index 5 is not a char boundary; it is inside 'é' (bytes 4..6) of `Code: 1234 from Mum`",
+            ),
+            None,
+            "0.1.6",
+            1,
+        );
+        assert_eq!(
+            r.message,
+            "byte index 5 is not a char boundary; it is inside '…' (bytes 4..6) of: <details hidden>"
+        );
+        assert!(!r.message.contains("Code") && !r.message.contains('é'));
     }
 
     #[test]

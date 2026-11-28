@@ -1374,16 +1374,17 @@ Item {
                             }
                         }
 
-                        Divider { width: parent.width; visible: Qt.platform.os !== "osx" }
+                        Divider { width: parent.width }
 
                         ListRow {
                             width: parent.width
-                            visible: Qt.platform.os !== "osx"
                             iconPath: Icons.palette
                             title: qsTr("Tray icon")
                             description: Qt.platform.os === "windows"
                                 ? qsTr("One color turns white or black to match the taskbar.")
-                                : qsTr("One color takes the panel's colors where the desktop recolors tray icons, as KDE Plasma does.")
+                                : Qt.platform.os === "osx"
+                                    ? qsTr("One color turns white or black to match the menu bar.")
+                                    : qsTr("One color takes the panel's colors where the desktop recolors tray icons, as KDE Plasma does.")
                             Segmented {
                                 options: [
                                     { value: "colour", label: qsTr("Color") },

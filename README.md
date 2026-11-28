@@ -93,6 +93,10 @@ for the details.
 
 The [user guide](docs/guide/README.md) walks through every step and feature.
 
+The whole setup in 74 seconds: installing the phone app, pairing by QR code, Assist and Elevated, and the connected Home on both:
+
+https://github.com/user-attachments/assets/8561261f-bf59-4257-85b5-9ecde4827dd8
+
 ## What it does
 
 **Stay on top of your phone**
@@ -107,8 +111,8 @@ The [user guide](docs/guide/README.md) walks through every step and feature.
 
 **Move things between devices**
 - **Clipboard**: copy on one device, paste on the other, with optional
-  encrypted history. Passwords from password managers are never sent, and
-  one-time codes are never kept in the history.
+  encrypted history. Passwords from password managers aren't sent unless you
+  turn on **Sync copied passwords**, and one-time codes are never kept in the history.
 - **Files and folders** both ways at Wi-Fi speed, with resume after a dropped
   connection, **Send to** in File Explorer, and the phone's storage in File
   Explorer. It also works with LocalSend devices, without pairing.
@@ -121,7 +125,7 @@ The [user guide](docs/guide/README.md) walks through every step and feature.
   other device.
 
 **Use your phone from the PC**
-- **Screen mirroring** at up to 60 frames a second with the phone's sound,
+- **Screen mirroring** at up to 120 frames a second with the phone's sound,
   screenshots and recording.
 - **Apps**: open any phone app in a window of its own on the PC, with its own
   taskbar icon, running beside whatever the phone shows.
@@ -153,7 +157,7 @@ searchable **Timeline** of everything that moved, a **Command Palette**
 **Connection Doctor** that finds and fixes what keeps devices from connecting.
 An optional **Nectar Island** at the top of the screen shows calls, music and
 transfers. Five themes, **Hive**, **Bloom**, **Glass**, **Graphite** and **Fluent**, each
-in light and dark. In English, German, Turkish, Simplified Chinese, Brazilian Portuguese, Vietnamese, Spanish and Russian.
+in light and dark. In English, German, Turkish, Simplified Chinese, Brazilian Portuguese, Vietnamese, Spanish, Russian, Japanese, Polish and Ukrainian.
 
 ### Platform support
 
