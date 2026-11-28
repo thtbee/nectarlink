@@ -33,6 +33,7 @@ The **Photos** page on your PC gives you instant access to your phone's camera r
    - Click **Copy** (`Ctrl+C`) to copy the full-resolution image onto your Windows clipboard so you can paste it into any document, chat app, or image editor.
    - Click **Save** (`Ctrl+S`) to save the original file to `Downloads\Nectarlink` (or pick a custom destination folder).
    - Click **Open in Photos** to open the downloaded original in the default Windows photo viewer.
+   - Click **Share** to send it on with the system's share sheet (Windows and macOS).
 
 ### Dragging Photos Out to File Explorer or Apps
 
@@ -45,7 +46,7 @@ You do not need to click Save before using a photo in another Windows program:
 ### Selecting and Saving Multiple Photos
 
 1. Hover over a photo tile and click its selection check mark (or hold `Shift` / `Ctrl` while clicking) to select multiple photos.
-2. In the selection bar at the top, click **Save** to download all chosen originals to `Downloads\Nectarlink` (or the folder button to pick another) in one batch.
+2. In the selection bar at the top, click **Save** to download all chosen originals to `Downloads\Nectarlink` (or the folder button to pick another) in one batch, or **Share** to send them on with the system's share sheet (Windows and macOS; Linux has no system share sheet, so use **Save** there).
 
 ### Deleting Photos from Your PC
 

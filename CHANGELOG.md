@@ -8,6 +8,9 @@ change things that need a step from you, and its notes say so.
 
 ### New
 
+- **Share photos from the Mac too.** The Photos page's **Share** button, for a selection and in
+  the viewer, now opens the macOS share menu as it opens the share sheet on Windows
+  ([#174](https://github.com/thtbee/nectarlink/issues/174)).
 - **Pick which of the PC's players Now playing controls.** With several players running on the PC,
   their names sit in a row on the PC's Now playing card: click one to control it. Thanks to
   [@jed84](https://github.com/jed84) ([#665](https://github.com/thtbee/nectarlink/issues/665)).
