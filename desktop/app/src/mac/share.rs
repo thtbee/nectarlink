@@ -17,7 +17,8 @@ unsafe extern "C" {
 /// Shows the share picker for `paths` over the app's window. Call it on the
 /// UI thread.
 pub fn show(paths: &[PathBuf]) -> Result<(), String> {
-    let paths: Vec<CString> = paths.iter().filter_map(|p| CString::new(p.as_os_str().as_bytes()).ok()).collect();
+    let paths: Vec<CString> =
+        paths.iter().filter_map(|p| CString::new(p.as_os_str().as_bytes()).ok()).collect();
     if paths.is_empty() {
         return Err("nothing to share".to_owned());
     }
