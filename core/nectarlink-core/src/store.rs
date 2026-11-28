@@ -185,6 +185,9 @@ pub struct QueuedFileSpec {
     /// `true` if the file was copied into `<data_dir>/queue_staging/<id>/` from an ephemeral FD/URI.
     #[serde(default)]
     pub staged: bool,
+    /// BLAKE3 digest (hex) of a staged copy, taken while it was made.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub blake3: Option<String>,
 }
 
 impl QueuedFileSpec {
@@ -4267,6 +4270,7 @@ mod tests {
                         size: 1024,
                         mtime_ms: now_ms,
                         staged: false,
+                        blake3: None,
                     }],
                 },
                 None,
@@ -4324,6 +4328,7 @@ mod tests {
                     size: MAX_QUEUE_ACTIVE_BYTES + 1,
                     mtime_ms: now_ms,
                     staged: false,
+                    blake3: None,
                 }],
             },
             None,
@@ -4376,6 +4381,7 @@ mod tests {
                 size: meta.len(),
                 mtime_ms: file_mtime_ms(&meta),
                 staged: true,
+                blake3: None,
             }
         };
 
@@ -4477,6 +4483,7 @@ mod tests {
             size: 1,
             mtime_ms: 0,
             staged: true,
+            blake3: None,
         };
         // A damaged row: a staged file outside staging, and a path escaping it.
         let payload = QueuePayload::Files {
@@ -4536,6 +4543,7 @@ mod tests {
             size: 1 << 30,
             mtime_ms: 1,
             staged: false,
+            blake3: None,
         };
         store
             .enqueue_send_item("q-file", &peer, &QueuePayload::Files { files: vec![file] }, None, 1_000)
@@ -4591,6 +4599,7 @@ mod tests {
                         size: MAX_QUEUE_ACTIVE_BYTES - 10,
                         mtime_ms: now_ms,
                         staged: false,
+                        blake3: None,
                     }],
                 },
                 None,
