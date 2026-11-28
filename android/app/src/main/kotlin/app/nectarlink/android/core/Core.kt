@@ -3058,6 +3058,14 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         }
     }
 
+    /**
+     * The picture `image` on a tile of PC `id`'s Deck (#490), a PNG, once the
+     * core has fetched it (a `DeckLayout` event follows when it has); null
+     * until then. Blocking: call it off the main thread.
+     */
+    fun deckImage(id: String, image: String): ByteArray? =
+        runCatching { node?.deckImage(id, image) }.getOrNull()
+
     /** Sets the PC's master volume (`0..=100` or `200`/`201` for phone speaker relay) and/or mute state (`pc.audio.set`). */
     fun setPcAudio(id: String, volume: Int? = null, muted: Boolean? = null) {
         val isSpeakerRelayToggle = volume == 200 || volume == 201
