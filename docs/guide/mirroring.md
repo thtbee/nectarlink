@@ -1,6 +1,6 @@
 # Mirroring and App Windows
 
-NectarLink streams your phone's screen to your PC in a dedicated window at up to 60 frames per second with hardware video encoding (H.264, H.265, or AV1) and live audio forwarding. Depending on your Android power level, you can view your screen, control it with your PC mouse and keyboard, open individual Android apps in their own desktop windows (`app window`), launch a full desktop layout (DeX mode), or reverse-mirror your PC's screen to your phone.
+NectarLink streams your phone's screen to your PC in a dedicated window at up to 120 frames per second (60 by default; 90 and 120 where the phone's screen supports them) with hardware video encoding (H.264, H.265, or AV1) and live audio forwarding. Depending on your Android power level, you can view your screen, control it with your PC mouse and keyboard, open individual Android apps in their own desktop windows (`app window`), launch a full desktop layout (DeX mode), or reverse-mirror your PC's screen to your phone.
 
 <p align="center">
   <img src="images/mirroring-window.png" alt="Phone screen mirrored in a window on Windows 11" width="760">
@@ -22,7 +22,7 @@ NectarLink streams your phone's screen to your PC in a dedicated window at up to
 
 1. On your PC, click **Mirror screen** on the **Home** screen (or press `Ctrl+Alt+Space` and choose **Mirror phone screen**). You can also start mirroring from your phone by tapping **Mirror to PC** on the Android Home screen.
 2. If your phone is at `Standard` or `Assist`, tap the notification on your phone and approve Android's screen-sharing dialog. If your phone is at `Elevated`, the `mirror` window opens immediately on your PC without a prompt on the phone.
-3. Your phone's screen streams at up to 1920 pixels on the long edge and 60 fps. NectarLink automatically negotiates the best hardware codec supported by both devices (**AV1**, **H.265/HEVC**, or **H.264/AVC**) and adapts when you rotate your phone between portrait and landscape.
+3. Your phone's screen streams at up to 1920 pixels on the long edge and 60 fps by default. NectarLink automatically negotiates the best hardware codec supported by both devices (**AV1**, **H.265/HEVC**, or **H.264/AVC**) and adapts when you rotate your phone between portrait and landscape.
 4. On Android 10 and newer, your phone's media and game audio plays through your PC's speakers automatically during mirroring. Click the speaker icon in the `mirror` window toolbar at any time to mute or unmute the phone's audio on your PC.
 
 ### Controlling Your Phone from the Mirror Window
