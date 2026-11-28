@@ -9307,6 +9307,11 @@ O que precisa
         <translation>Enviar para %1 com o NectarLink</translation>
     </message>
     <message>
+        <location filename="rust_strings.h" line="534"/>
+        <source>Send with NectarLink</source>
+        <translation>Enviar com o NectarLink</translation>
+    </message>
+    <message>
         <location filename="rust_strings.h" line="505"/>
         <source>Sending to %1…</source>
         <translation>Enviando para %1…</translation>

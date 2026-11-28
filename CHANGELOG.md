@@ -11,6 +11,12 @@ change things that need a step from you, and its notes say so.
 - **Share photos from the Mac too.** The Photos page's **Share** button, for a selection and in
   the viewer, now opens the macOS share menu as it opens the share sheet on Windows
   ([#174](https://github.com/thtbee/nectarlink/issues/174)).
+- **Send with NectarLink in the first level of File Explorer's menu.** Right-click files or
+  folders and choose **Send to *your phone* with NectarLink**, or **Send with NectarLink** and
+  then a phone when you have more than one: on Windows 11 that's without **Show more options**.
+  Like the Share sheet, it needs NectarLink's package registered, which Windows allows with
+  Developer Mode on; **Send to** stays where it was. Thanks to
+  [@FlootingDream](https://github.com/FlootingDream) ([#451](https://github.com/thtbee/nectarlink/issues/451)).
 - **Pick which of the PC's players Now playing controls.** With several players running on the PC,
   their names sit in a row on the PC's Now playing card: click one to control it. Thanks to
   [@jed84](https://github.com/jed84) ([#665](https://github.com/thtbee/nectarlink/issues/665)).
@@ -643,6 +649,10 @@ change things that need a step from you, and its notes say so.
 
 ### Fixed
 
+- **Typing in other languages and pasting work in phone app windows.** On Android 14 and newer an
+  app window runs on its own virtual device with a clipboard of its own, so text typed with an
+  input method, and anything pasted, went to the phone's clipboard where the app couldn't see it.
+  It now goes to the window's own. Thanks to [@lianyanjiajia](https://github.com/lianyanjiajia) ([#713](https://github.com/thtbee/nectarlink/issues/713)).
 - **The PC's notifications on the phone can be cleared.** One cleared on the phone came back, as
   the PC never heard of it, and an automation's notice said `call_ringing → pause_pc_media`. It
   now reads like Settings (Pause PC media, When phone rings) and goes away after a few seconds.

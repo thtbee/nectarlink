@@ -9260,6 +9260,11 @@ What it needs
         <translation>Надіслати на %1 через NectarLink</translation>
     </message>
     <message>
+        <location filename="rust_strings.h" line="534"/>
+        <source>Send with NectarLink</source>
+        <translation>Надіслати через NectarLink</translation>
+    </message>
+    <message>
         <location filename="rust_strings.h" line="505"/>
         <source>Sending to %1…</source>
         <translation>Надсилання на %1…</translation>

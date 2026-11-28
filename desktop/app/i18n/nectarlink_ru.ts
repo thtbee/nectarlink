@@ -9301,6 +9301,11 @@ What it needs
         <translation>Отправить на %1 через NectarLink</translation>
     </message>
     <message>
+        <location filename="rust_strings.h" line="534"/>
+        <source>Send with NectarLink</source>
+        <translation>Отправить через NectarLink</translation>
+    </message>
+    <message>
         <location filename="rust_strings.h" line="505"/>
         <source>Sending to %1…</source>
         <translation>Отправка на %1…</translation>

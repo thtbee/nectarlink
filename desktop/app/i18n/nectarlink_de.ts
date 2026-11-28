@@ -9330,6 +9330,11 @@ Voraussetzungen
         <translation>Mit NectarLink an %1 senden</translation>
     </message>
     <message>
+        <location filename="rust_strings.h" line="534"/>
+        <source>Send with NectarLink</source>
+        <translation>Mit NectarLink senden</translation>
+    </message>
+    <message>
         <location filename="rust_strings.h" line="505"/>
         <source>Sending to %1…</source>
         <translation>Wird an %1 gesendet…</translation>

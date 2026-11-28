@@ -9289,6 +9289,11 @@ Nó cần gì
         <translation>Gửi đến %1 bằng NectarLink</translation>
     </message>
     <message>
+        <location filename="rust_strings.h" line="534"/>
+        <source>Send with NectarLink</source>
+        <translation>Gửi bằng NectarLink</translation>
+    </message>
+    <message>
         <location filename="rust_strings.h" line="505"/>
         <source>Sending to %1…</source>
         <translation>Đang gửi đến %1…</translation>
