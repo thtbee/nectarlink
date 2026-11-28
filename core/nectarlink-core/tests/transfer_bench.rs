@@ -430,13 +430,16 @@ async fn bench_raw_quic() {
     let server = tokio::spawn(async move {
         let conn = b.accept().await.unwrap().await.unwrap();
         let (_send, mut recv) = conn.accept_bi().await.unwrap();
+        // As the app reads: everything that has arrived, into a large buffer.
+        // (One `read_chunk` per packet costs more than the transport.)
+        let mut buf = vec![0u8; 4 << 20];
         let mut got = 0u64;
-        let mut chunks = 0u64;
-        while let Some(chunk) = recv.read_chunk(256 * 1024).await.unwrap() {
-            got += chunk.len() as u64;
-            chunks += 1;
+        let mut reads = 0u64;
+        while let Some(n) = recv.read(&mut buf).await.unwrap() {
+            got += n as u64;
+            reads += 1;
         }
-        (got, chunks, conn, b)
+        (got, reads, conn, b)
     });
     let conn = a.connect(b_addr, ALPN).await.unwrap();
     let (mut send, _recv) = conn.open_bi().await.unwrap();
@@ -449,12 +452,12 @@ async fn bench_raw_quic() {
         left -= n as u64;
     }
     send.finish().unwrap();
-    let (got, chunks, _conn, _b) = server.await.unwrap();
+    let (got, reads, _conn, _b) = server.await.unwrap();
     let took = start.elapsed();
     println!(
-        "[BENCH] raw QUIC {} MiB: {took:?} = {:.0} MiB/s, {} bytes per read_chunk on average",
+        "[BENCH] raw QUIC {} MiB: {took:?} = {:.0} MiB/s, {} bytes per read on average",
         got >> 20,
         mb_per_s(got, took),
-        got / chunks.max(1)
+        got / reads.max(1)
     );
 }
