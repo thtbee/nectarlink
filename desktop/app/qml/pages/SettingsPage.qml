@@ -1129,8 +1129,8 @@ Item {
                         Item {
                             id: appearanceBottomPair
                             readonly property bool showGraphiteAmoled: Theme.graphite && Theme.dark
-                            // Fluent always uses Mica, so there's nothing to switch.
-                            readonly property bool showMica: Qt.platform.os === "windows" && !Theme.fluent
+                            // Fluent always uses Mica, and Glass always uses Acrylic, so there's nothing to switch.
+                            readonly property bool showMica: Qt.platform.os === "windows" && !Theme.fluent && !Theme.glass
                                 && !!Window.window && Window.window.systemBackdropSupported === true
                             visible: !Theme.hive && (showMica || showGraphiteAmoled)
                             width: parent.width

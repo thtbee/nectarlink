@@ -444,13 +444,13 @@ NativeWindow {
         )
     Rectangle {
         anchors.fill: parent
-        // Fluent: Mica itself, as WinUI apps show it; its solid color without it.
+        // Fluent/Glass: Mica or Acrylic itself; solid color without it.
         color: window.micaVisible && !Theme.amoled
             ? Qt.rgba(
                 window.windowSurface.r,
                 window.windowSurface.g,
                 window.windowSurface.b,
-                Theme.fluent ? 0 : (Theme.glass ? (Theme.dark ? 0.38 : 0.46) : (Theme.dark ? 0.76 : 0.84))
+                Theme.fluent || Theme.glass ? 0 : (Theme.dark ? 0.76 : 0.84)
             )
             : window.windowSurface
         Behavior on color { ColorAnimation { duration: Theme.fadeNormal } }
@@ -557,6 +557,7 @@ NativeWindow {
             height: 256
             source: glassColorMesh
             visible: Theme.glass
+            opacity: window.micaVisible && !Theme.amoled ? (Theme.dark ? 0.14 : 0.10) : 1.0
             autoPaddingEnabled: false
             blurEnabled: true
             blurMax: 48
@@ -575,7 +576,9 @@ NativeWindow {
                 Theme.surface.r,
                 Theme.surface.g,
                 Theme.surface.b,
-                Theme.glass ? (Theme.amoled ? 0.62 : (Theme.dark ? 0.22 : 0.28)) : (Theme.dark ? 0.60 : 0.66)
+                Theme.glass
+                    ? (Theme.amoled ? 0.62 : (window.micaVisible ? (Theme.dark ? 0.05 : 0.06) : (Theme.dark ? 0.22 : 0.28)))
+                    : (Theme.dark ? 0.60 : 0.66)
             )
             Behavior on color {
                 enabled: !Theme.reduceMotion
@@ -1110,12 +1113,26 @@ NativeWindow {
                 : Theme.amoled
                 ? "#07080C"
                 : (Theme.glass
-                    ? Qt.rgba(Theme.surfaceContainerLow.r, Theme.surfaceContainerLow.g, Theme.surfaceContainerLow.b, Theme.dark ? 0.34 : 0.46)
+                    ? Qt.rgba(Theme.surfaceContainerLow.r, Theme.surfaceContainerLow.g, Theme.surfaceContainerLow.b, Theme.dark ? 0.14 : 0.20)
                     : (Theme.graphite
                         ? Theme.surfaceContainerLow
                         : Qt.rgba(Theme.surfaceContainerLow.r, Theme.surfaceContainerLow.g, Theme.surfaceContainerLow.b, Theme.dark ? 0.56 : 0.68)))
             Behavior on color { ColorAnimation { duration: Theme.fadeNormal } }
             border.width: 0
+
+            // Subtle top and left glass rim separating the page surface from the rail and title bar.
+            Rectangle {
+                visible: Theme.glass
+                z: 10
+                x: 0
+                y: 0
+                width: parent.width + 1
+                height: parent.height + 1
+                topLeftRadius: pages.topLeftRadius
+                color: "transparent"
+                border.width: 1
+                border.color: Qt.rgba(1, 1, 1, Theme.dark ? 0.14 : 0.48)
+            }
 
             Loader {
                 id: pageLoader

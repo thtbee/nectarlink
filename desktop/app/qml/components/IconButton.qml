@@ -38,28 +38,57 @@ FocusScope {
         }
     }
 
+    GlassShadow {
+        visible: Theme.glass && !Theme.amoled && (button.tonal || mouse.containsMouse)
+        anchors.fill: body
+        radius: body.radius
+        elevation: button.tonal ? (mouse.containsMouse ? 0.60 : 0.45) : 0.35
+        scale: body.scale
+    }
+    Rectangle {
+        visible: Theme.glass && (button.tonal || mouse.containsMouse)
+        anchors.fill: body
+        anchors.margins: -1
+        radius: body.radius + 1
+        color: "transparent"
+        border.width: 1
+        border.color: Theme.dark ? Qt.rgba(0, 0, 0, 0.30) : Qt.rgba(0, 0, 0, 0.07)
+        scale: body.scale
+    }
+
     Rectangle {
         id: body
         anchors.fill: parent
         radius: Theme.pill(height)
-        color: button.tonal
-            ? (Theme.glass
-                ? Qt.tint(Qt.rgba(1, 1, 1, Theme.dark ? 0.10 : 0.54), Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, Theme.dark ? 0.18 : 0.14))
-                : Theme.secondaryContainer)
-            : "transparent"
-        Behavior on color { enabled: !Theme.reduceMotion; ColorAnimation { duration: Theme.fadeFast } }
-        border.width: (Theme.graphite && button.hasText) || (Theme.glass && button.tonal) ? 1 : 0
+        color: Theme.glass
+            ? (button.tonal
+                ? Qt.tint(
+                    Qt.rgba(1, 1, 1, mouse.pressed ? (Theme.dark ? 0.22 : 0.78) : (mouse.containsMouse ? (Theme.dark ? 0.18 : 0.70) : (Theme.dark ? 0.11 : 0.56))),
+                    Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, mouse.containsMouse ? (Theme.dark ? 0.22 : 0.18) : (Theme.dark ? 0.18 : 0.14))
+                )
+                : (mouse.pressed ? Qt.rgba(1, 1, 1, Theme.dark ? 0.15 : 0.58)
+                    : (mouse.containsMouse ? Qt.rgba(1, 1, 1, Theme.dark ? 0.10 : 0.46) : "transparent")))
+            : (button.tonal ? Theme.secondaryContainer : "transparent")
+        Behavior on color { enabled: !Theme.reduceMotion; ColorAnimation { duration: Theme.glass ? 190 : Theme.fadeFast; easing.type: Easing.OutCubic } }
+        border.width: (Theme.graphite && button.hasText) || (Theme.glass && (button.tonal || mouse.containsMouse)) ? 1 : 0
         border.color: Theme.glass
-            ? Qt.rgba(1, 1, 1, Theme.dark ? 0.12 : 0.38)
+            ? Qt.rgba(1, 1, 1, mouse.containsMouse ? (Theme.dark ? 0.30 : 0.86) : (Theme.dark ? 0.14 : 0.52))
             : (button.tonal ? Theme.surfaceContent : Theme.outlineVariant)
-        scale: mouse.pressed ? Theme.pressScale : 1
-        Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
+        Behavior on border.color { enabled: !Theme.reduceMotion; ColorAnimation { duration: 190; easing.type: Easing.OutCubic } }
+        scale: mouse.pressed && !Theme.reduceMotion ? Theme.pressScale : 1
+        Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.glass ? 140 : 120; easing.type: Easing.OutCubic } }
+
+        GlassSheen {
+            visible: Theme.glass && (button.tonal || mouse.containsMouse)
+            radius: parent.radius
+            strength: mouse.containsMouse ? 1.32 : 1.0
+        }
 
         Rectangle {
             anchors.fill: parent
             radius: parent.radius
             color: Theme.surfaceContent
-            opacity: mouse.pressed ? 0.14 : (mouse.containsMouse ? 0.08 : 0)
+            opacity: Theme.glass ? (mouse.pressed ? 0.06 : 0) : (mouse.pressed ? 0.14 : (mouse.containsMouse ? 0.08 : 0))
             Behavior on opacity { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.fadeFast } }
         }
         Icon {
@@ -147,9 +176,12 @@ FocusScope {
         width: Math.min(tipText.implicitWidth + 18, 300)
         height: tipText.implicitHeight + 10
         radius: Theme.graphite ? Theme.radiusXs : Theme.radiusSm
-        color: Theme.graphite ? Theme.surface : Theme.surfaceContainerHighest
+        color: Theme.graphite ? Theme.surface
+            : (Theme.glass
+                ? Qt.rgba(Theme.surfaceContainerHighest.r, Theme.surfaceContainerHighest.g, Theme.surfaceContainerHighest.b, Theme.dark ? 0.88 : 0.92)
+                : Theme.surfaceContainerHighest)
         border.width: 1
-        border.color: Theme.outlineVariant
+        border.color: Theme.glass ? Qt.rgba(1, 1, 1, Theme.dark ? 0.22 : 0.72) : Theme.outlineVariant
         onWidthChanged: if (shown) reposition()
 
         function reposition() {

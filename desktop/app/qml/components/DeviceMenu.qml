@@ -36,6 +36,15 @@ Item {
         onClicked: menu.close()
     }
 
+    GlassShadow {
+        anchors.fill: card
+        radius: card.radius
+        elevation: 1.35
+        opacity: card.opacity
+        scale: card.scale
+        transformOrigin: card.transformOrigin
+    }
+
     Rectangle {
         id: card
         x: Theme.railWidth + 8
@@ -44,8 +53,10 @@ Item {
         width: 280
         height: list.contentHeight + pair.height + 16
         radius: Theme.radiusLg
-        color: Theme.surfaceContainerHigh
-        border.width: 1
+        color: Theme.glass
+            ? Qt.rgba(Theme.surfaceContainerHigh.r, Theme.surfaceContainerHigh.g, Theme.surfaceContainerHigh.b, Theme.dark ? 0.84 : 0.90)
+            : Theme.surfaceContainerHigh
+        border.width: Theme.glass ? 0 : 1
         border.color: Theme.outlineVariant
         opacity: menu.opened ? 1 : 0
         scale: menu.opened || Theme.reduceMotion ? 1 : 0.96
@@ -54,6 +65,8 @@ Item {
         Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.fadeFast; easing.type: Easing.OutCubic } }
         Accessible.role: Accessible.PopupMenu
         Accessible.name: qsTr("Devices")
+
+        GlassRim { radius: card.radius; z: 10 }
 
         // Clicks on the card are its own.
         MouseArea { anchors.fill: parent }
@@ -98,6 +111,7 @@ Item {
                     radius: Theme.radiusMd
                     color: row.selected ? Theme.secondaryContainer
                         : (hover.hovered ? Qt.rgba(Theme.surfaceContent.r, Theme.surfaceContent.g, Theme.surfaceContent.b, 0.08) : "transparent")
+                    Behavior on color { enabled: !Theme.reduceMotion; ColorAnimation { duration: 180; easing.type: Easing.OutCubic } }
                     border.width: Theme.focusVisible(row) ? 2 : 0
                     border.color: Theme.primary
                 }

@@ -76,16 +76,23 @@ FocusScope {
         radius: Theme.graphite ? Theme.radiusSm : height / 2
         color: Theme.glass
             ? (toggle.checked
-                ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, Theme.dark ? 0.62 : 0.76)
-                : Qt.rgba(1, 1, 1, Theme.dark ? 0.12 : 0.44))
+                ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, mouse.containsMouse ? (Theme.dark ? 0.72 : 0.86) : (Theme.dark ? 0.62 : 0.76))
+                : Qt.rgba(1, 1, 1, mouse.containsMouse ? (Theme.dark ? 0.18 : 0.60) : (Theme.dark ? 0.12 : 0.44)))
             : (toggle.checked ? Theme.primary : Theme.surfaceContainerHighest)
         border.width: Theme.glass ? 1 : (toggle.checked ? 0 : 1.5)
         border.color: Theme.glass
             ? (toggle.checked
-                ? Qt.rgba(1, 1, 1, Theme.dark ? 0.18 : 0.42)
-                : Qt.rgba(1, 1, 1, Theme.dark ? 0.12 : 0.34))
+                ? Qt.rgba(1, 1, 1, mouse.containsMouse ? (Theme.dark ? 0.32 : 0.58) : (Theme.dark ? 0.18 : 0.42))
+                : Qt.rgba(1, 1, 1, mouse.containsMouse ? (Theme.dark ? 0.26 : 0.62) : (Theme.dark ? 0.14 : 0.40)))
             : Theme.outline
-        Behavior on color { ColorAnimation { duration: Theme.fadeFast } }
+        Behavior on color { enabled: !Theme.reduceMotion; ColorAnimation { duration: Theme.glass ? 190 : Theme.fadeFast; easing.type: Easing.OutCubic } }
+        Behavior on border.color { enabled: !Theme.reduceMotion; ColorAnimation { duration: 190; easing.type: Easing.OutCubic } }
+
+        GlassSheen {
+            radius: track.radius
+            filled: toggle.checked
+            strength: mouse.containsMouse ? 1.25 : 0.85
+        }
 
         Rectangle {
             id: thumb
@@ -98,10 +105,15 @@ FocusScope {
             color: Theme.glass
                 ? (toggle.checked
                     ? "#FFFFFF"
-                    : (Theme.dark ? Qt.rgba(1, 1, 1, mouse.containsMouse ? 0.90 : 0.78) : Qt.rgba(Theme.surfaceContent.r, Theme.surfaceContent.g, Theme.surfaceContent.b, mouse.containsMouse ? 0.78 : 0.62)))
+                    : (Theme.dark ? Qt.rgba(1, 1, 1, mouse.containsMouse ? 0.94 : 0.82) : Qt.rgba(Theme.surfaceContent.r, Theme.surfaceContent.g, Theme.surfaceContent.b, mouse.containsMouse ? 0.82 : 0.66)))
                 : (toggle.checked ? Theme.primaryContent : (mouse.containsMouse ? Theme.surfaceContentVariant : Theme.outline))
             border.width: Theme.glass ? 1 : 0
-            border.color: Qt.rgba(1, 1, 1, Theme.dark ? 0.55 : 0.90)
+            border.color: Qt.rgba(1, 1, 1, Theme.dark ? 0.60 : 0.92)
+            GlassShadow {
+                visible: Theme.glass && !Theme.amoled
+                radius: thumb.radius
+                elevation: 0.40
+            }
             // Quick and settled, never springy: a switch must feel immediate.
             Behavior on x { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.reduceMotion ? 0 : 140; easing.type: Easing.OutCubic } }
             Behavior on width { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.fadeFast; easing.type: Easing.OutCubic } }

@@ -754,8 +754,9 @@ Item {
                 color: Theme.heroColor
                 border.width: (Theme.graphite || Theme.amoled) && !Theme.glass ? 1 : 0
                 border.color: Theme.outlineVariant
-                Behavior on color { ColorAnimation { duration: Theme.fadeNormal } }
+                Behavior on color { enabled: !Theme.reduceMotion; ColorAnimation { duration: Theme.glass ? 190 : Theme.fadeNormal; easing.type: Easing.OutCubic } }
 
+                GlassShadow { radius: heroCard.radius; elevation: 1.15 }
                 GlassRim { radius: heroCard.radius }
 
                 Item {
@@ -1275,9 +1276,12 @@ Item {
                         height: idleMediaCol.implicitHeight + 24
                         visible: heroCard.activeMediaRow < 0
                         radius: Theme.radiusLg
-                        color: Qt.rgba(Theme.surface.r, Theme.surface.g, Theme.surface.b, Theme.glass ? (Theme.dark ? 0.42 : 0.52) : (Theme.dark ? 0.44 : 0.58))
-                        border.width: 1
+                        color: Theme.glass ? Theme.tileColor : Qt.rgba(Theme.surface.r, Theme.surface.g, Theme.surface.b, Theme.dark ? 0.44 : 0.58)
+                        border.width: Theme.glass ? 0 : 1
                         border.color: Qt.rgba(1, 1, 1, Theme.dark ? 0.12 : 0.40)
+
+                        GlassShadow { radius: parent.radius; elevation: 0.70 }
+                        GlassRim { radius: parent.radius }
 
                         Column {
                             id: idleMediaCol
@@ -3596,21 +3600,43 @@ Item {
         height: (tile.subtitle.length > 0 || !tile.available) ? 96 : 82
         activeFocusOnTab: available
         radius: Theme.radiusLg
-        color: tile.active
-            ? Theme.primary
-            : (tile.accented && !Theme.graphite
+        color: {
+            const glassHover = Theme.glass && tile.available && hover.hovered
+            if (tile.active) {
+                return glassHover
+                    ? Qt.tint(Theme.primary, Qt.rgba(1, 1, 1, tap.pressed ? 0.14 : 0.08))
+                    : Theme.primary
+            }
+            if (Theme.glass) {
+                const base = glassHover
+                    ? Qt.rgba(1, 1, 1, tap.pressed ? (Theme.dark ? 0.20 : 0.78) : (Theme.dark ? 0.17 : 0.72))
+                    : Theme.tileColor
+                return tile.accented
+                    ? Qt.tint(base, Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, Theme.dark ? 0.16 : 0.12))
+                    : base
+            }
+            return tile.accented && !Theme.graphite
                 ? Qt.tint(Theme.tileColor, Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, Theme.dark ? 0.14 : 0.10))
-                : Theme.tileColor)
+                : Theme.tileColor
+        }
         border.width: Theme.focusVisible(tile) ? 2 : ((tile.accented || Theme.graphite) && !Theme.glass ? 1 : 0)
         border.color: Theme.focusVisible(tile)
             ? Theme.primary
             : (tile.accented && !Theme.graphite
                 ? Qt.rgba(Theme.primary.r, Theme.primary.g, Theme.primary.b, Theme.dark ? 0.36 : 0.30)
                 : (Theme.ambientBlurActive ? Theme.cardBorder : Theme.outlineVariant))
-        scale: tap.pressed && available ? Theme.pressScale : 1
-        Behavior on color { enabled: !Theme.reduceMotion; ColorAnimation { duration: Theme.fadeFast } }
-        Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 170; easing.type: Easing.OutBack } }
-        GlassRim { radius: tile.radius; visible: Theme.glass && !tile.active && !Theme.focusVisible(tile) }
+        scale: tap.pressed && available && !Theme.reduceMotion ? Theme.pressScale : 1
+        Behavior on color { enabled: !Theme.reduceMotion; ColorAnimation { duration: Theme.glass ? 190 : Theme.fadeFast; easing.type: Easing.OutCubic } }
+        Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.glass ? 140 : 170; easing.type: Theme.glass ? Easing.OutCubic : Easing.OutBack } }
+        GlassShadow {
+            radius: tile.radius
+            elevation: tile.available && hover.hovered ? 1.15 : 0.85
+        }
+        GlassRim {
+            radius: tile.radius
+            visible: Theme.glass && !Theme.focusVisible(tile) && tile.width > 0 && tile.height > 0
+            strength: tile.available && hover.hovered ? 1.32 : (tile.active ? 0.85 : 1.0)
+        }
 
         Accessible.role: Accessible.Button
         Accessible.name: title
@@ -3713,11 +3739,25 @@ Item {
         }
 
         readonly property color fillColor: {
-            if (active && available)
+            if (active && available) {
+                if (Theme.glass) {
+                    return Qt.tint(
+                        Theme.primary,
+                        Qt.rgba(1, 1, 1, qtap.pressed ? 0.14 : (qhover.hovered ? 0.09 : 0.0))
+                    )
+                }
                 return Theme.graphite ? Theme.surfaceContent : Theme.primary
+            }
             if (active && !available)
                 return Theme.graphite ? Theme.surfaceContainerHigh : Theme.secondaryContainer
-            return Theme.graphite ? "transparent" : (Theme.glass ? Theme.tileColor : Theme.surfaceContainerHigh)
+            if (Theme.glass) {
+                if (qbtn.available && qtap.pressed)
+                    return Qt.rgba(1, 1, 1, Theme.dark ? 0.22 : 0.82)
+                if (qhover.hovered)
+                    return Qt.rgba(1, 1, 1, Theme.dark ? 0.18 : 0.74)
+                return Theme.tileColor
+            }
+            return Theme.graphite ? "transparent" : Theme.surfaceContainerHigh
         }
         readonly property color contentColor: {
             if (active && available)
@@ -3727,21 +3767,55 @@ Item {
             return available ? Theme.surfaceContent : Theme.surfaceContentVariant
         }
 
+        GlassShadow {
+            anchors.fill: qbody
+            radius: qbody.radius
+            elevation: qbtn.active && qbtn.available ? (qhover.hovered ? 0.90 : 0.70) : (qhover.hovered ? 0.65 : 0.48)
+            scale: qbody.scale
+        }
+
         Rectangle {
+            visible: Theme.glass
+            anchors.fill: qbody
+            anchors.margins: -1
+            radius: qbody.radius + 1
+            color: "transparent"
+            border.width: 1
+            border.color: Theme.dark ? Qt.rgba(0, 0, 0, 0.30) : Qt.rgba(0, 0, 0, 0.07)
+            scale: qbody.scale
+        }
+
+        Rectangle {
+            id: qbody
             anchors.fill: parent
             radius: Theme.radiusMd
             color: qbtn.fillColor
+            Behavior on color { enabled: !Theme.reduceMotion; ColorAnimation { duration: Theme.glass ? 190 : Theme.fadeFast; easing.type: Easing.OutCubic } }
             border.width: Theme.focusVisible(qbtn) ? 2 : (Theme.graphite || Theme.glass || (qbtn.active && !qbtn.available) ? 1 : 0)
-            border.color: Theme.focusVisible(qbtn) ? Theme.primary : (Theme.glass ? Theme.cardBorder : Theme.outlineVariant)
+            border.color: Theme.focusVisible(qbtn)
+                ? Theme.primary
+                : (Theme.glass
+                    ? Qt.rgba(1, 1, 1, qhover.hovered
+                        ? (Theme.dark ? 0.32 : 0.88)
+                        : (qbtn.active && qbtn.available ? (Theme.dark ? 0.24 : 0.48) : (Theme.dark ? 0.16 : 0.60)))
+                    : Theme.outlineVariant)
+            Behavior on border.color { enabled: !Theme.reduceMotion; ColorAnimation { duration: 190; easing.type: Easing.OutCubic } }
             opacity: qbtn.available || qbtn.active ? 1 : 0.55
-            scale: qtap.pressed && qbtn.available ? Theme.pressScale : 1
-            Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: 170; easing.type: Easing.OutBack } }
+            scale: qtap.pressed && qbtn.available && !Theme.reduceMotion ? Theme.pressScale : 1
+            Behavior on scale { enabled: !Theme.reduceMotion; NumberAnimation { duration: Theme.glass ? 140 : 170; easing.type: Theme.glass ? Easing.OutCubic : Easing.OutBack } }
 
             Rectangle {
                 anchors.fill: parent
                 radius: parent.radius
                 color: qbtn.contentColor
-                opacity: qtap.pressed ? 0.09 : 0
+                opacity: qtap.pressed ? (Theme.glass ? 0.06 : 0.09) : 0
+            }
+
+            // Glass: curved overhead specular sheen + luminous 1 px top-edge meniscus.
+            GlassSheen {
+                radius: qbody.radius
+                filled: qbtn.active && qbtn.available
+                strength: qhover.hovered ? 1.35 : 1.0
             }
 
             Column {
