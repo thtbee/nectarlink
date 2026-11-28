@@ -185,7 +185,7 @@ pub async fn run(
             #[cfg(target_os = "linux")]
             let proxy = connector.as_ref().map(|connector| connector.url());
             #[cfg(not(target_os = "linux"))]
-            let proxy = None;
+            let proxy: Option<&Url> = None;
             let mut seen = HashSet::new();
             let relays: Vec<_> = network
                 .relays
