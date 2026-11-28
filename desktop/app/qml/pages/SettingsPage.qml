@@ -2724,7 +2724,7 @@ Item {
 
                 // Calls through this PC (call.audio): what a phone call uses here.
                 Card {
-                    visible: Qt.platform.os === "windows"
+                    visible: Qt.platform.os === "windows" || Qt.platform.os === "osx"
                     width: parent.width
                     Column {
                         width: parent.width
@@ -2750,6 +2750,20 @@ Item {
                                     PhoneCall.refreshCallMics()
                                     callMicSheet.open()
                                 }
+                            }
+                        }
+                        Divider { width: parent.width; visible: PhoneCall.callAudioTestAvailable }
+                        ListRow {
+                            visible: PhoneCall.callAudioTestAvailable
+                            width: parent.width
+                            iconPath: Icons.call
+                            title: qsTr("Test call audio")
+                            description: qsTr("Speak into this PC's microphone and hear it come back through your phone, with the levels and numbers a call would use. Works without a call.")
+                            Button {
+                                variant: "outline"
+                                size: "sm"
+                                text: qsTr("Test")
+                                onClicked: callAudioTestSheet.open()
                             }
                         }
                     }
@@ -5081,6 +5095,20 @@ Item {
             Row {
                 anchors.right: parent.right
                 Button { variant: "text"; text: qsTr("Close"); onClicked: callMicSheet.close() }
+            }
+        }
+    }
+
+    Sheet {
+        id: callAudioTestSheet
+        cardWidth: 520
+        Column {
+            width: parent.width
+            spacing: 12
+            CallAudioTestCard { width: parent.width }
+            Row {
+                anchors.right: parent.right
+                Button { variant: "text"; text: qsTr("Close"); onClicked: callAudioTestSheet.close() }
             }
         }
     }

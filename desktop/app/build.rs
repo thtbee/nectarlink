@@ -28,6 +28,7 @@ const QML: &[&str] = &[
     "qml/components/Avatar.qml",
     "qml/components/Badge.qml",
     "qml/components/Button.qml",
+    "qml/components/CallAudioTestCard.qml",
     "qml/components/CallCard.qml",
     "qml/components/ChatAttachment.qml",
     "qml/components/ChatNote.qml",
@@ -481,6 +482,7 @@ fn main() {
         println!("cargo:rustc-link-lib=framework=ScreenCaptureKit");
         println!("cargo:rustc-link-lib=framework=CoreMedia");
         println!("cargo:rustc-link-lib=framework=Foundation");
+        println!("cargo:rustc-link-lib=framework=AVFoundation");
     }
     println!("cargo:rerun-if-changed=cpp/app_helpers.h");
     println!("cargo:rerun-if-changed=cpp/app_helpers.cpp");

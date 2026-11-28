@@ -28,6 +28,13 @@ struct AudioObjectPropertyAddress {
 
 #[link(name = "CoreAudio", kind = "framework")]
 unsafe extern "C" {
+    fn AudioObjectGetPropertyDataSize(
+        in_object_id: AudioObjectID,
+        in_address: *const AudioObjectPropertyAddress,
+        in_qualifier_data_size: u32,
+        in_qualifier_data: *const c_void,
+        out_data_size: *mut u32,
+    ) -> OSStatus;
     fn AudioObjectGetPropertyData(
         in_object_id: AudioObjectID,
         in_address: *const AudioObjectPropertyAddress,
@@ -302,6 +309,283 @@ pub fn output_devices() -> Vec<nectarlink_core::AudioOutputDevice> {
 /// nothing to switch to yet.
 pub fn set_default_output_device(_id: &str) -> Result<(), String> {
     Err("switching the audio output isn't supported on macOS yet".into())
+}
+
+const K_AUDIO_OBJECT_PROPERTY_SCOPE_INPUT: u32 = u32::from_be_bytes(*b"inpt");
+const K_AUDIO_HARDWARE_PROPERTY_DEVICES: u32 = u32::from_be_bytes(*b"dev#");
+const K_AUDIO_HARDWARE_PROPERTY_DEFAULT_INPUT_DEVICE: u32 = u32::from_be_bytes(*b"dIn ");
+const K_AUDIO_DEVICE_PROPERTY_STREAM_CONFIGURATION: u32 = u32::from_be_bytes(*b"slay");
+const K_AUDIO_DEVICE_PROPERTY_DEVICE_UID: u32 = u32::from_be_bytes(*b"uid ");
+const K_AUDIO_OBJECT_PROPERTY_NAME: u32 = u32::from_be_bytes(*b"lnam");
+const K_CF_STRING_ENCODING_UTF8: u32 = 0x0800_0100;
+
+type CFStringRef = *const c_void;
+
+#[link(name = "CoreFoundation", kind = "framework")]
+unsafe extern "C" {
+    fn CFStringGetCString(string: CFStringRef, buffer: *mut u8, buffer_size: isize, encoding: u32) -> u8;
+    fn CFStringGetMaximumSizeForEncoding(length: isize, encoding: u32) -> isize;
+    fn CFStringGetLength(string: CFStringRef) -> isize;
+    fn CFStringCreateWithCString(
+        alloc: *const c_void,
+        c_str: *const std::ffi::c_char,
+        encoding: u32,
+    ) -> *const c_void;
+    fn CFRelease(object: *const c_void);
+}
+
+/// A CoreFoundation string, released when dropped.
+pub(super) struct CfString(CFStringRef);
+
+impl CfString {
+    pub(super) fn new(text: &str) -> Option<CfString> {
+        let c = std::ffi::CString::new(text).ok()?;
+        // SAFETY: `c` is a NUL-terminated string that outlives the call.
+        let string =
+            unsafe { CFStringCreateWithCString(ptr::null(), c.as_ptr().cast(), K_CF_STRING_ENCODING_UTF8) };
+        (!string.is_null()).then_some(CfString(string))
+    }
+
+    /// Takes a string CoreAudio handed over (it follows the "Get" rule for
+    /// properties: the caller releases it).
+    fn owned(string: CFStringRef) -> Option<CfString> {
+        (!string.is_null()).then_some(CfString(string))
+    }
+
+    pub(super) fn as_raw(&self) -> CFStringRef {
+        self.0
+    }
+
+    fn to_text(&self) -> Option<String> {
+        // SAFETY: `self.0` is a live CFString.
+        let size = unsafe {
+            CFStringGetMaximumSizeForEncoding(CFStringGetLength(self.0), K_CF_STRING_ENCODING_UTF8)
+        } + 1;
+        let mut buf = vec![0u8; usize::try_from(size).ok()?];
+        // SAFETY: `buf` holds `size` bytes.
+        if unsafe { CFStringGetCString(self.0, buf.as_mut_ptr(), size, K_CF_STRING_ENCODING_UTF8) } == 0 {
+            return None;
+        }
+        let end = buf.iter().position(|&b| b == 0).unwrap_or(buf.len());
+        String::from_utf8(buf[..end].to_vec()).ok()
+    }
+}
+
+impl Drop for CfString {
+    fn drop(&mut self) {
+        // SAFETY: a string this wrapper owns one reference to.
+        unsafe { CFRelease(self.0) };
+    }
+}
+
+fn device_string(device: AudioObjectID, selector: u32) -> Option<String> {
+    let addr = AudioObjectPropertyAddress {
+        m_selector: selector,
+        m_scope: K_AUDIO_OBJECT_PROPERTY_SCOPE_GLOBAL,
+        m_element: K_AUDIO_OBJECT_PROPERTY_ELEMENT_MAIN,
+    };
+    let mut string: CFStringRef = ptr::null();
+    let mut size = size_of::<CFStringRef>() as u32;
+    // SAFETY: a stack pointer of the size CoreAudio writes for a string property.
+    let status = unsafe {
+        AudioObjectGetPropertyData(
+            device,
+            &addr,
+            0,
+            ptr::null(),
+            &mut size,
+            (&raw mut string).cast::<c_void>(),
+        )
+    };
+    if status != 0 {
+        return None;
+    }
+    CfString::owned(string)?.to_text()
+}
+
+/// How many input channels `device` has (none for a speaker).
+fn input_channels(device: AudioObjectID) -> u32 {
+    let addr = AudioObjectPropertyAddress {
+        m_selector: K_AUDIO_DEVICE_PROPERTY_STREAM_CONFIGURATION,
+        m_scope: K_AUDIO_OBJECT_PROPERTY_SCOPE_INPUT,
+        m_element: K_AUDIO_OBJECT_PROPERTY_ELEMENT_MAIN,
+    };
+    let mut size = 0u32;
+    // SAFETY: `size` is a stack u32.
+    if unsafe { AudioObjectGetPropertyDataSize(device, &addr, 0, ptr::null(), &mut size) } != 0 || size < 8 {
+        return 0;
+    }
+    // An AudioBufferList: a count, then that many { channels, byte size, data }.
+    // A u64 buffer keeps it aligned for the pointers inside.
+    let mut list = vec![0u64; (size as usize).div_ceil(8)];
+    // SAFETY: `list` has at least `size` bytes.
+    if unsafe {
+        AudioObjectGetPropertyData(device, &addr, 0, ptr::null(), &mut size, list.as_mut_ptr().cast())
+    } != 0
+    {
+        return 0;
+    }
+    let bytes: &[u8] = {
+        // SAFETY: viewing the same allocation as bytes.
+        unsafe { std::slice::from_raw_parts(list.as_ptr().cast::<u8>(), (size as usize).min(list.len() * 8)) }
+    };
+    let word =
+        |at: usize| bytes.get(at..at + 4).map(|b| u32::from_ne_bytes(b.try_into().unwrap_or_default()));
+    let count = word(0).unwrap_or(0) as usize;
+    (0..count).filter_map(|i| word(8 + i * 16)).sum()
+}
+
+/// The device the system records from by default.
+pub(super) fn default_input_device() -> Option<AudioObjectID> {
+    let addr = AudioObjectPropertyAddress {
+        m_selector: K_AUDIO_HARDWARE_PROPERTY_DEFAULT_INPUT_DEVICE,
+        m_scope: K_AUDIO_OBJECT_PROPERTY_SCOPE_GLOBAL,
+        m_element: K_AUDIO_OBJECT_PROPERTY_ELEMENT_MAIN,
+    };
+    let mut device: AudioObjectID = 0;
+    let mut size = size_of::<AudioObjectID>() as u32;
+    // SAFETY: a stack `AudioObjectID` of the size given.
+    let status = unsafe {
+        AudioObjectGetPropertyData(
+            K_AUDIO_OBJECT_SYSTEM_OBJECT,
+            &addr,
+            0,
+            ptr::null(),
+            &mut size,
+            (&raw mut device).cast::<c_void>(),
+        )
+    };
+    (status == 0 && device != 0).then_some(device)
+}
+
+/// Every audio device CoreAudio knows.
+fn all_devices() -> Vec<AudioObjectID> {
+    let addr = AudioObjectPropertyAddress {
+        m_selector: K_AUDIO_HARDWARE_PROPERTY_DEVICES,
+        m_scope: K_AUDIO_OBJECT_PROPERTY_SCOPE_GLOBAL,
+        m_element: K_AUDIO_OBJECT_PROPERTY_ELEMENT_MAIN,
+    };
+    let mut size = 0u32;
+    // SAFETY: `size` is a stack u32.
+    if unsafe {
+        AudioObjectGetPropertyDataSize(K_AUDIO_OBJECT_SYSTEM_OBJECT, &addr, 0, ptr::null(), &mut size)
+    } != 0
+    {
+        return Vec::new();
+    }
+    let mut ids = vec![0 as AudioObjectID; size as usize / size_of::<AudioObjectID>()];
+    // SAFETY: `ids` holds the `size` bytes.
+    let status = unsafe {
+        AudioObjectGetPropertyData(
+            K_AUDIO_OBJECT_SYSTEM_OBJECT,
+            &addr,
+            0,
+            ptr::null(),
+            &mut size,
+            ids.as_mut_ptr().cast::<c_void>(),
+        )
+    };
+    if status != 0 { Vec::new() } else { ids }
+}
+
+/// The Mac's microphones: each one's ID is its CoreAudio UID, which stays the
+/// same across restarts and replugging, and the one the system records from by
+/// default is marked.
+pub fn input_devices() -> Vec<nectarlink_core::AudioOutputDevice> {
+    let default = default_input_device();
+    all_devices()
+        .into_iter()
+        .filter(|&device| input_channels(device) > 0)
+        .filter_map(|device| {
+            let id = device_string(device, K_AUDIO_DEVICE_PROPERTY_DEVICE_UID)?;
+            let name = device_string(device, K_AUDIO_OBJECT_PROPERTY_NAME).unwrap_or_else(|| id.clone());
+            Some(nectarlink_core::AudioOutputDevice { id, name, is_default: Some(device) == default })
+        })
+        .collect()
+}
+
+const K_AUDIO_DEVICE_PROPERTY_NOMINAL_SAMPLE_RATE: u32 = u32::from_be_bytes(*b"nsrt");
+const K_AUDIO_DEVICE_PROPERTY_TRANSPORT_TYPE: u32 = u32::from_be_bytes(*b"tran");
+const K_AUDIO_DEVICE_TRANSPORT_BLUETOOTH: u32 = u32::from_be_bytes(*b"blue");
+const K_AUDIO_DEVICE_TRANSPORT_BLUETOOTH_LE: u32 = u32::from_be_bytes(*b"blea");
+
+/// What a microphone gives before NectarLink converts it to the call's format.
+#[derive(Debug, Clone, PartialEq)]
+pub struct InputFormat {
+    pub name: String,
+    /// The device's own sample rate (a Bluetooth headset's microphone runs at 8 or 16 kHz).
+    pub rate: u32,
+    pub channels: u32,
+    pub bluetooth: bool,
+}
+
+/// The microphone with CoreAudio UID `uid`, or the system's default one when
+/// it's `None` or gone: its name and own format.
+pub fn input_format(uid: Option<&str>) -> Option<InputFormat> {
+    let by_uid = uid.and_then(|uid| {
+        all_devices().into_iter().find(|&d| {
+            input_channels(d) > 0
+                && device_string(d, K_AUDIO_DEVICE_PROPERTY_DEVICE_UID).as_deref() == Some(uid)
+        })
+    });
+    let device = by_uid.or_else(default_input_device)?;
+    let rate = {
+        let addr = AudioObjectPropertyAddress {
+            m_selector: K_AUDIO_DEVICE_PROPERTY_NOMINAL_SAMPLE_RATE,
+            m_scope: K_AUDIO_OBJECT_PROPERTY_SCOPE_GLOBAL,
+            m_element: K_AUDIO_OBJECT_PROPERTY_ELEMENT_MAIN,
+        };
+        let (mut rate, mut size) = (0f64, size_of::<f64>() as u32);
+        // SAFETY: a stack f64 of the size given.
+        let status = unsafe {
+            AudioObjectGetPropertyData(
+                device,
+                &addr,
+                0,
+                ptr::null(),
+                &mut size,
+                (&raw mut rate).cast::<c_void>(),
+            )
+        };
+        if status == 0 { rate.round() as u32 } else { 0 }
+    };
+    let transport = {
+        let addr = AudioObjectPropertyAddress {
+            m_selector: K_AUDIO_DEVICE_PROPERTY_TRANSPORT_TYPE,
+            m_scope: K_AUDIO_OBJECT_PROPERTY_SCOPE_GLOBAL,
+            m_element: K_AUDIO_OBJECT_PROPERTY_ELEMENT_MAIN,
+        };
+        let (mut kind, mut size) = (0u32, size_of::<u32>() as u32);
+        // SAFETY: a stack u32 of the size given.
+        let status = unsafe {
+            AudioObjectGetPropertyData(
+                device,
+                &addr,
+                0,
+                ptr::null(),
+                &mut size,
+                (&raw mut kind).cast::<c_void>(),
+            )
+        };
+        if status == 0 { kind } else { 0 }
+    };
+    Some(InputFormat {
+        name: device_string(device, K_AUDIO_OBJECT_PROPERTY_NAME).unwrap_or_default(),
+        rate,
+        channels: input_channels(device),
+        bluetooth: transport == K_AUDIO_DEVICE_TRANSPORT_BLUETOOTH
+            || transport == K_AUDIO_DEVICE_TRANSPORT_BLUETOOTH_LE,
+    })
+}
+
+/// The name of the output device the Mac plays on by default.
+pub fn default_output_name() -> Option<String> {
+    device_string(default_output_device()?, K_AUDIO_OBJECT_PROPERTY_NAME)
+}
+
+/// The system's input volume (0 to 100), which sets how loud every microphone is.
+pub fn input_volume() -> Option<u8> {
+    mic_volume()
 }
 
 pub fn watch(_changed: fn()) {}

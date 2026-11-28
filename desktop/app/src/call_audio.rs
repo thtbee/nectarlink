@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! A phone call's sound on this PC (docs/protocol/calls.md §2.6): the other
 //! party plays from the speakers and the PC's microphone goes into the call,
-//! while the phone shows that its call sounds here. Windows only for now;
+//! while the phone shows that its call sounds here. Windows and macOS;
 //! Linux carries calls over Bluetooth (`linux::bt_hfp`).
 
 use std::sync::{Arc, Mutex};
@@ -39,7 +39,7 @@ impl Phase {
 struct State {
     phase: Phase,
     /// The PC's microphone, going into the call.
-    #[cfg(windows)]
+    #[cfg(any(windows, target_os = "macos"))]
     recorder: Option<crate::win::audio_in::Recorder>,
     uplink: Option<Arc<nectarlink_core::MirrorStream>>,
 }
@@ -56,7 +56,7 @@ pub fn phase() -> Phase {
 
 /// Whether this PC can take `device`'s call in progress.
 pub fn available(device: DeviceId) -> bool {
-    cfg!(windows)
+    cfg!(any(windows, target_os = "macos"))
         && crate::calls::active(device).is_some()
         && core_host::host().hub.read(|s| {
             s.matrices.get(&device).and_then(|m| m.state("calls.audio"))
@@ -71,6 +71,8 @@ pub fn start(device: DeviceId) {
     if !available(device) || phase() != Phase::Off {
         return;
     }
+    // A call's sound comes first: the test in Settings ends.
+    crate::call_audio_test::stop();
     set_phase(Phase::Starting(device));
     core_host::spawn(async move {
         if let Err(e) = node.call_audio_start(device, call.id).await {
@@ -119,17 +121,17 @@ pub fn start(device: DeviceId) {
     });
 }
 
-#[cfg(windows)]
+#[cfg(any(windows, target_os = "macos"))]
 use crate::win::audio_in::MicError;
 
-/// Why the microphone can't be recorded, off Windows.
-#[cfg(not(windows))]
+/// Why the microphone can't be recorded, off Windows and macOS.
+#[cfg(not(any(windows, target_os = "macos")))]
 #[derive(Debug)]
 pub enum MicError {
     Other(String),
 }
 
-#[cfg(not(windows))]
+#[cfg(not(any(windows, target_os = "macos")))]
 impl std::fmt::Display for MicError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let MicError::Other(e) = self;
@@ -138,14 +140,19 @@ impl std::fmt::Display for MicError {
 }
 
 /// What to tell the person when the microphone can't be recorded.
-fn mic_message(e: &MicError) -> String {
+pub(crate) fn mic_message(e: &MicError) -> String {
     match e {
         #[cfg(windows)]
         MicError::Denied => tr!(
             "Calls",
             "Windows keeps NectarLink off the microphone. Turn on Settings › Privacy & security › Microphone › Let desktop apps access your microphone, then try again."
         ),
-        #[cfg(windows)]
+        #[cfg(target_os = "macos")]
+        MicError::Denied => tr!(
+            "Calls",
+            "macOS keeps NectarLink off the microphone. Turn on System Settings › Privacy & Security › Microphone › NectarLink, then try again."
+        ),
+        #[cfg(any(windows, target_os = "macos"))]
         MicError::Missing => tr!("Calls", "No microphone on this PC to talk with."),
         MicError::Other(_) => tr!(
             "Calls",
@@ -154,7 +161,7 @@ fn mic_message(e: &MicError) -> String {
     }
 }
 
-#[cfg(windows)]
+#[cfg(any(windows, target_os = "macos"))]
 fn record_into(uplink: &Arc<nectarlink_core::MirrorStream>, device: DeviceId) -> Result<(), MicError> {
     let rate = nectarlink_core::CALLS_AUDIO_RATE;
     let config = MirrorAudioConfig { codec: nectarlink_core::MIRROR_PCM.into(), rate, channels: 1 };
@@ -169,16 +176,47 @@ fn record_into(uplink: &Arc<nectarlink_core::MirrorStream>, device: DeviceId) ->
 }
 
 /// Records the chosen microphone into `uplink`. Blocks a moment.
-#[cfg(windows)]
+#[cfg(any(windows, target_os = "macos"))]
 fn recorder(uplink: &Arc<nectarlink_core::MirrorStream>) -> Result<crate::win::audio_in::Recorder, MicError> {
-    let rate = nectarlink_core::CALLS_AUDIO_RATE;
     let stream = uplink.clone();
+    recorder_with(move |time_us, pcm| {
+        stream.send(nectarlink_core::PacketKind::Frame, time_us, pcm);
+    })
+}
+
+/// Records the chosen microphone as a call does: 16 kHz mono 16-bit, each
+/// piece handed to `on_pcm` with the time, in microseconds, its sound starts
+/// at (counted in samples from the first). The call audio test records
+/// through this too. Blocks a moment.
+#[cfg(any(windows, target_os = "macos"))]
+pub(crate) fn recorder_with(
+    mut on_pcm: impl FnMut(u64, Vec<u8>) + Send + 'static,
+) -> Result<crate::win::audio_in::Recorder, MicError> {
+    let rate = nectarlink_core::CALLS_AUDIO_RATE;
     let mut samples = 0u64;
     crate::win::audio_in::Recorder::start(chosen_mic(), rate, move |pcm| {
         let time_us = samples * 1_000_000 / u64::from(rate);
         samples += pcm.len() as u64 / 2;
-        stream.send(nectarlink_core::PacketKind::Frame, time_us, pcm);
+        on_pcm(time_us, pcm);
     })
+}
+
+/// What stands for a recording off Windows and macOS: never made, but it has a
+/// type of its own (not `()`) and a drop, like a real recorder.
+#[cfg(not(any(windows, target_os = "macos")))]
+pub(crate) struct NoRecorder;
+
+#[cfg(not(any(windows, target_os = "macos")))]
+impl Drop for NoRecorder {
+    fn drop(&mut self) {}
+}
+
+/// There's no recording off Windows and macOS.
+#[cfg(not(any(windows, target_os = "macos")))]
+pub(crate) fn recorder_with(
+    _on_pcm: impl FnMut(u64, Vec<u8>) + Send + 'static,
+) -> Result<NoRecorder, MicError> {
+    Err(MicError::Other("not on this system".into()))
 }
 
 /// The microphone chosen in Settings, if any (kept when other settings save).
@@ -195,9 +233,9 @@ pub fn chosen_mic() -> Option<String> {
 /// The PC's microphones, and the one calls record: the chosen one while
 /// it's there, else Windows' default communications microphone.
 pub fn mics() -> (Vec<nectarlink_core::AudioOutputDevice>, Option<String>) {
-    #[cfg(windows)]
+    #[cfg(any(windows, target_os = "macos"))]
     let devices = crate::win::audio::input_devices();
-    #[cfg(not(windows))]
+    #[cfg(not(any(windows, target_os = "macos")))]
     let devices: Vec<nectarlink_core::AudioOutputDevice> = Vec::new();
     let chosen = chosen_mic().filter(|id| devices.iter().any(|d| &d.id == id));
     let current = chosen.or_else(|| devices.iter().find(|d| d.is_default).map(|d| d.id.clone()));
@@ -219,13 +257,13 @@ pub fn set_mic(id: String) {
     if let Err(e) = settings.save(dir) {
         tracing::warn!(error = %e, "can't save the call microphone");
     }
-    #[cfg(windows)]
+    #[cfg(any(windows, target_os = "macos"))]
     switch_mic();
     core_host::host().hub.changed(Changes::CALLS);
 }
 
 /// A call sounding here moves to the microphone just chosen.
-#[cfg(windows)]
+#[cfg(any(windows, target_os = "macos"))]
 fn switch_mic() {
     let (old, uplink) = state(|s| match s.phase {
         Phase::Live(_) => (s.recorder.take(), s.uplink.clone()),
@@ -246,7 +284,7 @@ fn switch_mic() {
     }
 }
 
-#[cfg(not(windows))]
+#[cfg(not(any(windows, target_os = "macos")))]
 fn record_into(_uplink: &Arc<nectarlink_core::MirrorStream>, _device: DeviceId) -> Result<(), MicError> {
     Err(MicError::Other("not on this system".into()))
 }
@@ -272,9 +310,9 @@ pub fn end(device: DeviceId) -> bool {
             return false;
         }
         s.phase = Phase::Off;
-        #[cfg(windows)]
+        #[cfg(any(windows, target_os = "macos"))]
         let recorder = s.recorder.take();
-        #[cfg(not(windows))]
+        #[cfg(not(any(windows, target_os = "macos")))]
         let recorder = ();
         (recorder, s.uplink.take())
     };
@@ -300,9 +338,9 @@ pub fn sink(peer: &DeviceId) -> Option<Arc<dyn MicSink>> {
 
 struct Sink {
     peer: DeviceId,
-    #[cfg(any(windows, target_os = "linux"))]
+    #[cfg(any(windows, target_os = "linux", target_os = "macos"))]
     player: Mutex<Option<crate::win::audio_out::Player>>,
-    #[cfg(not(any(windows, target_os = "linux")))]
+    #[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
     player: Mutex<Option<()>>,
 }
 
@@ -310,21 +348,21 @@ impl MicSink for Sink {
     fn config(&self, config: MirrorAudioConfig) {
         // Plays on the default output; on speakers the microphone hears
         // the other party too (no echo cancelling), so headphones work best.
-        #[cfg(any(windows, target_os = "linux"))]
+        #[cfg(any(windows, target_os = "linux", target_os = "macos"))]
         match crate::win::audio_out::Player::start(config.rate, u16::from(config.channels)) {
             Ok(player) => *self.player.lock().unwrap_or_else(|e| e.into_inner()) = Some(player),
             Err(e) => tracing::warn!(error = %e, "can't play the call"),
         }
-        #[cfg(not(any(windows, target_os = "linux")))]
+        #[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
         let _ = config;
     }
 
     fn audio(&self, _time_us: u64, data: Vec<u8>) {
-        #[cfg(any(windows, target_os = "linux"))]
+        #[cfg(any(windows, target_os = "linux", target_os = "macos"))]
         if let Some(player) = self.player.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
             player.push(data);
         }
-        #[cfg(not(any(windows, target_os = "linux")))]
+        #[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
         let _ = data;
     }
 

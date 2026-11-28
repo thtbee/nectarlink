@@ -71,6 +71,8 @@ struct RecordingPlatform {
     mic: Arc<TestMicSink>,
     call_audio_asks: Mutex<Vec<String>>,
     call_audio: Arc<TestMicSink>,
+    /// What came back of a PC's test sound.
+    call_audio_test: Arc<TestEchoSink>,
     /// What a PC got of a phone's screen.
     screen: Arc<ScreenSink>,
     webcam_asks: Mutex<Vec<String>>,
@@ -273,6 +275,12 @@ impl Platform for RecordingPlatform {
         _peer: &nectarlink_core::DeviceId,
     ) -> Option<Arc<dyn nectarlink_core::MicSink>> {
         Some(self.call_audio.clone())
+    }
+    fn call_audio_test_sink(
+        &self,
+        _peer: &nectarlink_core::DeviceId,
+    ) -> Option<Arc<dyn nectarlink_core::MicSink>> {
+        Some(self.call_audio_test.clone())
     }
     fn call_audio_requested(&self, _peer: &nectarlink_core::DeviceId, call_id: &str) -> Result<(), String> {
         self.call_audio_asks.lock().unwrap().push(format!("start {call_id}"));
@@ -885,6 +893,26 @@ impl nectarlink_core::MicSink for TestMicSink {
     }
     fn ended(&self) {
         self.got.lock().unwrap().push("ended".into());
+    }
+}
+
+/// What a PC's test sound looked like when it came back: its time and size.
+#[derive(Debug, Default)]
+struct TestEchoSink {
+    got: Mutex<Vec<(u64, usize)>>,
+    configs: Mutex<usize>,
+    ended: std::sync::atomic::AtomicBool,
+}
+
+impl nectarlink_core::MicSink for TestEchoSink {
+    fn config(&self, _config: nectarlink_core::MirrorAudioConfig) {
+        *self.configs.lock().unwrap() += 1;
+    }
+    fn audio(&self, time_us: u64, data: Vec<u8>) {
+        self.got.lock().unwrap().push((time_us, data.len()));
+    }
+    fn ended(&self) {
+        self.ended.store(true, std::sync::atomic::Ordering::Release);
     }
 }
 
@@ -8908,6 +8936,130 @@ async fn a_calls_sound_moves_to_the_pc_and_back() {
     phone.node.set_device_toggle(pc_id, "calls", false).unwrap();
     let off = pc.node.call_audio_start(phone_id, "c1".into()).await;
     assert!(matches!(off, Err(Error::Denied)), "{off:?}");
+
+    pc.node.shutdown().await;
+    phone.node.shutdown().await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_test_sound_goes_to_the_phone_and_comes_back_with_no_call() {
+    use nectarlink_core::{MirrorAudioConfig, MirrorSend, PacketKind};
+
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[nectarlink_core::CALLS_SHOW]).await;
+    let mut phone = device_with("Pixel", DeviceKind::Phone, &[nectarlink_core::CALLS_AUDIO_TEST]).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+
+    // Streams nobody asked for are refused: the stream opens, but nothing arrives.
+    assert!(matches!(pc.node.call_audio_test_open(phone_id).await, Err(Error::NotFound)));
+
+    // No call needed.
+    with_timeout("test start", pc.node.call_audio_test_start(phone_id)).await.unwrap();
+    let up = Arc::new(with_timeout("test uplink", pc.node.call_audio_test_open(phone_id)).await.unwrap());
+    let config = MirrorAudioConfig { codec: nectarlink_core::MIRROR_PCM.into(), rate: 16_000, channels: 1 };
+    let sender = up.clone();
+    let sent = tokio::task::spawn_blocking(move || {
+        [
+            sender.send(PacketKind::Config, 0, config.to_cbor()),
+            sender.send(PacketKind::Frame, 20_000, vec![3u8; 640]),
+            sender.send(PacketKind::Frame, 40_000, vec![4u8; 640]),
+        ]
+    })
+    .await
+    .unwrap();
+    assert!(sent.iter().all(|s| *s == MirrorSend::Queued), "{sent:?}");
+
+    // The phone's speaker gets each packet...
+    let first = wait_for(&mut phone, "test sound", |e| match e {
+        NodeEvent::CallAudioTestUplink { device, pcm } if *device == pc_id => Some(pcm.clone()),
+        _ => None,
+    })
+    .await;
+    assert_eq!(first, vec![3u8; 640]);
+    // ...and the PC gets them back, as they were sent, with their times.
+    let deadline = std::time::Instant::now() + WAIT;
+    while pc.platform.call_audio_test.got.lock().unwrap().len() < 2 {
+        assert!(
+            std::time::Instant::now() < deadline,
+            "{:?}",
+            pc.platform.call_audio_test.got.lock().unwrap()
+        );
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    assert_eq!(*pc.platform.call_audio_test.got.lock().unwrap(), [(20_000, 640), (40_000, 640)]);
+    assert_eq!(*pc.platform.call_audio_test.configs.lock().unwrap(), 1);
+    // A call's own sound never saw any of it.
+    assert!(pc.platform.call_audio.got.lock().unwrap().is_empty());
+    assert!(phone.platform.call_audio_asks.lock().unwrap().is_empty());
+
+    // The PC stops: the phone's speaker is told, and the PC's sink ends.
+    pc.node.call_audio_test_stop(phone_id).await;
+    wait_for(&mut phone, "test ended", |e| {
+        matches!(e, NodeEvent::CallAudioTestEnded { device } if *device == pc_id).then_some(())
+    })
+    .await;
+    let deadline = std::time::Instant::now() + WAIT;
+    while !pc.platform.call_audio_test.ended.load(std::sync::atomic::Ordering::Acquire) {
+        assert!(std::time::Instant::now() < deadline, "the PC's sink wasn't ended");
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+
+    // With the call's sound off for the PC on the phone, the test is refused too.
+    phone.node.set_device_toggle(pc_id, "call_audio", false).unwrap();
+    let off = pc.node.call_audio_test_start(phone_id).await;
+    assert!(matches!(off, Err(Error::Denied)), "{off:?}");
+
+    pc.node.shutdown().await;
+    phone.node.shutdown().await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn an_older_phone_has_no_test_and_a_test_gives_way_to_a_calls_sound() {
+    use nectarlink_core::CallState;
+
+    // A phone without `call.audio.test`: the PC doesn't even ask.
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[nectarlink_core::CALLS_SHOW]).await;
+    let mut old = device_with("Old", DeviceKind::Phone, &[nectarlink_core::CALLS_STATE]).await;
+    pair_qr(&mut pc, &mut old).await;
+    let unsupported = pc.node.call_audio_test_start(old.node.device_id()).await;
+    assert!(matches!(unsupported, Err(Error::Unsupported)), "{unsupported:?}");
+    pc.node.shutdown().await;
+    old.node.shutdown().await;
+
+    // A phone that offers both: a call's sound starting ends the test, and a call's
+    // sound under way keeps the test out.
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[nectarlink_core::CALLS_SHOW]).await;
+    let mut phone = device_with(
+        "Pixel",
+        DeviceKind::Phone,
+        &[
+            nectarlink_core::CALLS_STATE,
+            nectarlink_core::CALLS_CONTROL,
+            nectarlink_core::CALLS_AUDIO,
+            nectarlink_core::CALLS_AUDIO_TEST,
+        ],
+    )
+    .await;
+    pair_qr(&mut pc, &mut phone).await;
+    let (pc_id, phone_id) = (pc.node.device_id(), phone.node.device_id());
+    with_timeout("test start", pc.node.call_audio_test_start(phone_id)).await.unwrap();
+    let call = CallState {
+        id: "c1".into(),
+        state: "active".into(),
+        incoming: true,
+        number: None,
+        name: None,
+        photo: None,
+        missed: false,
+        since: None,
+        controls: None,
+        app: None,
+    };
+    phone.node.call_changed(call).await.unwrap();
+    with_timeout("call audio", pc.node.call_audio_start(phone_id, "c1".into())).await.unwrap();
+    // The test ended; its stream is refused now.
+    assert!(matches!(pc.node.call_audio_test_open(phone_id).await, Err(Error::NotFound)));
+    let _ = pc_id;
 
     pc.node.shutdown().await;
     phone.node.shutdown().await;

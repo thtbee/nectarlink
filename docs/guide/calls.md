@@ -61,6 +61,15 @@ Whether your phone allows this is up to its maker: the phone's audio system must
 
 On Linux, call audio goes to the PC over Bluetooth instead, as for a headset.
 
+### Testing the sound without a call
+
+If the other person says they can't hear you well (or at all), try **Settings › Calls through this PC › Test call audio** on Windows or macOS. It opens a fake call, marked as a test, and works with no call going on.
+
+- **With your phone connected** (and an up-to-date NectarLink on it), your voice goes to your phone, plays on its speaker and comes back to this PC's speakers or headphones, the way a call's sound travels. You hear what the phone received.
+- **Without it** (the phone is off, away, or has an older NectarLink), the test records 5 seconds from this PC's microphone and plays them back, and says that it ran on this PC alone.
+
+It shows the microphone it records from (its name, and on a Mac its own sample rate and channels, which NectarLink converts to the 16 kHz mono a call carries), where the sound plays, a live level meter (loudness and peak in dBFS; speaking normally reads about -30 to -12), whether the sound is cut off, how many pieces of sound were sent, dropped, late or never came back, and the round trip in milliseconds. It points out the usual causes of a call that sounds wrong: a silent or muted microphone, a low system input volume, a clipped signal, a Bluetooth headset's low-quality microphone, and a slow connection. Use headphones for the test, as for a call.
+
 ## What the Options Do
 
 - **Calls toggle** (`Settings › Devices` on PC, **On** by default): Enables caller ID, call log sync, incoming call alerts, and call control for that phone.
@@ -75,6 +84,6 @@ On Linux, call audio goes to the PC over Bluetooth instead, as for a headset.
 
 ## Limits
 
-- **Talking through your PC**: Needs `Elevated` on Android 13 or newer, and a phone whose audio system lets apps reach the call (Pixel phones do; others may not). On Windows only, for now. There's no echo cancelling yet, so headphones work best.
+- **Talking through your PC**: Needs `Elevated` on Android 13 or newer, and a phone whose audio system lets apps reach the call (Pixel phones do; others may not). On Windows and macOS, for now. On a Mac, the first time macOS asks to let NectarLink use the microphone; if you said no, turn it on in **System Settings › Privacy & Security › Microphone**. The other party plays on the Mac's current sound output, so AirPods or wired headphones work as they do for any app. There's no echo cancelling yet, so headphones work best.
 - **In-Call Mute, Hold, Speaker, and DTMF Keypad**: Standard Android permissions allow third-party apps to answer and end calls (`TelecomManager`), but muting the microphone, toggling speakerphone, holding a call, and sending DTMF tones during a cellular call require `Elevated` on Android 12 or newer unless the app replaces your default phone dialer.
 - **Dual-SIM Selection**: When you place a call from the PC on a dual-SIM phone, Android uses the default calling SIM configured in your phone's SIM settings (or prompts on the phone if your SIM preference is set to "Ask every time").

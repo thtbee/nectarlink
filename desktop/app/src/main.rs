@@ -17,6 +17,7 @@ mod badges;
 mod battery;
 mod bridge;
 mod call_audio;
+mod call_audio_test;
 mod calls;
 mod chat;
 mod clipboard;
@@ -234,6 +235,12 @@ impl Platform for DesktopPlatform {
         peer: &nectarlink_core::DeviceId,
     ) -> Option<std::sync::Arc<dyn nectarlink_core::MicSink>> {
         call_audio::sink(peer)
+    }
+    fn call_audio_test_sink(
+        &self,
+        peer: &nectarlink_core::DeviceId,
+    ) -> Option<std::sync::Arc<dyn nectarlink_core::MicSink>> {
+        call_audio_test::sink(peer)
     }
     fn call_audio_stop_requested(&self, peer: &nectarlink_core::DeviceId) {
         call_audio::end(*peer);
