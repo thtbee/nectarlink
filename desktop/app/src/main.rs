@@ -112,6 +112,13 @@ use crate::{
 
 /// How many fonts `build.rs` compiles in.
 const BUNDLED_FONTS: i32 = 4;
+/// The window icon's sizes, in pixels.
+const APP_ICON_SIZES: [i32; 8] = [16, 20, 24, 32, 40, 48, 64, 256];
+
+/// The mark at every window icon size, as straight-alpha RGBA.
+fn app_icons() -> Vec<(i32, Vec<u8>)> {
+    APP_ICON_SIZES.iter().map(|&size| (size, mark::render(size as usize))).collect()
+}
 
 /// Rings the PC when a phone asks ("find my PC").
 #[derive(Debug)]
@@ -684,8 +691,8 @@ fn run_setup_window(mode: setup::Mode) -> ExitCode {
     // Before any QML loads, so every string is right on the first pass.
     i18n::install("");
     bridge::native::ffi::load_bundled_fonts();
-    for size in [16, 20, 24, 32, 40, 48, 64, 256] {
-        bridge::native::ffi::add_app_icon_image(size, &mark::render(size as usize));
+    for (size, rgba) in app_icons() {
+        bridge::native::ffi::add_app_icon_image(size, &rgba);
     }
     bridge::native::ffi::apply_app_icon();
     let mut engine = QQmlApplicationEngine::new();
@@ -851,7 +858,11 @@ fn main() -> ExitCode {
     // phone storage is unmounted instead of left behind.
     #[cfg(target_os = "linux")]
     win::quit_on_signals(bridge::app::request_quit);
-    win::jumplist::register(options.data_dir.as_deref());
+    // Both take a moment and nothing waits for them: the Jump List is the
+    // shell's, and the window icon is only needed once Qt is up.
+    let jump_list_data_dir = options.data_dir.clone();
+    std::thread::spawn(move || win::jumplist::register(jump_list_data_dir.as_deref()));
+    let icons = std::thread::spawn(app_icons);
     // Before the core looks for adb: one downloaded for phones on a cable is used too.
     phone_install::init(&data_dir);
     // The core reads it once, as it starts: off, it never asks phones for USB debugging (#439).
@@ -1006,7 +1017,7 @@ fn main() -> ExitCode {
     } else {
         bridge::native::ffi::prepare_qt(&logging::logs_dir(&data_dir).to_string_lossy());
     }
-    bridge::native::ffi::set_ui_scale(i32::from(settings::Settings::load(&data_dir).ui_scale));
+    bridge::native::ffi::set_ui_scale(i32::from(settings.ui_scale));
     #[cfg(any(target_os = "linux", target_os = "macos"))]
     let mut app = bridge::native::ffi::create_qt_app();
     #[cfg(not(any(target_os = "linux", target_os = "macos")))]
@@ -1016,15 +1027,15 @@ fn main() -> ExitCode {
         app.as_mut().set_application_version(&QString::from(env!("CARGO_PKG_VERSION")));
     }
     // Before any QML loads, so every string is right on the first pass.
-    i18n::install(&settings::Settings::load(&data_dir).language);
+    i18n::install(&settings.language);
     bridge::native::ffi::keep_running_without_windows();
     // Text falls back to system fonts if these are missing, so it's not fatal.
     let fonts = bridge::native::ffi::load_bundled_fonts();
     if fonts < BUNDLED_FONTS {
         tracing::warn!(loaded = fonts, expected = BUNDLED_FONTS, "some bundled fonts didn't load");
     }
-    for size in [16, 20, 24, 32, 40, 48, 64, 256] {
-        bridge::native::ffi::add_app_icon_image(size, &mark::render(size as usize));
+    for (size, rgba) in icons.join().unwrap_or_else(|_| app_icons()) {
+        bridge::native::ffi::add_app_icon_image(size, &rgba);
     }
     bridge::native::ffi::apply_app_icon();
     bridge::native::ffi::stay_out_of_session_restore();
