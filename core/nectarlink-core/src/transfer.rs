@@ -21,7 +21,6 @@ use nectarlink_protocol::{
     },
     read_frame, write_frame,
 };
-use tokio::io::AsyncWriteExt;
 use tokio_util::sync::CancellationToken;
 
 use crate::{Error, Result, events::NodeEvent, node::Shared, session::Session};
@@ -41,7 +40,6 @@ const PROGRESS_EVERY: Duration = Duration::from_millis(200);
 const QUEUE_PROGRESS_EVERY: Duration = Duration::from_millis(1000);
 /// Partly received files are kept this long for resuming.
 const KEEP_PARTIAL: Duration = Duration::from_secs(60 * 60);
-const CHUNK: usize = 256 * 1024;
 /// The sender reads ahead in blocks of this size, this many at a time, so
 /// the disk is read while the network sends.
 const BLOCK: usize = 1024 * 1024;
@@ -2076,7 +2074,89 @@ fn read_exact_at(file: &std::fs::File, block: &mut [u8], at: u64) -> std::io::Re
     }
 }
 
+/// A part file written on a blocking thread, a piece at a time, while the
+/// next piece arrives; the file's digest is worked out there too, over whole
+/// pieces. At most one piece is being written at a time, in order.
+struct PartWriter {
+    /// The file and its hasher, while no piece is being written.
+    idle: Option<(std::fs::File, Option<blake3::Hasher>)>,
+    writing: Option<tokio::task::JoinHandle<PieceWritten>>,
+    /// A buffer the piece being written gives back, for the one after next.
+    spare: Option<Vec<u8>>,
+}
+
+type PieceWritten = (std::fs::File, Option<blake3::Hasher>, Vec<u8>, std::io::Result<u64>);
+
+impl PartWriter {
+    /// Opens a part file to go on from `have` bytes (a longer one, which
+    /// changed or failed a check, is cut back to it).
+    async fn open(path: PathBuf, have: u64, hasher: Option<blake3::Hasher>) -> std::io::Result<PartWriter> {
+        let file = tokio::task::spawn_blocking(move || {
+            let file = std::fs::OpenOptions::new().create(true).append(true).open(&path)?;
+            if have < file.metadata()?.len() {
+                file.set_len(have)?;
+            }
+            Ok::<_, std::io::Error>(file)
+        })
+        .await
+        .map_err(std::io::Error::other)??;
+        Ok(PartWriter { idle: Some((file, hasher)), writing: None, spare: None })
+    }
+
+    /// Waits for the piece being written; returns how many bytes it put on disk.
+    async fn settle(&mut self) -> std::io::Result<u64> {
+        let Some(writing) = self.writing.take() else { return Ok(0) };
+        let (file, hasher, buf, written) = writing.await.map_err(std::io::Error::other)?;
+        self.idle = Some((file, hasher));
+        self.spare = Some(buf);
+        written
+    }
+
+    /// Starts writing `piece` once the one before it is done; returns what the
+    /// one before put on disk.
+    async fn write(&mut self, piece: Vec<u8>) -> std::io::Result<u64> {
+        let before = self.settle().await?;
+        let Some((mut file, mut hasher)) = self.idle.take() else {
+            return Err(std::io::Error::other("part file closed"));
+        };
+        self.writing = Some(tokio::task::spawn_blocking(move || {
+            use std::io::Write;
+            if let Some(h) = hasher.as_mut() {
+                h.update(&piece);
+            }
+            let written = file.write_all(&piece).map(|()| piece.len() as u64);
+            (file, hasher, piece, written)
+        }));
+        Ok(before)
+    }
+
+    /// A buffer of `len` bytes to fill next.
+    fn buffer(&mut self, len: usize) -> Vec<u8> {
+        match self.spare.take() {
+            Some(mut buf) if buf.len() >= len => {
+                buf.truncate(len);
+                buf
+            }
+            _ => vec![0u8; len],
+        }
+    }
+}
+
+/// What a failed write means for the transfer; it stops the stream.
+fn write_failed(e: &std::io::Error, recv: &mut RecvStream) -> TransferState {
+    let no_space = e.kind() == std::io::ErrorKind::StorageFull;
+    let code = if no_space { ErrorCode::Busy } else { ErrorCode::Internal };
+    let _ = recv.stop(VarInt::from_u32(code.close_code()));
+    TransferState::Failed(if no_space {
+        TransferFailure::NoSpace
+    } else {
+        TransferFailure::Other(format!("can't write: {}", e.kind()))
+    })
+}
+
 #[allow(clippy::too_many_arguments)]
+/// Reads each file's remaining bytes, from where the receiver is, in large
+/// pieces written while the next arrive; stops early when the sending side is gone.
 async fn receive_bytes(
     reporter: &mut Reporter,
     offer: &FilesOffer,
@@ -2088,21 +2168,11 @@ async fn receive_bytes(
     pause_rx: &mut tokio::sync::watch::Receiver<bool>,
     superseded: &CancellationToken,
 ) -> std::result::Result<(), TransferState> {
-    let mut done: u64 = have.iter().sum();
+    // Progress counts what's on disk, which is also where a resumed transfer continues.
+    let mut on_disk: u64 = have.iter().sum();
     for (i, (file, have)) in offer.files.iter().zip(have).enumerate() {
         let part_path = part(i);
-        let mut out =
-            tokio::fs::OpenOptions::new().create(true).append(true).open(&part_path).await.map_err(|e| {
-                TransferState::Failed(TransferFailure::Other(format!("can't write: {}", e.kind())))
-            })?;
-        // A part file longer than `have` (it changed or failed a prior check) starts from `have`.
-        if *have < out.metadata().await.map(|m| m.len()).unwrap_or(0) {
-            // Appending after leftover bytes would put this file's data in the wrong place.
-            out.set_len(*have).await.map_err(|e| {
-                TransferState::Failed(TransferFailure::Other(format!("can't truncate: {}", e.kind())))
-            })?;
-        }
-        let mut hasher = if file.blake3.is_some() && *have == 0 {
+        let hasher = if file.blake3.is_some() && *have == 0 {
             Some(blake3::Hasher::new())
         } else if file.blake3.is_some() {
             let have_bytes = *have;
@@ -2117,75 +2187,95 @@ async fn receive_bytes(
         } else {
             None
         };
-        // Gathered in memory and written in large pieces. Progress counts
-        // what's on disk, which is also where a resumed transfer continues.
-        let mut pending: Vec<u8> = Vec::with_capacity(WRITE_BUFFER);
+        let mut out = PartWriter::open(part_path.clone(), *have, hasher).await.map_err(|e| {
+            TransferState::Failed(TransferFailure::Other(format!("can't write: {}", e.kind())))
+        })?;
         let mut left = file.size - have;
+        let piece_len = |left: u64| WRITE_BUFFER.min(usize::try_from(left).unwrap_or(usize::MAX));
+        let mut piece = out.buffer(piece_len(left));
+        let mut filled = 0usize;
+        // Writes what's gathered and waits for it: before stopping, the bytes
+        // that arrived are kept, and nothing is still writing to the part file.
+        macro_rules! keep_what_arrived {
+            () => {{
+                let mut kept = out.settle().await;
+                if kept.is_ok() && filled > 0 {
+                    piece.truncate(filled);
+                    kept = match out.write(std::mem::take(&mut piece)).await {
+                        Ok(before) => out.settle().await.map(|last| before + last),
+                        Err(e) => Err(e),
+                    };
+                }
+                if let Ok(n) = kept {
+                    on_disk += n;
+                    reporter.progress(on_disk);
+                }
+            }};
+        }
         while left > 0 {
             if *pause_rx.borrow_and_update() {
-                if write_out(&mut out, &mut pending, recv).await.is_ok() {
-                    reporter.progress(done);
-                }
+                keep_what_arrived!();
                 let _ = recv.stop(VarInt::from_u32(files::PAUSED));
                 let _ = send.reset(VarInt::from_u32(files::PAUSED));
                 return Err(TransferState::Paused);
             }
-            let max = CHUNK.min(usize::try_from(left).unwrap_or(usize::MAX));
-            let chunk = tokio::select! {
+            let room = (piece.len() - filled).min(usize::try_from(left).unwrap_or(usize::MAX));
+            let read = tokio::select! {
                 _ = cancel.cancelled() => {
+                    let _ = out.settle().await;
                     let _ = recv.stop(VarInt::from_u32(files::CANCELLED));
                     let _ = send.reset(VarInt::from_u32(files::CANCELLED));
                     return Err(TransferState::Cancelled);
                 }
                 // A newer attempt at this transfer is waiting for the part file.
                 _ = superseded.cancelled() => {
-                    if write_out(&mut out, &mut pending, recv).await.is_ok() {
-                        reporter.progress(done);
-                    }
+                    keep_what_arrived!();
                     return Err(TransferState::Waiting);
                 }
                 _ = wait_paused(pause_rx) => {
-                    if write_out(&mut out, &mut pending, recv).await.is_ok() {
-                        reporter.progress(done);
-                    }
+                    keep_what_arrived!();
                     let _ = recv.stop(VarInt::from_u32(files::PAUSED));
                     let _ = send.reset(VarInt::from_u32(files::PAUSED));
                     return Err(TransferState::Paused);
                 }
-                chunk = recv.read_chunk(max) => chunk,
+                // Everything that has arrived, up to the room left: many packets at once.
+                read = recv.read(&mut piece[filled..filled + room]) => read,
             };
-            let bytes = match chunk {
-                Ok(Some(bytes)) => bytes,
+            let n = match read {
+                Ok(Some(n)) => n,
                 Err(ReadError::Reset(code)) if code.into_inner() == u64::from(files::CANCELLED) => {
+                    let _ = out.settle().await;
                     return Err(TransferState::Cancelled);
                 }
                 Err(ReadError::Reset(code)) if code.into_inner() == u64::from(files::PAUSED) => {
-                    if write_out(&mut out, &mut pending, recv).await.is_ok() {
-                        reporter.progress(done);
-                    }
+                    keep_what_arrived!();
                     return Err(TransferState::Paused);
                 }
                 // The stream or connection ended early: keep what arrived;
                 // the sender resumes from there when it's back.
                 Ok(None) | Err(_) => {
-                    if write_out(&mut out, &mut pending, recv).await.is_ok() {
-                        reporter.progress(done);
-                    }
+                    keep_what_arrived!();
                     return Err(TransferState::Waiting);
                 }
             };
-            if let Some(ref mut h) = hasher {
-                h.update(&bytes);
-            }
-            left -= bytes.len() as u64;
-            done += bytes.len() as u64;
-            pending.extend_from_slice(&bytes);
-            if pending.len() >= WRITE_BUFFER || left == 0 {
-                write_out(&mut out, &mut pending, recv).await?;
-                reporter.progress(done);
+            filled += n;
+            left -= n as u64;
+            if filled == piece.len() {
+                let full = std::mem::take(&mut piece);
+                let before = out.write(full).await.map_err(|e| write_failed(&e, recv))?;
+                on_disk += before;
+                reporter.progress(on_disk);
+                filled = 0;
+                if left > 0 {
+                    piece = out.buffer(piece_len(left));
+                }
             }
         }
-        if let (Some(expected), Some(h)) = (file.blake3.as_deref(), hasher.take()) {
+        let last = out.settle().await.map_err(|e| write_failed(&e, recv))?;
+        on_disk += last;
+        reporter.progress(on_disk);
+        let hasher = out.idle.take().and_then(|(_, hasher)| hasher);
+        if let (Some(expected), Some(h)) = (file.blake3.as_deref(), hasher) {
             let actual = h.finalize().to_hex();
             if !actual.as_str().eq_ignore_ascii_case(expected) {
                 refuse(send, ErrorCode::BadMessage, "blake3 integrity check failed").await;
@@ -2210,30 +2300,6 @@ async fn receive_bytes(
         }
     }
     Ok(())
-}
-
-/// Writes what's gathered; a failure stops the stream and says why.
-async fn write_out(
-    out: &mut tokio::fs::File,
-    pending: &mut Vec<u8>,
-    recv: &mut RecvStream,
-) -> std::result::Result<(), TransferState> {
-    let written = out.write_all(pending).await;
-    let written = match written {
-        Ok(()) => out.flush().await,
-        Err(e) => Err(e),
-    };
-    pending.clear();
-    written.map_err(|e| {
-        let no_space = e.kind() == std::io::ErrorKind::StorageFull;
-        let code = if no_space { ErrorCode::Busy } else { ErrorCode::Internal };
-        let _ = recv.stop(VarInt::from_u32(code.close_code()));
-        TransferState::Failed(if no_space {
-            TransferFailure::NoSpace
-        } else {
-            TransferFailure::Other(format!("can't write: {}", e.kind()))
-        })
-    })
 }
 
 /// Moves complete files where the user finds them; returns their paths.
