@@ -576,6 +576,7 @@ async fn enqueue_outgoing(
                     size,
                     mtime_ms,
                     staged: false,
+                    blake3: None,
                 });
                 entries.push(FileEntry {
                     name: clean_name,
@@ -588,20 +589,34 @@ async fn enqueue_outgoing(
                 let stage_dir = shared.queue_staging_dir().join(&id);
                 let stage_path = stage_dir.join(format!("{idx}_{}", storable_name(&clean_name)));
                 let stage_path_clone = stage_path.clone();
-                let staged_res = tokio::task::spawn_blocking(move || -> std::io::Result<(u64, i64)> {
-                    use std::io::{Seek, SeekFrom, Write};
-                    std::fs::create_dir_all(&stage_dir)?;
-                    let mut src = handle;
-                    let _ = src.seek(SeekFrom::Start(0));
-                    let mut dst = std::fs::File::create(&stage_path_clone)?;
-                    std::io::copy(&mut src, &mut dst)?;
-                    dst.flush()?;
-                    let meta = dst.metadata()?;
-                    Ok((meta.len(), crate::file_mtime_ms(&meta)))
-                })
-                .await
-                .map_err(|e| Error::Internal(e.to_string()));
-                let (size, mtime_ms) = match staged_res {
+                let staged_res =
+                    tokio::task::spawn_blocking(move || -> std::io::Result<(u64, i64, String)> {
+                        use std::io::{Read, Seek, SeekFrom, Write};
+                        std::fs::create_dir_all(&stage_dir)?;
+                        let mut src = handle;
+                        let _ = src.seek(SeekFrom::Start(0));
+                        let mut dst = std::fs::File::create(&stage_path_clone)?;
+                        // Hashed while it's copied, in large pieces: hashing the copy
+                        // before sending read the whole file a second time.
+                        let mut hasher = blake3::Hasher::new();
+                        let mut buf = vec![0u8; HASH_READ];
+                        loop {
+                            let n = match src.read(&mut buf) {
+                                Ok(0) => break,
+                                Ok(n) => n,
+                                Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
+                                Err(e) => return Err(e),
+                            };
+                            hasher.update(&buf[..n]);
+                            dst.write_all(&buf[..n])?;
+                        }
+                        dst.flush()?;
+                        let meta = dst.metadata()?;
+                        Ok((meta.len(), crate::file_mtime_ms(&meta), hasher.finalize().to_hex().to_string()))
+                    })
+                    .await
+                    .map_err(|e| Error::Internal(e.to_string()));
+                let (size, mtime_ms, digest) = match staged_res {
                     Ok(Ok(v)) => v,
                     Ok(Err(e)) => {
                         cleanup_staging_id(shared, &id);
@@ -619,6 +634,7 @@ async fn enqueue_outgoing(
                     size,
                     mtime_ms,
                     staged: true,
+                    blake3: Some(digest),
                 });
                 entries.push(FileEntry {
                     name: clean_name,
@@ -798,56 +814,44 @@ pub(crate) async fn deliver_queued_files(
     let _ = shared.store.mark_queue_sending(&item.id);
     shared.emit(NodeEvent::QueueChanged);
 
-    let mut opened = Vec::with_capacity(specs.len());
     let mut source_targets: Vec<String> = Vec::new();
-    for spec in &specs {
-        let path = &spec.path;
-        if !spec.staged {
-            let target = outgoing_target_path(path, spec.folder.as_deref());
-            if !source_targets.contains(&target) {
-                source_targets.push(target);
-            }
+    for spec in specs.iter().filter(|spec| !spec.staged) {
+        let target = outgoing_target_path(&spec.path, spec.folder.as_deref());
+        if !source_targets.contains(&target) {
+            source_targets.push(target);
         }
-        let path_to_hash = path.clone();
-        let name_for_err = spec.name.clone();
-        let res = tokio::task::spawn_blocking(move || -> std::result::Result<(u64, String), String> {
-            let handle = std::fs::File::open(&path_to_hash)
-                .map_err(|_| format!("File was deleted before sending: {name_for_err}"))?;
-            let (_handle, size, digest) =
-                hash_whole_file(handle).map_err(|_| format!("Cannot read source file: {name_for_err}"))?;
-            Ok((size, digest))
-        })
-        .await;
-        let (size, digest) = match res {
-            Ok(Ok(v)) => v,
-            Ok(Err(reason)) => {
-                let _ = shared.store.mark_queue_failed(&item.id, &reason);
-                shared.emit(NodeEvent::QueueChanged);
-                let mut t = transfer;
-                t.state = TransferState::Failed(TransferFailure::Other(reason));
-                shared.emit(NodeEvent::Transfer(t));
-                shared.unregister_transfer(&item.id);
-                return;
-            }
-            Err(_) => {
-                let reason = format!("Cannot read source file: {}", spec.name);
-                let _ = shared.store.mark_queue_failed(&item.id, &reason);
-                shared.emit(NodeEvent::QueueChanged);
-                let mut t = transfer;
-                t.state = TransferState::Failed(TransferFailure::Other(reason));
-                shared.emit(NodeEvent::Transfer(t));
-                shared.unregister_transfer(&item.id);
-                return;
-            }
-        };
-        let entry = FileEntry {
-            name: safe_file_name(&spec.name),
-            size,
-            folder: spec.folder.clone(),
-            blake3: Some(digest),
-        };
-        opened.push((entry, OutgoingDataSource::Path(path.clone())));
     }
+    // Every digest goes in the offer, so it's all read before the first byte
+    // moves: several files at once, and a large one on several threads.
+    let to_hash = specs.clone();
+    let hashed = tokio::task::spawn_blocking(move || hash_queued(&to_hash))
+        .await
+        .unwrap_or_else(|_| Err("Cannot read source files".into()));
+    let digests = match hashed {
+        Ok(digests) => digests,
+        Err(reason) => {
+            let _ = shared.store.mark_queue_failed(&item.id, &reason);
+            shared.emit(NodeEvent::QueueChanged);
+            let mut t = transfer;
+            t.state = TransferState::Failed(TransferFailure::Other(reason));
+            shared.emit(NodeEvent::Transfer(t));
+            shared.unregister_transfer(&item.id);
+            return;
+        }
+    };
+    let mut opened: Vec<(FileEntry, OutgoingDataSource)> = specs
+        .iter()
+        .zip(digests)
+        .map(|(spec, (size, digest))| {
+            let entry = FileEntry {
+                name: safe_file_name(&spec.name),
+                size,
+                folder: spec.folder.clone(),
+                blake3: Some(digest),
+            };
+            (entry, OutgoingDataSource::Path(spec.path.clone()))
+        })
+        .collect();
 
     let entries: Vec<FileEntry> = opened.iter().map(|(e, _)| e.clone()).collect();
     let tl_detail = if open_on_arrival {
@@ -1642,12 +1646,145 @@ async fn refuse(send: &mut SendStream, code: ErrorCode, msg: &str) {
 /// handed back rewound, ready to send.
 pub(crate) fn hash_whole_file(mut f: std::fs::File) -> std::io::Result<(std::fs::File, u64, String)> {
     use std::io::{Seek, SeekFrom};
-    let size = f.metadata()?.len();
+    let (size, digest) = hash_file(&f, None, hash_threads())?;
     f.seek(SeekFrom::Start(0))?;
-    let mut hasher = blake3::Hasher::new();
-    hasher.update_reader(&mut f)?;
-    f.seek(SeekFrom::Start(0))?;
-    Ok((f, size, hasher.finalize().to_hex().to_string()))
+    Ok((f, size, digest))
+}
+
+/// Files at least this big are hashed on several threads ([`hash_file`]).
+const PARALLEL_HASH_MIN: u64 = 32 << 20;
+/// Most threads hashing works on at once.
+const MAX_HASH_THREADS: usize = 4;
+/// How much hashing reads at a time.
+const HASH_READ: usize = 1024 * 1024;
+
+fn hash_threads() -> usize {
+    std::thread::available_parallelism().map_or(1, std::num::NonZero::get).clamp(1, MAX_HASH_THREADS)
+}
+
+/// [`hash_file`] of the file at `path`.
+fn hash_path(path: &Path, threads: usize) -> std::io::Result<(u64, String)> {
+    hash_file(&std::fs::File::open(path)?, Some(path), threads)
+}
+
+/// The size and BLAKE3 digest (hex) of the file's first `metadata().len()`
+/// bytes: exactly what's then sent, even if the file grows meanwhile. A large
+/// file is hashed in parts of BLAKE3's own tree on up to `threads` threads,
+/// which gives the digest hashing it in one go does. Each part reads through
+/// a handle of its own when the file has a `path`: Windows reads through one
+/// handle one at a time.
+fn hash_file(file: &std::fs::File, path: Option<&Path>, threads: usize) -> std::io::Result<(u64, String)> {
+    use blake3::hazmat::{Mode, left_subtree_len, merge_subtrees_root};
+    let size = file.metadata()?.len();
+    let hash = if size < PARALLEL_HASH_MIN || threads < 2 {
+        let mut hasher = blake3::Hasher::new();
+        hash_range(file, &mut hasher, 0, size)?;
+        hasher.finalize()
+    } else {
+        // Two halves at the top, each split again until there's a part per thread.
+        let depth = threads.ilog2() - 1;
+        let left = left_subtree_len(size);
+        let (l, r) = std::thread::scope(|s| {
+            let l = s.spawn(|| subtree_cv(file, path, 0, left, depth));
+            // This half here while the other is hashed on its thread, then the join.
+            let r = subtree_cv(file, path, left, size - left, depth);
+            (l.join(), r)
+        });
+        let l = l.map_err(|_| std::io::Error::other("hashing failed"))??;
+        merge_subtrees_root(&l, &r?, Mode::Hash)
+    };
+    Ok((size, hash.to_hex().to_string()))
+}
+
+/// The chaining value of the subtree of `len` bytes at `offset`, split in two
+/// on a thread each, `depth` more times.
+fn subtree_cv(
+    file: &std::fs::File,
+    path: Option<&Path>,
+    offset: u64,
+    len: u64,
+    depth: u32,
+) -> std::io::Result<blake3::hazmat::ChainingValue> {
+    use blake3::hazmat::{HasherExt, Mode, left_subtree_len, merge_subtrees_non_root};
+    if depth == 0 || len < PARALLEL_HASH_MIN / 2 {
+        let mut hasher = blake3::Hasher::new();
+        hasher.set_input_offset(offset);
+        let own = path.map(std::fs::File::open).transpose()?;
+        hash_range(own.as_ref().unwrap_or(file), &mut hasher, offset, len)?;
+        return Ok(hasher.finalize_non_root());
+    }
+    let left = left_subtree_len(len);
+    let (l, r) = std::thread::scope(|s| {
+        let l = s.spawn(|| subtree_cv(file, path, offset, left, depth - 1));
+        let r = subtree_cv(file, path, offset + left, len - left, depth - 1);
+        (l.join(), r)
+    });
+    let l = l.map_err(|_| std::io::Error::other("hashing failed"))??;
+    Ok(merge_subtrees_non_root(&l, &r?, Mode::Hash))
+}
+
+/// Feeds `len` bytes of `file` from `offset` to `hasher`, by position.
+fn hash_range(
+    file: &std::fs::File,
+    hasher: &mut blake3::Hasher,
+    mut offset: u64,
+    mut len: u64,
+) -> std::io::Result<()> {
+    let mut buf = vec![0u8; HASH_READ.min(usize::try_from(len).unwrap_or(usize::MAX))];
+    while len > 0 {
+        let n = buf.len().min(usize::try_from(len).unwrap_or(usize::MAX));
+        read_exact_at(file, &mut buf[..n], offset)?;
+        hasher.update(&buf[..n]);
+        offset += n as u64;
+        len -= n as u64;
+    }
+    Ok(())
+}
+
+/// Each queued file's size and digest, in order, several files at once; the
+/// first that can't be read says why. A staged copy's digest is the one taken
+/// while it was made (its size and time were checked before this).
+fn hash_queued(specs: &[crate::QueuedFileSpec]) -> std::result::Result<Vec<(u64, String)>, String> {
+    let one = |spec: &crate::QueuedFileSpec, threads: usize| -> std::result::Result<(u64, String), String> {
+        if spec.staged
+            && let Some(digest) = &spec.blake3
+        {
+            return Ok((spec.size, digest.clone()));
+        }
+        let file = std::fs::File::open(&spec.path)
+            .map_err(|_| format!("File was deleted before sending: {}", spec.name))?;
+        hash_file(&file, Some(&spec.path), threads)
+            .map_err(|_| format!("Cannot read source file: {}", spec.name))
+    };
+    let threads = hash_threads();
+    if specs.len() <= 1 || threads < 2 {
+        return specs.iter().map(|spec| one(spec, threads)).collect();
+    }
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    type Hashed = std::result::Result<(u64, String), String>;
+    let results: Vec<std::sync::Mutex<Option<Hashed>>> =
+        specs.iter().map(|_| std::sync::Mutex::new(None)).collect();
+    std::thread::scope(|s| {
+        for _ in 0..threads.min(specs.len()) {
+            s.spawn(|| {
+                loop {
+                    let i = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    let Some(spec) = specs.get(i) else { break };
+                    *results[i].lock().unwrap_or_else(|e| e.into_inner()) = Some(one(spec, 1));
+                }
+            });
+        }
+    });
+    results
+        .into_iter()
+        .zip(specs)
+        .map(|(result, spec)| {
+            result
+                .into_inner()
+                .unwrap_or_else(|e| e.into_inner())
+                .unwrap_or_else(|| Err(format!("Cannot read source file: {}", spec.name)))
+        })
+        .collect()
 }
 
 fn hash_file_prefix(path: &Path, mut left: u64) -> std::io::Result<blake3::Hasher> {
@@ -1671,6 +1808,27 @@ fn hash_file_prefix(path: &Path, mut left: u64) -> std::io::Result<blake3::Hashe
         left -= n as u64;
     }
     Ok(hasher)
+}
+
+/// How much of each offered file is already here and can be kept: a part
+/// file's length, or nothing for a complete one whose digest doesn't match.
+fn received_lengths(dir: &Path, files: &[FileEntry]) -> Vec<u64> {
+    files
+        .iter()
+        .enumerate()
+        .map(|(i, file)| {
+            let path = dir.join(format!("{i}.part"));
+            let len = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+            match &file.blake3 {
+                Some(expected) if len == file.size && file.size > 0 => {
+                    let matches = hash_path(&path, hash_threads())
+                        .is_ok_and(|(_, actual)| actual.eq_ignore_ascii_case(expected));
+                    if matches { file.size } else { 0 }
+                }
+                _ => len.min(file.size),
+            }
+        })
+        .collect()
 }
 
 /// Holds an incoming transfer's turn on its part files (`Shared::incoming_turn`).
@@ -1721,28 +1879,12 @@ async fn receive(shared: Arc<Shared>, peer: DeviceId, mut send: SendStream, mut 
     let part = |i: usize| dir.join(format!("{i}.part"));
     // Before looking at what's on disk: the attempt before this one may still be writing.
     let turn = shared.incoming_turn(&offer.id).await;
-    let mut have = Vec::with_capacity(offer.files.len());
-    for (i, file) in offer.files.iter().enumerate() {
-        let p = part(i);
-        let len = tokio::fs::metadata(&p).await.map(|m| m.len()).unwrap_or(0);
-        let valid_len = if len == file.size && file.size > 0 {
-            if let Some(expected) = file.blake3.clone() {
-                let matches = tokio::task::spawn_blocking(move || {
-                    hash_file_prefix(&p, len).map(|h| h.finalize().to_hex().to_string())
-                })
-                .await
-                .ok()
-                .and_then(std::result::Result::ok)
-                .is_some_and(|actual| actual.eq_ignore_ascii_case(&expected));
-                if matches { file.size } else { 0 }
-            } else {
-                file.size
-            }
-        } else {
-            len.min(file.size)
-        };
-        have.push(valid_len);
-    }
+    let have = {
+        let (dir, files) = (dir.clone(), offer.files.clone());
+        tokio::task::spawn_blocking(move || received_lengths(&dir, &files))
+            .await
+            .unwrap_or_else(|_| vec![0; offer.files.len()])
+    };
     // What's still to come has to fit where it's received and where it's
     // saved; a transfer that runs out of room partway helps nobody. The
     // sender reads Busy as "not enough space" (TransferFailure::NoSpace).
@@ -1960,7 +2102,9 @@ async fn receive_bytes(
                 TransferState::Failed(TransferFailure::Other(format!("can't truncate: {}", e.kind())))
             })?;
         }
-        let mut hasher = if file.blake3.is_some() {
+        let mut hasher = if file.blake3.is_some() && *have == 0 {
+            Some(blake3::Hasher::new())
+        } else if file.blake3.is_some() {
             let have_bytes = *have;
             let p = part_path.clone();
             let seeded = tokio::task::spawn_blocking(move || hash_file_prefix(&p, have_bytes))
@@ -2425,6 +2569,74 @@ mod tests {
             let f = std::fs::File::open(path)?;
             f.set_modified(time)
         }
+    }
+
+    #[test]
+    fn files_hashed_in_parts_have_the_digest_of_one_go() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut state = 0x9E37_79B9_7F4A_7C15u64;
+        let data: Vec<u8> = (0..(PARALLEL_HASH_MIN as usize) * 3 + 12_345)
+            .map(|_| {
+                state ^= state << 13;
+                state ^= state >> 7;
+                state ^= state << 17;
+                state as u8
+            })
+            .collect();
+        let chunk = blake3::CHUNK_LEN as u64;
+        let min = PARALLEL_HASH_MIN;
+        for len in
+            [0, 1, chunk, min - 1, min, min + 1, min + chunk, 2 * min - 1, 2 * min + 7, 3 * min + 12_345]
+        {
+            let path = dir.path().join("f");
+            std::fs::write(&path, &data[..len as usize]).unwrap();
+            let file = std::fs::File::open(&path).unwrap();
+            let want = blake3::hash(&data[..len as usize]).to_hex().to_string();
+            for threads in [1, 2, 3, 4, 8] {
+                assert_eq!(
+                    hash_file(&file, None, threads).unwrap(),
+                    (len, want.clone()),
+                    "{len} bytes, {threads} threads"
+                );
+                assert_eq!(
+                    hash_path(&path, threads).unwrap(),
+                    (len, want.clone()),
+                    "{len} bytes, {threads} threads"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn queued_files_are_hashed_in_order_and_a_missing_one_says_so() {
+        let dir = tempfile::tempdir().unwrap();
+        let spec = |name: &str, staged: bool, blake3: Option<String>| crate::QueuedFileSpec {
+            path: dir.path().join(name),
+            name: name.into(),
+            folder: None,
+            size: 3,
+            mtime_ms: 0,
+            staged,
+            blake3,
+        };
+        let mut specs = Vec::new();
+        for i in 0..9 {
+            let name = format!("{i}.txt");
+            std::fs::write(dir.path().join(&name), format!("{i}{i}{i}")).unwrap();
+            specs.push(spec(&name, false, None));
+        }
+        // A staged copy's digest is the one taken while copying.
+        specs.push(spec("staged", true, Some("ab".repeat(32))));
+        let hashed = hash_queued(&specs).unwrap();
+        for (i, (size, digest)) in hashed.iter().take(9).enumerate() {
+            assert_eq!(*size, 3);
+            assert_eq!(*digest, blake3::hash(format!("{i}{i}{i}").as_bytes()).to_hex().to_string());
+        }
+        assert_eq!(hashed[9], (3, "ab".repeat(32)));
+
+        specs.insert(4, spec("gone.txt", false, None));
+        specs.insert(7, spec("also gone.txt", false, None));
+        assert_eq!(hash_queued(&specs), Err("File was deleted before sending: gone.txt".to_owned()));
     }
 
     #[test]
