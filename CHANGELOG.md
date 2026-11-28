@@ -14,6 +14,9 @@ change things that need a step from you, and its notes say so.
   Like the Share sheet, it needs NectarLink's package registered, which Windows allows with
   Developer Mode on; **Send to** stays where it was. Thanks to
   [@FlootingDream](https://github.com/FlootingDream) ([#451](https://github.com/thtbee/nectarlink/issues/451)).
+- **Your own pictures on Deck tiles.** In a tile's editor on the PC, **Choose…** next to **Picture**
+  takes any image and shows it instead of the icon, on the PC's Deck page and on the phone.
+  Thanks to [@hichamb1](https://github.com/hichamb1) and [@riyaddl](https://github.com/riyaddl) ([#490](https://github.com/thtbee/nectarlink/issues/490)).
 - **Pick which of the PC's players Now playing controls.** With several players running on the PC,
   their names sit in a row on the PC's Now playing card: click one to control it. Thanks to
   [@jed84](https://github.com/jed84) ([#665](https://github.com/thtbee/nectarlink/issues/665)).
