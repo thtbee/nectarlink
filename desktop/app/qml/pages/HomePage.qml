@@ -693,7 +693,24 @@ Item {
                 width: parent.width
                 readonly property bool wide: width >= 540
                 readonly property int phoneMediaRow: MediaList.revision >= 0 ? MediaList.firstFor(home.deviceId) : -1
-                readonly property int localMediaRow: MediaList.revision >= 0 ? MediaList.firstFor("local") : -1
+                // This PC's players, and the one picked on the card (#665): kept until it
+                // closes or another player starts playing, which the card then follows.
+                readonly property var pcPlayers: MediaList.revision >= 0 ? JSON.parse(MediaList.playersFor("local")) : []
+                property string pickedLocalPlayer: ""
+                readonly property string playingLocalPlayer: {
+                    const playing = pcPlayers.find(p => p.playing)
+                    return playing ? playing.id : ""
+                }
+                onPlayingLocalPlayerChanged: {
+                    if (playingLocalPlayer !== "" && playingLocalPlayer !== pickedLocalPlayer)
+                        pickedLocalPlayer = ""
+                }
+                readonly property int localMediaRow: {
+                    if (MediaList.revision < 0)
+                        return -1
+                    const picked = pickedLocalPlayer !== "" ? MediaList.rowOf("local", pickedLocalPlayer) : -1
+                    return picked >= 0 ? picked : MediaList.firstFor("local")
+                }
                 readonly property bool hasBothMedia: phoneMediaRow >= 0 && localMediaRow >= 0
                 readonly property bool phoneMediaPlaying: phoneMediaRow >= 0 && MediaList.revision >= 0 && MediaList.isPlaying(phoneMediaRow)
                 readonly property bool localMediaPlaying: localMediaRow >= 0 && MediaList.revision >= 0 && MediaList.isPlaying(localMediaRow)
@@ -1247,6 +1264,8 @@ Item {
                             hasMultipleSources: heroCard.hasBothMedia
                             phoneVolume: phoneControls.state ? phoneControls.state.volume : 65
                             onSourceSelected: (src) => heroCard.preferredMediaSource = src
+                            pcPlayers: heroCard.pcPlayers
+                            onPlayerSelected: (id) => heroCard.pickedLocalPlayer = id
                         }
                     }
 
@@ -2571,6 +2590,109 @@ Item {
                 }
             }
 
+            // The chat with this device (#698): its latest note or file, and the way in.
+            Card {
+                id: chatHomeCard
+                width: parent.width
+                readonly property var latest: {
+                    const raw = ChatModel.revision >= 0 ? ChatModel.latest(home.deviceId) : ""
+                    try {
+                        return raw.length > 0 ? JSON.parse(raw) : null
+                    } catch (e) {
+                        return null
+                    }
+                }
+                Column {
+                    width: parent.width
+                    spacing: 8
+                    Item {
+                        width: parent.width
+                        height: 24
+                        Txt {
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: qsTr("Chat")
+                            role: "label"
+                            muted: true
+                        }
+                        Button {
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            variant: "text"
+                            size: "sm"
+                            text: qsTr("Open")
+                            Accessible.name: qsTr("Chat with %1").arg(home.name)
+                            onClicked: AppController.currentPage = "chat"
+                        }
+                    }
+                    Item {
+                        id: chatPreview
+                        width: parent.width
+                        height: 36
+                        activeFocusOnTab: true
+                        Accessible.role: Accessible.Button
+                        Accessible.name: chatPreviewTitle.text
+                        Accessible.description: chatPreviewCaption.text
+                        Accessible.onPressAction: AppController.currentPage = "chat"
+                        Keys.onPressed: (event) => {
+                            if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                                AppController.currentPage = "chat"
+                                event.accepted = true
+                            }
+                        }
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.margins: -4
+                            radius: Theme.radiusSm
+                            color: chatPreviewHover.hovered ? Theme.surfaceContainerHigh : "transparent"
+                            border.width: Theme.focusVisible(chatPreview) ? 2 : 0
+                            border.color: Theme.primary
+                        }
+                        Icon {
+                            id: chatPreviewIcon
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: 16; height: 16
+                            // A file, photo or recording: what was sent.
+                            path: chatHomeCard.latest && chatHomeCard.latest.kind !== "note" ? Icons.attach : Icons.messages
+                            color: Theme.primary
+                        }
+                        Column {
+                            anchors.left: chatPreviewIcon.right
+                            anchors.leftMargin: 10
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 1
+                            Txt {
+                                id: chatPreviewTitle
+                                width: parent.width
+                                role: "bodySmall"
+                                weight: 600
+                                elide: Text.ElideRight
+                                maximumLineCount: 1
+                                text: chatHomeCard.latest
+                                    ? chatHomeCard.latest.text.trim().split("\n")[0]
+                                    : qsTr("Write a note to %1").arg(home.name)
+                            }
+                            Txt {
+                                id: chatPreviewCaption
+                                width: parent.width
+                                visible: !!chatHomeCard.latest
+                                role: "caption"
+                                muted: true
+                                elide: Text.ElideRight
+                                text: !chatHomeCard.latest ? ""
+                                    : chatHomeCard.latest.incoming
+                                        ? qsTr("From %1 · %2").arg(home.name).arg(page.relativeTime(chatHomeCard.latest.timestamp))
+                                        : qsTr("You · %1").arg(page.relativeTime(chatHomeCard.latest.timestamp))
+                            }
+                        }
+                        HoverHandler { id: chatPreviewHover; cursorShape: Qt.PointingHandCursor }
+                        TapHandler { onTapped: AppController.currentPage = "chat" }
+                    }
+                }
+            }
+
             // Recent timeline items across devices (placed below Continuity Camera, Phone as webcam, and Type on phone).
             Card {
                 id: timelineHomeCard
@@ -2651,6 +2773,7 @@ Item {
                                     : modelData.kind === "link" ? Icons.globe
                                     : modelData.kind === "photo" ? Icons.photo
                                     : modelData.kind === "recording" ? Icons.mic
+                                    : modelData.kind === "message" ? Icons.messages
                                     : Icons.mirror
                                 color: Theme.primary
                             }

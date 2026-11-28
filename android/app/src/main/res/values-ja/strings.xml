@@ -1695,6 +1695,37 @@
     <string name="settings_own_name">このスマートフォンの名前</string>
     <string name="settings_own_name_change">変更</string>
     <string name="settings_own_name_hint">PC でのこのスマートフォンの表示名です。空欄にすると %1$s を使います。</string>
+    <string name="action_chat">チャット</string>
+    <string name="channel_chat">チャット</string>
+    <string name="chat_you">あなた</string>
+    <string name="chat_empty">メモを入力すると %1$s に表示されます。</string>
+    <string name="chat_composer_hint">メモ</string>
+    <string name="chat_composer_label">%1$s へのメモ</string>
+    <string name="chat_send">送信</string>
+    <string name="chat_save">保存</string>
+    <string name="chat_editing">メモを編集中</string>
+    <string name="chat_offline">メモを送るには %1$s に接続してください。</string>
+    <string name="chat_too_old">メモを送るには %1$s の NectarLink を更新してください。</string>
+    <string name="chat_too_long">メモは %1$d 文字までです。</string>
+    <string name="chat_not_connected">%1$s は接続されていません。</string>
+    <string name="chat_action_copy">コピー</string>
+    <string name="chat_action_edit">編集</string>
+    <string name="chat_action_delete">削除</string>
+    <string name="chat_delete_title">このメモを削除しますか？</string>
+    <string name="chat_delete_text">%1$s からも削除されます。</string>
+    <string name="chat_delete_text_offline">%1$s は接続されていないため、そちらには残ります。</string>
+    <string name="chat_note_mine">あなた、%1$s: %2$s</string>
+    <string name="chat_note_from">%1$s、%2$s: %3$s</string>
+    <string name="chat_note_options">メモのオプション</string>
+    <string name="chat_earlier">以前のメモ</string>
+    <string name="chat_attach">添付</string>
+    <string name="chat_attach_media">写真と動画</string>
+    <string name="chat_attach_files">ファイル</string>
+    <string name="chat_action_share">共有</string>
+    <string name="chat_action_remove">チャットから削除</string>
+    <string name="chat_file_missing">このデバイスにはありません</string>
+    <string name="chat_file_options">ファイルのオプション</string>
+    <string name="timeline_filter_notes">メモ</string>
 </resources>
 
 

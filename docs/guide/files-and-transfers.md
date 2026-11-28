@@ -26,6 +26,7 @@ You can send files or entire folders from your PC using any of these entry point
 2. **Flick to send**: Drag a file toward the screen edge where your `Shelf` sits with a quick flick gesture. A 3-second **Undo** toast appears before the transfer begins.
 3. **Home screen button**: Click **Send files** on the PC Home screen and pick files or folders.
 4. **File Explorer `Send to` menu**: Right-click any file or folder in Windows File Explorer, choose **Send to**, and click your phone's name.
+   Where NectarLink's package is registered (see [Limits](#limits) below), the menu's first level also has **Send to *your phone* with NectarLink**, or **Send with NectarLink** and a list of your phones when you have more than one, so on Windows 11 it's there without **Show more options**.
    On Linux, right-click files or folders and choose **Send to *your phone* (NectarLink)**: under **Scripts** in GNOME Files, and in the menu itself in Dolphin, Nemo, Thunar and Caja (Caja needs the `caja-actions` package).
 5. **Command Palette or CLI**: Press `Ctrl+Alt+Space` and choose **Send files to phone**, or run `nectarlink send <path>` in a terminal.
 
@@ -63,7 +64,7 @@ When you send files, folders, clipboard items, links, `Handoff` documents, or `n
    - Links, clipboard items, and task alerts: **24 hours**
    - Files and folders: **7 days**
 6. **Cancelling**: Click **Cancel** next to any single item or **Cancel all** in the `Waiting to send` panel. Cancelling a transfer that is already in progress stops it on both sides and deletes any `.part` staging file on the receiver.
-7. As soon as the target device reconnects, queued items drain automatically in first-in, first-out (FIFO) order, and the `Waiting to send` panel disappears once the queue is empty.
+7. As soon as the target device reconnects, queued items drain automatically in the order they were queued, and the `Waiting to send` panel disappears once the queue is empty. Files and folders go one after another, while clipboard items, links and alerts go alongside them in their own order, so a large file never holds up a copied text.
 
 ### Mounting Phone Storage in Windows File Explorer
 
@@ -117,7 +118,7 @@ NectarLink includes a built-in LocalSend v2.1 client and server so you can excha
 
 ## What the Options Do
 
-- **File Explorer Send to** (**File manager Send to** on Linux; `Settings › Files & Sync` on PC, default: **On**): Adds paired phones to the right-click `Send to` menu in Windows File Explorer, or to the right-click menu of GNOME Files, Dolphin, Nemo, Thunar and Caja on Linux.
+- **File Explorer Send to** (**File manager Send to** on Linux; `Settings › Files & Sync` on PC, default: **On**): Adds paired phones to the right-click `Send to` menu in Windows File Explorer, and to the menu's first level where NectarLink's package is registered, or to the right-click menu of GNOME Files, Dolphin, Nemo, Thunar and Caja on Linux.
 - **Your PC in your pocket** (`Settings › Files & Sync` on PC, default: **Off**): Allows paired phones with storage permission to browse your PC's user folders (`Downloads`, `Documents`, `Desktop`, `Pictures`).
 - **LocalSend on local network** (`Settings › Files & Sync` on PC and `Settings › Features & Data › LocalSend` on Android, default: **Off**): Enables un-paired LAN file sharing with LocalSend devices.
 - **Synced folders** (`Settings › Files & Sync` on PC): Manages one-way and two-way folder synchronization rules.
@@ -132,6 +133,6 @@ NectarLink includes a built-in LocalSend v2.1 client and server so you can excha
 
 ## Limits
 
-- **Windows Share Sheet Target (`windows.shareTarget`)**: Sending files via drag-and-drop, File Explorer's right-click **Send to** menu, the Explorer context menu, the `Shelf`, and `nectarlink --share` works on all standard Windows installs. Appearances inside the system-wide Windows 11 `Win+Share` popup sheet require NectarLink's sparse package manifest to be registered with a trusted code-signing certificate or Windows Developer Mode enabled.
+- **Windows Share Sheet Target (`windows.shareTarget`)**: Sending files via drag-and-drop, File Explorer's right-click **Send to** menu, the Explorer context menu, the `Shelf`, and `nectarlink --share` works on all standard Windows installs. Appearances inside the system-wide Windows 11 `Win+Share` popup sheet, and the **Send with NectarLink** entry in the first level of File Explorer's right-click menu, require NectarLink's sparse package manifest to be registered with a trusted code-signing certificate or Windows Developer Mode enabled.
 - **Queue Bounds**: The offline `Waiting to send` queue holds up to **200 items** or **10 GiB** of pending files per device. Live interactive features (screen mirroring, webcam, remote input, and ringing a device) are never queued because they only make sense while the device is online.
 - **Folder Sync Depth**: Recursive folder sync traverses up to 3 levels of subdirectories inside each configured folder pair.

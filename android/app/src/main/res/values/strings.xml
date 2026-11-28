@@ -1706,6 +1706,37 @@
     <string name="settings_own_name">This phone\'s name</string>
     <string name="settings_own_name_change">Change</string>
     <string name="settings_own_name_hint">How this phone shows on your PCs. Leave it empty to use %1$s.</string>
+    <string name="action_chat">Chat</string>
+    <string name="channel_chat">Chat</string>
+    <string name="chat_you">You</string>
+    <string name="chat_empty">Type a note and it shows on %1$s.</string>
+    <string name="chat_composer_hint">Note</string>
+    <string name="chat_composer_label">Note to %1$s</string>
+    <string name="chat_send">Send</string>
+    <string name="chat_save">Save</string>
+    <string name="chat_editing">Editing note</string>
+    <string name="chat_offline">Connect to %1$s to send notes.</string>
+    <string name="chat_too_old">Update NectarLink on %1$s to send notes.</string>
+    <string name="chat_too_long">A note can be up to %1$d characters.</string>
+    <string name="chat_not_connected">%1$s isn\'t connected.</string>
+    <string name="chat_action_copy">Copy</string>
+    <string name="chat_action_edit">Edit</string>
+    <string name="chat_action_delete">Delete</string>
+    <string name="chat_delete_title">Delete this note?</string>
+    <string name="chat_delete_text">It\'s deleted on %1$s too.</string>
+    <string name="chat_delete_text_offline">%1$s isn\'t connected, so it stays there.</string>
+    <string name="chat_note_mine">You, %1$s: %2$s</string>
+    <string name="chat_note_from">%1$s, %2$s: %3$s</string>
+    <string name="chat_note_options">Note options</string>
+    <string name="chat_earlier">Earlier notes</string>
+    <string name="chat_attach">Attach</string>
+    <string name="chat_attach_media">Photos and videos</string>
+    <string name="chat_attach_files">Files</string>
+    <string name="chat_action_share">Share</string>
+    <string name="chat_action_remove">Remove from chat</string>
+    <string name="chat_file_missing">Not on this device</string>
+    <string name="chat_file_options">File options</string>
+    <string name="timeline_filter_notes">Notes</string>
 </resources>
 
 

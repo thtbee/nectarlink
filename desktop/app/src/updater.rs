@@ -478,6 +478,20 @@ fn feed_update(found: &feed::Feed, current: &str) -> Option<Update> {
     })
 }
 
+/// Whether `path` is a link or a junction (a reparse point Windows follows).
+fn is_link(path: &Path) -> bool {
+    std::fs::symlink_metadata(path).is_ok_and(|meta| meta.file_type().is_symlink())
+}
+
+/// Whether `name` in the staging folder is an installer of ours (or one being
+/// downloaded), the only files staging clears.
+fn is_old_installer(name: &str) -> bool {
+    let name = name.strip_suffix(".part").unwrap_or(name);
+    [".exe", ".msi", ".deb", ".rpm", ".AppImage", ".dmg", ".tar.gz", ".zip"]
+        .iter()
+        .any(|suffix| is_installer_name(name, suffix))
+}
+
 /// Whether `name` is one of our files ending in `suffix`. The name becomes
 /// a file name under %TEMP%: a plain name only, never a path.
 fn is_installer_name(name: &str, suffix: &str) -> bool {
@@ -825,13 +839,19 @@ pub fn stage(update: &Update, progress: impl FnMut(u64, u64)) -> Result<PathBuf,
     {
         std::fs::create_dir_all(&dir).map_err(|e| StageError::Disk(e.to_string()))?;
     }
+    // On Windows the folder is shared by every user of the PC, who may each
+    // change it: one replaced by a link to another user's folder isn't used,
+    // and only our own installers are ever cleared from it.
+    if is_link(&dir) || dir.parent().is_some_and(is_link) {
+        return Err(StageError::Disk("untrusted staging directory".into()));
+    }
     let path = dir.join(&update.installer_name);
     let part = dir.join(format!("{}.part", update.installer_name));
-    // Older versions' files.
+    // Older versions' installers.
     if let Ok(entries) = std::fs::read_dir(&dir) {
         for entry in entries.flatten() {
             let p = entry.path();
-            if p != path && p != part {
+            if p != path && p != part && is_old_installer(&entry.file_name().to_string_lossy()) {
                 let _ = std::fs::remove_file(p);
             }
         }
@@ -1747,6 +1767,18 @@ mod tests {
         let dir = staging_dir();
         assert!(dir.is_absolute(), "staging_dir must be absolute: {}", dir.display());
         assert!(dir.ends_with("updates"));
+    }
+
+    #[test]
+    fn staging_clears_only_our_installers() {
+        assert!(is_old_installer("Nectarlink-0.1.5-x64-setup.exe"));
+        assert!(is_old_installer("Nectarlink-0.1.6-nightly.13-x64-setup.exe.part"));
+        assert!(is_old_installer("nectarlink_0.1.5_amd64.deb"));
+        for name in
+            ["identity.key", "settings.json", "api-token.json", "notes.txt", "Nectarlink", "update-channel"]
+        {
+            assert!(!is_old_installer(name), "{name}");
+        }
     }
 
     #[test]

@@ -296,7 +296,7 @@ pub(crate) async fn open_link(shared: &Arc<Shared>, peer: DeviceId, url: String)
         .is_some_and(|h| h.kind == crate::handoff::HandoffKind::VideoLink);
     let media_title = if is_video { shared.players.active_title() } else { None };
 
-    if !shared.store.has_active_queue_for_peer(&peer).unwrap_or(false)
+    if !shared.store.has_active_messages_for_peer(&peer).unwrap_or(false)
         && let Some(session) = shared.session(&peer)
     {
         match open_link_on_session(shared, &session, url.clone(), media_title.clone()).await {
@@ -344,7 +344,7 @@ pub(crate) async fn task_notify(
         if !shared.offers(&id, TASK_NOTIFY)? {
             return Err(Error::Unsupported);
         }
-        let has_queue = shared.store.has_active_queue_for_peer(&id).unwrap_or(false);
+        let has_queue = shared.store.has_active_messages_for_peer(&id).unwrap_or(false);
         if !has_queue && let Some(session) = shared.session(&id) {
             match task_notify_on_session(shared, &session, &clean).await {
                 Ok(()) => return Ok(()),
@@ -372,7 +372,7 @@ pub(crate) async fn task_notify(
         let mut last_err = None;
         let mut any_ok = false;
         for session in targets {
-            if shared.store.has_active_queue_for_peer(&session.peer).unwrap_or(false) {
+            if shared.store.has_active_messages_for_peer(&session.peer).unwrap_or(false) {
                 let qid = crate::transfer::new_id();
                 let payload = crate::QueuePayload::TaskNotify { task: clean.clone() };
                 let _ =

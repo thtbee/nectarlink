@@ -851,6 +851,7 @@ async fn handle(
                 .map_err(|err| Error::Internal(err.to_string()))??;
         }
         t if t.starts_with("notify.") && crate::notifications::handle(shared, session, &env).await? => {}
+        t if t.starts_with("chat.") && crate::chat::handle(shared, session, &env).await? => {}
         t if t.starts_with("media.") && crate::media::handle(shared, session, &env).await? => {}
         t if (t.starts_with("pc.") || t.starts_with("link.") || t.starts_with("task."))
             && crate::actions::handle(shared, session, &env).await? => {}

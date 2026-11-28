@@ -51,6 +51,9 @@ const DIAL_TIMEOUT: Duration = Duration::from_secs(15);
 const FINISH_TIMEOUT: Duration = Duration::from_secs(10);
 /// How long a host that failed waits for the initiator to read its error.
 const LINGER_TIMEOUT: Duration = Duration::from_secs(2);
+/// How long pairing over a USB cable needs pairing mode again after a ceremony
+/// over one was declined or failed, so a cable can't bring up prompt after prompt.
+const USB_PAIRING_PAUSE: Duration = Duration::from_secs(3 * 60);
 
 /// Close code: the host stored the pairing.
 const CLOSE_PAIRED: u32 = 0;
@@ -83,6 +86,27 @@ pub(crate) struct PairingState {
     /// running then stops, whatever step it waits on.
     ceremonies: Mutex<CancellationToken>,
     generations: std::sync::atomic::AtomicU64,
+    /// Until when pairing over a USB cable needs pairing mode, after one failed.
+    usb_paused_until: Mutex<Option<Instant>>,
+}
+
+/// A ceremony that went without pairing mode because it came over a USB cable.
+/// Dropped before it's [`UsbCeremony::done`] (it failed, was declined or
+/// cancelled), it pauses pairing over USB for [`USB_PAIRING_PAUSE`].
+struct UsbCeremony<'a>(Option<&'a PairingState>);
+
+impl UsbCeremony<'_> {
+    fn done(mut self) {
+        self.0 = None;
+    }
+}
+
+impl Drop for UsbCeremony<'_> {
+    fn drop(&mut self) {
+        if let Some(state) = self.0 {
+            state.pause_usb(Instant::now());
+        }
+    }
 }
 
 /// A QR code's claim by the device finishing with it; let go when dropped,
@@ -202,6 +226,16 @@ impl PairingState {
             }
         }
         false
+    }
+
+    /// Whether pairing over a USB cable needs pairing mode for now (see [`USB_PAIRING_PAUSE`]).
+    fn usb_paused(&self, now: Instant) -> bool {
+        lock(&self.usb_paused_until).is_some_and(|until| now < until)
+    }
+
+    fn pause_usb(&self, now: Instant) {
+        tracing::info!("a pairing over USB failed; pairing over USB needs pairing mode for a while");
+        *lock(&self.usb_paused_until) = Some(now + USB_PAIRING_PAUSE);
     }
 
     fn cancel_nearby(&self) {
@@ -458,9 +492,9 @@ const NOT_PAIRING: &[u8] = b"not pairing";
 /// Handles an incoming pairing connection (host side of both flows).
 pub(crate) async fn accept(shared: Arc<Shared>, conn: Connection) {
     let peer = crate::device_id(&conn.remote_id());
-    // Over the USB tunnel pairing needs no pairing mode, but only while adb
-    // could be what reached the tunnel: any app on the phone can reach it too.
-    let is_usb = shared.is_usb_connection(&conn) && shared.platform.adb_may_be_connected();
+    // Over a USB tunnel adb opened pairing needs no pairing mode, but any app on the
+    // phone can reach the tunnel's port too: one it opened pairs only in pairing mode.
+    let is_usb = shared.may_pair_over_usb(&conn) && !shared.pairing.usb_paused(Instant::now());
     let ceremony = shared.pairing.ceremony();
     // The QR code shown when this started, if one was: it may be ended once
     // this pairs, but not a newer one.
@@ -489,6 +523,7 @@ pub(crate) async fn accept(shared: Arc<Shared>, conn: Connection) {
     let result = until_cancelled(&ceremony, async {
         let first = recv_env(&mut recv, STEP_TIMEOUT).await?;
         let mut claim = None;
+        let mut usb_ceremony = None;
         let device = match first.t.as_str() {
             types::PAIR_REQUEST => {
                 let (device, qr) = accept_qr(&shared, peer, first, &mut send).await?;
@@ -496,9 +531,18 @@ pub(crate) async fn accept(shared: Arc<Shared>, conn: Connection) {
                 device
             }
             types::PAIR_COMMIT => {
+                let without_pairing_mode = is_usb && !shared.pairing.is_hosting();
+                let attempt = UsbCeremony(without_pairing_mode.then_some(&shared.pairing));
                 match accept_nearby(&shared, peer, first, &mut send, &mut recv, is_usb).await {
-                    Ok(Some(device)) => device,
-                    Ok(None) => return Err(Error::Denied),
+                    Ok(Some(device)) => {
+                        usb_ceremony = Some(attempt);
+                        device
+                    }
+                    Ok(None) => {
+                        // Busy, not a ceremony that failed.
+                        attempt.done();
+                        return Err(Error::Denied);
+                    }
                     Err((e, sas_shown)) => {
                         let ended = shared.pairing.record_failure(peer);
                         if sas_shown {
@@ -526,6 +570,9 @@ pub(crate) async fn accept(shared: Arc<Shared>, conn: Connection) {
             return Err(Error::NotPairing);
         }
         shared.pairing.end_host_if(claim.as_ref().map(|qr| qr.generation).or(host_generation));
+        if let Some(usb_ceremony) = usb_ceremony {
+            usb_ceremony.done();
+        }
         Ok(device)
     })
     .await;

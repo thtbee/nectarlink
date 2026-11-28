@@ -198,6 +198,8 @@ static FOLDER_SYNC_RULES: std::sync::OnceLock<std::sync::Mutex<Vec<crate::folder
     std::sync::OnceLock::new();
 static AUTOMATION_RULES: std::sync::OnceLock<std::sync::Mutex<Vec<crate::automations::AutomationRule>>> =
     std::sync::OnceLock::new();
+/// Phones allowed on this PC to start playing its sound on themselves.
+static PC_AUDIO_PHONES: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
 type WindowGeometryState = (Option<String>, Option<i32>, Option<i32>, u32, u32, bool);
 static WINDOW_GEOMETRY: std::sync::Mutex<WindowGeometryState> =
     std::sync::Mutex::new((None, None, None, DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT, false));
@@ -588,6 +590,15 @@ pub fn set_automation_rules(rules: Vec<crate::automations::AutomationRule>) {
         .unwrap_or_else(|e| e.into_inner()) = rules;
 }
 
+/// The phones allowed on this PC to start playing its sound on themselves.
+pub fn pc_audio_phones() -> Vec<String> {
+    PC_AUDIO_PHONES.lock().unwrap_or_else(|e| e.into_inner()).clone()
+}
+
+pub fn set_pc_audio_phones(phones: Vec<String>) {
+    *PC_AUDIO_PHONES.lock().unwrap_or_else(|e| e.into_inner()) = phones;
+}
+
 pub fn window_geometry() -> (Option<String>, Option<i32>, Option<i32>, u32, u32, bool) {
     WINDOW_GEOMETRY.lock().unwrap_or_else(|e| e.into_inner()).clone()
 }
@@ -899,6 +910,10 @@ pub struct Settings {
     /// Stream PC system audio to the connected phone (Phone as Speaker / Headphones).
     #[serde(default, alias = "stream_pc_audio_to_phone")]
     pub stream_pc_audio_to_phone: bool,
+    /// Phones allowed here to start playing this PC's sound on themselves;
+    /// any other asks first on the PC.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub pc_audio_phones: Vec<String>,
     /// Expose PC user folders (`Downloads`, `Documents`, `Desktop`, `Pictures`) to paired phones.
     #[serde(default, alias = "share_pc_storage")]
     pub share_pc_storage: bool,
@@ -1094,6 +1109,7 @@ impl Default for Settings {
             nectar_island_pc_media: false,
             automation_rules: Vec::new(),
             stream_pc_audio_to_phone: false,
+            pc_audio_phones: Vec::new(),
             share_pc_storage: false,
             forward_pc_notifications_to_phone: false,
             away_mode: false,
@@ -1177,6 +1193,7 @@ impl Settings {
         );
         set_nectar_island(self.nectar_island);
         set_automation_rules(self.automation_rules.clone());
+        set_pc_audio_phones(self.pc_audio_phones.clone());
         set_stream_pc_audio_to_phone(self.stream_pc_audio_to_phone);
         set_share_pc_storage(self.share_pc_storage);
         set_forward_pc_notifications_to_phone(self.forward_pc_notifications_to_phone);
@@ -1481,6 +1498,7 @@ mod tests {
             nectar_island_pc_media: true,
             automation_rules: Vec::new(),
             stream_pc_audio_to_phone: true,
+            pc_audio_phones: vec!["phone".into()],
             share_pc_storage: true,
             forward_pc_notifications_to_phone: true,
             away_mode: true,

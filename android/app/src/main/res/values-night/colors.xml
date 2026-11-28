@@ -3,5 +3,4 @@
 <resources>
     <!-- Bloom honey, dark (docs/design/tokens.json). -->
     <color name="surface">#17130E</color>
-    <color name="primary">#FFB95F</color>
 </resources>

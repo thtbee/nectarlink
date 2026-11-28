@@ -2622,6 +2622,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "nectarlink-shellmenu"
+version = "0.1.5"
+dependencies = [
+ "windows",
+ "windows-core",
+]
+
+[[package]]
 name = "nectarlink-vcam"
 version = "0.1.5"
 dependencies = [

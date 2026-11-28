@@ -92,6 +92,7 @@ If plugging your phone into your PC with a USB cable does not trigger USB auto-p
 2. **Enable USB debugging on the phone**: Open **Android Settings › Developer options** and turn on **USB debugging**.
 3. **Approve the RSA key prompt on the phone**: Wake your phone screen when plugging it into the PC, check **Always allow from this computer**, and tap **Allow** on Android's **Allow USB debugging?** dialog.
 4. **Check adb in the Connection Doctor**: The PC reaches a phone on a cable through Android's `adb`. The Doctor says whether it's running, with a **Start adb** button when it isn't, and whether it's missing. NectarLink finds `adb` from Android Studio's SDK folder, `ANDROID_HOME`, `ANDROID_SDK_ROOT` or your `PATH`; if there's none, install Google's platform-tools.
+5. **Declined or failed a moment ago**: after a pairing over USB is declined or fails, the phone pairs over USB only with its pairing screen open for a few minutes. Open **Pair with your PC** on the phone and plug the cable in again. A PC on NectarLink 0.1.5 or older needs that pairing screen open every time, so update it or pair by QR code.
 
 ## 6. Troubleshooting Screen Mirroring and Audio
 
