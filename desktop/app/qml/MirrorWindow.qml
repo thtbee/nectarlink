@@ -287,6 +287,9 @@ Window {
             }
             return
         }
+        // Keep the outer window fixed when the picture rotates in these states.
+        if (sized && (visibility === Window.Maximized || visibility === Window.FullScreen))
+            return
         // An app that only runs one way up turned the phone's display (#126):
         // the window takes the app's shape, and its usual resize tells the
         // phone the matching size.
