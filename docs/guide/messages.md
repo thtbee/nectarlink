@@ -1,6 +1,6 @@
 # Messages
 
-The **Messages** page on your PC brings together your phone's SMS and MMS text threads alongside **Unified Conversations** from RCS, WhatsApp, Telegram, Signal, and other messaging apps. You can read threads, search contacts, send texts and image attachments, schedule messages for later, copy verification codes, and filter spam from one inbox.
+The **Messages** page on your PC brings together your phone's SMS and MMS text threads alongside **Unified Conversations** from RCS, WhatsApp, Telegram, Signal, and other messaging apps. You can read threads, search contacts, send texts and image attachments, and copy verification codes from one inbox.
 
 <p align="center">
   <img src="images/messages-inbox.png" alt="Messages page on Windows showing SMS threads and Unified Conversations from chat apps" width="760">

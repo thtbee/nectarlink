@@ -8,7 +8,8 @@ that trigger PC actions and reflect live PC state (playing/paused media,
 speaker volume and mute, microphone mute).
 
 The PC owns the Deck layout and action definitions: the phone receives only
-page and tile display metadata (`id`, `label`, `icon`, `color`, `kind`) and
+page and tile display metadata (`id`, `label`, `icon`, `color`, `kind`, and
+the ID of a tile's picture) and
 triggers actions by sending `deck.press { tile }` with the tile ID. The phone
 never sends commands, file paths, or URLs.
 
@@ -34,6 +35,7 @@ fallback for larger frames.
 t = "deck.layout"   b = DeckLayout                              // PC → phone, no reply
 t = "deck.state"    b = DeckState                               // PC → phone, no reply
 t = "deck.press"    id = n  b = { tile: text }                  // phone → PC
+t = "deck.image"    id = n  b = { id: text }                    // phone → PC, answered with deck.image.data
 t = "pc.audio.set"  id = n  b = { volume?: uint, muted?: bool } // phone → PC
 t = "audio.pcm"     b = AudioPcmFrame                           // PC → phone, no reply
 t = "ok"            re = n
@@ -63,6 +65,7 @@ DeckTile = {
   kind:  text,              // action kind (§2.5); never contains paths, URLs, or commands
   needs_commands: bool?,    // true when pressing it runs a shell command although its kind
                             // isn't "run_command" (a "macro" with a command step); left out when false
+  image: text?,             // the ID of the picture shown instead of the icon (§2.7); left out when none
 }
 ```
 
@@ -188,3 +191,33 @@ The PC answers `ok` once the switch is made and sends `deck.state` with the
 new values; `INTERNAL` when the system refused (Windows' radio access, or
 NetworkManager's or BlueZ's policy on Linux). A phone asks before turning the
 PC's Wi-Fi off, since it may be how it reaches that PC.
+
+### 2.7 `deck.image`
+
+A tile can show a picture the user chose on the PC instead of its icon
+(#490). The layout names it by ID, and a phone asks for each picture it
+doesn't have:
+
+```
+DeckImageGet = {
+  id: text,                 // 32 lowercase hex digits
+}
+
+DeckImage = {               // the answer, t = "deck.image.data"
+  id:  text,
+  png: bytes,               // a PNG, at most 64 KiB and 256 x 256 pixels
+}
+```
+
+A picture's ID is the first 16 bytes of the SHA-256 of its PNG, in lowercase
+hex, so the same picture keeps its ID and a phone can keep it as long as a
+tile names it. A phone checks that the PNG it gets hashes to the ID it asked
+for and fits the limits; otherwise the tile keeps its icon. It drops the
+pictures the PC's newest layout no longer names.
+
+The PC answers only a phone it sends its layout to: `DENIED` when both
+`remote_input` and `pc_actions` are off for it, `NOT_FOUND` for an ID it
+doesn't have, `UNSUPPORTED` when it doesn't offer `deck.actions`, and
+`BAD_MESSAGE` for an ID that isn't 32 hex digits. A PC that doesn't know
+pictures never names one, and a phone that doesn't know them ignores the field
+and shows the icon.

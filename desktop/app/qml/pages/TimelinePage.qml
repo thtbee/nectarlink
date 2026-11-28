@@ -107,6 +107,7 @@ Item {
         case "photo": return Icons.photo
         case "recording": return Icons.mic
         case "session": return Icons.mirror
+        case "message": return Icons.messages
         default: return Icons.history
         }
     }

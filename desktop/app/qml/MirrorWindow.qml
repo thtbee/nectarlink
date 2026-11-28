@@ -747,8 +747,8 @@ Window {
             : 12
         x: restX
         y: restY
-        width: toolbarRow.implicitWidth + 8
-        height: 40
+        width: toolbarRow.width + 8
+        height: toolbarRow.height + 6
         radius: 20
         color: Qt.rgba(0, 0, 0, 0.68)
         visible: win.phase === "showing" && video.frameSize.width > 0 && !Preferences.hideMirrorToolbar
@@ -773,16 +773,30 @@ Window {
             toolbarWakeTimer.restart()
         }
 
-        Row {
+        // One row while the window is wide enough; narrower, the buttons wrap
+        // onto more rows instead of running off its edge (#729).
+        Flow {
             id: toolbarRow
+            // The width all its shown buttons take in one row.
+            readonly property real oneRow: {
+                let total = 0
+                let shown = 0
+                for (let i = 0; i < children.length; ++i) {
+                    if (children[i].visible && children[i].width > 0) {
+                        total += children[i].width
+                        shown += 1
+                    }
+                }
+                return total + Math.max(0, shown - 1) * spacing
+            }
             anchors.centerIn: parent
+            width: Math.max(32, Math.min(oneRow, win.width - 32))
             spacing: 2
 
             Item {
                 id: gripHandle
                 width: 20
-                height: 32
-                anchors.verticalCenter: parent.verticalCenter
+                height: 34
                 Accessible.role: Accessible.Grip
                 Accessible.name: qsTr("Drag to move the toolbar to another corner")
                 Icon {
@@ -830,7 +844,8 @@ Window {
             }
             Txt {
                 visible: win.info.recording === true
-                anchors.verticalCenter: parent.verticalCenter
+                height: 34
+                verticalAlignment: Text.AlignVCenter
                 leftPadding: 2
                 rightPadding: 6
                 role: "code"
