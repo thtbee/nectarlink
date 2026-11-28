@@ -768,6 +768,12 @@ pub enum Event {
     },
     /// The local cross-device timeline changed.
     TimelineChanged,
+    /// A paired device sent a note in the chat between them (#698).
+    ChatReceived {
+        id: String,
+        note_id: String,
+        text: String,
+    },
     /// The LocalSend compatibility setting or discovered LocalSend peers changed.
     LocalSendChanged,
     /// A PCM audio frame arrived from a paired PC (`audio.pcm`).
@@ -851,6 +857,9 @@ pub struct DeckTile {
     pub icon: String,
     pub color: String,
     pub kind: String,
+    /// The picture shown instead of the icon (#490), by ID: read it with
+    /// `deck_image` once the phone has it.
+    pub image: Option<String>,
 }
 
 impl std::fmt::Debug for DeckTile {
@@ -866,7 +875,7 @@ impl std::fmt::Debug for DeckTile {
 
 impl From<core::DeckTile> for DeckTile {
     fn from(t: core::DeckTile) -> Self {
-        DeckTile { id: t.id, label: t.label, icon: t.icon, color: t.color, kind: t.kind }
+        DeckTile { id: t.id, label: t.label, icon: t.icon, color: t.color, kind: t.kind, image: t.image }
     }
 }
 
@@ -1727,6 +1736,7 @@ pub enum TimelineKind {
     Photo,
     Recording,
     Session,
+    Message,
 }
 
 impl From<core::TimelineKind> for TimelineKind {
@@ -1738,6 +1748,7 @@ impl From<core::TimelineKind> for TimelineKind {
             core::TimelineKind::Photo => TimelineKind::Photo,
             core::TimelineKind::Recording => TimelineKind::Recording,
             core::TimelineKind::Session => TimelineKind::Session,
+            core::TimelineKind::Message => TimelineKind::Message,
         }
     }
 }
@@ -1751,6 +1762,7 @@ impl From<TimelineKind> for core::TimelineKind {
             TimelineKind::Photo => core::TimelineKind::Photo,
             TimelineKind::Recording => core::TimelineKind::Recording,
             TimelineKind::Session => core::TimelineKind::Session,
+            TimelineKind::Message => core::TimelineKind::Message,
         }
     }
 }
@@ -2696,6 +2708,9 @@ impl Event {
                 Event::StorageChanged { id: device.to_string(), path }
             }
             NodeEvent::TimelineChanged => Event::TimelineChanged,
+            NodeEvent::ChatReceived { device, id, text } => {
+                Event::ChatReceived { id: device.to_string(), note_id: id, text }
+            }
             NodeEvent::LocalSendChanged => Event::LocalSendChanged,
             NodeEvent::QueueChanged => Event::QueueChanged,
             NodeEvent::QueueDroppedOnUnpair { peer, peer_name, dropped_count } => {
@@ -4118,6 +4133,33 @@ impl NectarlinkNode {
         .await
     }
 
+    /// Sends a note to device `id` in the chat between them (#698); its note ID.
+    pub async fn send_chat(&self, id: String, text: String) -> Result<String> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.send_chat(id, text).await?) }).await
+    }
+
+    /// Changes a note this device sent device `id`.
+    pub async fn edit_chat(&self, id: String, note_id: String, text: String) -> Result<()> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.edit_chat(id, note_id, text).await?) }).await
+    }
+
+    /// Deletes a note in the chat with device `id`, on both.
+    pub async fn delete_chat(&self, id: String, note_id: String) -> Result<()> {
+        let id = parse_id(&id)?;
+        let node = self.node.clone();
+        self.run(async move { Ok(node.delete_chat(id, note_id).await?) }).await
+    }
+
+    /// Whether paired device `id` offered `capability` (`chat.messages`, say)
+    /// when it last connected: false when its app is too old for it.
+    pub fn peer_offers(&self, id: String, capability: String) -> Result<bool> {
+        Ok(self.node.peer_offers(parse_id(&id)?, &capability))
+    }
+
     /// Dismisses a paired phone's or tablet's notification there, after it
     /// was dismissed here (`notify.dismiss`).
     pub async fn dismiss_peer_notification(&self, id: String, key: String) -> Result<()> {
@@ -4592,6 +4634,13 @@ impl NectarlinkNode {
         self.node.set_usb_only(enabled);
     }
 
+    /// Phone: keeps a nonce a PC sent through adb (the USB wake broadcast), so
+    /// the tunnel it opens next may pair without pairing mode. Returns whether
+    /// it was one (32 hex digits).
+    pub fn allow_usb_nonce(&self, nonce: String) -> bool {
+        self.node.allow_usb_nonce(&nonce)
+    }
+
     pub fn relay_snapshot(&self) -> RelaySnapshot {
         use core::relays::RelayRegion as Region;
         let snapshot = self.node.relay_snapshot();
@@ -4902,6 +4951,12 @@ impl NectarlinkNode {
     pub fn deck_state(&self, id: String) -> Result<Option<DeckState>> {
         let id = parse_id(&id)?;
         Ok(self.node.deck_state(id).map(Into::into))
+    }
+
+    /// The picture `image` on a tile of paired PC `id`'s Deck, a PNG, once
+    /// this phone has fetched it (a `DeckLayout` event follows when it has).
+    pub fn deck_image(&self, id: String, image: String) -> Result<Option<Vec<u8>>> {
+        Ok(self.node.deck_image(parse_id(&id)?, &image))
     }
 
     /// Asks a paired PC to run the action bound to `tile` (`deck.press`).

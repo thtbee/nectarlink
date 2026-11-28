@@ -167,6 +167,8 @@ pub fn start(dir: PathBuf) {
         loop {
             std::thread::sleep(Duration::from_secs(600));
             core_host::host().hub.update(|s| s.prune_history(unix_ms(SystemTime::now())));
+            // Their pictures too: an always-on PC otherwise keeps them until a restart.
+            crate::notifications::prune_images();
         }
     });
     if let Err(e) = pruner {

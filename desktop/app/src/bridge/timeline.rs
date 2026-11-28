@@ -344,43 +344,14 @@ impl qobject::TimelineModel {
     }
 
     pub fn open_entry(&self, entry_id: &QString) {
-        let Some(row) = self.find_row(entry_id) else { return };
-        match row.entry.kind {
-            TimelineKind::File | TimelineKind::Photo | TimelineKind::Recording => {
-                if !row.primary_path.is_empty() {
-                    let path = Path::new(&row.primary_path);
-                    if path.exists() {
-                        crate::transfers::open(path);
-                    } else {
-                        show_message(tr!("Timeline", "That file was moved or deleted."));
-                    }
-                }
-            }
-            TimelineKind::Link => {
-                let url = if row.entry.target.is_empty() { &row.entry.title } else { &row.entry.target };
-                // Entries come from other devices: open web and map links only.
-                match crate::links::as_link(url) {
-                    Some(url) => {
-                        if let Err(e) = crate::links::open_here(url) {
-                            show_message(e);
-                        }
-                    }
-                    None => show_message(tr!("Timeline", "That isn't a web link.")),
-                }
-            }
-            TimelineKind::Clip | TimelineKind::Session => {}
+        if let Some(row) = self.find_row(entry_id) {
+            open(&row.entry, &row.primary_path);
         }
     }
 
     pub fn reveal_entry(&self, entry_id: &QString) {
-        let Some(row) = self.find_row(entry_id) else { return };
-        if !row.primary_path.is_empty() {
-            let path = Path::new(&row.primary_path);
-            if path.exists() {
-                crate::transfers::show_in_folder(path);
-            } else {
-                show_message(tr!("Timeline", "That file was moved or deleted."));
-            }
+        if let Some(row) = self.find_row(entry_id) {
+            reveal(&row.primary_path);
         }
     }
 
@@ -417,6 +388,10 @@ impl qobject::TimelineModel {
                     Err(_) => show_message(tr!("Timeline", "The photo couldn't be copied to the clipboard.")),
                 }
             }
+            TimelineKind::Message => match crate::win::clipboard::write(&row.entry.detail) {
+                Ok(()) => show_message(tr!("Timeline", "Copied to clipboard.")),
+                Err(e) => show_message(e),
+            },
             _ => {}
         }
     }
@@ -471,15 +446,21 @@ impl qobject::TimelineModel {
                     crate::links::send_to(target_device, url);
                 }
             }
+            TimelineKind::Message => {
+                let text = row.entry.detail.clone();
+                crate::chat::send(target_device, text, move |failed| {
+                    if failed.is_none() {
+                        show_message(tr!("Timeline", "Sent note to %1.", device_name));
+                    }
+                });
+            }
             TimelineKind::Session => {}
         }
     }
 
     pub fn remove_entry(self: Pin<&mut Self>, entry_id: &QString) {
-        let Ok(id) = String::from(entry_id).parse::<i64>() else { return };
-        if let Some(Err(e)) = core_host::node().map(|node| node.delete_timeline_entry(id)) {
-            tracing::warn!(error = %e, "can't remove a Timeline entry");
-            show_message(tr!("Timeline", "That entry couldn't be removed. Try again."));
+        if let Ok(id) = String::from(entry_id).parse::<i64>() {
+            remove(id);
         }
     }
 
@@ -514,6 +495,84 @@ impl qobject::TimelineModel {
 
     pub fn row_count(&self, _parent: &QModelIndex) -> i32 {
         self.rows.len() as i32
+    }
+}
+
+/// Opens what an entry points at: a file, photo or recording's (first) file
+/// at `primary_path`, or a link's page. The Timeline and the chat share it.
+pub(super) fn open(entry: &TimelineEntry, primary_path: &str) {
+    match entry.kind {
+        TimelineKind::File | TimelineKind::Photo | TimelineKind::Recording => {
+            if !primary_path.is_empty() {
+                let path = Path::new(primary_path);
+                if path.exists() {
+                    crate::transfers::open(path);
+                } else {
+                    show_message(tr!("Timeline", "That file was moved or deleted."));
+                }
+            }
+        }
+        TimelineKind::Link => {
+            let url = if entry.target.is_empty() { &entry.title } else { &entry.target };
+            // Entries come from other devices: open web and map links only.
+            match crate::links::as_link(url) {
+                Some(url) => {
+                    if let Err(e) = crate::links::open_here(url) {
+                        show_message(e);
+                    }
+                }
+                None => show_message(tr!("Timeline", "That isn't a web link.")),
+            }
+        }
+        TimelineKind::Clip | TimelineKind::Session | TimelineKind::Message => {}
+    }
+}
+
+/// Shows an entry's saved file, folder, photo or recording in File Explorer.
+pub(super) fn reveal(primary_path: &str) {
+    if !primary_path.is_empty() {
+        let path = Path::new(primary_path);
+        if path.exists() {
+            crate::transfers::show_in_folder(path);
+        } else {
+            show_message(tr!("Timeline", "That file was moved or deleted."));
+        }
+    }
+}
+
+/// Removes one entry from this PC's timeline (the other device keeps its own).
+pub(super) fn remove(id: i64) {
+    if let Some(Err(e)) = core_host::node().map(|node| node.delete_timeline_entry(id)) {
+        tracing::warn!(error = %e, "can't remove a Timeline entry");
+        show_message(tr!("Timeline", "That entry couldn't be removed. Try again."));
+    }
+}
+
+/// What the chat shows of a file, photo or recording entry (#698): the same
+/// name, thumbnail, path and actions as its Timeline row.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct Attachment {
+    pub title: String,
+    /// The size in words ("" when it isn't known).
+    pub size: String,
+    pub thumb_url: String,
+    pub primary_path: String,
+    pub item_count: u32,
+    pub can_open: bool,
+    pub can_show_in_folder: bool,
+}
+
+pub(super) fn attachment(entry: &TimelineEntry) -> Attachment {
+    let (title, _, thumb_url, primary_path, item_count, can_open, can_show_in_folder, _, _) =
+        describe_entry(entry, &entry.device_name);
+    Attachment {
+        title,
+        size: if entry.size_bytes > 0 { format_bytes(entry.size_bytes) } else { String::new() },
+        thumb_url,
+        primary_path,
+        item_count,
+        can_open,
+        can_show_in_folder,
     }
 }
 
@@ -565,7 +624,11 @@ fn build_rows(entries: &[TimelineEntry], initial_prev_ts: Option<i64>) -> Vec<Ro
             device_name,
             title,
             subtitle,
-            full_text: clip_full_text(entry),
+            full_text: if entry.kind == TimelineKind::Message {
+                note_full_text(entry)
+            } else {
+                clip_full_text(entry)
+            },
             thumb_url,
             primary_path,
             item_count,
@@ -694,6 +757,12 @@ fn describe_entry(
                 lower.starts_with("http://") || lower.starts_with("https://") || lower.starts_with("geo:");
             (title, parts.join(" · "), String::new(), String::new(), 1, valid, false, !url.is_empty(), valid)
         }
+        TimelineKind::Message => {
+            // The first line; the whole note opens up below it.
+            let title = entry.detail.trim().lines().next().unwrap_or_default().to_owned();
+            let can = !entry.detail.trim().is_empty();
+            (title, who, String::new(), String::new(), 1, false, false, can, can)
+        }
         TimelineKind::Session => {
             let title = match entry.session_kind() {
                 Some(kind) => crate::i18n::session_title(kind),
@@ -794,9 +863,42 @@ fn clip_full_text(entry: &TimelineEntry) -> String {
     }
 }
 
+/// How much of a note's first line its row shows before it offers the rest.
+const NOTE_TITLE_CHARS: usize = 80;
+
+/// A chat note's whole text when its row's title (the first line) shows
+/// only part of it. Empty otherwise.
+fn note_full_text(entry: &TimelineEntry) -> String {
+    let text = entry.detail.trim();
+    if !text.contains('\n') && text.chars().count() <= NOTE_TITLE_CHARS {
+        return String::new();
+    }
+    match text.char_indices().nth(FULL_TEXT_MAX) {
+        Some((end, _)) => format!("{}…", &text[..end]),
+        None => text.to_owned(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn notes_show_their_first_line_and_offer_the_rest() {
+        let note = |text: &str| TimelineEntry {
+            detail: text.into(),
+            ref_id: Some("chat:a".into()),
+            ..sample_entry(TimelineKind::Message, String::new())
+        };
+        let (title, subtitle, _, _, _, can_open, can_show, can_copy, can_send) =
+            describe_entry(&note("milk\neggs"), "Pixel");
+        assert_eq!((title.as_str(), subtitle.as_str()), ("milk", "From Pixel"));
+        assert!(!can_open && !can_show && can_copy && can_send);
+        assert_eq!(note_full_text(&note("milk\neggs")), "milk\neggs");
+        assert_eq!(note_full_text(&note("milk")), "");
+        let long = "word ".repeat(20);
+        assert_eq!(note_full_text(&note(&long)), long.trim());
+    }
 
     fn sample_entry(kind: TimelineKind, target: String) -> TimelineEntry {
         TimelineEntry {

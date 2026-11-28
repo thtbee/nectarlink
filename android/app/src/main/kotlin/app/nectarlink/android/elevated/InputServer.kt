@@ -396,7 +396,13 @@ object InputServer {
         }.onFailure { System.err.println("can't clear the clipboard: $it") }
     }
 
-    private fun setClipboard(rest: String) {
+    /**
+     * [deviceId]: the clipboard to set. 0 is the phone's own; an app window's
+     * display is on a virtual device with a clipboard of its own, which the
+     * app there pastes from (#713). The helper owns that device, so Android
+     * lets it set that clipboard.
+     */
+    private fun setClipboard(rest: String, deviceId: Int = 0) {
         val (service, set) = clipService ?: return System.err.println("no clipboard to set")
         runCatching {
             val parts = rest.split(' ')
@@ -413,7 +419,7 @@ object InputServer {
                 putBoolean("android.content.extra.IS_REMOTE_DEVICE", true)
                 if (parts.getOrNull(2) == "1") putBoolean("android.content.extra.IS_SENSITIVE", true)
             }
-            set.invoke(service, *buildClipboardArgs(set.parameterTypes, null, clip))
+            set.invoke(service, *buildClipboardArgs(set.parameterTypes, null, clip, deviceId))
         }.onFailure { System.err.println("can't set the clipboard: $it") }
     }
 
@@ -469,12 +475,18 @@ object InputServer {
         }
     }
 
+    /**
+     * Arguments for an IClipboard method, by parameter type. Its int
+     * parameters are the user (0) and, from Android 14, the device: [deviceId].
+     */
     private fun buildClipboardArgs(
         paramTypes: Array<Class<*>>,
         listener: Any?,
         clipData: android.content.ClipData?,
+        deviceId: Int = 0,
     ): Array<Any?> {
         var seenPkg = false
+        var ints = 0
         return Array(paramTypes.size) { i ->
             val t = paramTypes[i]
             when {
@@ -486,7 +498,7 @@ object InputServer {
                 } else {
                     null
                 }
-                t == Int::class.javaPrimitiveType || t == Int::class.javaObjectType -> 0
+                t == Int::class.javaPrimitiveType || t == Int::class.javaObjectType -> if (ints++ == 1) deviceId else 0
                 t == Boolean::class.javaPrimitiveType || t == Boolean::class.javaObjectType -> false
                 else -> null
             }
@@ -1076,7 +1088,12 @@ object InputServer {
                 // `SD <seq> <thread> [<sms:1,mms:2...>]`: delete a conversation, or some of its messages.
                 "SD" -> if (display < 0) parseSmsDeleteRequest(rest)?.let { deleteSms(it.seq, it.thread, it.ids) }
                 "P" -> if (display < 0) setDisplayPower(rest.trim() != "0")
-                "B" -> if (display < 0) setClipboard(rest)
+                "B" -> if (display < 0) {
+                    setClipboard(rest)
+                } else {
+                    // For an app window's paste: the clipboard of the device its display is on.
+                    VirtualDevice.deviceIdOf(display)?.let { setClipboard(rest, it) } ?: setClipboard(rest)
+                }
                 "X" -> if (display < 0) clearClipboard(rest)
                 "W" -> if (display < 0) watchClipboard(rest.trim() != "0")
             }

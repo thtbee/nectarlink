@@ -1157,8 +1157,10 @@ object Elevated {
                 event.text == "\n" || event.text == "\r" || event.text == "\r\n" ->
                     send(writer, "${to}K ${KeyEvent.KEYCODE_ENTER}")
                 event.text.length == 1 && event.text[0].code in 32..126 -> send(writer, "${to}T ${event.text}")
-                // The clipboard is the phone's own, whichever display the text is for.
-                else -> setClipboard(event.text, null) && send(writer, "${to}K ${KeyEvent.KEYCODE_PASTE}")
+                // Through the clipboard of the display the text is for: an app window's
+                // display is on a virtual device with a clipboard of its own (#713).
+                else -> setClipboard(event.text, null, display = display) &&
+                    send(writer, "${to}K ${KeyEvent.KEYCODE_PASTE}")
             }
             is MirrorInputEvent.Gamepad ->
                 "G ${event.buttons} ${event.lx} ${event.ly} ${event.rx} ${event.ry} ${event.lt} ${event.rt}"
@@ -1499,14 +1501,19 @@ object Elevated {
         return send(writer, "X $b64")
     }
 
-    fun setClipboard(text: String, html: String?, sensitive: Boolean = false): Boolean {
+    /**
+     * Puts text on the phone's clipboard, or with [display] (an app window's),
+     * on the clipboard that display's apps paste from.
+     */
+    fun setClipboard(text: String, html: String?, sensitive: Boolean = false, display: Int? = null): Boolean {
         val client = activeService(NectarlinkServiceContract.CAP_CLIPBOARD_SYNC)
-        if (client != null) {
+        if (client != null && display == null) {
             return client.setClipboard(text, html, sensitive)
         }
         val writer = input ?: return false
         val b64 = { value: String -> android.util.Base64.encodeToString(value.toByteArray(Charsets.UTF_8), android.util.Base64.NO_WRAP) }
-        return send(writer, "B ${b64(text)} ${html?.let(b64).orEmpty()} ${if (sensitive) "1" else "0"}")
+        val to = display?.let { "@$it " }.orEmpty()
+        return send(writer, "${to}B ${b64(text)} ${html?.let(b64).orEmpty()} ${if (sensitive) "1" else "0"}")
     }
 
     /**

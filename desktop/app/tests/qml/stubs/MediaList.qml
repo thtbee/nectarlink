@@ -6,5 +6,6 @@ import QtQuick
 ListModel {
     property string activeArt: ""
     property string activeColors: ""
+    property string playOnPhoneName: ""
     function command(id, action) {}
 }

@@ -8,11 +8,37 @@ use crate::error::ActionError;
 
 /// Folder names that hold keys, logins or browser data. Matched anywhere in
 /// the resolved path, ignoring case.
-const NEVER: [&str; 9] =
-    [".ssh", ".gnupg", ".aws", ".azure", ".kube", ".docker", ".password-store", "keychains", "credentials"];
+const NEVER: [&str; 11] = [
+    ".ssh",
+    ".gnupg",
+    ".aws",
+    ".azure",
+    ".kube",
+    ".docker",
+    ".password-store",
+    "keychains",
+    "credentials",
+    // Thunderbird's profiles on Linux, and Codex's login.
+    ".thunderbird",
+    ".codex",
+];
 
-/// Folder pairs for browser profiles and NectarLink's own data (its keys and tokens).
-const NEVER_PAIRS: [(&str, &str); 7] = [
+/// File names that are logins, wherever they are.
+const NEVER_FILES: [&str; 6] =
+    [".git-credentials", ".netrc", "_netrc", ".npmrc", ".pypirc", ".credentials.json"];
+
+/// File extensions of password vaults and certificate keys.
+const NEVER_EXTENSIONS: [&str; 5] = ["kdbx", "kdb", "pem", "p12", "pfx"];
+
+/// Folder pairs for browser profiles, apps' logins and data (GitHub's CLI,
+/// Signal, Thunderbird) and NectarLink's own data (its keys and tokens).
+const NEVER_PAIRS: [(&str, &str); 13] = [
+    (".config", "gh"),
+    ("roaming", "signal"),
+    (".config", "signal"),
+    ("application support", "signal"),
+    ("roaming", "thunderbird"),
+    ("application support", "thunderbird"),
     ("google", "chrome"),
     (".mozilla", "firefox"),
     ("microsoft", "edge"),
@@ -54,6 +80,17 @@ fn is_private(path: &Path) -> bool {
     if names.iter().any(|n| NEVER.contains(&n.as_str())) {
         return true;
     }
+    if let Some(file) = names.last() {
+        if NEVER_FILES.contains(&file.as_str()) {
+            return true;
+        }
+        if file
+            .rsplit_once('.')
+            .is_some_and(|(stem, ext)| !stem.is_empty() && NEVER_EXTENSIONS.contains(&ext))
+        {
+            return true;
+        }
+    }
     if names.iter().any(|n| n == "nectarlink" || n == ".nectarlink")
         && names
             .iter()
@@ -74,8 +111,29 @@ mod tests {
             "/home/bee/.ssh/id_ed25519",
             "/home/bee/.config/nectarlink/identity.key",
             "/home/bee/.mozilla/firefox/abc.default/logins.json",
+            "/home/bee/.git-credentials",
+            "/home/bee/.netrc",
+            "/home/bee/.npmrc",
+            "/home/bee/.pypirc",
+            "/home/bee/.config/gh/hosts.yml",
+            "/home/bee/.claude/.credentials.json",
+            "/home/bee/.codex/auth.json",
+            "/home/bee/Documents/Passwords.kdbx",
+            "/home/bee/.config/Signal/config.json",
+            "/home/bee/.thunderbird/abc.default/logins.json",
+            "/home/bee/certs/server.pem",
+            "/home/bee/.config/Thunderbird/../../.thunderbird/x/key4.db",
         ] {
             assert!(is_private(Path::new(p)), "{p}");
+        }
+        for p in [
+            "/home/bee/Documents/report.pdf",
+            "/home/bee/Pictures/keys.jpg",
+            "/home/bee/Documents/Slides.key",
+            "/home/bee/Documents/signal/processing.py",
+            "/home/bee/Documents/auth.json",
+        ] {
+            assert!(!is_private(Path::new(p)), "{p}");
         }
         // Backslashes only separate folders on Windows.
         #[cfg(windows)]
