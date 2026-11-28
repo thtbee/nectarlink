@@ -665,6 +665,11 @@ change things that need a step from you, and its notes say so.
   own installers, AI agents can't send login files or password vaults, crash records leave out text
   a panic quoted, a Deck command tile is checked against the phone's permission as it runs, and on
   Linux, sms: and mms: links are no longer sent to the phone as copied text.
+- **Pairing over a USB cable needs a computer on adb.** The phone now pairs over its USB
+  connection without pairing mode only when the computer reached it through adb, and after a
+  pairing over USB is declined or fails, it needs pairing mode for a few minutes. With a PC still
+  on 0.1.5 or older, plugging in no longer pairs by itself: pair by QR code or the 6-digit code
+  instead, or update the PC.
 - **Typing in other languages and pasting work in phone app windows.** On Android 14 and newer an
   app window runs on its own virtual device with a clipboard of its own, so text typed with an
   input method, and anything pasted, went to the phone's clipboard where the app couldn't see it.
