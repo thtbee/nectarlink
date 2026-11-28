@@ -224,17 +224,22 @@ class ConnectionService : LifecycleService() {
                     screenWake.tryReceive()
                     return setDiscoveryLock(false)
                 }
+                val core = (application as NectarlinkApplication).core
+                if (action == android.os.PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED) {
+                    // Out of Doze: the network is back, so are the connections?
+                    val power = getSystemService(android.os.PowerManager::class.java)
+                    if (power?.isDeviceIdleMode == false) core.reconnectIfOffline()
+                    return
+                }
                 if (action != Intent.ACTION_SCREEN_ON && action != Intent.ACTION_USER_PRESENT) return
                 setDiscoveryLock(true)
                 screenWake.trySend(Unit)
-                if (action == Intent.ACTION_USER_PRESENT) {
-                    val core = (application as NectarlinkApplication).core
-                    if (core.state.value.ringingPeer != null) showRingScreen()
-                    core.reconnectIfOffline()
-                }
+                core.reconnectIfOffline()
+                if (action == Intent.ACTION_USER_PRESENT && core.state.value.ringingPeer != null) showRingScreen()
             }
         }
         val filter = IntentFilter().apply {
+            addAction(android.os.PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED)
             addAction(Intent.ACTION_SCREEN_ON)
             addAction(Intent.ACTION_SCREEN_OFF)
             addAction(Intent.ACTION_USER_PRESENT)

@@ -2602,9 +2602,16 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
      * of at its next retry, which can be up to two minutes off.
      */
     fun reconnectIfOffline() {
-        if (_state.value.devices.none { !it.online }) return
+        // Not only when a device shows offline: while the phone slept, its own
+        // timers stood still, so a PC that already dropped it still shows online
+        // here. networkChanged pings the live sessions (2 s) and redials the rest.
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (now - lastReconnectCheck < RECONNECT_CHECK_EVERY_MS) return
+        lastReconnectCheck = now
         scope.launch { runCatching { node?.networkChanged() } }
     }
+
+    private var lastReconnectCheck = Long.MIN_VALUE / 2
 
     /**
      * Triggers an immediate network/presence reconnect (e.g. when woken by
@@ -3508,6 +3515,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         const val TASKS_AWAY_MS = 30 * 60_000L
         /** The most entries the core gives in one page (`MAX_TIMELINE_PAGE_LIMIT`). */
         const val CHAT_PAGE = 250
+        /** How often, at most, waking the screen checks the connections. */
+        const val RECONNECT_CHECK_EVERY_MS = 30_000L
         /** What a device that takes notes offers (`chat.messages` in the protocol). */
         const val CHAT_CAPABILITY = "chat.messages"
         /** Offered while notification access is granted (docs/protocol/capabilities.md). */
