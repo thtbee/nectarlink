@@ -476,6 +476,12 @@ static const char *const nectarlink_rust_strings[] = {
     QT_TRANSLATE_NOOP("PhoneMic", "Tap Start on %1 to use its microphone."), // desktop/app/src/phone_mic.rs
     QT_TRANSLATE_NOOP("PhoneMic", "The microphone is turned off for this PC on %1."), // desktop/app/src/phone_mic.rs
     QT_TRANSLATE_NOOP("PhoneMic", "Update NectarLink on %1 to use its microphone."), // desktop/app/src/phone_mic.rs
+    QT_TRANSLATE_NOOP("PhonePicker", "That file can't be attached."), // desktop/app/src/phone_picker.rs
+    QT_TRANSLATE_NOOP("PhonePicker", "That file is gone from the phone."), // desktop/app/src/phone_picker.rs
+    QT_TRANSLATE_NOOP("PhonePicker", "That file is too large to attach."), // desktop/app/src/phone_picker.rs
+    QT_TRANSLATE_NOOP("PhonePicker", "The phone couldn't send that file."), // desktop/app/src/phone_picker.rs
+    QT_TRANSLATE_NOOP("PhonePicker", "The phone doesn't share that with this PC. Allow it in the NectarLink app on the phone."), // desktop/app/src/phone_picker.rs
+    QT_TRANSLATE_NOOP("PhonePicker", "The phone isn't connected."), // desktop/app/src/phone_picker.rs
     QT_TRANSLATE_NOOP("PhoneSound", "%1 couldn't ask to share its sound. Check that NectarLink can show notifications on the phone."), // desktop/app/src/phone_sound.rs
     QT_TRANSLATE_NOOP("PhoneSound", "Mirroring is turned off for this phone."), // desktop/app/src/phone_sound.rs
     QT_TRANSLATE_NOOP("PhoneSound", "The phone isn't connected."), // desktop/app/src/phone_sound.rs

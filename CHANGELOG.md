@@ -45,6 +45,13 @@ change things that need a step from you, and its notes say so.
   **Tray icon** in Settings › General turns the color tile back on (a Mac that already ran
   NectarLink moves to the one-color icon once). Thanks to
   [@farfromrefug](https://github.com/farfromrefug) ([#685](https://github.com/thtbee/nectarlink/pull/685)).
+- **Attach a photo or file from the phone to a text.** The attach button in Messages now asks
+  where from: **From this computer** opens the file dialog as before, **From the phone** opens a
+  picker with a **Photos** tab (the phone's gallery, newest first, with thumbnails) and a **Files**
+  tab (its folders). The one you pick is brought to the PC and staged exactly like a file chosen
+  here. It needs the phone's photos, or its storage turned on for this PC; the entry is missing
+  otherwise. A picture too big for a message (a phone photo, mostly) is now shrunk to fit one,
+  from the phone or from this PC, instead of being refused.
 - **Unlock KDE Plasma with the phone.** On Linux, NectarLink's PAM module can now run in the
   lock screen's `kde-fingerprint` service, so the phone asks for your fingerprint each time the
   PC locks and unlocks it when you approve. It's one line in `/etc/pam.d/kde-fingerprint`; see

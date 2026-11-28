@@ -54,6 +54,9 @@ enum Intent {
     GallerySave { ids: Vec<String>, folder: Option<PathBuf> },
     /// Handed to the system's share sheet; not kept in Downloads.
     Share,
+    /// Picked in the Messages composer's phone picker: staged as the
+    /// attachment (`crate::phone_picker`), not kept.
+    Attach { token: u64 },
 }
 
 #[derive(Debug, Default)]
@@ -244,8 +247,14 @@ pub fn on_toast(key: &str, action: Option<&str>) {
     });
 }
 
+/// A photo picked for a message (`crate::phone_picker`) is coming as `transfer`.
+pub(crate) fn attach_requested(transfer: String, token: u64) {
+    asked(transfer, Intent::Attach { token });
+}
+
 fn asked(transfer: String, intent: Intent) {
-    let private = matches!(intent, Intent::View { .. } | Intent::Copy { .. } | Intent::Share);
+    let private =
+        matches!(intent, Intent::View { .. } | Intent::Copy { .. } | Intent::Share | Intent::Attach { .. });
     let id = transfer.clone();
     let done = state(|s| {
         let now = Instant::now();
@@ -287,7 +296,9 @@ fn finished(t: &Transfer) {
         TransferState::Done { saved } => saved.clone(),
         TransferState::Failed(_) | TransferState::Cancelled => {
             let removed = state(|s| s.pending.remove(&t.id));
-            if removed.is_some() {
+            if let Some(Intent::Attach { token }) = removed {
+                crate::phone_picker::failed(token, &nectarlink_core::Error::Internal(String::new()));
+            } else if removed.is_some() {
                 gallery_state(|g| {
                     g.saving = false;
                     g.busy_item = None;
@@ -321,6 +332,9 @@ fn finished(t: &Transfer) {
 
 fn deliver(transfer_id: &str, intent: Intent, saved: &[PathBuf]) {
     let Some(first) = saved.first() else {
+        if let Intent::Attach { token } = intent {
+            crate::phone_picker::failed(token, &nectarlink_core::Error::NotFound);
+        }
         gallery_state(|g| {
             g.saving = false;
             g.busy_item = None;
@@ -374,6 +388,12 @@ fn deliver(transfer_id: &str, intent: Intent, saved: &[PathBuf]) {
                 }
             });
             gallery_changed();
+        }
+        Intent::Attach { token } => {
+            if let Some(node) = core_host::node() {
+                node.delete_timeline_by_ref(transfer_id);
+            }
+            crate::phone_picker::downloaded(token, first.clone());
         }
         Intent::Share => {
             if let Some(node) = core_host::node() {

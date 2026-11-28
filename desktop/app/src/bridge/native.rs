@@ -79,6 +79,10 @@ pub mod ffi {
         #[allow(dead_code)]
         fn decode_image(bytes: &[u8]) -> Vec<u8>;
 
+        /// Re-encodes an image as a JPEG of at most `max_side` pixels a side
+        /// at `quality` (0 to 100); empty when Qt can't read or write it.
+        fn shrink_image_jpeg(bytes: &[u8], max_side: i32, quality: i32) -> Vec<u8>;
+
         #[allow(dead_code)]
         fn mac_clipboard_change_count() -> i64;
 

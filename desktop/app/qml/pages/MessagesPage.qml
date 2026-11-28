@@ -69,6 +69,23 @@ Item {
         }
     }
 
+    // Attach from this computer (the file dialog) or from the phone (its
+    // photos and files, in a picker).
+    property bool attachMenuOpen: false
+    function chooseAttachment() {
+        if (phonePicker.canPick)
+            attachMenuOpen = true
+        else
+            imageFileDialog.open()
+    }
+
+    PhonePickerSheet {
+        id: phonePicker
+        deviceId: page.deviceId
+        deviceName: page.deviceName
+        onAttached: composer.focusText()
+    }
+
     // Back to the list: nothing open.
     function closeChat() {
         Messages.closeThread()
@@ -994,7 +1011,7 @@ Item {
                 enabled: page.ready && !Messages.sending
                 iconPath: Icons.photo
                 label: qsTr("Attach image (MMS)")
-                onClicked: imageFileDialog.open()
+                onClicked: page.chooseAttachment()
                 TapHandler {
                     acceptedButtons: Qt.RightButton
                     onTapped: {
@@ -1601,6 +1618,102 @@ Item {
                 Button {
                     text: qsTr("Done")
                     onClicked: msgImagePreviewSheet.close()
+                }
+            }
+        }
+    }
+
+    // Where to attach from, above the attach button.
+    Item {
+        id: attachMenu
+        anchors.fill: parent
+        z: 60
+        visible: page.attachMenuOpen
+        readonly property point origin: page.attachMenuOpen ? attachButton.mapToItem(page, 0, 0) : Qt.point(0, 0)
+        onVisibleChanged: if (visible) attachCard.forceActiveFocus(Qt.PopupFocusReason)
+
+        Shortcut {
+            sequence: "Esc"
+            enabled: page.attachMenuOpen
+            onActivated: page.attachMenuOpen = false
+        }
+        MouseArea {
+            anchors.fill: parent
+            onClicked: page.attachMenuOpen = false
+        }
+
+        Rectangle {
+            id: attachCard
+            x: Math.max(8, Math.min(attachMenu.origin.x, page.width - width - 8))
+            y: attachMenu.origin.y - height - 6
+            width: 220
+            height: attachCol.height + 10
+            radius: Theme.radiusMd
+            color: Theme.graphite ? Theme.surface : Theme.surfaceContainerHighest
+            border.width: 1
+            border.color: Theme.outlineVariant
+            Accessible.role: Accessible.PopupMenu
+            Accessible.name: qsTr("Attach from")
+            // Clicks on the card are its own.
+            MouseArea { anchors.fill: parent }
+
+            Column {
+                id: attachCol
+                x: 5
+                y: 5
+                width: parent.width - 10
+                spacing: 2
+
+                Repeater {
+                    model: [
+                        { source: "computer", icon: Icons.desktop, label: qsTr("From this computer") },
+                        { source: "phone", icon: Icons.phone, label: qsTr("From the phone") }
+                    ]
+                    delegate: Rectangle {
+                        id: attachItem
+                        required property var modelData
+                        function choose() {
+                            page.attachMenuOpen = false
+                            if (modelData.source === "phone")
+                                phonePicker.show()
+                            else
+                                imageFileDialog.open()
+                        }
+                        width: attachCol.width
+                        height: 34
+                        radius: Theme.radiusSm
+                        activeFocusOnTab: true
+                        color: attachHover.hovered ? Theme.surfaceContainerHigh : "transparent"
+                        border.width: Theme.focusVisible(attachItem) ? 2 : 0
+                        border.color: Theme.primary
+                        Accessible.role: Accessible.MenuItem
+                        Accessible.name: modelData.label
+                        Accessible.onPressAction: attachItem.choose()
+                        Keys.onPressed: (event) => {
+                            if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                                attachItem.choose()
+                                event.accepted = true
+                            }
+                        }
+                        Row {
+                            x: 10
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 10
+                            Icon {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: 16; height: 16
+                                path: attachItem.modelData.icon
+                                color: Theme.surfaceContentVariant
+                            }
+                            Txt {
+                                anchors.verticalCenter: parent.verticalCenter
+                                role: "bodySmall"
+                                text: attachItem.modelData.label
+                            }
+                        }
+                        HoverHandler { id: attachHover; cursorShape: Qt.PointingHandCursor }
+                        TapHandler { onTapped: attachItem.choose() }
+                    }
                 }
             }
         }

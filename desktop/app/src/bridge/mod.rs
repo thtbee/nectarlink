@@ -36,6 +36,8 @@ pub mod phone_install;
 #[allow(unsafe_code)]
 pub mod phone_mic;
 #[allow(unsafe_code)]
+pub mod phone_picker;
+#[allow(unsafe_code)]
 pub mod photo_backup;
 #[allow(unsafe_code)]
 pub mod photos;
