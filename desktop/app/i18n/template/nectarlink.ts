@@ -1458,6 +1458,34 @@
     </message>
 </context>
 <context>
+    <name>ChatAttachment</name>
+    <message>
+        <location filename="../../qml/components/ChatAttachment.qml" line="34"/>
+        <source>%1 · Moved or deleted</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/components/ChatAttachment.qml" line="34"/>
+        <source>Moved or deleted</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/components/ChatAttachment.qml" line="203"/>
+        <source>Open</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/components/ChatAttachment.qml" line="212"/>
+        <source>Show in folder</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/components/ChatAttachment.qml" line="220"/>
+        <source>Remove from chat</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>ChatNote</name>
     <message>
         <location filename="../../qml/components/ChatNote.qml" line="121"/>
@@ -1557,6 +1585,21 @@
     <message>
         <location filename="../../qml/pages/ChatPage.qml" line="379"/>
         <source>Delete</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/ChatPage.qml" line="343"/>
+        <source>Send files</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/ChatPage.qml" line="441"/>
+        <source>Send files to %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../qml/pages/ChatPage.qml" line="482"/>
+        <source>Drop to send to %1</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 import QtQuick
 import QtQuick.Window
+import QtQuick.Dialogs
 import app.nectarlink
 
 // Chat: notes between this PC and the device shown on Home (#698), oldest
@@ -150,7 +151,8 @@ Item {
         ListView {
             id: noteList
             anchors.top: parent.top
-            anchors.bottom: editBar.visible ? editBar.top : composer.top
+            anchors.bottom: transfersCard.visible ? transfersCard.top
+                : editBar.visible ? editBar.top : composer.top
             anchors.bottomMargin: 8
             width: parent.width
             clip: true
@@ -183,23 +185,96 @@ Item {
                     && contentY - (originY - topMargin) < 160)
                     ChatModel.loadMore()
             }
-            delegate: ChatNote {
+            // A note, or a file, photo or recording sent between the two.
+            delegate: Item {
+                id: entry
                 required property int index
+                required property string entryId
+                required property string kind
                 required property string noteId
-                required text
+                required property string text
                 required property bool incoming
-                required timestamp
+                required property real timestamp
                 required property real prevTimestamp
-                width: noteList.width
-                mine: !incoming
-                // Changing a note is for the device that wrote it, while the other has it too.
-                canEdit: !incoming && page.canWrite
-                editing: page.editingId === noteId
-                dayLabel: index === 0 || page.dayKey(timestamp) !== page.dayKey(prevTimestamp)
+                required property string title
+                required property string size
+                required property string thumbUrl
+                required property bool canOpen
+                required property bool canShowInFolder
+                readonly property string dayLabel: index === 0 || page.dayKey(timestamp) !== page.dayKey(prevTimestamp)
                     ? page.dayLabel(timestamp) : ""
-                onCopyRequested: Messages.copy(text)
-                onEditRequested: page.startEditing(noteId, text)
-                onDeleteRequested: deleteSheet.openFor(noteId)
+                width: noteList.width
+                height: shown.item ? shown.item.height : 0
+
+                Loader {
+                    id: shown
+                    width: parent.width
+                    sourceComponent: entry.kind === "note" ? noteComponent : attachmentComponent
+                }
+                Component {
+                    id: noteComponent
+                    ChatNote {
+                        width: entry.width
+                        text: entry.text
+                        timestamp: entry.timestamp
+                        mine: !entry.incoming
+                        // Changing a note is for the device that wrote it, while the other has it too.
+                        canEdit: !entry.incoming && page.canWrite
+                        editing: page.editingId === entry.noteId
+                        dayLabel: entry.dayLabel
+                        onCopyRequested: Messages.copy(entry.text)
+                        onEditRequested: page.startEditing(entry.noteId, entry.text)
+                        onDeleteRequested: deleteSheet.openFor(entry.noteId)
+                    }
+                }
+                Component {
+                    id: attachmentComponent
+                    ChatAttachment {
+                        width: entry.width
+                        kind: entry.kind
+                        title: entry.title
+                        size: entry.size
+                        thumbUrl: entry.thumbUrl
+                        timestamp: entry.timestamp
+                        mine: !entry.incoming
+                        canOpen: entry.canOpen
+                        canShowInFolder: entry.canShowInFolder
+                        dayLabel: entry.dayLabel
+                        onOpenRequested: ChatModel.openAttachment(entry.entryId)
+                        onShowInFolderRequested: ChatModel.showAttachmentInFolder(entry.entryId)
+                        onRemoveRequested: ChatModel.removeAttachment(entry.entryId)
+                    }
+                }
+            }
+        }
+
+        // Files on their way to or from the device, or that didn't make it;
+        // each joins the chat once it's through.
+        Rectangle {
+            id: transfersCard
+            objectName: "transfersCard"
+            visible: transfersColumn.height > 0
+            anchors.left: composer.left
+            anchors.right: composer.right
+            anchors.bottom: editBar.visible ? editBar.top : composer.top
+            anchors.bottomMargin: 8
+            height: transfersColumn.height
+            radius: Theme.radiusMd
+            color: Theme.cardColor
+            border.width: Theme.graphite ? 1 : 0
+            border.color: Theme.cardBorder
+            Column {
+                id: transfersColumn
+                x: 12
+                width: parent.width - 24
+                Repeater {
+                    model: TransferList
+                    delegate: TransferItem {
+                        required property string deviceId
+                        width: transfersColumn.width
+                        visible: deviceId === page.deviceId && (active || status === "failed")
+                    }
+                }
             }
         }
 
@@ -255,12 +330,25 @@ Item {
             color: Theme.graphite ? "transparent" : Theme.surfaceContainerHighest
             border.width: input.activeFocus ? 2 : 1
             border.color: input.activeFocus ? Theme.primary : Theme.outlineVariant
-            opacity: page.canWrite ? 1 : 0.7
 
+            // Files go whether or not notes can: they wait for the device.
+            IconButton {
+                id: attachButton
+                objectName: "attachButton"
+                anchors.left: parent.left
+                anchors.leftMargin: 6
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: 6
+                iconPath: Icons.attach
+                label: qsTr("Send files")
+                enabled: page.deviceId.length > 0
+                onClicked: filePicker.open()
+            }
             Flickable {
                 id: inputScroll
-                anchors.left: parent.left
-                anchors.leftMargin: 18
+                opacity: page.canWrite ? 1 : 0.7
+                anchors.left: attachButton.right
+                anchors.leftMargin: 6
                 anchors.right: sendButton.left
                 anchors.rightMargin: 8
                 anchors.top: parent.top
@@ -335,6 +423,63 @@ Item {
                 role: "bodySmall"
                 color: page.tooLong ? Theme.error : Theme.surfaceContentVariant
                 text: Qt.locale().toString(page.typedChars) + " / " + Qt.locale().toString(page.maxChars)
+            }
+        }
+    }
+
+    // Files picked or dropped go to the device, as Send files on Home does;
+    // each shows in the chat once it's through.
+    function sendFiles(urls) {
+        if (urls.length === 0 || deviceId.length === 0)
+            return
+        TransferList.send(deviceId, urls)
+        noteList.followLatest = true
+    }
+
+    FileDialog {
+        id: filePicker
+        title: qsTr("Send files to %1").arg(page.name)
+        fileMode: FileDialog.OpenFiles
+        onAccepted: page.sendFiles(selectedFiles.map(url => url.toString()))
+    }
+
+    DropArea {
+        id: drop
+        anchors.fill: parent
+        enabled: page.deviceId.length > 0
+        onEntered: (drag) => drag.accepted = drag.hasUrls
+        onDropped: (drag) => {
+            if (drag.hasUrls) {
+                page.sendFiles(drag.urls.map(url => url.toString()))
+                drag.accept(Qt.CopyAction)
+            }
+        }
+    }
+    Rectangle {
+        anchors.fill: parent
+        anchors.margins: Theme.contentPadding / 2
+        radius: Theme.radiusXl
+        visible: opacity > 0
+        opacity: drop.containsDrag ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: Theme.fadeFast } }
+        color: Qt.rgba(Theme.primaryContainer.r, Theme.primaryContainer.g, Theme.primaryContainer.b, 0.92)
+        border.width: 2
+        border.color: Theme.primary
+        Column {
+            anchors.centerIn: parent
+            spacing: 8
+            Icon {
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: 40; height: 40
+                stroke: 1.6
+                path: Icons.attach
+                color: Theme.primaryContainerContent
+            }
+            Txt {
+                anchors.horizontalCenter: parent.horizontalCenter
+                role: "headline"
+                color: Theme.primaryContainerContent
+                text: qsTr("Drop to send to %1").arg(page.name)
             }
         }
     }

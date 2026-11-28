@@ -2590,7 +2590,7 @@ Item {
                 }
             }
 
-            // The chat with this device (#698): its latest note, and the way in.
+            // The chat with this device (#698): its latest note or file, and the way in.
             Card {
                 id: chatHomeCard
                 width: parent.width
@@ -2653,7 +2653,8 @@ Item {
                             anchors.left: parent.left
                             anchors.verticalCenter: parent.verticalCenter
                             width: 16; height: 16
-                            path: Icons.messages
+                            // A file, photo or recording: what was sent.
+                            path: chatHomeCard.latest && chatHomeCard.latest.kind !== "note" ? Icons.attach : Icons.messages
                             color: Theme.primary
                         }
                         Column {

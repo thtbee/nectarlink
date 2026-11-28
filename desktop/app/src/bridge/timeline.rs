@@ -344,43 +344,14 @@ impl qobject::TimelineModel {
     }
 
     pub fn open_entry(&self, entry_id: &QString) {
-        let Some(row) = self.find_row(entry_id) else { return };
-        match row.entry.kind {
-            TimelineKind::File | TimelineKind::Photo | TimelineKind::Recording => {
-                if !row.primary_path.is_empty() {
-                    let path = Path::new(&row.primary_path);
-                    if path.exists() {
-                        crate::transfers::open(path);
-                    } else {
-                        show_message(tr!("Timeline", "That file was moved or deleted."));
-                    }
-                }
-            }
-            TimelineKind::Link => {
-                let url = if row.entry.target.is_empty() { &row.entry.title } else { &row.entry.target };
-                // Entries come from other devices: open web and map links only.
-                match crate::links::as_link(url) {
-                    Some(url) => {
-                        if let Err(e) = crate::links::open_here(url) {
-                            show_message(e);
-                        }
-                    }
-                    None => show_message(tr!("Timeline", "That isn't a web link.")),
-                }
-            }
-            TimelineKind::Clip | TimelineKind::Session | TimelineKind::Message => {}
+        if let Some(row) = self.find_row(entry_id) {
+            open(&row.entry, &row.primary_path);
         }
     }
 
     pub fn reveal_entry(&self, entry_id: &QString) {
-        let Some(row) = self.find_row(entry_id) else { return };
-        if !row.primary_path.is_empty() {
-            let path = Path::new(&row.primary_path);
-            if path.exists() {
-                crate::transfers::show_in_folder(path);
-            } else {
-                show_message(tr!("Timeline", "That file was moved or deleted."));
-            }
+        if let Some(row) = self.find_row(entry_id) {
+            reveal(&row.primary_path);
         }
     }
 
@@ -488,10 +459,8 @@ impl qobject::TimelineModel {
     }
 
     pub fn remove_entry(self: Pin<&mut Self>, entry_id: &QString) {
-        let Ok(id) = String::from(entry_id).parse::<i64>() else { return };
-        if let Some(Err(e)) = core_host::node().map(|node| node.delete_timeline_entry(id)) {
-            tracing::warn!(error = %e, "can't remove a Timeline entry");
-            show_message(tr!("Timeline", "That entry couldn't be removed. Try again."));
+        if let Ok(id) = String::from(entry_id).parse::<i64>() {
+            remove(id);
         }
     }
 
@@ -526,6 +495,84 @@ impl qobject::TimelineModel {
 
     pub fn row_count(&self, _parent: &QModelIndex) -> i32 {
         self.rows.len() as i32
+    }
+}
+
+/// Opens what an entry points at: a file, photo or recording's (first) file
+/// at `primary_path`, or a link's page. The Timeline and the chat share it.
+pub(super) fn open(entry: &TimelineEntry, primary_path: &str) {
+    match entry.kind {
+        TimelineKind::File | TimelineKind::Photo | TimelineKind::Recording => {
+            if !primary_path.is_empty() {
+                let path = Path::new(primary_path);
+                if path.exists() {
+                    crate::transfers::open(path);
+                } else {
+                    show_message(tr!("Timeline", "That file was moved or deleted."));
+                }
+            }
+        }
+        TimelineKind::Link => {
+            let url = if entry.target.is_empty() { &entry.title } else { &entry.target };
+            // Entries come from other devices: open web and map links only.
+            match crate::links::as_link(url) {
+                Some(url) => {
+                    if let Err(e) = crate::links::open_here(url) {
+                        show_message(e);
+                    }
+                }
+                None => show_message(tr!("Timeline", "That isn't a web link.")),
+            }
+        }
+        TimelineKind::Clip | TimelineKind::Session | TimelineKind::Message => {}
+    }
+}
+
+/// Shows an entry's saved file, folder, photo or recording in File Explorer.
+pub(super) fn reveal(primary_path: &str) {
+    if !primary_path.is_empty() {
+        let path = Path::new(primary_path);
+        if path.exists() {
+            crate::transfers::show_in_folder(path);
+        } else {
+            show_message(tr!("Timeline", "That file was moved or deleted."));
+        }
+    }
+}
+
+/// Removes one entry from this PC's timeline (the other device keeps its own).
+pub(super) fn remove(id: i64) {
+    if let Some(Err(e)) = core_host::node().map(|node| node.delete_timeline_entry(id)) {
+        tracing::warn!(error = %e, "can't remove a Timeline entry");
+        show_message(tr!("Timeline", "That entry couldn't be removed. Try again."));
+    }
+}
+
+/// What the chat shows of a file, photo or recording entry (#698): the same
+/// name, thumbnail, path and actions as its Timeline row.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct Attachment {
+    pub title: String,
+    /// The size in words ("" when it isn't known).
+    pub size: String,
+    pub thumb_url: String,
+    pub primary_path: String,
+    pub item_count: u32,
+    pub can_open: bool,
+    pub can_show_in_folder: bool,
+}
+
+pub(super) fn attachment(entry: &TimelineEntry) -> Attachment {
+    let (title, _, thumb_url, primary_path, item_count, can_open, can_show_in_folder, _, _) =
+        describe_entry(entry, &entry.device_name);
+    Attachment {
+        title,
+        size: if entry.size_bytes > 0 { format_bytes(entry.size_bytes) } else { String::new() },
+        thumb_url,
+        primary_path,
+        item_count,
+        can_open,
+        can_show_in_folder,
     }
 }
 
