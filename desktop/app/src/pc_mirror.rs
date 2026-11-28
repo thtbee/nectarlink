@@ -3130,12 +3130,15 @@ mod imp {
                 }
             };
 
+            // The NVENC worker captures and encodes on its own.
+            #[cfg(linux_gst_nvenc)]
+            let worker_encodes = nvenc_portal.is_some();
+            #[cfg(all(target_os = "linux", not(linux_gst_nvenc)))]
+            let worker_encodes = false;
             #[cfg(target_os = "linux")]
-            let encode_attempt = (|| {
-                #[cfg(linux_gst_nvenc)]
-                if nvenc_portal.is_some() {
-                    return None;
-                }
+            let encode_attempt = if worker_encodes {
+                None
+            } else {
                 let wayland_captured = wayland.is_some();
                 let captured = wayland_captured
                     || match (place, window_capture.as_mut()) {
@@ -3155,7 +3158,7 @@ mod imp {
                 } else {
                     None
                 }
-            })();
+            };
 
             let result = encode_attempt.map(|(time_us, result)| {
                 result.map(|packets| {
