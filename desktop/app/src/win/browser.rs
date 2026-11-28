@@ -52,6 +52,7 @@ pub fn programs_for(player: &str) -> Vec<String> {
         ("brave", "brave.exe"),
         ("opera", "opera.exe"),
         ("vivaldi", "vivaldi.exe"),
+        ("arc", "arc.exe"),
         ("firefox", "firefox.exe"),
         ("zen", "zen.exe"),
         ("floorp", "floorp.exe"),
@@ -89,6 +90,7 @@ pub fn is_browser(program: &str) -> bool {
             | "brave.exe"
             | "opera.exe"
             | "vivaldi.exe"
+            | "arc.exe"
             | "firefox.exe"
             | "zen.exe"
             | "floorp.exe"
@@ -262,11 +264,14 @@ impl Automation {
         let root = self.root(window)?;
         let bar = self
             .find(&root, UIA_ClassNamePropertyId, VARIANT::from("OmniboxViewViews"))
-            .or_else(|| self.find(&root, UIA_AutomationIdPropertyId, VARIANT::from("urlbar-input")))?;
+            .or_else(|| self.find(&root, UIA_AutomationIdPropertyId, VARIANT::from("urlbar-input")))
+            .or_else(|| self.find(&root, UIA_AutomationIdPropertyId, VARIANT::from("addressBarTextBox")))
+            .or_else(|| self.find(&root, UIA_AutomationIdPropertyId, VARIANT::from("AddressBar")));
+        let bar = bar?;
         // SAFETY: a COM call on a live element.
         let value = unsafe { bar.GetCurrentPropertyValue(UIA_ValueValuePropertyId) }.ok()?;
         let text = BSTR::try_from(&value).ok()?.to_string();
-        with_scheme(&text)
+        with_scheme(&text).filter(|u| nectarlink_core::is_valid_web_url(u))
     }
 
     /// Where on screen the video plays in `window`, in physical pixels:
@@ -362,6 +367,83 @@ fn with_scheme(text: &str) -> Option<String> {
     (host.contains('.') || host == "localhost").then(|| format!("https://{text}"))
 }
 
+/// Whether a browser window is in Incognito / InPrivate / Private Browsing mode.
+/// Checks browser-added window title markers while avoiding false positives on
+/// normal web pages whose `<title>` happens to include words like "private".
+pub fn is_private_browser_window(program: &str, title: &str) -> bool {
+    let prog = program.trim().to_ascii_lowercase();
+    if matches!(prog.as_str(), "tor.exe" | "torbrowser.exe") {
+        return true;
+    }
+    let lower = title.trim().to_ascii_lowercase();
+    if lower.is_empty() {
+        return false;
+    }
+    // Chromium / Edge / Brave / Opera / Vivaldi / Arc / Firefox private-window markers.
+    // Browsers append their own window suffix at the end, so avoid loose prefixes
+    // on generic titles (e.g. a Wikipedia article titled "Private browsing").
+    lower.ends_with("(incognito)")
+        || lower.ends_with("- incognito")
+        || lower.starts_with("new incognito tab - ")
+        || (prog == "arc.exe" && (lower == "incognito - arc" || lower.starts_with("incognito - ")))
+        || lower.contains("[inprivate]")
+        || lower.contains("(inprivate)")
+        || lower.contains(" - inprivate - ")
+        || lower.starts_with("new inprivate tab - ")
+        || lower.ends_with("private browsing")
+        || lower.ends_with("(private browsing)")
+        || (prog == "opera.exe"
+            && (lower == "private browsing - opera" || lower.starts_with("private browsing - ")))
+        || lower.ends_with("(private)")
+        || lower.ends_with("(private with tor)")
+        || lower.starts_with("new private tab - ")
+        || lower.starts_with("new private window - ")
+}
+
+/// Reads the active tab's `http://`/`https://` URL from `hwnd` (or the current
+/// foreground window when `hwnd == 0`), skipping private/Incognito windows.
+pub fn active_browser_url_for_hwnd(hwnd: isize) -> crate::links::ActiveBrowserUrl {
+    // SAFETY: GetForegroundWindow and window queries read Win32 handle state only.
+    let target = if hwnd != 0 {
+        HWND(hwnd as *mut _)
+    } else {
+        unsafe { windows::Win32::UI::WindowsAndMessaging::GetForegroundWindow() }
+    };
+    if target.0.is_null() || !shown(target, false) {
+        return crate::links::ActiveBrowserUrl::NoBrowser;
+    }
+    let Some(program) = program_of(target) else {
+        return crate::links::ActiveBrowserUrl::NoBrowser;
+    };
+    if !is_browser(&program) {
+        return crate::links::ActiveBrowserUrl::NoBrowser;
+    }
+    let title = title_of(target);
+    if is_private_browser_window(&program, &title) {
+        return crate::links::ActiveBrowserUrl::PrivateWindow;
+    }
+    // SAFETY: Initializes COM on this worker thread before creating IUIAutomation;
+    // CoUninitialize is paired only when CoInitializeEx succeeds on this call.
+    let com_hr = unsafe {
+        windows::Win32::System::Com::CoInitializeEx(None, windows::Win32::System::Com::COINIT_MULTITHREADED)
+    };
+    let window = Window { hwnd: target, program: program.clone(), title };
+    let res = match Automation::new() {
+        Ok(automation) => match automation.page_url(&window) {
+            Some(url) if nectarlink_core::is_valid_web_url(&url) => {
+                crate::links::ActiveBrowserUrl::Url { url, program }
+            }
+            _ => crate::links::ActiveBrowserUrl::NoUrl,
+        },
+        Err(_) => crate::links::ActiveBrowserUrl::NoUrl,
+    };
+    if com_hr.is_ok() {
+        // SAFETY: Matches the successful CoInitializeEx call above on this thread.
+        unsafe { windows::Win32::System::Com::CoUninitialize() };
+    }
+    res
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -448,5 +530,26 @@ mod tests {
         eprintln!("{:?} {url:?} {rect:?}", window.title);
         assert!(url.is_some_and(|u| u.starts_with("http")));
         assert!(rect.right - rect.left >= 64);
+    }
+
+    #[test]
+    fn detects_private_and_incognito_browser_windows_without_false_positives() {
+        assert!(is_browser("arc.exe"));
+        assert!(is_private_browser_window("chrome.exe", "Docs - Google Chrome (Incognito)"));
+        assert!(is_private_browser_window("chrome.exe", "New Incognito Tab - Google Chrome"));
+        assert!(is_private_browser_window("msedge.exe", "News - [InPrivate] - Microsoft\u{200b} Edge"));
+        assert!(is_private_browser_window("msedge.exe", "New InPrivate tab - Microsoft Edge"));
+        assert!(is_private_browser_window("brave.exe", "Search - Brave (Private)"));
+        assert!(is_private_browser_window("brave.exe", "Search - Brave (Private with Tor)"));
+        assert!(is_private_browser_window("firefox.exe", "Example — Mozilla Firefox Private Browsing"));
+        assert!(is_private_browser_window("opera.exe", "Private browsing - Opera"));
+        assert!(is_private_browser_window("vivaldi.exe", "Page - Vivaldi (Private)"));
+        assert!(is_private_browser_window("arc.exe", "Incognito - Arc"));
+        assert!(is_private_browser_window("torbrowser.exe", "Anything"));
+
+        assert!(!is_private_browser_window("chrome.exe", "Private browsing - Wikipedia - Google Chrome"));
+        assert!(!is_private_browser_window("chrome.exe", "My Private Notes - Google Chrome"));
+        assert!(!is_private_browser_window("msedge.exe", "Dashboard - Personal - Microsoft\u{200b} Edge"));
+        assert!(!is_private_browser_window("firefox.exe", "GitHub - Mozilla Firefox"));
     }
 }

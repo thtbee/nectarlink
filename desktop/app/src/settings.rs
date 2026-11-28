@@ -126,6 +126,14 @@ fn default_local_api_port() -> u16 {
     DEFAULT_LOCAL_API_PORT
 }
 
+fn default_handoff_pull_hotkey() -> String {
+    "Ctrl+Shift+3".into()
+}
+
+fn default_handoff_push_hotkey() -> String {
+    "Ctrl+Shift+4".into()
+}
+
 fn default_window_width() -> u32 {
     DEFAULT_WINDOW_WIDTH
 }
@@ -814,6 +822,12 @@ pub struct Settings {
     /// Global hotkey to slide out the Shelf panel at the screen edge (e.g. `"Ctrl+Alt+S"`, or `""` to disable).
     #[serde(alias = "shelf_hotkey")]
     pub shelf_hotkey: String,
+    /// Global hotkey to pull the active Handoff link from the connected phone (`"Ctrl+Shift+3"`, or `""` to disable).
+    #[serde(default = "default_handoff_pull_hotkey", alias = "handoff_pull_hotkey")]
+    pub handoff_pull_hotkey: String,
+    /// Global hotkey to push the active browser tab URL to the connected phone (`"Ctrl+Shift+4"`, or `""` to disable).
+    #[serde(default = "default_handoff_push_hotkey", alias = "handoff_push_hotkey")]
+    pub handoff_push_hotkey: String,
     /// Whether the localhost HTTP/JSON automation API (`127.0.0.1:<local_api_port>`) is enabled (off by default).
     #[serde(default, alias = "local_api_enabled")]
     pub local_api_enabled: bool,
@@ -1079,6 +1093,8 @@ impl Default for Settings {
             continuity_scan_hotkey: "Ctrl+Alt+D".into(),
             command_palette_hotkey: "Ctrl+Alt+Space".into(),
             shelf_hotkey: "Ctrl+Alt+S".into(),
+            handoff_pull_hotkey: default_handoff_pull_hotkey(),
+            handoff_push_hotkey: default_handoff_push_hotkey(),
             local_api_enabled: false,
             local_api_port: default_local_api_port(),
             local_api_private: false,
@@ -1398,6 +1414,8 @@ mod tests {
         assert_eq!(def, Settings::default());
         assert_eq!(def.command_palette_hotkey, "Ctrl+Alt+Space");
         assert_eq!(def.shelf_hotkey, "Ctrl+Alt+S");
+        assert_eq!(def.handoff_pull_hotkey, "Ctrl+Shift+3");
+        assert_eq!(def.handoff_push_hotkey, "Ctrl+Shift+4");
         assert!(!def.local_api_enabled);
         assert!(!def.local_api_private);
         assert_eq!(def.local_api_port, 53320);
@@ -1468,6 +1486,8 @@ mod tests {
             continuity_scan_hotkey: "Ctrl+Alt+S".into(),
             command_palette_hotkey: "Ctrl+Shift+Space".into(),
             shelf_hotkey: "Ctrl+Alt+E".into(),
+            handoff_pull_hotkey: "Ctrl+Shift+7".into(),
+            handoff_push_hotkey: "Ctrl+Shift+8".into(),
             local_api_enabled: true,
             local_api_port: 54321,
             local_api_private: true,
@@ -1690,6 +1710,8 @@ mod tests {
         assert_eq!(s.continuity_scan_hotkey, "Ctrl+Shift+D");
         assert_eq!(s.command_palette_hotkey, "Ctrl+Alt+Space");
         assert_eq!(s.shelf_hotkey, "Ctrl+Alt+S");
+        assert_eq!(s.handoff_pull_hotkey, "Ctrl+Shift+3");
+        assert_eq!(s.handoff_push_hotkey, "Ctrl+Shift+4");
         assert!(!s.local_api_enabled);
         assert_eq!(s.local_api_port, 53320);
 

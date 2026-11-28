@@ -69,6 +69,7 @@ pub mod types {
     pub const PC_POWER: &str = "pc.power";
     pub const PC_WAKE_INFO: &str = "pc.wake_info";
     pub const LINK_OPEN: &str = "link.open";
+    pub const LINK_PULL: &str = "link.pull";
     pub const TASK_NOTIFY: &str = "task.notify";
     pub const PHOTOS_NEW: &str = "photos.new";
     pub const PHOTOS_ALBUMS: &str = "photos.albums";
@@ -3286,6 +3287,12 @@ impl UpdateHint {
     }
 }
 
+/// Capabilities for link handoff (`docs/protocol/actions.md`).
+pub mod link {
+    /// Responder shares its currently active shareable link on `link.pull`.
+    pub const PULL: &str = "link.pull";
+}
+
 /// Body of `link.open`.
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LinkOpen {
@@ -3300,6 +3307,27 @@ impl std::fmt::Debug for LinkOpen {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("LinkOpen")
             .field("bytes", &self.url.len())
+            .field("has_title", &self.title.is_some())
+            .finish()
+    }
+}
+
+/// Body of `link.pull` response (the responder's currently active shareable link, if any).
+#[derive(Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct LinkPull {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    /// Optional human-readable title (e.g. the active video's title from the sender's media session).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+}
+
+/// Never prints the link or title (protocol v0 §11).
+impl std::fmt::Debug for LinkPull {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LinkPull")
+            .field("has_url", &self.url.is_some())
+            .field("bytes", &self.url.as_ref().map_or(0, String::len))
             .field("has_title", &self.title.is_some())
             .finish()
     }
@@ -7439,6 +7467,7 @@ name"
                     PhotoThumbsList,
                     PhotoGet,
                     LinkOpen,
+                    LinkPull,
                     TaskNotify,
                     CameraCaptureRequest,
                     CameraCaptureOk,
@@ -7621,5 +7650,26 @@ name"
         let log = DiagLog { ask: 3, declined: true, lines: vec![] };
         let back: DiagLog = crate::Envelope::new(types::DIAG_LOG, &log).unwrap().body().unwrap();
         assert_eq!(back, log);
+    }
+
+    #[test]
+    fn link_pull_round_trips_and_redacts_debug() {
+        let some_pull = LinkPull {
+            url: Some("https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=90".into()),
+            title: Some("Demo Video".into()),
+        };
+        let env = crate::Envelope::new(types::LINK_PULL, &some_pull).unwrap();
+        let decoded: LinkPull = crate::Envelope::from_cbor(&env.to_cbor()).unwrap().body().unwrap();
+        assert_eq!(decoded, some_pull);
+
+        let dbg = format!("{some_pull:?}");
+        assert!(!dbg.contains("youtube.com"), "Debug leaked URL: {dbg}");
+        assert!(!dbg.contains("Demo Video"), "Debug leaked title: {dbg}");
+
+        let empty_pull = LinkPull::default();
+        let env_empty = crate::Envelope::new(types::LINK_PULL, &empty_pull).unwrap();
+        let decoded_empty: LinkPull =
+            crate::Envelope::from_cbor(&env_empty.to_cbor()).unwrap().body().unwrap();
+        assert_eq!(decoded_empty, empty_pull);
     }
 }

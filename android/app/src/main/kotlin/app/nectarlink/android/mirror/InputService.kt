@@ -436,6 +436,69 @@ class InputService : AccessibilityService() {
             service.main.post { service.handle(input) }
         }
 
+        /**
+         * Reads the active browser window's package, address bar text, and toolbar
+         * private/incognito markers without touching webpage body content.
+         */
+        internal fun activeBrowserSnapshot(): app.nectarlink.android.links.ActiveHandoffLink.BrowserSnapshot? {
+            val service = instance ?: return null
+            val root = service.rootInActiveWindow
+                ?: runCatching {
+                    service.windows
+                        ?.firstOrNull { it.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_APPLICATION && it.isActive }
+                        ?.root
+                }.getOrNull()
+                ?: return null
+            val pkg = root.packageName?.toString()?.takeIf { it.isNotBlank() } ?: return null
+            var urlText: String? = null
+            val toolbarLabels = ArrayList<String>(12)
+            val resourceIds = ArrayList<String>(16)
+            val queue = ArrayDeque<AccessibilityNodeInfo>()
+            queue.add(root)
+            var visited = 0
+            while (queue.isNotEmpty() && visited < 80) {
+                val node = queue.removeFirst()
+                visited++
+                val className = node.className?.toString().orEmpty()
+                if (className == "android.webkit.WebView") continue
+                val resId = node.viewIdResourceName?.toString()
+                if (!resId.isNullOrBlank()) {
+                    resourceIds.add(resId)
+                    if (urlText == null && isKnownAddressBarId(resId)) {
+                        val candidate = node.text?.toString()?.trim()
+                        if (!candidate.isNullOrEmpty() && !node.isShowingHintText) {
+                            urlText = candidate
+                        }
+                    }
+                }
+                val desc = node.contentDescription?.toString()?.trim()
+                if (!desc.isNullOrEmpty()) toolbarLabels.add(desc)
+                val text = node.text?.toString()?.trim()
+                if (!text.isNullOrEmpty() && !isKnownAddressBarId(resId.orEmpty())) {
+                    toolbarLabels.add(text)
+                }
+                for (i in 0 until node.childCount) {
+                    node.getChild(i)?.let(queue::addLast)
+                }
+            }
+            return app.nectarlink.android.links.ActiveHandoffLink.BrowserSnapshot(
+                packageName = pkg,
+                urlText = urlText,
+                toolbarLabels = toolbarLabels,
+                resourceIds = resourceIds,
+            )
+        }
+
+        private fun isKnownAddressBarId(resId: String): Boolean {
+            val shortId = resId.substringAfterLast('/')
+            return shortId == "url_bar" ||
+                shortId == "mozac_browser_toolbar_url_view" ||
+                shortId == "url_bar_title" ||
+                shortId == "location_bar_edit_text" ||
+                shortId == "url_field" ||
+                shortId == "omnibarTextInput"
+        }
+
         /** Whether it's turned on in Settings (it may not be running yet). */
         fun enabled(context: Context): Boolean {
             val enabled = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES).orEmpty()

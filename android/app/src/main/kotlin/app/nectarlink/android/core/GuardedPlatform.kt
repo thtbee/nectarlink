@@ -74,6 +74,8 @@ internal class GuardedPlatform(context: Context, private val inner: Platform) : 
 
     override fun openLink(fromId: String, url: String): Boolean = guard("openLink", false) { inner.openLink(fromId, url) }
 
+    override fun pullLink(): app.nectarlink.core.PulledLink? = guard("pullLink", null) { inner.pullLink() }
+
     override fun watchOffered(fromId: String, player: String, title: String?, file: WatchFileOffer?): Boolean = guard("watchOffered", false) { inner.watchOffered(fromId, player, title, file) }
 
     override fun taskNotify(fromId: String, task: TaskNotify): Boolean = guard("taskNotify", false) { inner.taskNotify(fromId, task) }

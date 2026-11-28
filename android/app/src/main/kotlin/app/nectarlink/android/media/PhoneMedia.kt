@@ -88,6 +88,7 @@ class PhoneMedia(context: Context, private val onChange: (List<MediaPlayer>) -> 
         scheduled = false
         worker.execute {
             controllers = emptyMap()
+            lastSnapshots = emptyList()
             activeSeedColor = null
             lastSent = null
             _players.value = Players(emptyList(), SystemClock.elapsedRealtime())
@@ -120,6 +121,8 @@ class PhoneMedia(context: Context, private val onChange: (List<MediaPlayer>) -> 
     private var lastSent: List<MediaPlayer>? = null
     @Volatile
     private var lastSentAt = 0L
+    @Volatile
+    private var lastSnapshots: List<ControllerSnapshot> = emptyList()
 
     /**
      * Changes come in bursts (metadata, then state, then artwork), so they're
@@ -132,6 +135,15 @@ class PhoneMedia(context: Context, private val onChange: (List<MediaPlayer>) -> 
         scheduled = true
         main.postDelayed(publish, SETTLE_MS)
     }
+
+    /** Snapshot of the currently active media session with an optional source URI/ID. */
+    data class MediaLinkSnapshot(
+        val packageName: String,
+        val title: String?,
+        val mediaUri: String?,
+        val mediaId: String?,
+        val positionSecs: UInt?,
+    )
 
     private class ControllerSnapshot(
         val controller: MediaController,
@@ -146,6 +158,8 @@ class PhoneMedia(context: Context, private val onChange: (List<MediaPlayer>) -> 
         val actions: List<MediaAction>,
         val picture: Bitmap?,
         val updated: Long,
+        val mediaUri: String?,
+        val mediaId: String?,
     )
 
     private fun snapshot(controller: MediaController): ControllerSnapshot? {
@@ -191,6 +205,8 @@ class PhoneMedia(context: Context, private val onChange: (List<MediaPlayer>) -> 
             actions = actions,
             picture = picture,
             updated = state?.lastPositionUpdateTime ?: 0L,
+            mediaUri = metadata.text(MediaMetadata.METADATA_KEY_MEDIA_URI),
+            mediaId = metadata.text(MediaMetadata.METADATA_KEY_MEDIA_ID),
         )
     }
 
@@ -237,6 +253,7 @@ class PhoneMedia(context: Context, private val onChange: (List<MediaPlayer>) -> 
             }
             if (!running) return@execute
             controllers = ids
+            lastSnapshots = snapshots
             activeSeedColor = topPlayingSeed ?: firstSeed
             val now = SystemClock.elapsedRealtime()
             if (sameButLater(lastSent, lastSentAt, players, now)) return@execute
@@ -273,21 +290,38 @@ class PhoneMedia(context: Context, private val onChange: (List<MediaPlayer>) -> 
         }
     }
 
-    /** Current playback position in seconds of the active media session, if any. */
-    fun activePositionSeconds(): UInt? {
-        val list = lastSent ?: return null
-        val first = list.firstOrNull { it.playing } ?: list.firstOrNull() ?: return null
-        val baseMs = first.position?.toLong() ?: return null
-        val elapsedMs = if (first.playing && lastSentAt > 0) {
-            (SystemClock.elapsedRealtime() - lastSentAt).coerceAtLeast(0L)
+    private fun livePositionSeconds(position: Long?, duration: Long?, playing: Boolean, atMs: Long): UInt? {
+        val baseMs = position ?: return null
+        val elapsedMs = if (playing && atMs > 0) {
+            (SystemClock.elapsedRealtime() - atMs).coerceAtLeast(0L)
         } else {
             0L
         }
         val totalMs = (baseMs + elapsedMs).let { pos ->
-            first.duration?.toLong()?.let { dur -> pos.coerceAtMost(dur) } ?: pos
+            duration?.let { dur -> pos.coerceAtMost(dur) } ?: pos
         }
         val secs = (totalMs / 1000L).toInt()
         return if (secs > 0) secs.toUInt() else null
+    }
+
+    /** Current playback position in seconds of the active media session, if any. */
+    fun activePositionSeconds(): UInt? {
+        val list = lastSent ?: return null
+        val first = list.firstOrNull { it.playing } ?: list.firstOrNull() ?: return null
+        return livePositionSeconds(first.position?.toLong(), first.duration?.toLong(), first.playing, lastSentAt)
+    }
+
+    /** Metadata and live playback position for the active media session, if any. */
+    internal fun activeMediaLink(): MediaLinkSnapshot? {
+        val snap = lastSnapshots.firstOrNull { it.playing } ?: lastSnapshots.firstOrNull() ?: return null
+        val secs = livePositionSeconds(snap.position, snap.duration, snap.playing, lastSentAt)
+        return MediaLinkSnapshot(
+            packageName = snap.packageName,
+            title = snap.title,
+            mediaUri = snap.mediaUri,
+            mediaId = snap.mediaId,
+            positionSecs = secs,
+        )
     }
 
     private class CachedArt(val key: String, val jpeg: ByteArray, val seedColor: UInt?)

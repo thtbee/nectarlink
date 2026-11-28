@@ -120,6 +120,27 @@ pub fn parse_video_timestamp(raw: &str) -> Option<u32> {
     (saw_unit && total > 0 && total <= 86_400 * 7).then_some(total)
 }
 
+/// Returns `true` if `url` is a valid, strictly `http://` or `https://` web URL
+/// with a non-empty host, no whitespace/control characters, and within protocol bounds.
+#[must_use]
+pub fn is_valid_web_url(url: &str) -> bool {
+    let trimmed = url.trim();
+    if trimmed.is_empty()
+        || trimmed.len() > nectarlink_protocol::messages::LINK_MAX_BYTES
+        || trimmed.chars().any(|c| c.is_control() || c.is_whitespace())
+    {
+        return false;
+    }
+    let Ok(parsed) = url::Url::parse(trimmed) else {
+        return false;
+    };
+    let after_scheme = trimmed.split_once("://").map(|(_, rest)| rest).unwrap_or("");
+    if after_scheme.is_empty() || after_scheme.starts_with('/') {
+        return false;
+    }
+    matches!(parsed.scheme(), "http" | "https") && parsed.host_str().is_some_and(|h| !h.is_empty())
+}
+
 /// Extracts the first `http://`, `https://`, or `geo:` link from `text` and
 /// classifies it as a [`HandoffLink`].
 #[must_use]
@@ -741,5 +762,31 @@ mod tests {
         let (w_title, w_detail) = timeline_link_title_and_detail("https://nectarlink.app/timeline", None);
         assert_eq!(w_title, "nectarlink.app/timeline");
         assert_eq!(w_detail, "https://nectarlink.app/timeline");
+    }
+
+    #[test]
+    fn validates_strict_web_urls() {
+        assert!(is_valid_web_url("https://example.com/watch?v=1"));
+        assert!(is_valid_web_url("http://localhost:8080/test"));
+        assert!(is_valid_web_url("  https://www.youtube.com/watch?v=abc&t=42  "));
+
+        for bad in [
+            "",
+            "   ",
+            "geo:37.7749,-122.4194",
+            "file:///etc/passwd",
+            "javascript:alert(1)",
+            "data:text/html,<script>",
+            "intent://scan/#Intent;end",
+            "ms-settings:bluetooth",
+            "ftp://example.com/file",
+            "http://",
+            "https:///path",
+            "https://example.com/has space",
+            "https://example.com/\nline",
+        ] {
+            assert!(!is_valid_web_url(bad), "{bad} must be rejected");
+        }
+        assert!(!is_valid_web_url(&format!("https://example.com/{}", "a".repeat(5000))));
     }
 }

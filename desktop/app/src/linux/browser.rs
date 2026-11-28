@@ -121,6 +121,10 @@ pub fn is_browser(program: &str) -> bool {
     )
 }
 
+pub fn active_browser_url_for_hwnd(_hwnd: isize) -> crate::links::ActiveBrowserUrl {
+    crate::links::ActiveBrowserUrl::NoBrowser
+}
+
 /// Enumerate visible top-level windows via `wmctrl -lp` or `xdotool`.
 pub fn windows() -> Vec<Window> {
     if std::env::var_os("DISPLAY").is_none() && std::env::var_os("WAYLAND_DISPLAY").is_none() {

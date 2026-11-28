@@ -19,6 +19,8 @@ QtObject {
     property bool combMotion: false
     property string seed: ""
     property string commandPaletteHotkey: ""
+    property string handoffPullHotkey: "Ctrl+Shift+3"
+    property string handoffPushHotkey: "Ctrl+Shift+4"
     property bool streamPcAudioToPhone: false
     property string mediaTime: "remaining"
     property bool nectarIsland: true

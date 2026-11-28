@@ -126,6 +126,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         ringer,
         phoneMedia,
         onLink = { pc, url -> LinkNotifications.show(this.context, _state.value.nameOf(pc).orEmpty(), url) },
+        onPullLink = { app.nectarlink.android.links.ActiveHandoffLink.resolve(this.context, phoneMedia) },
         onMic = { pc ->
             // Asked on Home too, so it's seen with notifications off or while the app is open.
             _state.update { it.copy(micRequestFrom = pc) }
@@ -2511,6 +2512,8 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
             listOf("media.watch") +
             // Shows a paired phone's or tablet's notifications.
             listOf("notify.show") +
+            // Instant Handoff pull: PC can ask for this phone's active shareable link.
+            listOf("link.pull") +
             // Phone as microphone: asks for the permission when a PC first wants it.
             (if (context.packageManager.hasSystemFeature(PackageManager.FEATURE_MICROPHONE)) listOf("mic.stream") else emptyList()) +
             toggles.capabilities() +

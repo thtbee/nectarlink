@@ -18,6 +18,8 @@ pub enum TrayEvent {
     Open,
     CommandPalette,
     Shelf,
+    HandoffPull,
+    HandoffPush,
     TakePhoto,
     ScanDocument,
     FindPhone,
@@ -204,7 +206,15 @@ impl Drop for Tray {
     }
 }
 
-pub fn update_hotkeys(_photo_spec: &str, _scan_spec: &str, _palette_spec: &str, _shelf_spec: &str) {}
+pub fn update_hotkeys(
+    _photo_spec: &str,
+    _scan_spec: &str,
+    _palette_spec: &str,
+    _shelf_spec: &str,
+    _handoff_pull_spec: &str,
+    _handoff_push_spec: &str,
+) {
+}
 
 #[allow(dead_code)]
 pub fn record_foreground_window() {}

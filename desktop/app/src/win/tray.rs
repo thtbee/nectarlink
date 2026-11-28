@@ -59,6 +59,8 @@ pub enum TrayEvent {
     Open,
     CommandPalette,
     Shelf,
+    HandoffPull,
+    HandoffPush,
     TakePhoto,
     ScanDocument,
     FindPhone,
@@ -95,6 +97,8 @@ const HOTKEY_PHOTO_ID: i32 = 101;
 const HOTKEY_SCAN_ID: i32 = 102;
 const HOTKEY_PALETTE_ID: i32 = 103;
 const HOTKEY_SHELF_ID: i32 = 104;
+const HOTKEY_HANDOFF_PULL_ID: i32 = 105;
+const HOTKEY_HANDOFF_PUSH_ID: i32 = 106;
 const ICON_ID: u32 = 1;
 const CMD_OPEN: u32 = 1;
 const CMD_FIND_PHONE: u32 = 2;
@@ -116,8 +120,8 @@ type Handler = Box<dyn Fn(TrayEvent)>;
 
 static TRAY_HWND: AtomicIsize = AtomicIsize::new(0);
 static LAST_EXTERNAL_FOREGROUND: Mutex<Option<(isize, String)>> = Mutex::new(None);
-static HOTKEY_SPECS: Mutex<(String, String, String, String)> =
-    Mutex::new((String::new(), String::new(), String::new(), String::new()));
+static HOTKEY_SPECS: Mutex<[String; 6]> =
+    Mutex::new([String::new(), String::new(), String::new(), String::new(), String::new(), String::new()]);
 
 thread_local! {
     static HANDLER: RefCell<Option<Handler>> = RefCell::new(None);
@@ -417,16 +421,25 @@ pub fn parse_hotkey(spec: &str) -> Option<(u32, u32)> {
     Some((mods | MOD_NOREPEAT.0, vk))
 }
 
-/// Updates the Continuity Camera, Command Palette, and Shelf global hotkeys (`photo_spec`, `scan_spec`, `palette_spec`, and `shelf_spec`).
-pub fn update_hotkeys(photo_spec: &str, scan_spec: &str, palette_spec: &str, shelf_spec: &str) {
+/// Updates the global hotkeys (`photo_spec`, `scan_spec`, `palette_spec`, `shelf_spec`, `handoff_pull_spec`, and `handoff_push_spec`).
+pub fn update_hotkeys(
+    photo_spec: &str,
+    scan_spec: &str,
+    palette_spec: &str,
+    shelf_spec: &str,
+    handoff_pull_spec: &str,
+    handoff_push_spec: &str,
+) {
     {
         let mut specs = HOTKEY_SPECS.lock().unwrap_or_else(|e| e.into_inner());
-        *specs = (
+        *specs = [
             photo_spec.trim().to_owned(),
             scan_spec.trim().to_owned(),
             palette_spec.trim().to_owned(),
             shelf_spec.trim().to_owned(),
-        );
+            handoff_pull_spec.trim().to_owned(),
+            handoff_push_spec.trim().to_owned(),
+        ];
     }
     let raw = TRAY_HWND.load(Ordering::Acquire);
     if raw != 0 {
@@ -437,34 +450,36 @@ pub fn update_hotkeys(photo_spec: &str, scan_spec: &str, palette_spec: &str, she
     }
 }
 
+const HOTKEY_IDS: [i32; 6] = [
+    HOTKEY_PHOTO_ID,
+    HOTKEY_SCAN_ID,
+    HOTKEY_PALETTE_ID,
+    HOTKEY_SHELF_ID,
+    HOTKEY_HANDOFF_PULL_ID,
+    HOTKEY_HANDOFF_PUSH_ID,
+];
+
 unsafe fn apply_hotkeys_on_window(hwnd: HWND) {
-    let (photo_spec, scan_spec, palette_spec, shelf_spec) =
-        HOTKEY_SPECS.lock().unwrap_or_else(|e| e.into_inner()).clone();
+    let specs = HOTKEY_SPECS.lock().unwrap_or_else(|e| e.into_inner()).clone();
+    let entries = [
+        (HOTKEY_PHOTO_ID, "Take Photo", specs[0].as_str()),
+        (HOTKEY_SCAN_ID, "Scan Document", specs[1].as_str()),
+        (HOTKEY_PALETTE_ID, "Command Palette", specs[2].as_str()),
+        (HOTKEY_SHELF_ID, "Shelf", specs[3].as_str()),
+        (HOTKEY_HANDOFF_PULL_ID, "Handoff Pull", specs[4].as_str()),
+        (HOTKEY_HANDOFF_PUSH_ID, "Handoff Push", specs[5].as_str()),
+    ];
     // SAFETY: Unregistering and registering hotkeys on the thread that owns `hwnd`.
     unsafe {
-        let _ = UnregisterHotKey(Some(hwnd), HOTKEY_PHOTO_ID);
-        let _ = UnregisterHotKey(Some(hwnd), HOTKEY_SCAN_ID);
-        let _ = UnregisterHotKey(Some(hwnd), HOTKEY_PALETTE_ID);
-        let _ = UnregisterHotKey(Some(hwnd), HOTKEY_SHELF_ID);
-        if let Some((mods, vk)) = parse_hotkey(&photo_spec)
-            && let Err(e) = RegisterHotKey(Some(hwnd), HOTKEY_PHOTO_ID, HOT_KEY_MODIFIERS(mods), vk)
-        {
-            tracing::debug!(hotkey = %photo_spec, error = %e, "could not register Take Photo hotkey");
+        for id in HOTKEY_IDS {
+            let _ = UnregisterHotKey(Some(hwnd), id);
         }
-        if let Some((mods, vk)) = parse_hotkey(&scan_spec)
-            && let Err(e) = RegisterHotKey(Some(hwnd), HOTKEY_SCAN_ID, HOT_KEY_MODIFIERS(mods), vk)
-        {
-            tracing::debug!(hotkey = %scan_spec, error = %e, "could not register Scan Document hotkey");
-        }
-        if let Some((mods, vk)) = parse_hotkey(&palette_spec)
-            && let Err(e) = RegisterHotKey(Some(hwnd), HOTKEY_PALETTE_ID, HOT_KEY_MODIFIERS(mods), vk)
-        {
-            tracing::debug!(hotkey = %palette_spec, error = %e, "could not register Command Palette hotkey");
-        }
-        if let Some((mods, vk)) = parse_hotkey(&shelf_spec)
-            && let Err(e) = RegisterHotKey(Some(hwnd), HOTKEY_SHELF_ID, HOT_KEY_MODIFIERS(mods), vk)
-        {
-            tracing::debug!(hotkey = %shelf_spec, error = %e, "could not register Shelf hotkey");
+        for (id, name, spec) in entries {
+            if let Some((mods, vk)) = parse_hotkey(spec)
+                && let Err(e) = RegisterHotKey(Some(hwnd), id, HOT_KEY_MODIFIERS(mods), vk)
+            {
+                tracing::debug!(action = name, hotkey = %spec, error = %e, "could not register global hotkey");
+            }
         }
     }
 }
@@ -559,10 +574,9 @@ impl Drop for Tray {
         let data = icon_data(self.hwnd);
         // SAFETY: removing our own icon, hotkeys, event hook, and destroying our own window/icon.
         unsafe {
-            let _ = UnregisterHotKey(Some(self.hwnd), HOTKEY_PHOTO_ID);
-            let _ = UnregisterHotKey(Some(self.hwnd), HOTKEY_SCAN_ID);
-            let _ = UnregisterHotKey(Some(self.hwnd), HOTKEY_PALETTE_ID);
-            let _ = UnregisterHotKey(Some(self.hwnd), HOTKEY_SHELF_ID);
+            for id in HOTKEY_IDS {
+                let _ = UnregisterHotKey(Some(self.hwnd), id);
+            }
             let hook = FG_HOOK.with(|h| h.replace(HWINEVENTHOOK::default()));
             if !hook.is_invalid() {
                 let _ = UnhookWinEvent(hook);
@@ -786,6 +800,8 @@ unsafe extern "system" fn window_proc(hwnd: HWND, msg: u32, wparam: WPARAM, lpar
                 HOTKEY_SCAN_ID => emit(TrayEvent::ScanDocument),
                 HOTKEY_PALETTE_ID => emit(TrayEvent::CommandPalette),
                 HOTKEY_SHELF_ID => emit(TrayEvent::Shelf),
+                HOTKEY_HANDOFF_PULL_ID => emit(TrayEvent::HandoffPull),
+                HOTKEY_HANDOFF_PUSH_ID => emit(TrayEvent::HandoffPush),
                 _ => {}
             }
             LRESULT(0)
@@ -887,6 +903,14 @@ mod tests {
         let (mods, vk) = parse_hotkey(" ctrl + shift + f10 ").expect("ctrl+shift+f10");
         assert_eq!(mods, MOD_CONTROL.0 | MOD_SHIFT.0 | MOD_NOREPEAT.0);
         assert_eq!(vk, 0x79);
+
+        let (mods, vk) = parse_hotkey("Ctrl+Shift+3").expect("Ctrl+Shift+3");
+        assert_eq!(mods, MOD_CONTROL.0 | MOD_SHIFT.0 | MOD_NOREPEAT.0);
+        assert_eq!(vk, u32::from(b'3'));
+
+        let (mods, vk) = parse_hotkey("Ctrl+Shift+4").expect("Ctrl+Shift+4");
+        assert_eq!(mods, MOD_CONTROL.0 | MOD_SHIFT.0 | MOD_NOREPEAT.0);
+        assert_eq!(vk, u32::from(b'4'));
 
         assert!(parse_hotkey("").is_none());
         assert!(parse_hotkey("none").is_none());

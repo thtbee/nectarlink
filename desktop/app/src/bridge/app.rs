@@ -1244,6 +1244,8 @@ fn on_tray_event(qt: &CxxQtThread<qobject::AppController>, event: tray::TrayEven
         tray::TrayEvent::Shelf => {
             let _ = qt.queue(|object| object.toggle_shelf());
         }
+        tray::TrayEvent::HandoffPull => crate::links::pull_from_phone(),
+        tray::TrayEvent::HandoffPush => crate::links::push_browser_tab_to_phone(),
         tray::TrayEvent::TakePhoto => crate::continuity_camera::start("photo"),
         tray::TrayEvent::ScanDocument => crate::continuity_camera::start("scan"),
         tray::TrayEvent::OpenLinkOnPhone => crate::links::open_copied_link_on_phone(),

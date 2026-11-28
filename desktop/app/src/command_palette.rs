@@ -204,6 +204,14 @@ pub fn execute(id: &str) -> Option<PaletteUiAction> {
         crate::links::open_copied_link_on_phone();
         return None;
     }
+    if id == "action:handoff_pull" {
+        crate::links::pull_from_phone();
+        return None;
+    }
+    if id == "action:handoff_push" {
+        crate::links::push_browser_tab_to_phone();
+        return None;
+    }
     if id == "action:sync_now" {
         if let Some(node) = core_host::node() {
             show_message(tr!("CommandPalette", "Syncing devices…"));
@@ -661,6 +669,28 @@ fn build_candidates() -> Vec<PaletteCandidate> {
         shortcut: String::new(),
         keywords: link_keywords,
         base_boost: 78,
+    });
+    out.push(PaletteCandidate {
+        id: "action:handoff_pull".into(),
+        title: tr!("CommandPalette", "Pull active link from phone"),
+        subtitle: tr!("CommandPalette", "Open your phone's current webpage or video on this PC"),
+        category: "Actions".into(),
+        icon: "download".into(),
+        badge: "Handoff".into(),
+        shortcut: settings.handoff_pull_hotkey.clone(),
+        keywords: "pull handoff link phone browser youtube timestamp continue pc".into(),
+        base_boost: 82,
+    });
+    out.push(PaletteCandidate {
+        id: "action:handoff_push".into(),
+        title: tr!("CommandPalette", "Push active browser tab to phone"),
+        subtitle: tr!("CommandPalette", "Send the foreground browser tab URL to your phone"),
+        category: "Actions".into(),
+        icon: "send".into(),
+        badge: "Handoff".into(),
+        shortcut: settings.handoff_push_hotkey.clone(),
+        keywords: "push handoff link browser tab chrome edge brave firefox arc opera phone".into(),
+        base_boost: 82,
     });
 
     if let Some((_, dev_id, ref dev_name, _)) = primary {

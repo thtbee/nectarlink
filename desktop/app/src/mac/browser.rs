@@ -25,3 +25,7 @@ pub struct Window {
 pub fn windows() -> Vec<Window> {
     Vec::new()
 }
+
+pub fn active_browser_url_for_hwnd(_hwnd: isize) -> crate::links::ActiveBrowserUrl {
+    crate::links::ActiveBrowserUrl::NoBrowser
+}

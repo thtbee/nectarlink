@@ -3501,6 +3501,11 @@ impl Node {
         crate::actions::open_link(&self.shared, peer, url).await
     }
 
+    /// Asks a paired device for its currently active shareable Handoff link (`link.pull`).
+    pub async fn pull_link(&self, peer: DeviceId) -> Result<Option<crate::PulledLink>> {
+        crate::actions::pull_link(&self.shared, peer).await
+    }
+
     /// Sends an ongoing or completed task notification (`task.notify`) to a
     /// paired device (or to all connected devices that offer `task.notify`
     /// when `peer` is `None`).

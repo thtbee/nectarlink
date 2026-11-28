@@ -230,6 +230,7 @@ mod tests {
             types::PHONE_TOGGLE_SET,
             types::MEDIA_COMMAND,
             types::LINK_OPEN,
+            types::LINK_PULL,
             types::DEVICE_RING,
         ] {
             assert!(allows(t), "{t} should pass");

@@ -57,6 +57,7 @@ struct RecordingPlatform {
     media: Mutex<Vec<(String, MediaAction, Option<u64>)>>,
     power: Mutex<Vec<PowerAction>>,
     links: Mutex<Vec<String>>,
+    pulled_link: Mutex<Option<nectarlink_core::PulledLink>>,
     calls: Mutex<Vec<(String, nectarlink_core::CallCommand)>>,
     dialed: Mutex<Vec<String>>,
     texts: Mutex<Vec<(Vec<String>, String)>>,
@@ -173,6 +174,9 @@ impl Platform for RecordingPlatform {
     fn open_link(&self, _from: &nectarlink_core::DeviceId, url: &str) -> Result<(), String> {
         self.links.lock().unwrap().push(url.to_owned());
         Ok(())
+    }
+    fn pull_link(&self) -> Option<nectarlink_core::PulledLink> {
+        self.pulled_link.lock().unwrap().clone()
     }
     fn task_notify(
         &self,
@@ -9638,6 +9642,44 @@ async fn a_bluetooth_link_from_an_unpaired_pc_goes_nowhere() {
     assert!(matches!(pc.node.connect_bluetooth(link).await, Err(Error::NotPaired | Error::Network(_))));
     assert!(pc.node.paired_devices().unwrap().is_empty());
     assert!(phone.node.paired_devices().unwrap().is_empty());
+    pc.node.shutdown().await;
+    phone.node.shutdown().await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn pull_link_respects_capability_and_validates_web_urls() {
+    let mut pc = device_with("Desktop", DeviceKind::Desktop, &[]).await;
+    // Older phone without `link.pull` returns Unsupported cleanly.
+    let mut legacy_phone = device_with("LegacyPhone", DeviceKind::Phone, &[]).await;
+    pair_qr(&mut pc, &mut legacy_phone).await;
+    let legacy_id = legacy_phone.node.device_id();
+    assert!(matches!(
+        with_timeout("legacy pull", pc.node.pull_link(legacy_id)).await,
+        Err(Error::Unsupported)
+    ));
+    legacy_phone.node.shutdown().await;
+
+    // Capable phone returns None when nothing shareable is open, Some for https://,
+    // and unsafe/non-web schemes are filtered out to None on the responder.
+    let mut phone = device_with("Pixel", DeviceKind::Phone, &[nectarlink_core::LINK_PULL]).await;
+    pair_qr(&mut pc, &mut phone).await;
+    let phone_id = phone.node.device_id();
+
+    assert_eq!(with_timeout("empty pull", pc.node.pull_link(phone_id)).await.unwrap(), None);
+
+    *phone.platform.pulled_link.lock().unwrap() = Some(nectarlink_core::PulledLink {
+        url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=95".into(),
+        title: Some("Demo Video".into()),
+    });
+    let got = with_timeout("video pull", pc.node.pull_link(phone_id)).await.unwrap().unwrap();
+    assert_eq!(got.url, "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=95");
+    assert_eq!(got.title.as_deref(), Some("Demo Video"));
+
+    // Non-web URI (javascript: or file:) is never returned.
+    *phone.platform.pulled_link.lock().unwrap() =
+        Some(nectarlink_core::PulledLink { url: "javascript:alert(1)".into(), title: None });
+    assert_eq!(with_timeout("unsafe pull", pc.node.pull_link(phone_id)).await.unwrap(), None);
+
     pc.node.shutdown().await;
     phone.node.shutdown().await;
 }
