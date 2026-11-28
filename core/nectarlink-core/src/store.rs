@@ -2604,6 +2604,10 @@ const fn bytes_from_len(len: usize) -> u64 {
     len as u64
 }
 
+/// How often, and how many times, a staged copy that couldn't be removed is tried again.
+const STAGE_CLEANUP_EVERY: std::time::Duration = std::time::Duration::from_millis(100);
+const STAGE_CLEANUP_TRIES: u32 = 100;
+
 fn cleanup_staged_payload(data_dir: Option<&Path>, id: &str, payload: Option<&QueuePayload>) {
     // Staged copies live in `<data_dir>/queue_staging/<id>/` and nowhere else,
     // so nothing outside it is deleted, whatever a (damaged) row says.
@@ -2612,7 +2616,21 @@ fn cleanup_staged_payload(data_dir: Option<&Path>, id: &str, payload: Option<&Qu
         return;
     }
     let stage = dir.join("queue_staging").join(id);
-    let _ = std::fs::remove_dir_all(&stage);
+    if std::fs::remove_dir_all(&stage).is_err() && stage.exists() {
+        // On Windows a file still open (the send that just finished letting go
+        // of it) can't be deleted yet: try again for a while, off this thread,
+        // so the copy isn't left behind for good.
+        let stage = stage.clone();
+        let _ = std::thread::Builder::new().name("queue-cleanup".into()).spawn(move || {
+            for _ in 0..STAGE_CLEANUP_TRIES {
+                std::thread::sleep(STAGE_CLEANUP_EVERY);
+                if std::fs::remove_dir_all(&stage).is_ok() || !stage.exists() {
+                    return;
+                }
+            }
+            tracing::debug!("a staged copy couldn't be removed");
+        });
+    }
     if let Some(p) = payload {
         for spec in p.files_vec() {
             let inside = spec.path.starts_with(&stage)
