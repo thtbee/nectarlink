@@ -1656,5 +1656,12 @@
     <string name="chat_note_from">%1$s, %2$s: %3$s</string>
     <string name="chat_note_options">Tùy chọn ghi chú</string>
     <string name="chat_earlier">Ghi chú trước đó</string>
+    <string name="chat_attach">Đính kèm</string>
+    <string name="chat_attach_media">Ảnh và video</string>
+    <string name="chat_attach_files">Tệp</string>
+    <string name="chat_action_share">Chia sẻ</string>
+    <string name="chat_action_remove">Xóa khỏi trò chuyện</string>
+    <string name="chat_file_missing">Không có trên thiết bị này</string>
+    <string name="chat_file_options">Tùy chọn tệp</string>
     <string name="timeline_filter_notes">Ghi chú</string>
 </resources>

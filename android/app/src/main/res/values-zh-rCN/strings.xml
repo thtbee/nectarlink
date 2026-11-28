@@ -1586,5 +1586,12 @@
     <string name="chat_note_from">%1$s，%2$s：%3$s</string>
     <string name="chat_note_options">笔记选项</string>
     <string name="chat_earlier">更早的笔记</string>
+    <string name="chat_attach">添加附件</string>
+    <string name="chat_attach_media">照片和视频</string>
+    <string name="chat_attach_files">文件</string>
+    <string name="chat_action_share">分享</string>
+    <string name="chat_action_remove">从聊天中移除</string>
+    <string name="chat_file_missing">不在此设备上</string>
+    <string name="chat_file_options">文件选项</string>
     <string name="timeline_filter_notes">笔记</string>
 </resources>

@@ -2218,23 +2218,40 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
     fun chatOffered(deviceId: String): Boolean =
         runCatching { node?.peerOffers(deviceId, CHAT_CAPABILITY) }.getOrNull() ?: true
 
-    /** The newest [limit] notes of the chat with [deviceId] (newest first), and whether there are more. */
+    /**
+     * The newest [limit] entries of the chat with [deviceId] (newest first):
+     * its notes and the files, photos and recordings sent between the two,
+     * and whether there are more.
+     */
     suspend fun chatEntries(deviceId: String, limit: Int): Pair<List<TimelineEntry>, Boolean>? =
         withContext(Dispatchers.IO) {
             startJob?.join()
             val currentNode = node ?: return@withContext null
-            val items = ArrayList<TimelineEntry>()
-            var hasMore = true
-            while (hasMore && items.size < limit) {
-                val pageSize = minOf(CHAT_PAGE, limit - items.size).toUInt()
-                val page = runCatching {
-                    currentNode.timelinePage(TimelineKind.MESSAGE, deviceId, null, items.size.toUInt(), pageSize)
-                }.getOrNull() ?: return@withContext null
-                items += page.items
-                hasMore = page.hasMore && page.items.isNotEmpty()
+            val reads = app.nectarlink.android.ui.chat.CHAT_KINDS.map { kind ->
+                newestEntries(currentNode, kind, deviceId, limit) ?: return@withContext null
             }
-            items to hasMore
+            app.nectarlink.android.ui.chat.newestOf(reads, limit)
         }
+
+    /** The newest [limit] entries of one kind for [deviceId] (newest first), and whether there are more. */
+    private fun newestEntries(
+        node: NectarlinkNode,
+        kind: TimelineKind,
+        deviceId: String,
+        limit: Int,
+    ): Pair<List<TimelineEntry>, Boolean>? {
+        val items = ArrayList<TimelineEntry>()
+        var hasMore = true
+        while (hasMore && items.size < limit) {
+            val pageSize = minOf(CHAT_PAGE, limit - items.size).toUInt()
+            val page = runCatching {
+                node.timelinePage(kind, deviceId, null, items.size.toUInt(), pageSize)
+            }.getOrNull() ?: return null
+            items += page.items
+            hasMore = page.hasMore && page.items.isNotEmpty()
+        }
+        return items to hasMore
+    }
 
     /** Sends a note to [deviceId]; false (with a message, or the composer saying why) if it wasn't. */
     suspend fun sendChat(deviceId: String, text: String): Boolean = withContext(Dispatchers.IO) {
@@ -3479,7 +3496,7 @@ class Core(context: Context, private val scope: CoroutineScope) : EventListener 
         const val OWN_NAME_MAX = 64
         /** How long a PC may be away before its running tasks come off this phone. */
         const val TASKS_AWAY_MS = 30 * 60_000L
-        /** The most notes the core gives in one page (`MAX_TIMELINE_PAGE_LIMIT`). */
+        /** The most entries the core gives in one page (`MAX_TIMELINE_PAGE_LIMIT`). */
         const val CHAT_PAGE = 250
         /** What a device that takes notes offers (`chat.messages` in the protocol). */
         const val CHAT_CAPABILITY = "chat.messages"

@@ -144,7 +144,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.FilterChip
 import androidx.compose.runtime.LaunchedEffect
-import androidx.core.content.FileProvider
 import app.nectarlink.android.clipboard.PhoneClipboard
 import app.nectarlink.android.core.QueueItemUi
 import app.nectarlink.android.core.formatQueueItemTitle
@@ -3811,41 +3810,6 @@ private fun TimelineRow(
 /** What a timeline entry shows as its title: a note's text, which it keeps in `detail` (#698). */
 internal fun timelineTitle(entry: TimelineEntry): String =
     if (entry.kind == TimelineKind.MESSAGE) entry.detail else entry.title
-
-private fun openTimelineTarget(context: android.content.Context, entry: TimelineEntry) {
-    runCatching {
-        when (entry.kind) {
-            TimelineKind.LINK -> {
-                val url = entry.target.ifEmpty { entry.title }
-                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-            }
-            TimelineKind.FILE, TimelineKind.PHOTO, TimelineKind.RECORDING -> {
-                val target = entry.target
-                val uri = when {
-                    target.startsWith("content://") -> Uri.parse(target)
-                    target.isNotEmpty() && File(target).exists() ->
-                        FileProvider.getUriForFile(context, "${context.packageName}.files", File(target))
-                    else -> return
-                }
-                val ext = target.substringAfterLast('.', "").lowercase()
-                val mime = context.contentResolver.getType(uri)?.takeIf { it != "application/octet-stream" }
-                    ?: android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext)
-                    ?: when (entry.kind) {
-                        TimelineKind.PHOTO -> "image/*"
-                        TimelineKind.RECORDING -> "audio/*"
-                        else -> null
-                    }
-                val view = Intent(Intent.ACTION_VIEW)
-                    .apply {
-                        if (mime != null) setDataAndType(uri, mime) else setData(uri)
-                    }
-                    .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
-                context.startActivity(Intent.createChooser(view, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-            }
-            else -> Unit
-        }
-    }
-}
 
 private fun timelineDayLabels(
     entries: List<TimelineEntry>,
