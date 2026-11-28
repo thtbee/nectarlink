@@ -1009,8 +1009,16 @@ impl cxx_qt::Initialize for qobject::AppController {
                 object.set_shelf_items(QString::from(&shelf));
             }
         });
-        super::subscribe(qt.clone(), Changes::TRANSFERS | Changes::PHOTOS, |object| {
+        super::subscribe(qt.clone(), Changes::PHOTOS, |object| {
             if object.shelf_open {
+                let shelf = compute_shelf_items_json(object.current_device);
+                object.set_shelf_items(QString::from(&shelf));
+            }
+        });
+        // Progress comes about five times a second per transfer, and each rebuild
+        // lists the Downloads folder, so only a change the Shelf shows rebuilds it.
+        super::subscribe(qt.clone(), Changes::TRANSFERS, |object| {
+            if object.shelf_open && shelf_transfers_changed() {
                 let shelf = compute_shelf_items_json(object.current_device);
                 object.set_shelf_items(QString::from(&shelf));
             }
@@ -3198,6 +3206,27 @@ fn resolve_shelf_device(current_device_idx: i32) -> (Option<DeviceId>, String, b
 fn unix_ms(ts: i64) -> i64 {
     // Seconds stay below this until the year 2286.
     if ts < 10_000_000_000 { ts.saturating_mul(1000) } else { ts }
+}
+
+/// Whether the transfers the Shelf lists, the files incoming ones saved, are
+/// not the ones seen last time: progress and outgoing transfers don't change them.
+fn shelf_transfers_changed() -> bool {
+    use nectarlink_core::{Direction, TransferState};
+    use std::hash::{Hash, Hasher};
+    static SEEN: AtomicU64 = AtomicU64::new(0);
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    core_host::host().hub.read(|s| {
+        for tv in &s.transfers {
+            if tv.transfer.direction == Direction::Incoming
+                && let TransferState::Done { ref saved } = tv.transfer.state
+            {
+                tv.transfer.device.hash(&mut hasher);
+                saved.hash(&mut hasher);
+            }
+        }
+    });
+    let now = hasher.finish();
+    SEEN.swap(now, Ordering::Relaxed) != now
 }
 
 fn compute_shelf_items_json(current_device_idx: i32) -> String {
