@@ -1718,6 +1718,13 @@
     <string name="chat_note_from">%1$s、%2$s: %3$s</string>
     <string name="chat_note_options">メモのオプション</string>
     <string name="chat_earlier">以前のメモ</string>
+    <string name="chat_attach">添付</string>
+    <string name="chat_attach_media">写真と動画</string>
+    <string name="chat_attach_files">ファイル</string>
+    <string name="chat_action_share">共有</string>
+    <string name="chat_action_remove">チャットから削除</string>
+    <string name="chat_file_missing">このデバイスにはありません</string>
+    <string name="chat_file_options">ファイルのオプション</string>
     <string name="timeline_filter_notes">メモ</string>
 </resources>
 

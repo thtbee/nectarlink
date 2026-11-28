@@ -1727,6 +1727,13 @@
     <string name="chat_note_from">%1$s, %2$s: %3$s</string>
     <string name="chat_note_options">Not seçenekleri</string>
     <string name="chat_earlier">Önceki notlar</string>
+    <string name="chat_attach">Ekle</string>
+    <string name="chat_attach_media">Fotoğraflar ve videolar</string>
+    <string name="chat_attach_files">Dosyalar</string>
+    <string name="chat_action_share">Paylaş</string>
+    <string name="chat_action_remove">Sohbetten kaldır</string>
+    <string name="chat_file_missing">Bu cihazda yok</string>
+    <string name="chat_file_options">Dosya seçenekleri</string>
     <string name="timeline_filter_notes">Notlar</string>
 </resources>
 

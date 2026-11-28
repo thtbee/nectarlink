@@ -1600,5 +1600,12 @@
     <string name="chat_note_from">%1$s, %2$s: %3$s</string>
     <string name="chat_note_options">Действия с заметкой</string>
     <string name="chat_earlier">Предыдущие заметки</string>
+    <string name="chat_attach">Прикрепить</string>
+    <string name="chat_attach_media">Фото и видео</string>
+    <string name="chat_attach_files">Файлы</string>
+    <string name="chat_action_share">Поделиться</string>
+    <string name="chat_action_remove">Убрать из чата</string>
+    <string name="chat_file_missing">Нет на этом устройстве</string>
+    <string name="chat_file_options">Действия с файлом</string>
     <string name="timeline_filter_notes">Заметки</string>
 </resources>

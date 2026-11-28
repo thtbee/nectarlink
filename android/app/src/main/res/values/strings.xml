@@ -1729,6 +1729,13 @@
     <string name="chat_note_from">%1$s, %2$s: %3$s</string>
     <string name="chat_note_options">Note options</string>
     <string name="chat_earlier">Earlier notes</string>
+    <string name="chat_attach">Attach</string>
+    <string name="chat_attach_media">Photos and videos</string>
+    <string name="chat_attach_files">Files</string>
+    <string name="chat_action_share">Share</string>
+    <string name="chat_action_remove">Remove from chat</string>
+    <string name="chat_file_missing">Not on this device</string>
+    <string name="chat_file_options">File options</string>
     <string name="timeline_filter_notes">Notes</string>
 </resources>
 

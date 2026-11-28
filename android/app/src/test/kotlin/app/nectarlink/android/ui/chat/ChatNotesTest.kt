@@ -116,4 +116,124 @@ class ChatNotesTest {
         assertFalse(startsDay(notes, 1, utc))
         assertTrue(startsDay(notes, 2, utc))
     }
+
+    private fun file(
+        id: Long,
+        timestamp: Long,
+        kind: TimelineKind = TimelineKind.FILE,
+        device: String = "pc",
+        incoming: Boolean = true,
+        title: String = "file$id.pdf",
+        target: String = "/storage/emulated/0/Download/file$id.pdf",
+    ) = entry(id, timestamp, refId = "t$id", kind = kind, device = device, incoming = incoming, detail = "")
+        .copy(title = title, target = target, sizeBytes = 1_000uL * id.toULong())
+
+    @Test
+    fun `files photos and recordings sit among the notes in time order, on the sender's side`() {
+        val timeline = listOf(
+            file(6, timestamp = 250, kind = TimelineKind.RECORDING, incoming = false, title = "Rec.m4a"),
+            entry(5, timestamp = 300),
+            file(4, timestamp = 150, kind = TimelineKind.PHOTO, title = "IMG_1.jpg"),
+            entry(3, timestamp = 200, kind = TimelineKind.CLIP, refId = "clip"),
+            entry(2, timestamp = 100, incoming = false),
+            file(1, timestamp = 100, device = "tablet"),
+            file(7, timestamp = 50, kind = TimelineKind.LINK),
+            file(8, timestamp = 50, kind = TimelineKind.SESSION),
+        )
+        val items = chatItems(timeline, "pc")
+        assertEquals(listOf(2L, 4L, 6L, 5L), items.map { it.entryId })
+        val photo = items[1] as ChatAttachment
+        assertEquals(TimelineKind.PHOTO, photo.kind)
+        assertEquals("IMG_1.jpg", photo.name)
+        assertEquals(4_000L, photo.sizeBytes)
+        assertTrue(photo.incoming)
+        val recording = items[2] as ChatAttachment
+        assertFalse(recording.incoming)
+        assertTrue(items[0] is ChatNote)
+        assertTrue(items[3] is ChatNote)
+    }
+
+    @Test
+    fun `at the same second the older entry comes first, and each entry shows once`() {
+        val timeline = listOf(
+            file(3, timestamp = 100),
+            entry(2, timestamp = 100),
+            file(3, timestamp = 100),
+            entry(1, timestamp = 100, refId = "chat:n2"),
+        )
+        val items = chatItems(timeline, "pc")
+        assertEquals(listOf(2L, 3L), items.map { it.entryId })
+        assertEquals(listOf("note_n2", "file_3"), items.map { it.key })
+    }
+
+    @Test
+    fun `the newest entries of several reads, and whether there are more`() {
+        val notes = listOf(entry(5, timestamp = 500), entry(2, timestamp = 200), entry(1, timestamp = 100))
+        val files = listOf(file(4, timestamp = 400), file(3, timestamp = 300))
+        val (top, more) = newestOf(listOf(notes to false, files to false), limit = 3)
+        assertEquals(listOf(5L, 4L, 3L), top.map { it.id })
+        assertTrue(more)
+
+        val (all, noMore) = newestOf(listOf(notes to false, files to false, emptyList<TimelineEntry>() to false), limit = 10)
+        assertEquals(listOf(5L, 4L, 3L, 2L, 1L), all.map { it.id })
+        assertFalse(noMore)
+
+        // A read that has more means there's more, even when everything fits.
+        assertTrue(newestOf(listOf(notes to true), limit = 10).second)
+        // The same entry read twice counts once.
+        val (once, onceMore) = newestOf(listOf(notes to false, notes to false), limit = 3)
+        assertEquals(listOf(5L, 2L, 1L), once.map { it.id })
+        assertFalse(onceMore)
+    }
+
+    @Test
+    fun `an attachment opens and shares only while its file is here, and can always be removed`() {
+        assertEquals(
+            listOf(AttachmentAction.Open, AttachmentAction.Share, AttachmentAction.Remove),
+            attachmentActions(onPhone = true),
+        )
+        assertEquals(listOf(AttachmentAction.Remove), attachmentActions(onPhone = false))
+    }
+
+    @Test
+    fun `an attachment about several files has no single target`() {
+        val one = chatItems(listOf(file(1, timestamp = 1, target = "/a/b.jpg")), "pc").single() as ChatAttachment
+        assertEquals("/a/b.jpg", one.singleTarget)
+        val many = chatItems(listOf(file(2, timestamp = 1, target = "/a/b.jpg\n/a/c.jpg")), "pc").single() as ChatAttachment
+        assertNull(many.singleTarget)
+        val none = chatItems(listOf(file(3, timestamp = 1, target = "")), "pc").single() as ChatAttachment
+        assertNull(none.singleTarget)
+    }
+
+    @Test
+    fun `an attachment looks like what its file is`() {
+        fun look(kind: TimelineKind, title: String, target: String = "") =
+            attachmentLook(chatItems(listOf(file(1, timestamp = 1, kind = kind, title = title, target = target)), "pc").single() as ChatAttachment)
+        assertEquals(AttachmentLook.Image, look(TimelineKind.FILE, "Cat.JPG"))
+        assertEquals(AttachmentLook.Video, look(TimelineKind.FILE, "clip.mp4"))
+        assertEquals(AttachmentLook.Audio, look(TimelineKind.FILE, "song.mp3"))
+        assertEquals(AttachmentLook.File, look(TimelineKind.FILE, "report.pdf"))
+        assertEquals(AttachmentLook.Image, look(TimelineKind.PHOTO, "Photo"))
+        assertEquals(AttachmentLook.Audio, look(TimelineKind.RECORDING, "Recording"))
+        // The file on this phone tells more than the title.
+        assertEquals(AttachmentLook.Image, look(TimelineKind.FILE, "a.jpg and 2 more", target = "/x/a.png"))
+        assertEquals(AttachmentLook.Image, look(TimelineKind.FILE, "a.png", target = "content://media/external/images/media/12"))
+    }
+
+    @Test
+    fun `a day label goes above the first item of each day, notes and files alike`() {
+        val utc = TimeZone.getTimeZone("UTC")
+        val day = 86_400L
+        val items = chatItems(
+            listOf(
+                entry(1, timestamp = 10 * day + 100),
+                file(2, timestamp = 11 * day + 5),
+                entry(3, timestamp = 11 * day + 50),
+            ),
+            "pc",
+        )
+        assertTrue(startsDay(items, 0, utc))
+        assertTrue(startsDay(items, 1, utc))
+        assertFalse(startsDay(items, 2, utc))
+    }
 }

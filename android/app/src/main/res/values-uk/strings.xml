@@ -1743,6 +1743,13 @@
     <string name="chat_note_from">%1$s, %2$s: %3$s</string>
     <string name="chat_note_options">Дії з нотаткою</string>
     <string name="chat_earlier">Попередні нотатки</string>
+    <string name="chat_attach">Прикріпити</string>
+    <string name="chat_attach_media">Фото й відео</string>
+    <string name="chat_attach_files">Файли</string>
+    <string name="chat_action_share">Поділитися</string>
+    <string name="chat_action_remove">Вилучити з чату</string>
+    <string name="chat_file_missing">Немає на цьому пристрої</string>
+    <string name="chat_file_options">Дії з файлом</string>
     <string name="timeline_filter_notes">Нотатки</string>
 </resources>
 
