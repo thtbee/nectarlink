@@ -4455,6 +4455,18 @@ impl Node {
         self.shared.set_deck_layout(layout).await
     }
 
+    /// Gives phones this PC's Deck tile pictures (#490): PNGs of at most
+    /// [`crate::deck_image::MAX_BYTES`] and [`crate::deck_image::MAX_SIDE`]
+    /// pixels a side, named in the layout by [`crate::deck::image_id`].
+    pub fn set_deck_images(&self, images: Vec<Vec<u8>>) {
+        self.shared.deck.set_local_images(images);
+    }
+
+    /// The picture `id` on a connected PC's Deck tile, once this phone has it.
+    pub fn deck_image(&self, peer: DeviceId, id: &str) -> Option<Vec<u8>> {
+        self.shared.deck.peer_image(&peer, id).map(|png| png.to_vec())
+    }
+
     /// Updates this PC's live Deck state and sends it to every connected phone
     /// when it changed and this device offers `deck.actions`.
     pub async fn set_deck_state(&self, state: crate::DeckState) -> Result<()> {

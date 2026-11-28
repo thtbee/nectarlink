@@ -6,20 +6,26 @@
 //! or state change. A phone sends `deck.press { tile }` by tile ID only; the
 //! PC checks the `remote_input` toggle (and the `commands` toggle for
 //! `run_command` tiles) before running the tile's action.
+//!
+//! A tile can show a picture the user gave it instead of its icon (#490):
+//! the layout names it by ID, and a phone asks for each one it doesn't have
+//! (`deck.image`), checks it against its ID, and keeps it while the layout
+//! names it.
 
 use std::{
-    collections::{BTreeSet, HashMap},
+    collections::{BTreeSet, HashMap, HashSet},
     path::Path,
     sync::{Arc, Mutex},
 };
 
 pub use nectarlink_protocol::messages::{
-    AudioOutputDevice, DeckLayout, DeckPage, DeckPress, DeckState, DeckTile, KeyMod, PcAudioSet, PcRadioSet,
+    AudioOutputDevice, DeckImage, DeckImageGet, DeckLayout, DeckPage, DeckPress, DeckState, DeckTile, KeyMod,
+    PcAudioSet, PcRadioSet,
     deck::{
         ACTIONS as DECK_ACTIONS, MAX_ID_BYTES as MAX_DECK_ID_BYTES, MAX_LABEL_BYTES as MAX_DECK_LABEL_BYTES,
         MAX_PAGES as MAX_DECK_PAGES, MAX_TILES_PER_PAGE as MAX_DECK_TILES_PER_PAGE, PC_AUDIO, PC_RADIOS,
     },
-    deck_colors, deck_icons, deck_kinds, is_valid_deck_id, remote_keys,
+    deck_colors, deck_icons, deck_image, deck_kinds, is_valid_deck_id, remote_keys,
 };
 use nectarlink_protocol::{
     DeviceId, Envelope, ErrorCode,
@@ -354,6 +360,9 @@ pub struct DeckTileConfig {
     pub icon: String,
     pub color: String,
     pub action: DeckAction,
+    /// The ID of the picture shown instead of the icon ([`image_id`]), #490.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<String>,
 }
 
 impl std::fmt::Debug for DeckTileConfig {
@@ -383,6 +392,7 @@ impl DeckTileConfig {
             icon: wire.icon,
             color: wire.color,
             action: self.action,
+            image: wire.image,
         })
     }
 
@@ -397,8 +407,20 @@ impl DeckTileConfig {
             kind: self.action.kind().into(),
             needs_commands: self.action.kind() != deck_kinds::RUN_COMMAND
                 && self.action.requires_commands_toggle(),
+            image: self.image.clone(),
         }
     }
+}
+
+/// A tile picture's ID: the first 16 bytes of its PNG's SHA-256, in hex.
+pub fn image_id(png: &[u8]) -> String {
+    use sha2::Digest;
+    sha2::Sha256::digest(png)[..16].iter().map(|b| format!("{b:02x}")).collect()
+}
+
+/// The picture IDs `layout`'s tiles name.
+fn image_ids(layout: &DeckLayout) -> HashSet<String> {
+    layout.pages.iter().flat_map(|p| &p.tiles).filter_map(|t| t.image.clone()).collect()
 }
 
 /// One page of tiles in the PC's stored [`DeckConfig`].
@@ -531,6 +553,7 @@ impl DeckConfig {
         let tile = |id: &str, action: DeckAction| {
             let kind = action.kind();
             DeckTileConfig {
+                image: None,
                 id: id.into(),
                 label: deck_kinds::default_label(kind).into(),
                 icon: deck_kinds::default_icon(kind).into(),
@@ -594,6 +617,9 @@ impl Default for DeckConfig {
     }
 }
 
+/// Tile pictures by ID.
+type Images = HashMap<String, Arc<Vec<u8>>>;
+
 /// This PC's Deck layout and live state (sent to newly connected phones) and
 /// the latest layout and state received from each connected PC.
 pub(crate) struct Current {
@@ -601,6 +627,10 @@ pub(crate) struct Current {
     local_state: Mutex<DeckState>,
     peer_layouts: Mutex<HashMap<DeviceId, DeckLayout>>,
     peer_states: Mutex<HashMap<DeviceId, DeckState>>,
+    /// This PC's tile pictures, by ID, for phones that ask.
+    local_images: Mutex<Images>,
+    /// Each connected PC's tile pictures this phone has, by ID.
+    peer_images: Mutex<HashMap<DeviceId, Images>>,
 }
 
 impl Default for Current {
@@ -610,11 +640,52 @@ impl Default for Current {
             local_state: Mutex::new(DeckState::default()),
             peer_layouts: Mutex::new(HashMap::new()),
             peer_states: Mutex::new(HashMap::new()),
+            local_images: Mutex::new(HashMap::new()),
+            peer_images: Mutex::new(HashMap::new()),
         }
     }
 }
 
 impl Current {
+    /// Replaces this PC's tile pictures; those that aren't small PNGs are
+    /// left out. Their IDs are worked out here.
+    pub fn set_local_images(&self, images: Vec<Vec<u8>>) {
+        let images = images
+            .into_iter()
+            .filter(|png| deck_image::is_valid_png(png))
+            .map(|png| (image_id(&png), Arc::new(png)))
+            .collect();
+        *self.local_images.lock().unwrap_or_else(|e| e.into_inner()) = images;
+    }
+
+    pub fn local_image(&self, id: &str) -> Option<Arc<Vec<u8>>> {
+        self.local_images.lock().unwrap_or_else(|e| e.into_inner()).get(id).cloned()
+    }
+
+    pub fn peer_image(&self, peer: &DeviceId, id: &str) -> Option<Arc<Vec<u8>>> {
+        self.peer_images.lock().unwrap_or_else(|e| e.into_inner()).get(peer)?.get(id).cloned()
+    }
+
+    fn set_peer_image(&self, peer: DeviceId, id: String, png: Vec<u8>) {
+        self.peer_images
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .entry(peer)
+            .or_default()
+            .insert(id, Arc::new(png));
+    }
+
+    /// Keeps only the pictures `layout` names; the IDs it names that this
+    /// phone doesn't have yet.
+    fn missing_peer_images(&self, peer: DeviceId, layout: &DeckLayout) -> Vec<String> {
+        let wanted = image_ids(layout);
+        let mut all = self.peer_images.lock().unwrap_or_else(|e| e.into_inner());
+        let have = all.entry(peer).or_default();
+        have.retain(|id, _| wanted.contains(id));
+        let mut missing: Vec<String> = wanted.into_iter().filter(|id| !have.contains_key(id)).collect();
+        missing.sort();
+        missing
+    }
     pub fn local_layout(&self) -> DeckLayout {
         self.local_layout.lock().unwrap_or_else(|e| e.into_inner()).clone()
     }
@@ -737,6 +808,55 @@ impl Shared {
     }
 }
 
+/// Answers a phone's `deck.image`: the picture, to a phone the layout goes to.
+fn serve_image(shared: &Shared, peer: &DeviceId, id: &str) -> Envelope {
+    if !shared.offers_deck() {
+        return Envelope::error(ErrorCode::Unsupported, "no Deck here");
+    }
+    if !shared.deck_allowed(peer) {
+        return Envelope::error(ErrorCode::Denied, "the Deck is turned off for this device");
+    }
+    match shared.deck.local_image(id) {
+        Some(png) => {
+            Envelope::new(types::DECK_IMAGE_DATA, &DeckImage { id: id.to_owned(), png: png.to_vec() })
+                .unwrap_or_else(|_| Envelope::error(ErrorCode::Internal, "can't send the picture"))
+        }
+        None => Envelope::error(ErrorCode::NotFound, "no such picture"),
+    }
+}
+
+/// Phone side: gets the pictures a PC's new layout names that this phone
+/// doesn't have, then tells the app the layout again so it shows them. A
+/// picture that doesn't match its ID, or isn't a small PNG, is dropped: the
+/// tile keeps its icon.
+async fn fetch_images(shared: Arc<Shared>, session: Arc<Session>, ids: Vec<String>) {
+    let peer = session.peer;
+    let mut got = false;
+    for id in ids {
+        let Ok(env) = Envelope::new(types::DECK_IMAGE, &DeckImageGet { id: id.clone() }) else { continue };
+        let reply = match session.request(env, REQUEST_TIMEOUT).await {
+            Ok(reply) => reply,
+            Err(error) => {
+                tracing::debug!(%error, "deck picture not fetched");
+                if !session.is_alive() {
+                    return;
+                }
+                continue;
+            }
+        };
+        let Ok(image) = reply.expect_body::<DeckImage>(types::DECK_IMAGE_DATA) else { continue };
+        if image.id == id && deck_image::is_valid_png(&image.png) && image_id(&image.png) == id {
+            shared.deck.set_peer_image(peer, id, image.png);
+            got = true;
+        } else {
+            tracing::debug!("a deck picture didn't match its ID; the tile keeps its icon");
+        }
+    }
+    if got && let Some(layout) = shared.deck.peer_layout(&peer) {
+        shared.emit(NodeEvent::DeckLayout { device: peer, layout });
+    }
+}
+
 /// Asks a paired PC to run the action bound to `tile` (`deck.press`).
 pub(crate) async fn press(shared: &Arc<Shared>, session: &Arc<Session>, tile: String) -> Result<()> {
     let req = DeckPress { tile };
@@ -814,8 +934,19 @@ pub(crate) async fn handle(shared: &Arc<Shared>, session: &Arc<Session>, env: &E
             let layout: DeckLayout = env.body()?;
             if let Some(clean) = layout.sanitized() {
                 shared.deck.set_peer_layout(peer, clean.clone());
+                let missing = shared.deck.missing_peer_images(peer, &clean);
                 shared.emit(NodeEvent::DeckLayout { device: peer, layout: clean });
+                if !missing.is_empty() {
+                    tokio::spawn(fetch_images(shared.clone(), session.clone(), missing));
+                }
             }
+        }
+        types::DECK_IMAGE => {
+            let reply = match env.body::<DeckImageGet>() {
+                Ok(req) if req.is_valid() => serve_image(shared, &peer, &req.id),
+                _ => Envelope::error(ErrorCode::BadMessage, "invalid deck.image body"),
+            };
+            session.send(reply.reply_to(env.id)).await?;
         }
         types::DECK_STATE => {
             let state: DeckState = env.body()?;
@@ -1035,6 +1166,7 @@ mod tests {
         };
         assert!(action.requires_commands_toggle());
         let tile = DeckTileConfig {
+            image: None,
             id: "m1".into(),
             label: "Wind down".into(),
             icon: deck_icons::BOLT.into(),
@@ -1063,6 +1195,7 @@ mod tests {
                 name: "Main".into(),
                 tiles: vec![
                     DeckTileConfig {
+                        image: None,
                         id: "off".into(),
                         label: "Shut down".into(),
                         icon: deck_icons::POWER.into(),
@@ -1070,6 +1203,7 @@ mod tests {
                         action: DeckAction::ShutDownPc,
                     },
                     DeckTileConfig {
+                        image: None,
                         id: "m".into(),
                         label: "Pause and lock".into(),
                         icon: deck_icons::BOLT.into(),
@@ -1094,6 +1228,7 @@ mod tests {
 
     fn toggle_tile(id: &str, on: DeckAction, off: DeckAction) -> DeckTileConfig {
         DeckTileConfig {
+            image: None,
             id: id.into(),
             label: "Monitors".into(),
             icon: deck_icons::TOGGLE.into(),
@@ -1243,6 +1378,7 @@ mod tests {
     fn wire_layout_and_debug_never_expose_paths_urls_or_commands() {
         let mut cfg = DeckConfig::default_deck();
         cfg.pages[0].tiles.push(DeckTileConfig {
+            image: None,
             id: "secret_cmd".into(),
             label: "Deploy".into(),
             icon: deck_icons::TERMINAL.into(),
@@ -1250,6 +1386,7 @@ mod tests {
             action: DeckAction::RunCommand { command: "echo super-secret-token".into() },
         });
         cfg.pages[0].tiles.push(DeckTileConfig {
+            image: None,
             id: "secret_app".into(),
             label: "Calculator".into(),
             icon: deck_icons::APP.into(),
@@ -1257,6 +1394,7 @@ mod tests {
             action: DeckAction::LaunchApp { path: r"C:\Private\secret_app.exe".into() },
         });
         cfg.pages[0].tiles.push(DeckTileConfig {
+            image: None,
             id: "secret_url".into(),
             label: "Dashboard".into(),
             icon: deck_icons::GLOBE.into(),
@@ -1291,6 +1429,7 @@ mod tests {
             id: "custom".into(),
             name: "Work".into(),
             tiles: vec![DeckTileConfig {
+                image: None,
                 id: "site".into(),
                 label: "Docs".into(),
                 icon: deck_icons::GLOBE.into(),

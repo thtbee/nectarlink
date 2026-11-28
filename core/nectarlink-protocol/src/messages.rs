@@ -121,6 +121,9 @@ pub mod types {
     pub const DECK_LAYOUT: &str = "deck.layout";
     pub const DECK_STATE: &str = "deck.state";
     pub const DECK_PRESS: &str = "deck.press";
+    /// Asks a PC for a Deck tile's image (#490); answered with [`DECK_IMAGE_DATA`].
+    pub const DECK_IMAGE: &str = "deck.image";
+    pub const DECK_IMAGE_DATA: &str = "deck.image.data";
     pub const PC_AUDIO_SET: &str = "pc.audio.set";
     pub const PC_RADIO_SET: &str = "pc.radio.set";
     pub const STORAGE_LIST: &str = "storage.list";
@@ -4325,6 +4328,10 @@ pub struct DeckTile {
     /// step, #490). Left out when false.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub needs_commands: bool,
+    /// The ID of the picture the user gave it, shown instead of its icon;
+    /// the phone gets it with `deck.image` (#490). Left out when none.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<String>,
 }
 
 /// Never prints the user label (protocol v0 §11).
@@ -4346,6 +4353,7 @@ impl DeckTile {
             && deck_icons::ALL.contains(&self.icon.as_str())
             && deck_colors::ALL.contains(&self.color.as_str())
             && deck_kinds::ALL.contains(&self.kind.as_str())
+            && self.image.as_deref().is_none_or(deck_image::is_valid_id)
     }
 
     pub fn sanitized(self) -> Option<Self> {
@@ -4384,6 +4392,8 @@ impl DeckTile {
             color,
             kind: self.kind,
             needs_commands: self.needs_commands,
+            // A picture that can't be fetched is no picture: the icon shows.
+            image: self.image.filter(|id| deck_image::is_valid_id(id)),
         })
     }
 }
@@ -4481,6 +4491,7 @@ impl DeckLayout {
             color: deck_kinds::default_color(kind).into(),
             kind: kind.into(),
             needs_commands: false,
+            image: None,
         };
         DeckLayout {
             pages: vec![DeckPage {
@@ -4642,6 +4653,59 @@ impl DeckState {
             },
             _ => None,
         }
+    }
+}
+
+/// Deck tile pictures (#490, `docs/protocol/deck.md` §2.7).
+pub mod deck_image {
+    /// An image's ID: the first 16 bytes of its PNG's SHA-256, in lowercase hex.
+    pub const ID_LEN: usize = 32;
+    /// A tile picture's PNG, at most.
+    pub const MAX_BYTES: usize = 64 * 1024;
+    /// Its width and height, at most.
+    pub const MAX_SIDE: u32 = 256;
+
+    pub fn is_valid_id(id: &str) -> bool {
+        id.len() == ID_LEN && id.bytes().all(|b| matches!(b, b'0'..=b'9' | b'a'..=b'f'))
+    }
+
+    /// Whether `png` is a PNG a tile may show: its signature and header,
+    /// [`MAX_BYTES`] at most and [`MAX_SIDE`] wide and high at most. Only the
+    /// header is read; whoever shows it still decodes it with care.
+    pub fn is_valid_png(png: &[u8]) -> bool {
+        const SIGNATURE: &[u8] = b"\x89PNG\r\n\x1a\n";
+        if png.len() > MAX_BYTES || png.len() < 24 || !png.starts_with(SIGNATURE) || &png[12..16] != b"IHDR" {
+            return false;
+        }
+        let side = |at: usize| u32::from_be_bytes([png[at], png[at + 1], png[at + 2], png[at + 3]]);
+        (1..=MAX_SIDE).contains(&side(16)) && (1..=MAX_SIDE).contains(&side(20))
+    }
+}
+
+/// Body of `deck.image`: asks the PC for the picture a tile names (#490).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeckImageGet {
+    pub id: String,
+}
+
+impl DeckImageGet {
+    pub fn is_valid(&self) -> bool {
+        deck_image::is_valid_id(&self.id)
+    }
+}
+
+/// Body of `deck.image.data`: a tile's picture, a PNG.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeckImage {
+    pub id: String,
+    #[serde(with = "serde_bytes")]
+    pub png: Vec<u8>,
+}
+
+/// Never prints the picture.
+impl std::fmt::Debug for DeckImage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DeckImage").field("id", &self.id).field("bytes", &self.png.len()).finish()
     }
 }
 
@@ -6679,6 +6743,34 @@ name"
     }
 
     #[test]
+    fn deck_tile_pictures_are_small_square_pngs_named_by_hex_ids() {
+        let png = |w: u32, h: u32, len: usize| {
+            let mut bytes = b"\x89PNG\r\n\x1a\n\0\0\0\rIHDR".to_vec();
+            bytes.extend_from_slice(&w.to_be_bytes());
+            bytes.extend_from_slice(&h.to_be_bytes());
+            bytes.resize(len, 0);
+            bytes
+        };
+        assert!(deck_image::is_valid_png(&png(192, 192, 4000)));
+        assert!(deck_image::is_valid_png(&png(256, 128, 4000)));
+        assert!(!deck_image::is_valid_png(&png(257, 192, 4000)), "too wide");
+        assert!(!deck_image::is_valid_png(&png(0, 192, 4000)));
+        assert!(!deck_image::is_valid_png(&png(192, 192, deck_image::MAX_BYTES + 1)), "too big");
+        assert!(!deck_image::is_valid_png(b"GIF89a not a png at all, but long enough"));
+
+        assert!(deck_image::is_valid_id("0123456789abcdef0123456789abcdef"));
+        assert!(!deck_image::is_valid_id("0123456789ABCDEF0123456789ABCDEF"));
+        assert!(!deck_image::is_valid_id("../../etc/passwd0123456789abcdef"));
+        assert!(DeckImageGet { id: "0123456789abcdef0123456789abcdef".into() }.is_valid());
+
+        let image = DeckImage { id: "0123456789abcdef0123456789abcdef".into(), png: png(64, 64, 100) };
+        let env = Envelope::new(types::DECK_IMAGE_DATA, &image).unwrap();
+        let back: DeckImage = Envelope::from_cbor(&env.to_cbor()).unwrap().body().unwrap();
+        assert_eq!(back, image);
+        assert!(!format!("{image:?}").contains("PNG"), "never prints the picture");
+    }
+
+    #[test]
     fn deck_layout_state_and_press_validate_sanitize_and_round_trip() {
         let layout = DeckLayout::default_layout();
         assert!(layout.is_valid());
@@ -6718,9 +6810,11 @@ name"
             color: "unknown_color".into(),
             kind: deck_kinds::RUN_COMMAND.into(),
             needs_commands: false,
+            image: Some("not-an-image-id".into()),
         }
         .sanitized()
         .unwrap();
+        assert_eq!(fallback.image, None, "an image ID that can't be fetched is dropped");
         assert_eq!(fallback.label, "Buildnow");
         assert_eq!(fallback.icon, deck_icons::TERMINAL);
         assert_eq!(fallback.color, deck_colors::CORAL);
